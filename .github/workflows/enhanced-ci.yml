@@ -301,6 +301,10 @@ jobs:
         python-version: ${{ env.PYTHON_VERSION }}
         cache: 'pip'
 
+    - name: Remove existing Go module cache
+      if: matrix.analysis-type == 'go-analysis' || matrix.analysis-type == 'security-scan' || matrix.analysis-type == 'license-check'
+      run: rm -rf ~/go/pkg/mod
+
     - name: Cache dependencies
       uses: actions/cache@v3
       with:
@@ -336,8 +340,8 @@ jobs:
             ;;
           "license-check")
             echo "🔧 Installing license checking tools..."
-            # Install go-licenses for Go dependency license checking
-            go install github.com/google/go-licenses@latest
+            # Install go-licenses for Go dependency license checking (specific version that works better)
+            go install github.com/google/go-licenses@v1.6.0
             # Add Go bin to PATH for go-licenses
             echo "$HOME/go/bin" >> $GITHUB_PATH
             # Install Python license checker
@@ -578,8 +582,22 @@ jobs:
           echo "  Checking licenses in $module..."
           cd "$module"
 
-          # Use go-licenses to check dependencies
-          go-licenses check ./... --disallowed_types=forbidden,unknown || ((license_issues++))
+          # Skip if no Go source files exist (empty modules)
+          if ! find . -name "*.go" -not -path "./vendor/*" | grep -q .; then
+            echo "    Skipping $module: no Go source files found"
+            cd - > /dev/null
+            continue
+          fi
+
+          # Ensure go.mod has dependencies before running go-licenses
+          if ! go list -m all | grep -v -E "^(github\.com/thc1006/o-ran-intent-mano|[^/]+)$" | grep -q .; then
+            echo "    Skipping $module: no external dependencies found"
+            cd - > /dev/null
+            continue
+          fi
+
+          # Use go-licenses to check dependencies with updated flags
+          go-licenses check ./... --disallowed_types=forbidden,unknown --skip_headers || ((license_issues++))
 
           cd - > /dev/null
         done
@@ -687,6 +705,10 @@ jobs:
       with:
         python-version: ${{ env.PYTHON_VERSION }}
         cache: 'pip'
+
+    - name: Remove existing Go module cache
+      if: matrix.language == 'go'
+      run: rm -rf ~/go/pkg/mod
 
     - name: Cache dependencies
       uses: actions/cache@v3
