@@ -1,6 +1,6 @@
 module github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/orchestrator
 
-go 1.24
+go 1.23
 
 require (
 	github.com/stretchr/testify v1.11.1
