@@ -6,10 +6,13 @@ This document outlines the latest GitHub Actions best practices for September 20
 
 **Critical Updates for September 2025:**
 - SHA pinning now mandatory due to supply chain attacks
-- Node 20 deprecation announced, migrate to Node 24
-- New M2 Pro macOS runners with 15% performance improvement
+- Latest stable versions: checkout@v5, setup-node@v5, setup-python@v6
+- OIDC trusted publishing for npm is generally available
+- SLSA Level 3 compliance simplified with GitHub Artifact Attestations
+- Enhanced multiline output handling with jq serialization
 - Built-in Go caching in setup-go@v6 reduces build times by 20-40%
 - Enhanced container security scanning with Trivy, Snyk, and Docker Scout
+- Supply chain security matured with SLSA 1.0, SPDX 3, and Sigstore
 
 ## 🔒 Security Best Practices
 
@@ -271,6 +274,146 @@ jobs:
 - Use explicit inclusion patterns, exclude sensitive file types
 - Set minimal retention periods (7-30 days max)
 - Artifacts are accessible to anyone with repository access
+
+## 🔐 OIDC Authentication and Trusted Publishing
+
+### NPM Trusted Publishing (Generally Available 2025)
+
+NPM trusted publishing with OIDC eliminates the need for long-lived tokens:
+
+```yaml
+name: Publish to NPM
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Publish with provenance
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+```
+
+**Benefits of OIDC Trusted Publishing:**
+- **No token security risks**: Eliminates storing, rotating, or exposing npm tokens
+- **Cryptographic trust**: Short-lived, workflow-specific credentials
+- **Automatic provenance**: Every package includes cryptographic proof of its source
+- **Supply chain verification**: Users can verify where and how packages were built
+
+### Cloud Provider OIDC Authentication
+
+```yaml
+# AWS Authentication
+- name: Configure AWS credentials
+  uses: aws-actions/configure-aws-credentials@v4
+  with:
+    role-to-assume: arn:aws:iam::123456789012:role/GitHubActions-Role
+    role-session-name: GitHubActions-${{ github.run_id }}
+    aws-region: us-east-1
+
+# Azure Authentication
+- name: Azure Login
+  uses: azure/login@v2
+  with:
+    client-id: ${{ secrets.AZURE_CLIENT_ID }}
+    tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+    subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+# Google Cloud Authentication
+- name: Authenticate to Google Cloud
+  uses: google-github-actions/auth@v2
+  with:
+    workload_identity_provider: projects/123456789/locations/global/workloadIdentityPools/github/providers/github
+    service_account: github-actions@project.iam.gserviceaccount.com
+```
+
+## 📋 Supply Chain Security and SLSA Attestations
+
+### SLSA Level 3 Compliance (Simplified in 2025)
+
+GitHub Artifact Attestations greatly simplify achieving SLSA Level 3 compliance:
+
+```yaml
+name: SLSA Build and Attestation
+
+permissions:
+  id-token: write
+  contents: read
+  attestations: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      artifact-digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Build artifact
+        id: build
+        run: |
+          # Build your application
+          go build -o myapp ./cmd/main.go
+
+          # Generate artifact digest
+          digest=$(sha256sum myapp | cut -d' ' -f1)
+          echo "digest=sha256:${digest}" >> "$GITHUB_OUTPUT"
+
+      - name: Generate build provenance
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-path: 'myapp'
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: myapp-${{ github.sha }}
+          path: myapp
+```
+
+### Enhanced Multiline Output with jq Serialization
+
+The JSON serialization method is now the recommended approach for 2025:
+
+```yaml
+- name: Set multiline output safely with jq serialization
+  id: multiline
+  run: |
+    # Method 1: Direct jq serialization (recommended)
+    echo "multiline=$(
+      printf '%s\n%s\n%s\n' "Line 1" "Line 2" "Line 3" \
+      | jq --raw-input --compact-output --slurp
+    )" >> "$GITHUB_OUTPUT"
+
+    # Method 2: File content serialization
+    echo "file_content=$(
+      cat large-output.txt | \
+      jq --raw-input --compact-output --slurp
+    )" >> "$GITHUB_OUTPUT"
+
+- name: Use multiline output
+  run: |
+    # Deserialize using jq
+    jq --raw-output '.[0]' <<< '${{ steps.multiline.outputs.multiline }}'
+
+    # Alternative: Use fromJSON in expressions
+    echo '${{ fromJSON(steps.multiline.outputs.file_content)[0] }}'
+```
+
+**Key jq Flags Explained:**
+- `--raw-input`: Treats input as raw strings, not JSON
+- `--compact-output`: Ensures single-line output
+- `--slurp`: Reads entire input as one array instead of line-by-line
 
 ## 💾 Caching Best Practices (2025 Updates)
 
@@ -886,6 +1029,91 @@ Following these practices ensures robust, secure, and efficient CI/CD pipelines 
 
 ---
 
-**Document Version**: 2.0
+## 🚨 Advanced Security Practices
+
+### Runtime Security with Harden-Runner
+
+```yaml
+- name: Harden Runner
+  uses: step-security/harden-runner@v2
+  with:
+    egress-policy: strict
+    allowed-endpoints: |
+      api.github.com:443
+      github.com:443
+      objects.githubusercontent.com:443
+      registry.npmjs.org:443
+      index.docker.io:443
+      auth.docker.io:443
+      production.cloudflare.docker.com:443
+    disable-sudo: true
+    disable-file-monitoring: false
+```
+
+### Emergency Response Procedures
+
+```yaml
+# Emergency workflow for security incidents
+name: Security Incident Response
+
+on:
+  workflow_dispatch:
+    inputs:
+      incident_type:
+        description: 'Type of security incident'
+        required: true
+        type: choice
+        options:
+          - 'credential-leak'
+          - 'malicious-code'
+          - 'supply-chain-attack'
+          - 'vulnerability-disclosure'
+      severity:
+        description: 'Incident severity'
+        required: true
+        type: choice
+        options:
+          - 'critical'
+          - 'high'
+          - 'medium'
+          - 'low'
+
+jobs:
+  incident-response:
+    runs-on: ubuntu-latest
+    environment: emergency
+    steps:
+      - name: Notify security team
+        run: |
+          echo "🚨 Security incident: ${{ github.event.inputs.incident_type }}"
+          echo "Severity: ${{ github.event.inputs.severity }}"
+
+      - name: Revoke credentials (if applicable)
+        if: github.event.inputs.incident_type == 'credential-leak'
+        run: |
+          # Automated credential revocation logic
+          echo "Revoking potentially compromised credentials..."
+
+      - name: Disable workflows (if needed)
+        if: github.event.inputs.severity == 'critical'
+        run: |
+          echo "Disabling workflows for security review..."
+```
+
+### Latest Action Versions Summary (September 2025)
+
+| Action | Current Version | Previous Version | Key Improvements |
+|--------|-----------------|------------------|------------------|
+| `actions/checkout` | v5 | v4 | Enhanced token security, Node.js 20 runtime |
+| `actions/setup-node` | v5 | v4 | Improved Node.js 20 support, better caching |
+| `actions/setup-go` | v6 | v5 | Built-in caching enabled by default |
+| `actions/setup-python` | v6 | v5 | Python 3.13 compatibility, enhanced performance |
+| `actions/cache` | v4 | v3 | Cross-platform cache support, better compression |
+
+---
+
+**Document Version**: 3.0 (Comprehensive 2025 Security & Standards Update)
 **Last Updated**: September 24, 2025
+**Research Sources**: GitHub Docs, SLSA.dev, OpenSSF, Sigstore, Step Security
 **Next Review**: December 2025
+**Critical Changes**: OIDC adoption, SLSA attestations, jq serialization, latest action versions

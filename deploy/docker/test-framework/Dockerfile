@@ -1,5 +1,5 @@
 # Test Framework Multi-stage Dockerfile
-FROM golang:1.24.5-alpine AS go-builder
+FROM golang:1.23.6-alpine AS go-builder
 
 # Security labels and metadata
 LABEL maintainer="O-RAN MANO Team"
@@ -27,15 +27,15 @@ COPY tests/ .
 RUN go build -o test-runner cmd/test-runner/main.go
 
 # Final stage - Using Debian slim instead of Ubuntu for better security
-FROM debian:12.8-slim
+FROM debian:12.9-slim
 
 # Security labels
 LABEL org.opencontainers.image.title="Test Framework Runtime"
 LABEL security.scan="trivy,grype,snyk"
 LABEL security.user="non-root"
 LABEL security.distroless="false"
-LABEL security.base.image="debian:12.8-slim"
-LABEL security.go.version="1.24.5"
+LABEL security.base.image="debian:12.9-slim"
+LABEL security.go.version="1.23.6"
 LABEL security.scan.date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 LABEL security.risk="high-testing-tools"
 
