@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -357,8 +356,8 @@ func TestHTTPIntegration_PerformanceTests(t *testing.T) {
 	// Test POST performance test
 	testConfig := pkg.PerformanceTestConfig{
 		TestID:   "integration-test-1",
-		Duration: 10,
-		Type:     "bandwidth",
+		Duration: 10 * time.Second,
+		TestType: "bandwidth",
 	}
 
 	configData, err := json.Marshal(testConfig)
@@ -408,7 +407,10 @@ func TestHTTPIntegration_VXLANManagement(t *testing.T) {
 	peersData, err := json.Marshal(peers)
 	require.NoError(t, err)
 
-	resp, err = suite.client.Put(suite.baseURL+"/vxlan/peers", bytes.NewReader(peersData))
+	req, err := http.NewRequest("PUT", suite.baseURL+"/vxlan/peers", bytes.NewReader(peersData))
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err = suite.client.Do(req)
 	require.NoError(t, err)
 	defer resp.Body.Close()
 
@@ -416,7 +418,7 @@ func TestHTTPIntegration_VXLANManagement(t *testing.T) {
 	assert.True(t, resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusInternalServerError)
 
 	// Test VXLAN connectivity
-	resp, err = suite.client.Post(suite.baseURL+"/vxlan/connectivity", nil)
+	resp, err = suite.client.Post(suite.baseURL+"/vxlan/connectivity", "application/json", nil)
 	require.NoError(t, err)
 	defer resp.Body.Close()
 
@@ -450,7 +452,7 @@ func TestHTTPIntegration_TrafficControl(t *testing.T) {
 	policyData, err := json.Marshal(policy)
 	require.NoError(t, err)
 
-	resp, err = suite.client.Post(suite.baseURL+"/tc/rules", bytes.NewReader(policyData))
+	resp, err = suite.client.Post(suite.baseURL+"/tc/rules", "application/json", bytes.NewReader(policyData))
 	require.NoError(t, err)
 	defer resp.Body.Close()
 
@@ -488,7 +490,7 @@ func TestHTTPIntegration_IperfManagement(t *testing.T) {
 
 	// Test start iperf server (use high port to avoid conflicts)
 	port := 15001
-	resp, err = suite.client.Post(suite.baseURL+fmt.Sprintf("/iperf/servers/%d", port), nil)
+	resp, err = suite.client.Post(suite.baseURL+fmt.Sprintf("/iperf/servers/%d", port), "application/json", nil)
 	require.NoError(t, err)
 	defer resp.Body.Close()
 
@@ -645,11 +647,15 @@ func TestHTTPIntegration_LargePayloads(t *testing.T) {
 	// Test large configuration payload
 	largeConfig := pkg.TNConfig{
 		ClusterName: strings.Repeat("large-cluster-name-", 100),
-		NodeID:      strings.Repeat("large-node-id-", 100),
+		NetworkCIDR: "10.0.0.0/16",
 		VXLANConfig: pkg.VXLANConfig{
-			Interface: "eth0",
-			LocalIP:   "10.0.1.1",
-			RemoteIPs: make([]string, 1000),
+			VNI:        100,
+			LocalIP:    "10.0.1.1",
+			RemoteIPs:  make([]string, 1000),
+			Port:       4789,
+			MTU:        1450,
+			DeviceName: "vxlan0",
+			Learning:   true,
 		},
 	}
 
@@ -662,7 +668,10 @@ func TestHTTPIntegration_LargePayloads(t *testing.T) {
 	configData, err := json.Marshal(largeConfig)
 	require.NoError(t, err)
 
-	resp, err := suite.client.Put(suite.baseURL+"/config", bytes.NewReader(configData))
+	req, err := http.NewRequest("PUT", suite.baseURL+"/config", bytes.NewReader(configData))
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := suite.client.Do(req)
 	require.NoError(t, err)
 	defer resp.Body.Close()
 
@@ -688,7 +697,10 @@ func TestHTTPIntegration_ErrorRecovery(t *testing.T) {
 
 	for i, payload := range malformedPayloads {
 		t.Run(fmt.Sprintf("malformed_payload_%d", i), func(t *testing.T) {
-			resp, err := suite.client.Put(suite.baseURL+"/config", strings.NewReader(payload))
+			req, err := http.NewRequest("PUT", suite.baseURL+"/config", strings.NewReader(payload))
+			require.NoError(t, err)
+			req.Header.Set("Content-Type", "application/json")
+			resp, err := suite.client.Do(req)
 			require.NoError(t, err)
 			defer resp.Body.Close()
 

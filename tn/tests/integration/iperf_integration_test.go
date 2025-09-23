@@ -1,7 +1,6 @@
 package integration
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"net"
@@ -13,7 +12,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security"
 	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tn/agent/pkg"
 )
 

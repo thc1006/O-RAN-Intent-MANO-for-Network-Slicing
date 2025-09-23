@@ -1,18 +1,13 @@
 package integration
 
 import (
-	"context"
 	"fmt"
-	"os"
 	"os/exec"
 	"strings"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security"
 	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tn/agent/pkg/vxlan"
 )
 
