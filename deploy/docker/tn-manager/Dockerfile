@@ -29,15 +29,17 @@ RUN apk update && apk upgrade && apk add --no-cache \
 WORKDIR /workspace
 
 # Copy go mod files first for better layer caching
-COPY tn/go.mod go.mod
-COPY tn/go.sum go.sum
+COPY tn/go.mod tn/go.sum ./
+
+# Copy pkg/security module before downloading dependencies
+# This is needed because go.mod has a replace directive pointing to ../pkg/security
+COPY pkg/security/ /pkg/security/
 
 # Download dependencies
 RUN go mod download
 
-# Copy source code and pkg/security
+# Copy source code
 COPY tn/ .
-COPY pkg/security/ /workspace/../pkg/security/
 
 # Build the binary with security flags
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \

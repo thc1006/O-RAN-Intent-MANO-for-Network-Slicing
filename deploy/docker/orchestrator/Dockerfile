@@ -31,11 +31,11 @@ RUN apk update && apk upgrade && apk add --no-cache \
 WORKDIR /workspace
 
 # Copy go mod files first for better layer caching
-COPY orchestrator/go.mod go.mod
-COPY orchestrator/go.sum go.sum
+COPY orchestrator/go.mod orchestrator/go.sum ./
 
 # Copy pkg/security dependency (required by orchestrator)
-COPY pkg/security/ /workspace/../pkg/security/
+# This is needed because go.mod has a replace directive pointing to ../pkg/security
+COPY pkg/security/ /pkg/security/
 
 # Download dependencies
 RUN go mod download
