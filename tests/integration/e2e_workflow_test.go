@@ -500,7 +500,7 @@ func (s *E2EWorkflowSuite) validateQoSEnforcement(qos manov1alpha1.QoSRequiremen
 
 func (s *E2EWorkflowSuite) saveTestResults() {
 	resultsDir := "testdata/results"
-	os.MkdirAll(resultsDir, 0750)
+	os.MkdirAll(resultsDir, security.SecureDirMode)
 
 	timestamp := time.Now().Format("20060102-150405")
 	filename := filepath.Join(resultsDir, fmt.Sprintf("e2e_results_%s.json", timestamp))
@@ -511,7 +511,7 @@ func (s *E2EWorkflowSuite) saveTestResults() {
 		return
 	}
 
-	err = os.WriteFile(filename, data, 0600)
+	err = os.WriteFile(filename, data, security.SecureFileMode)
 	if err != nil {
 		fmt.Printf("Failed to save test results: %v\n", err)
 		return
