@@ -420,7 +420,7 @@ func (g *PackageGenerator) generateKptFiles(spec *VNFSpec, context map[string]in
 		},
 		"info": map[string]interface{}{
 			"description": fmt.Sprintf("Nephio package for %s VNF (%s)", spec.Name, spec.Type),
-			"site":        "https://github.com/o-ran/intent-mano",
+			"site":        "https://github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing",
 		},
 		"pipeline": map[string]interface{}{
 			"mutators": []map[string]interface{}{

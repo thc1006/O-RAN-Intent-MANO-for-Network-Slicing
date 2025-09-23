@@ -6,7 +6,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"syscall"
 )
 
 // OptimizedManager provides high-performance VXLAN tunnel management

@@ -7,18 +7,15 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-logr/logr"
 	porchapi "github.com/GoogleContainerTools/kpt/porch/api/porch/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-
-	manov1alpha1 "github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/api/mano/v1alpha1"
 	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/orchestrator/pkg/placement"
 	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/o2client"
 )
@@ -215,8 +212,10 @@ type NetworkSliceIntentList struct {
 
 // Reconcile handles NetworkSliceIntent reconciliation
 func (r *NephioAdapterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := log.FromContext(ctx)
+	logger := log.FromContext(ctx)
 	startTime := time.Now()
+
+	logger.Info("Reconciling NetworkSliceIntent", "namespace", req.Namespace, "name", req.Name)
 
 	// Fetch the NetworkSliceIntent instance
 	intent := &NetworkSliceIntent{}
@@ -265,7 +264,7 @@ func (r *NephioAdapterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 
 // handlePendingPhase validates the intent and starts planning
 func (r *NephioAdapterReconciler) handlePendingPhase(ctx context.Context, intent *NetworkSliceIntent, startTime time.Time) (ctrl.Result, error) {
-	log := log.FromContext(ctx)
+	logger := log.FromContext(ctx)
 
 	// Validate QoS requirements
 	if err := r.validateQoSRequirements(intent.Spec.QoSProfile); err != nil {
@@ -285,21 +284,31 @@ func (r *NephioAdapterReconciler) handlePendingPhase(ctx context.Context, intent
 	intent.Status.Phase = "Planning"
 	r.updateStatus(ctx, intent, "Validation completed, starting placement planning")
 
-	log.Info("NetworkSliceIntent validation completed", "intent", intent.Name, "duration", time.Since(startTime))
+	logger.Info("NetworkSliceIntent validation completed", "intent", intent.Name, "duration", time.Since(startTime))
 	return ctrl.Result{RequeueAfter: time.Second * 2}, nil
 }
 
 // handlePlanningPhase generates placement decisions
 func (r *NephioAdapterReconciler) handlePlanningPhase(ctx context.Context, intent *NetworkSliceIntent, startTime time.Time) (ctrl.Result, error) {
-	log := log.FromContext(ctx)
+	logger := log.FromContext(ctx)
 	planningStartTime := time.Now()
 
 	// Get available sites from O2ims
-	sites, err := r.O2Client.GetAvailableSites(ctx)
+	siteNames, err := r.O2Client.GetAvailableSites(ctx)
 	if err != nil {
 		intent.Status.Phase = "Failed"
 		r.updateStatus(ctx, intent, fmt.Sprintf("Failed to get available sites: %v", err))
 		return ctrl.Result{}, nil
+	}
+
+	// Convert site names to Site objects
+	sites := make([]*placement.Site, len(siteNames))
+	for i, name := range siteNames {
+		sites[i] = &placement.Site{
+			ID:   name,
+			Name: name,
+			Type: "edge", // Default to edge, would be determined from actual site info
+		}
 	}
 
 	// Generate placement decisions for each network function
@@ -325,13 +334,13 @@ func (r *NephioAdapterReconciler) handlePlanningPhase(ctx context.Context, inten
 	intent.Status.Phase = "Packaging"
 	r.updateStatus(ctx, intent, "Placement planning completed, generating packages")
 
-	log.Info("Placement planning completed", "intent", intent.Name, "placements", len(placements), "duration", time.Since(planningStartTime))
+	logger.Info("Placement planning completed", "intent", intent.Name, "placements", len(placements), "duration", time.Since(planningStartTime))
 	return ctrl.Result{RequeueAfter: time.Second * 2}, nil
 }
 
 // handlePackagingPhase generates Nephio packages
 func (r *NephioAdapterReconciler) handlePackagingPhase(ctx context.Context, intent *NetworkSliceIntent, startTime time.Time) (ctrl.Result, error) {
-	log := log.FromContext(ctx)
+	logger := log.FromContext(ctx)
 	packagingStartTime := time.Now()
 
 	// Generate Nephio packages from the intent
@@ -348,7 +357,7 @@ func (r *NephioAdapterReconciler) handlePackagingPhase(ctx context.Context, inte
 		revision, err := r.PorchClient.CreatePackageRevision(ctx, pkg)
 		if err != nil {
 			intent.Status.Phase = "Failed"
-			r.updateStatus(ctx, intent, fmt.Sprintf("Failed to create package revision for %s: %v", pkg.Name, err))
+			r.updateStatus(ctx, intent, fmt.Sprintf("Failed to create package revision for %s: %v", pkg.Metadata.Name, err))
 			return ctrl.Result{}, nil
 		}
 
@@ -356,13 +365,13 @@ func (r *NephioAdapterReconciler) handlePackagingPhase(ctx context.Context, inte
 			Name:        revision.Name,
 			Revision:    revision.Spec.Revision,
 			Lifecycle:   string(revision.Spec.Lifecycle),
-			Repository:  revision.Spec.Repository,
+			Repository:  revision.Spec.RepositoryName, // Changed from Repository to RepositoryName
 			CreatedTime: revision.CreationTimestamp.Time,
 		})
 
 		// Propose the package
 		if err := r.PorchClient.ProposePackageRevision(ctx, revision.Name); err != nil {
-			log.Error(err, "Failed to propose package revision", "package", revision.Name)
+			logger.Error(err, "Failed to propose package revision", "package", revision.Name)
 		}
 	}
 
@@ -374,19 +383,19 @@ func (r *NephioAdapterReconciler) handlePackagingPhase(ctx context.Context, inte
 	intent.Status.Phase = "Deploying"
 	r.updateStatus(ctx, intent, fmt.Sprintf("Generated %d packages, starting deployment", len(packages)))
 
-	log.Info("Package generation completed", "intent", intent.Name, "packages", len(packages), "duration", time.Since(packagingStartTime))
+	logger.Info("Package generation completed", "intent", intent.Name, "packages", len(packages), "duration", time.Since(packagingStartTime))
 	return ctrl.Result{RequeueAfter: time.Second * 5}, nil
 }
 
 // handleDeployingPhase monitors deployment progress
 func (r *NephioAdapterReconciler) handleDeployingPhase(ctx context.Context, intent *NetworkSliceIntent, startTime time.Time) (ctrl.Result, error) {
-	log := log.FromContext(ctx)
+	logger := log.FromContext(ctx)
 	deploymentStartTime := time.Now()
 
 	// Check deployment status via O2dms
 	deploymentStatus, err := r.O2Client.GetDeploymentStatus(ctx, intent.Name)
 	if err != nil {
-		log.Error(err, "Failed to get deployment status", "intent", intent.Name)
+		logger.Error(err, "Failed to get deployment status", "intent", intent.Name)
 		return ctrl.Result{RequeueAfter: time.Second * 30}, nil
 	}
 
@@ -400,9 +409,9 @@ func (r *NephioAdapterReconciler) handleDeployingPhase(ctx context.Context, inte
 			Cluster:         status.Cluster,
 			Namespace:       status.Namespace,
 			Status:          status.Status,
-			PackageRevision: status.PackageRevision,
-			DeploymentTime:  status.DeploymentTime,
-			HealthStatus:    status.HealthStatus,
+			PackageRevision: "", // To be filled from package revision tracking
+			DeploymentTime:  time.Now(),
+			HealthStatus:    status.Status, // Use Status as HealthStatus for now
 		})
 
 		if status.Status != "Ready" {
@@ -421,7 +430,7 @@ func (r *NephioAdapterReconciler) handleDeployingPhase(ctx context.Context, inte
 
 		r.updateStatus(ctx, intent, fmt.Sprintf("Network slice deployed successfully with %d functions", len(deployedFunctions)))
 
-		log.Info("Network slice deployment completed successfully",
+		logger.Info("Network slice deployment completed successfully",
 			"intent", intent.Name,
 			"functions", len(deployedFunctions),
 			"totalDuration", intent.Status.Metrics.TotalDeploymentTime)
@@ -455,18 +464,18 @@ func (r *NephioAdapterReconciler) handleFailedPhase(ctx context.Context, intent 
 
 // handleDeletion handles NetworkSliceIntent deletion
 func (r *NephioAdapterReconciler) handleDeletion(ctx context.Context, intent *NetworkSliceIntent) (ctrl.Result, error) {
-	log := log.FromContext(ctx)
+	logger := log.FromContext(ctx)
 
 	// Clean up deployed resources via O2dms
 	if err := r.O2Client.DeleteDeployment(ctx, intent.Name); err != nil {
-		log.Error(err, "Failed to delete deployment via O2dms", "intent", intent.Name)
+		logger.Error(err, "Failed to delete deployment via O2dms", "intent", intent.Name)
 		return ctrl.Result{RequeueAfter: time.Second * 30}, nil
 	}
 
 	// Clean up package revisions
 	for _, revision := range intent.Status.PackageRevisions {
 		if err := r.PorchClient.DeletePackageRevision(ctx, revision.Name); err != nil {
-			log.Error(err, "Failed to delete package revision", "revision", revision.Name)
+			logger.Error(err, "Failed to delete package revision", "revision", revision.Name)
 		}
 	}
 
@@ -555,14 +564,24 @@ type PackageGenerator interface {
 	GeneratePackages(ctx context.Context, intent *NetworkSliceIntent) ([]*Package, error)
 }
 
-// Package represents a Nephio package
-type Package struct {
-	Name      string
-	Version   string
-	Type      string
-	Resources map[string]interface{}
+// Package type is already defined in package-generator.go
+
+// SchemeBuilder is used to add go types to the GroupVersionKind scheme
+var (
+	SchemeGroupVersion = schema.GroupVersion{Group: "mano.o-ran.org", Version: "v1alpha1"}
+	SchemeBuilder      = runtime.NewSchemeBuilder(addKnownTypes)
+	AddToScheme        = SchemeBuilder.AddToScheme
+)
+
+func addKnownTypes(scheme *runtime.Scheme) error {
+	scheme.AddKnownTypes(SchemeGroupVersion,
+		&NetworkSliceIntent{},
+		&NetworkSliceIntentList{},
+	)
+	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
+	return nil
 }
 
 func init() {
-	SchemeBuilder.Register(&NetworkSliceIntent{}, &NetworkSliceIntentList{})
+	// Types are already registered via addKnownTypes
 }

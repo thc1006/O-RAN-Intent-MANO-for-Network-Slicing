@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/o-ran/intent-mano/adapters/vnf-operator/pkg/translator"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/adapters/vnf-operator/pkg/translator"
 )
 
 // Client interface for GitOps operations

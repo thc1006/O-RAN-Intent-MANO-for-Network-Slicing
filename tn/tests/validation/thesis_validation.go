@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	managerPkg "github.com/o-ran/intent-mano/tn/manager/pkg"
+	managerPkg "github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tn/manager/pkg"
 )
 
 // ThesisValidator validates the TN module against thesis requirements

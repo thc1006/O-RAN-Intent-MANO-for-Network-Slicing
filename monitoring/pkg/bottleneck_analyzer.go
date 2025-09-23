@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"strings"
 	"sync"
 	"time"
-	"encoding/json"
 )
 
 // BottleneckAnalyzer provides real-time performance bottleneck detection and analysis

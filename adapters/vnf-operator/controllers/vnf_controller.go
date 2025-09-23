@@ -14,10 +14,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	manov1alpha1 "github.com/o-ran/intent-mano/adapters/vnf-operator/api/v1alpha1"
-	"github.com/o-ran/intent-mano/adapters/vnf-operator/pkg/dms"
-	"github.com/o-ran/intent-mano/adapters/vnf-operator/pkg/gitops"
-	"github.com/o-ran/intent-mano/adapters/vnf-operator/pkg/translator"
+	manov1alpha1 "github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/adapters/vnf-operator/api/v1alpha1"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/adapters/vnf-operator/pkg/dms"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/adapters/vnf-operator/pkg/gitops"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/adapters/vnf-operator/pkg/translator"
 )
 
 const (

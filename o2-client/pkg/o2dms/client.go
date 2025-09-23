@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/o-ran/intent-mano/o2-client/pkg/models"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/o2-client/pkg/models"
 )
 
 // Client provides O2DMS (O-RAN Deployment Management Service) operations

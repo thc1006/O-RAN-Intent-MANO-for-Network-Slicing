@@ -3,13 +3,12 @@ package golden
 import (
 	"bytes"
 	"os"
-	"path/filepath"
 	"testing"
 
 	"gopkg.in/yaml.v3"
 
-	manov1alpha1 "github.com/o-ran/intent-mano/adapters/vnf-operator/api/v1alpha1"
-	"github.com/o-ran/intent-mano/adapters/vnf-operator/pkg/translator"
+	manov1alpha1 "github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/adapters/vnf-operator/api/v1alpha1"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/adapters/vnf-operator/pkg/translator"
 )
 
 // TestGoldenRANPackage tests RAN VNF to Porch package translation

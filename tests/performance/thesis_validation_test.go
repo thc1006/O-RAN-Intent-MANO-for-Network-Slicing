@@ -19,7 +19,7 @@ import (
 	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
 
-	"github.com/o-ran/intent-mano/tests/framework/testutils"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tests/framework/testutils"
 )
 
 // ThesisMetrics defines the specific performance targets from the thesis

@@ -16,7 +16,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
-	tnv1alpha1 "github.com/o-ran/intent-mano/tn/manager/api/v1alpha1"
+	tnv1alpha1 "github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tn/manager/api/v1alpha1"
 )
 
 // TestProfile represents a test configuration for a specific QoS profile
