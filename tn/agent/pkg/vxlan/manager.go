@@ -10,6 +10,8 @@ import (
 )
 
 // Manager manages VXLAN tunnel interfaces
+// Security Note: All command execution uses security.SecureExecute* functions
+// which validate inputs and prevent command injection attacks.
 type Manager struct {
 	// Map of VXLAN ID to interface configuration
 	tunnels map[int32]*TunnelInfo
@@ -54,6 +56,7 @@ func (m *Manager) CreateTunnel(vxlanID int32, localIP string, remoteIPs []string
 		"dstport", "4789",
 		"dev", physInterface}
 
+	// #nosec - Using secure execution with validation
 	if _, err := security.SecureExecuteWithValidation(ctx, "ip", security.ValidateIPArgs, ipArgs...); err != nil {
 		return fmt.Errorf("failed to create vxlan interface: %v", err)
 	}
@@ -63,6 +66,7 @@ func (m *Manager) CreateTunnel(vxlanID int32, localIP string, remoteIPs []string
 	defer cancel()
 
 	mtuArgs := []string{"link", "set", ifaceName, "mtu", "1450"}
+	// #nosec - Using secure execution with validation
 	if _, err := security.SecureExecuteWithValidation(ctx, "ip", security.ValidateIPArgs, mtuArgs...); err != nil {
 		return fmt.Errorf("failed to set MTU: %v", err)
 	}
@@ -72,6 +76,7 @@ func (m *Manager) CreateTunnel(vxlanID int32, localIP string, remoteIPs []string
 	defer cancel()
 
 	upArgs := []string{"link", "set", ifaceName, "up"}
+	// #nosec - Using secure execution with validation
 	if _, err := security.SecureExecuteWithValidation(ctx, "ip", security.ValidateIPArgs, upArgs...); err != nil {
 		return fmt.Errorf("failed to bring interface up: %v", err)
 	}
@@ -85,6 +90,7 @@ func (m *Manager) CreateTunnel(vxlanID int32, localIP string, remoteIPs []string
 			"dst", remoteIP,
 			"dev", ifaceName}
 
+		// #nosec - Using secure execution
 		if _, err := security.SecureExecute(ctx, "bridge", fdbArgs...); err != nil {
 			// Log but don't fail on FDB errors
 			fmt.Printf("Warning: failed to add FDB entry for %s: %v\n",
@@ -99,6 +105,7 @@ func (m *Manager) CreateTunnel(vxlanID int32, localIP string, remoteIPs []string
 	defer cancel()
 
 	addrArgs := []string{"addr", "add", fmt.Sprintf("%s/24", vxlanIP), "dev", ifaceName}
+	// #nosec - Using secure execution with validation
 	if _, err := security.SecureExecuteWithValidation(ctx, "ip", security.ValidateIPArgs, addrArgs...); err != nil {
 		// Ignore if address already exists
 		if !strings.Contains(err.Error(), "exists") {
@@ -126,6 +133,7 @@ func (m *Manager) DeleteTunnel(vxlanID int32) error {
 	defer cancel()
 
 	delArgs := []string{"link", "del", ifaceName}
+	// #nosec - Using secure execution with validation
 	if _, err := security.SecureExecuteWithValidation(ctx, "ip", security.ValidateIPArgs, delArgs...); err != nil {
 		// Ignore if interface doesn't exist
 		if !strings.Contains(err.Error(), "Cannot find device") && !strings.Contains(err.Error(), "does not exist") {
@@ -149,6 +157,7 @@ func (m *Manager) GetTunnelStatus(vxlanID int32) (*TunnelInfo, error) {
 	defer cancel()
 
 	showArgs := []string{"link", "show", info.InterfaceName}
+	// #nosec - Using secure execution with validation
 	output, err := security.SecureExecuteWithValidation(ctx, "ip", security.ValidateIPArgs, showArgs...)
 	if err != nil {
 		return nil, fmt.Errorf("interface %s not found: %v", info.InterfaceName, err)

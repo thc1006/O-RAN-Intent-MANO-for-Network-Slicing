@@ -168,7 +168,11 @@ func loadQoSIntents(filename string) ([]QoSIntent, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file %s: %w", filename, err)
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			log.Printf("Error closing file %s: %v", filename, err)
+		}
+	}()
 
 	var intents []QoSIntent
 	scanner := bufio.NewScanner(file)
@@ -415,7 +419,11 @@ func saveOrchestrationPlan(allocations []SliceAllocation, filename string, verbo
 	if err != nil {
 		return fmt.Errorf("failed to create output file: %w", err)
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			log.Printf("Error closing file %s: %v", filename, err)
+		}
+	}()
 
 	encoder := json.NewEncoder(file)
 	encoder.SetIndent("", "  ")
@@ -450,7 +458,11 @@ func loadOrchestrationPlan(filename string) ([]SliceAllocation, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			log.Printf("Error closing file %s: %v", filename, err)
+		}
+	}()
 
 	var plan map[string]interface{}
 	if err := json.NewDecoder(file).Decode(&plan); err != nil {

@@ -1,0 +1,162 @@
+# Trivy configuration for O-RAN Intent-MANO container security scanning
+# This configuration focuses on critical and high severity vulnerabilities
+
+# Global scanning configuration
+scan:
+  # Scan for vulnerabilities, secrets, and misconfigurations
+  security-checks: "vuln,secret,config"
+
+  # Vulnerability database settings
+  skip-db-update: false
+  skip-java-db-update: false
+
+  # Timeout settings
+  timeout: "15m"
+
+  # Cache settings
+  cache-dir: "/tmp/trivy"
+
+# Vulnerability scanning configuration
+vulnerability:
+  # Only report HIGH and CRITICAL vulnerabilities
+  severity: "HIGH,CRITICAL"
+
+  # Ignore unfixed vulnerabilities (optional, for reducing noise)
+  ignore-unfixed: false
+
+  # Exit code configuration
+  exit-code: 1  # Exit with non-zero code if vulnerabilities found
+
+# Secret scanning configuration
+secret:
+  # Skip verification of secrets (faster scanning)
+  skip-verification: false
+
+  # Custom secret patterns
+  config: |
+    rules:
+      - id: custom-api-key
+        pattern: '(?i)(api[_-]?key|apikey)[\s]*[=:][\s]*["\']?([a-zA-Z0-9_-]{20,})[\s"\']?'
+        keywords:
+          - api
+          - key
+      - id: custom-password
+        pattern: '(?i)(password|passwd|pwd)[\s]*[=:][\s]*["\']?([^\s"\']{8,})[\s"\']?'
+        keywords:
+          - password
+          - passwd
+
+# Misconfiguration scanning
+misconfiguration:
+  # Kubernetes and Docker configuration checks
+  policy-paths:
+    - "/opt/trivy/policies"
+
+  # Include all severity levels for misconfigurations
+  severity: "LOW,MEDIUM,HIGH,CRITICAL"
+
+# Output configuration
+output:
+  # Format options: table, json, sarif, template
+  format: "sarif"
+
+  # Output to file
+  file: "trivy-results.sarif"
+
+# Ignore configuration
+ignore:
+  # CVE ignore list (for false positives or accepted risks)
+  cves:
+    # Example: ignore specific CVEs that are false positives
+    # - CVE-2023-XXXXX
+
+  # Ignore files or directories
+  paths:
+    - "vendor/"
+    - "node_modules/"
+    - ".git/"
+    - "test/"
+    - "tests/"
+    - "example/"
+    - "examples/"
+
+# Database configuration
+db:
+  # Skip database update for faster scans (use with caution)
+  skip-update: false
+
+  # Database repository
+  repository: "ghcr.io/aquasecurity/trivy-db"
+
+# Report configuration
+report:
+  # Include detailed information
+  format: "table"
+
+  # Summary information
+  summary: true
+
+# Performance tuning
+performance:
+  # Parallel processing
+  parallel: 4
+
+  # Memory limits
+  memory-limit: "1Gi"
+
+# Container-specific scanning options
+container:
+  # Layers to scan
+  skip-layers: false
+
+  # Image scanning timeout
+  timeout: "10m"
+
+  # Registry authentication (if needed)
+  # registry-token: "ghp_xxxxxxxxxxxx"
+
+# File system scanning options
+filesystem:
+  # Skip files with specific patterns
+  skip-files:
+    - "*.log"
+    - "*.tmp"
+    - "*/.git/*"
+    - "*/vendor/*"
+    - "*/node_modules/*"
+
+# License scanning (optional)
+license:
+  # Skip license scanning for faster results
+  skip: true
+
+# Custom policies for specific checks
+policies:
+  # Docker best practices
+  docker:
+    - name: "USER instruction check"
+      description: "Ensure containers don't run as root"
+      severity: "HIGH"
+
+    - name: "EXPOSE instruction check"
+      description: "Check exposed ports are necessary"
+      severity: "MEDIUM"
+
+    - name: "ADD instruction check"
+      description: "Prefer COPY over ADD when possible"
+      severity: "LOW"
+
+# Environment-specific configuration
+environments:
+  production:
+    # Stricter rules for production
+    vulnerability:
+      severity: "CRITICAL"
+    misconfiguration:
+      severity: "HIGH,CRITICAL"
+
+  development:
+    # More lenient rules for development
+    vulnerability:
+      severity: "HIGH,CRITICAL"
+      ignore-unfixed: true

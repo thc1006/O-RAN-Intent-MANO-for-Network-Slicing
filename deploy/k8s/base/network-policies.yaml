@@ -1,5 +1,5 @@
 ---
-# Network Policy for Orchestrator
+# Network Policy for Orchestrator - Enhanced Security
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -8,6 +8,12 @@ metadata:
   labels:
     app.kubernetes.io/name: oran-orchestrator
     app.kubernetes.io/component: orchestrator
+    security.policy/type: "strict"
+  annotations:
+    security.policy/description: "Least-privilege network policy for O-RAN orchestrator"
+    security.policy/traffic-patterns: |
+      Ingress: HTTP API (8080), Metrics (9090) from same namespace and monitoring
+      Egress: DNS, DMS services, Porch API, O2IMS API
 spec:
   podSelector:
     matchLabels:
@@ -16,7 +22,7 @@ spec:
   - Ingress
   - Egress
   ingress:
-  # Allow ingress from any pod in the same namespace
+  # Allow HTTP API access from same namespace only
   - from:
     - namespaceSelector:
         matchLabels:
@@ -24,117 +30,23 @@ spec:
     ports:
     - protocol: TCP
       port: 8080  # HTTP API
-    - protocol: TCP
-      port: 9090  # Metrics
-  # Allow ingress from monitoring namespace (Prometheus)
+  # Allow metrics scraping from monitoring namespace
   - from:
     - namespaceSelector:
         matchLabels:
           name: monitoring
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/name: prometheus
     ports:
     - protocol: TCP
       port: 9090  # Metrics
   egress:
-  # Allow DNS
+  # Allow DNS resolution (strict)
   - to:
-    - namespaceSelector: {}
-      podSelector:
-        matchLabels:
-          k8s-app: kube-dns
-    ports:
-    - protocol: UDP
-      port: 53
-  # Allow communication to RAN DMS
-  - to:
-    - podSelector:
-        matchLabels:
-          app.kubernetes.io/name: oran-ran-dms
-    ports:
-    - protocol: TCP
-      port: 8080
-  # Allow communication to CN DMS
-  - to:
-    - podSelector:
-        matchLabels:
-          app.kubernetes.io/name: oran-cn-dms
-    ports:
-    - protocol: TCP
-      port: 8080
-  # Allow communication to Porch with specific pod selector
-  - to:
-    - namespaceSelector:
-        matchLabels:
-          name: porch-system
-      podSelector:
-        matchLabels:
-          app: porch-server
-    ports:
-    - protocol: TCP
-      port: 7007
-  # Allow communication to O2IMS
-  - to:
-    - podSelector:
-        matchLabels:
-          app.kubernetes.io/name: o2ims-server
-    ports:
-    - protocol: TCP
-      port: 5005
-  # Allow HTTPS egress for external API calls (limited)
-  - to: []
-    ports:
-    - protocol: TCP
-      port: 443
-
----
-# Network Policy for VNF Operator
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: oran-vnf-operator-netpol
-  namespace: oran-mano
-  labels:
-    app.kubernetes.io/name: oran-vnf-operator
-    app.kubernetes.io/component: vnf-operator
-spec:
-  podSelector:
-    matchLabels:
-      app.kubernetes.io/name: oran-vnf-operator
-  policyTypes:
-  - Ingress
-  - Egress
-  ingress:
-  # Allow ingress from any pod in the same namespace
-  - from:
-    - namespaceSelector:
-        matchLabels:
-          name: oran-mano
-    ports:
-    - protocol: TCP
-      port: 8080  # Metrics
-    - protocol: TCP
-      port: 8081  # Health
-    - protocol: TCP
-      port: 9443  # Webhook
-  # Allow ingress from monitoring namespace (Prometheus)
-  - from:
-    - namespaceSelector:
-        matchLabels:
-          name: monitoring
-    ports:
-    - protocol: TCP
-      port: 8080  # Metrics
-  # Allow webhook calls from kube-system
-  - from:
     - namespaceSelector:
         matchLabels:
           name: kube-system
-    ports:
-    - protocol: TCP
-      port: 9443  # Webhook
-  egress:
-  # Allow DNS
-  - to:
-    - namespaceSelector: {}
       podSelector:
         matchLabels:
           k8s-app: kube-dns
@@ -156,22 +68,165 @@ spec:
       port: 53
     - protocol: TCP
       port: 53
-  # Allow Kubernetes API access (specific to API server)
-  - to: []
-    ports:
-    - protocol: TCP
-      port: 443
-    - protocol: TCP
-      port: 6443
-  # Allow communication to RAN DMS
+  # Allow communication to RAN DMS (same namespace)
   - to:
-    - podSelector:
+    - namespaceSelector:
+        matchLabels:
+          name: oran-mano
+      podSelector:
         matchLabels:
           app.kubernetes.io/name: oran-ran-dms
     ports:
     - protocol: TCP
       port: 8080
-  # Allow communication to Porch with specific pod selector
+  # Allow communication to CN DMS (same namespace)
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: oran-mano
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/name: oran-cn-dms
+    ports:
+    - protocol: TCP
+      port: 8080
+  # Allow communication to Porch API server
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: porch-system
+      podSelector:
+        matchLabels:
+          app: porch-server
+    ports:
+    - protocol: TCP
+      port: 7007
+  # Allow communication to O2IMS server (same namespace)
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: oran-mano
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/name: o2ims-server
+    ports:
+    - protocol: TCP
+      port: 5005
+
+---
+# Network Policy for VNF Operator - Enhanced Security
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: oran-vnf-operator-netpol
+  namespace: oran-mano
+  labels:
+    app.kubernetes.io/name: oran-vnf-operator
+    app.kubernetes.io/component: vnf-operator
+    security.policy/type: "strict"
+  annotations:
+    security.policy/description: "Least-privilege network policy for VNF operator with secure webhook access"
+    security.policy/traffic-patterns: |
+      Ingress: Metrics (8080) from monitoring, Health (8081) from same namespace, Webhook (9443) from API server
+      Egress: DNS, Kubernetes API, RAN DMS, Porch API
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: oran-vnf-operator
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Allow health checks from same namespace (liveness/readiness probes)
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: oran-mano
+    ports:
+    - protocol: TCP
+      port: 8081  # Health endpoint
+  # Allow metrics scraping from monitoring namespace
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/name: prometheus
+    ports:
+    - protocol: TCP
+      port: 8080  # Metrics
+  # Allow webhook calls from Kubernetes API server (admission controllers)
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+      podSelector:
+        matchLabels:
+          component: kube-apiserver
+    ports:
+    - protocol: TCP
+      port: 9443  # Webhook
+  # Allow webhook calls from admission controllers in kube-system
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+    ports:
+    - protocol: TCP
+      port: 9443  # Webhook
+  egress:
+  # Allow DNS resolution (strict)
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+  # Allow DNS to CoreDNS
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+      podSelector:
+        matchLabels:
+          k8s-app: coredns
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+  # Allow Kubernetes API access (controller needs to watch/update resources)
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+      podSelector:
+        matchLabels:
+          component: kube-apiserver
+    ports:
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 6443
+  # Allow communication to RAN DMS (same namespace)
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: oran-mano
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/name: oran-ran-dms
+    ports:
+    - protocol: TCP
+      port: 8080
+  # Allow communication to Porch API server
   - to:
     - namespaceSelector:
         matchLabels:
@@ -184,7 +239,7 @@ spec:
       port: 7007
 
 ---
-# Network Policy for RAN DMS
+# Network Policy for RAN DMS - Enhanced Security
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -193,6 +248,12 @@ metadata:
   labels:
     app.kubernetes.io/name: oran-ran-dms
     app.kubernetes.io/component: ran-dms
+    security.policy/type: "strict"
+  annotations:
+    security.policy/description: "Least-privilege network policy for RAN Domain Management Service"
+    security.policy/traffic-patterns: |
+      Ingress: API (8080) from orchestrator and vnf-operator, Metrics (9090) from monitoring
+      Egress: DNS, Kubernetes API
 spec:
   podSelector:
     matchLabels:
@@ -201,39 +262,69 @@ spec:
   - Ingress
   - Egress
   ingress:
-  # Allow ingress from orchestrator and vnf-operator
+  # Allow ingress from orchestrator and vnf-operator (same namespace)
   - from:
-    - podSelector:
+    - namespaceSelector:
+        matchLabels:
+          name: oran-mano
+      podSelector:
         matchLabels:
           app.kubernetes.io/name: oran-orchestrator
-    - podSelector:
+    - namespaceSelector:
+        matchLabels:
+          name: oran-mano
+      podSelector:
         matchLabels:
           app.kubernetes.io/name: oran-vnf-operator
     ports:
     - protocol: TCP
       port: 8080
-  # Allow ingress from monitoring namespace (Prometheus)
+  # Allow metrics scraping from monitoring namespace
   - from:
     - namespaceSelector:
         matchLabels:
           name: monitoring
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/name: prometheus
     ports:
     - protocol: TCP
       port: 9090
   egress:
-  # Allow DNS
+  # Allow DNS resolution (strict)
   - to:
-    - namespaceSelector: {}
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
       podSelector:
         matchLabels:
           k8s-app: kube-dns
     ports:
     - protocol: UDP
       port: 53
-  # Allow Kubernetes API access
+    - protocol: TCP
+      port: 53
+  # Allow DNS to CoreDNS
   - to:
-    - namespaceSelector: {}
-      podSelector: {}
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+      podSelector:
+        matchLabels:
+          k8s-app: coredns
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+  # Allow Kubernetes API access (strict)
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+      podSelector:
+        matchLabels:
+          component: kube-apiserver
     ports:
     - protocol: TCP
       port: 443
@@ -241,7 +332,7 @@ spec:
       port: 6443
 
 ---
-# Network Policy for CN DMS
+# Network Policy for CN DMS - Enhanced Security
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -250,6 +341,12 @@ metadata:
   labels:
     app.kubernetes.io/name: oran-cn-dms
     app.kubernetes.io/component: cn-dms
+    security.policy/type: "strict"
+  annotations:
+    security.policy/description: "Least-privilege network policy for CN Domain Management Service"
+    security.policy/traffic-patterns: |
+      Ingress: API (8080) from orchestrator, Metrics (9090) from monitoring
+      Egress: DNS, Kubernetes API
 spec:
   podSelector:
     matchLabels:
@@ -258,36 +355,63 @@ spec:
   - Ingress
   - Egress
   ingress:
-  # Allow ingress from orchestrator
+  # Allow ingress from orchestrator (same namespace)
   - from:
-    - podSelector:
+    - namespaceSelector:
+        matchLabels:
+          name: oran-mano
+      podSelector:
         matchLabels:
           app.kubernetes.io/name: oran-orchestrator
     ports:
     - protocol: TCP
       port: 8080
-  # Allow ingress from monitoring namespace (Prometheus)
+  # Allow metrics scraping from monitoring namespace
   - from:
     - namespaceSelector:
         matchLabels:
           name: monitoring
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/name: prometheus
     ports:
     - protocol: TCP
       port: 9090
   egress:
-  # Allow DNS
+  # Allow DNS resolution (strict)
   - to:
-    - namespaceSelector: {}
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
       podSelector:
         matchLabels:
           k8s-app: kube-dns
     ports:
     - protocol: UDP
       port: 53
-  # Allow Kubernetes API access
+    - protocol: TCP
+      port: 53
+  # Allow DNS to CoreDNS
   - to:
-    - namespaceSelector: {}
-      podSelector: {}
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+      podSelector:
+        matchLabels:
+          k8s-app: coredns
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+  # Allow Kubernetes API access (strict)
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+      podSelector:
+        matchLabels:
+          component: kube-apiserver
     ports:
     - protocol: TCP
       port: 443
@@ -295,7 +419,7 @@ spec:
       port: 6443
 
 ---
-# Network Policy for TN Manager
+# Network Policy for TN Manager - Enhanced Security
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -304,6 +428,12 @@ metadata:
   labels:
     app.kubernetes.io/name: oran-tn-manager
     app.kubernetes.io/component: tn-manager
+    security.policy/type: "strict"
+  annotations:
+    security.policy/description: "Least-privilege network policy for Transport Network Manager"
+    security.policy/traffic-patterns: |
+      Ingress: API (8080) from orchestrator, Metrics (9090) from monitoring
+      Egress: DNS, TN Agents
 spec:
   podSelector:
     matchLabels:
@@ -312,35 +442,61 @@ spec:
   - Ingress
   - Egress
   ingress:
-  # Allow ingress from orchestrator
+  # Allow ingress from orchestrator (same namespace)
   - from:
-    - podSelector:
+    - namespaceSelector:
+        matchLabels:
+          name: oran-mano
+      podSelector:
         matchLabels:
           app.kubernetes.io/name: oran-orchestrator
     ports:
     - protocol: TCP
       port: 8080
-  # Allow ingress from monitoring namespace
+  # Allow metrics scraping from monitoring namespace
   - from:
     - namespaceSelector:
         matchLabels:
           name: monitoring
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/name: prometheus
     ports:
     - protocol: TCP
       port: 9090
   egress:
-  # Allow DNS
+  # Allow DNS resolution (strict)
   - to:
-    - namespaceSelector: {}
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
       podSelector:
         matchLabels:
           k8s-app: kube-dns
     ports:
     - protocol: UDP
       port: 53
-  # Allow communication to TN Agents
+    - protocol: TCP
+      port: 53
+  # Allow DNS to CoreDNS
   - to:
-    - podSelector:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+      podSelector:
+        matchLabels:
+          k8s-app: coredns
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+  # Allow communication to TN Agents (same namespace)
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: oran-mano
+      podSelector:
         matchLabels:
           app.kubernetes.io/name: oran-tn-agent
     ports:
@@ -348,7 +504,7 @@ spec:
       port: 8080
 
 ---
-# Network Policy for TN Agent
+# Network Policy for TN Agent - Enhanced Security
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -357,6 +513,12 @@ metadata:
   labels:
     app.kubernetes.io/name: oran-tn-agent
     app.kubernetes.io/component: tn-agent
+    security.policy/type: "strict"
+  annotations:
+    security.policy/description: "Least-privilege network policy for Transport Network Agent with testing capabilities"
+    security.policy/traffic-patterns: |
+      Ingress: API (8080) from TN Manager, iperf3 (5201) for network testing
+      Egress: DNS, network connectivity tests to specific namespaces
 spec:
   podSelector:
     matchLabels:
@@ -365,54 +527,116 @@ spec:
   - Ingress
   - Egress
   ingress:
-  # Allow ingress from TN Manager
+  # Allow ingress from TN Manager (same namespace)
   - from:
-    - podSelector:
+    - namespaceSelector:
+        matchLabels:
+          name: oran-mano
+      podSelector:
         matchLabels:
           app.kubernetes.io/name: oran-tn-manager
     ports:
     - protocol: TCP
       port: 8080
-  # Allow iperf3 traffic for testing
+  # Allow iperf3 traffic for testing (same namespace)
   - from:
-    - podSelector: {}
+    - namespaceSelector:
+        matchLabels:
+          name: oran-mano
+      podSelector: {}
     ports:
     - protocol: TCP
       port: 5201
+    - protocol: UDP
+      port: 5201
   egress:
-  # Allow DNS
+  # Allow DNS resolution (strict)
   - to:
-    - namespaceSelector: {}
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
       podSelector:
         matchLabels:
           k8s-app: kube-dns
     ports:
     - protocol: UDP
       port: 53
-  # Allow any egress for network connectivity tests
+    - protocol: TCP
+      port: 53
+  # Allow DNS to CoreDNS
   - to:
-    - podSelector: {}
-    - namespaceSelector: {}
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+      podSelector:
+        matchLabels:
+          k8s-app: coredns
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+  # Allow egress for network connectivity tests (restricted to test namespaces)
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: oran-mano
+      podSelector: {}
+    ports:
+    - protocol: TCP
+      port: 5201  # iperf3
+    - protocol: UDP
+      port: 5201  # iperf3
+  # Allow egress to test environments only
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          environment: test
+    ports:
+    - protocol: TCP
+      port: 5201
 
 ---
-# Default deny-all policy for the namespace
+# Default deny-all policy for the namespace - Enhanced Security
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: default-deny-all
   namespace: oran-mano
+  labels:
+    security.policy/type: "default-deny"
+  annotations:
+    security.policy/description: "Default deny-all policy with minimal DNS access for security baseline"
+    security.policy/purpose: "Provides zero-trust baseline - all traffic must be explicitly allowed"
 spec:
   podSelector: {}
   policyTypes:
   - Ingress
   - Egress
   egress:
-  # Allow DNS for all pods
+  # Allow DNS for all pods (strict to kube-system)
   - to:
-    - namespaceSelector: {}
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
       podSelector:
         matchLabels:
           k8s-app: kube-dns
     ports:
     - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+  # Allow DNS to CoreDNS for all pods
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+      podSelector:
+        matchLabels:
+          k8s-app: coredns
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
       port: 53

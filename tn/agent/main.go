@@ -202,7 +202,19 @@ func (a *Agent) applyTCRule(rule TCRule) error {
 	return nil
 }
 
+// executeCommand executes system commands with enhanced security measures to prevent command injection.
+// All commands are validated through multiple layers:
+// 1. Command string validation to prevent shell metacharacters
+// 2. Command allowlisting to only permit safe commands
+// 3. Individual argument validation
+// 4. Command-specific validation (tc, ip, iperf3)
+// 5. Secure subprocess execution with timeouts
 func (a *Agent) executeCommand(cmdStr string) error {
+	// Enhanced security: First validate the entire command string
+	if err := security.ValidateCommandArgument(cmdStr); err != nil {
+		return fmt.Errorf("unsafe command string: %w", err)
+	}
+
 	parts := strings.Fields(cmdStr)
 	if len(parts) == 0 {
 		return fmt.Errorf("empty command")
@@ -218,22 +230,56 @@ func (a *Agent) executeCommand(cmdStr string) error {
 		}
 	}
 	if !commandAllowed {
-		return fmt.Errorf("command not allowed: %s", parts[0])
+		return fmt.Errorf("command not allowed: %s", security.SanitizeForLog(parts[0]))
 	}
 
-	// Use secure execution framework
+	// Validate each argument individually
+	for i, arg := range parts[1:] {
+		if err := security.ValidateCommandArgument(arg); err != nil {
+			return fmt.Errorf("invalid argument %d: %w", i+1, err)
+		}
+	}
+
+	// Use secure execution framework with enhanced validation
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	_, err := security.SecureExecute(ctx, parts[0], parts[1:]...)
+	// Apply command-specific validation
+	var customValidator func([]string) error
+	switch parts[0] {
+	case "tc":
+		customValidator = security.ValidateTCArgs
+	case "ip":
+		customValidator = security.ValidateIPArgs
+	case "iperf3":
+		customValidator = security.ValidateIPerfArgs
+	default:
+		customValidator = nil
+	}
+
+	var err error
+	if customValidator != nil {
+		_, err = security.SecureExecuteWithValidation(ctx, parts[0], customValidator, parts[1:]...)
+	} else {
+		_, err = security.SecureExecute(ctx, parts[0], parts[1:]...)
+	}
+
 	if err != nil {
-		return fmt.Errorf("command failed: %w", err)
+		return fmt.Errorf("command execution failed: %w", err)
 	}
 
 	return nil
 }
 
+// executeCommandOutput executes system commands and returns output with enhanced security measures.
+// This function follows the same security validation patterns as executeCommand but returns command output.
+// All subprocess execution is protected against command injection attacks.
 func (a *Agent) executeCommandOutput(cmdStr string) (string, error) {
+	// Enhanced security: First validate the entire command string
+	if err := security.ValidateCommandArgument(cmdStr); err != nil {
+		return "", fmt.Errorf("unsafe command string: %w", err)
+	}
+
 	parts := strings.Fields(cmdStr)
 	if len(parts) == 0 {
 		return "", fmt.Errorf("empty command")
@@ -249,16 +295,43 @@ func (a *Agent) executeCommandOutput(cmdStr string) (string, error) {
 		}
 	}
 	if !commandAllowed {
-		return "", fmt.Errorf("command not allowed: %s", parts[0])
+		return "", fmt.Errorf("command not allowed: %s", security.SanitizeForLog(parts[0]))
 	}
 
-	// Use secure execution framework
+	// Validate each argument individually
+	for i, arg := range parts[1:] {
+		if err := security.ValidateCommandArgument(arg); err != nil {
+			return "", fmt.Errorf("invalid argument %d: %w", i+1, err)
+		}
+	}
+
+	// Use secure execution framework with enhanced validation
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	output, err := security.SecureExecute(ctx, parts[0], parts[1:]...)
+	// Apply command-specific validation
+	var customValidator func([]string) error
+	switch parts[0] {
+	case "tc":
+		customValidator = security.ValidateTCArgs
+	case "ip":
+		customValidator = security.ValidateIPArgs
+	case "iperf3":
+		customValidator = security.ValidateIPerfArgs
+	default:
+		customValidator = nil
+	}
+
+	var output []byte
+	var err error
+	if customValidator != nil {
+		output, err = security.SecureExecuteWithValidation(ctx, parts[0], customValidator, parts[1:]...)
+	} else {
+		output, err = security.SecureExecute(ctx, parts[0], parts[1:]...)
+	}
+
 	if err != nil {
-		return "", fmt.Errorf("command failed: %w", err)
+		return "", fmt.Errorf("command execution failed: %w", err)
 	}
 
 	return string(output), nil

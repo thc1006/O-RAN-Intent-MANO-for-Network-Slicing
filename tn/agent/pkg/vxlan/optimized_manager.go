@@ -1,9 +1,9 @@
 package vxlan
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
-	"os/exec"
 	"strings"
 	"sync"
 	"time"
@@ -12,6 +12,8 @@ import (
 )
 
 // OptimizedManager provides high-performance VXLAN tunnel management
+// Security Note: All command execution uses security.SecureExecute* functions
+// which validate inputs and prevent command injection attacks. File access is validated.
 type OptimizedManager struct {
 	// Enhanced tunnel tracking
 	tunnels     map[int32]*EnhancedTunnelInfo
@@ -114,12 +116,7 @@ func NewOptimizedManager() *OptimizedManager {
 		useNetlink:    true, // Try to use netlink for better performance
 	}
 
-	// Initialize command pool for reusing exec.Cmd objects
-	manager.commandPool = &sync.Pool{
-		New: func() interface{} {
-			return &exec.Cmd{}
-		},
-	}
+	// Command pooling removed - using secure execution instead
 
 	// Try to initialize netlink socket for direct kernel communication
 	manager.initNetlink()
@@ -329,8 +326,12 @@ func (m *OptimizedManager) createTunnelNetlink(vxlanID int32, localIP string, re
 	return m.createTunnelIPCommand(vxlanID, localIP, remoteIPs, physInterface)
 }
 
-// executeOptimizedCommand executes command with caching and pooling
+// executeOptimizedCommand executes command with caching and secure execution
 func (m *OptimizedManager) executeOptimizedCommand(args []string) error {
+	if len(args) == 0 {
+		return fmt.Errorf("empty command arguments")
+	}
+
 	cmdKey := strings.Join(args, " ")
 
 	// Check command cache
@@ -340,38 +341,38 @@ func (m *OptimizedManager) executeOptimizedCommand(args []string) error {
 		cached.HitCount++
 		m.metrics.CacheHits++
 
-		// For cached commands, we still need to execute but can optimize
-		cmd := m.commandPool.Get().(*exec.Cmd)
-		defer m.commandPool.Put(cmd)
+		// Use secure execution for cached commands
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
 
-		// Reset and configure command
-		*cmd = exec.Cmd{}
-		cmd.Path = args[0]
-		cmd.Args = args
-
-		output, err := cmd.CombinedOutput()
-		if err != nil {
-			return fmt.Errorf("command failed: %v, output: %s", err, output)
+		// Use security package for all command execution
+		if args[0] == "ip" {
+			// #nosec - Using secure execution with validation
+			_, err := security.SecureExecuteWithValidation(ctx, args[0], security.ValidateIPArgs, args[1:]...)
+			return err
+		} else {
+			// #nosec - Using secure execution
+			_, err := security.SecureExecute(ctx, args[0], args[1:]...)
+			return err
 		}
-		return nil
 	}
 	m.cacheMutex.RUnlock()
 
-	// Execute new command
-	cmd := m.commandPool.Get().(*exec.Cmd)
-	defer m.commandPool.Put(cmd)
+	// Execute new command using secure execution
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
-	// Reset and configure command
-	*cmd = exec.Cmd{}
-	cmd.Path = args[0]
-	cmd.Args = args
+	var err error
+	if args[0] == "ip" {
+		// #nosec - Using secure execution with validation
+		_, err = security.SecureExecuteWithValidation(ctx, args[0], security.ValidateIPArgs, args[1:]...)
+	} else {
+		// #nosec - Using secure execution
+		_, err = security.SecureExecute(ctx, args[0], args[1:]...)
+	}
 
-	// Set platform-specific process attributes
-	setPlatformSysProcAttr(cmd)
-
-	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("command failed: %v, output: %s", err, output)
+		return fmt.Errorf("secure command execution failed: %w", err)
 	}
 
 	// Cache successful command
@@ -457,22 +458,36 @@ func (m *OptimizedManager) GetTunnelStatusOptimized(vxlanID int32) (*EnhancedTun
 	return info, nil
 }
 
-// updateTunnelStats updates tunnel statistics asynchronously
+// updateTunnelStats updates tunnel statistics asynchronously with security validation
 func (m *OptimizedManager) updateTunnelStats(vxlanID int32) {
 	ifaceName := fmt.Sprintf("vxlan%d", vxlanID)
+
+	// Validate interface name before file access
+	if err := security.ValidateNetworkInterface(ifaceName); err != nil {
+		fmt.Printf("Warning: invalid interface name for stats update: %v\n", err)
+		return
+	}
 
 	// Get interface statistics using secure file read
 	statsPath := fmt.Sprintf("/sys/class/net/%s/statistics/tx_bytes", security.SanitizeForLog(ifaceName))
 	if err := security.ValidateFilePath(statsPath); err == nil {
-		if _, err := ioutil.ReadFile(statsPath); err == nil {
+		// #nosec G304 - Path is validated by security.ValidateFilePath above
+		if data, err := ioutil.ReadFile(statsPath); err == nil {
 			// Parse and update stats (simplified)
 			m.tunnelMutex.Lock()
 			if tunnel, exists := m.tunnels[vxlanID]; exists {
 				tunnel.Stats.LastUpdated = time.Now()
-				// Would parse actual stats here
+				// Would parse actual stats from data here
+				_ = data // Acknowledge we got the data but don't use it in this simplified version
 			}
 			m.tunnelMutex.Unlock()
+		} else {
+			// Log the read error but don't fail - statistics are non-critical
+			fmt.Printf("Warning: failed to read interface statistics for %s: %v\n", security.SanitizeForLog(ifaceName), err)
 		}
+	} else {
+		// Log path validation error but don't fail - statistics are non-critical
+		fmt.Printf("Warning: invalid statistics file path for %s: %v\n", ifaceName, err)
 	}
 }
 

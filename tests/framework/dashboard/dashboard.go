@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security"
@@ -397,7 +396,11 @@ func (d *Dashboard) GenerateHTML(outputPath string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create output file: %w", err)
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			fmt.Printf("Error closing file %s: %v\n", outputPath, err)
+		}
+	}()
 
 	data := struct {
 		Config  *DashboardConfig
@@ -530,34 +533,17 @@ func (d *Dashboard) handleRefresh(w http.ResponseWriter, r *http.Request) {
 // logError logs HTTP request errors with detailed context
 func (d *Dashboard) logError(r *http.Request, err error, context string) {
 	// Sanitize all log inputs to prevent log injection
-	sanitizedContext := sanitizeForLog(context)
-	sanitizedMethod := sanitizeForLog(r.Method)
-	sanitizedPath := sanitizeForLog(r.URL.Path)
-	sanitizedRemote := sanitizeForLog(r.RemoteAddr)
-	sanitizedUserAgent := sanitizeForLog(r.UserAgent())
-	sanitizedError := sanitizeForLog(err.Error())
+	sanitizedContext := security.SanitizeForLog(context)
+	sanitizedMethod := security.SanitizeForLog(r.Method)
+	sanitizedPath := security.SanitizeForLog(r.URL.Path)
+	sanitizedRemote := security.SanitizeForLog(r.RemoteAddr)
+	sanitizedUserAgent := security.SanitizeForLog(r.UserAgent())
+	sanitizedError := security.SanitizeForLog(err.Error())
 
 	fmt.Printf("[ERROR] %s: %s | Method: %s | Path: %s | Remote: %s | UserAgent: %s\n",
 		sanitizedContext, sanitizedError, sanitizedMethod, sanitizedPath, sanitizedRemote, sanitizedUserAgent)
 }
 
-// sanitizeForLog removes control characters and limits length to prevent log injection
-func sanitizeForLog(input string) string {
-	// Remove control characters (0x00-0x1F and 0x7F-0x9F)
-	sanitized := strings.Map(func(r rune) rune {
-		if r < 32 || (r >= 127 && r <= 159) {
-			return ' '
-		}
-		return r
-	}, input)
-
-	// Limit length to prevent log flooding
-	if len(sanitized) > 200 {
-		sanitized = sanitized[:200] + "..."
-	}
-
-	return sanitized
-}
 
 // Helper methods for loading different types of data
 

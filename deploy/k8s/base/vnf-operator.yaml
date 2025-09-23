@@ -42,7 +42,7 @@ spec:
       containers:
       - name: vnf-operator
         image: ghcr.io/oran-mano/vnf-operator:v1.0.1@sha256:9f84ced39e4daa1b3c5e7f8a2b4d6e9c3f7a5d8e1b6c9f2a5d7e0b3c8f4a1d9e
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         args:
         - --metrics-bind-address=0.0.0.0:8080
         - --health-probe-bind-address=0.0.0.0:8081

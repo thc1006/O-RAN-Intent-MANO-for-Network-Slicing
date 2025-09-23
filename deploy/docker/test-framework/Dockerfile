@@ -1,5 +1,5 @@
 # Test Framework Multi-stage Dockerfile
-FROM golang:1.24-alpine AS go-builder
+FROM golang:1.24.7-alpine AS go-builder
 
 # Security labels and metadata
 LABEL maintainer="O-RAN MANO Team"
@@ -27,13 +27,17 @@ COPY tests/ .
 RUN go build -o test-runner cmd/test-runner/main.go
 
 # Final stage - Using Debian slim instead of Ubuntu for better security
-FROM debian:12-slim
+FROM debian:12.8-slim
 
 # Security labels
 LABEL org.opencontainers.image.title="Test Framework Runtime"
 LABEL security.scan="trivy,grype,snyk"
 LABEL security.user="non-root"
 LABEL security.distroless="false"
+LABEL security.base.image="debian:12.8-slim"
+LABEL security.go.version="1.24.7"
+LABEL security.scan.date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+LABEL security.risk="high-testing-tools"
 
 # Install runtime dependencies with security updates, clean cache
 RUN apt-get update && apt-get upgrade -y && apt-get install -y \
@@ -51,24 +55,35 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y \
     dumb-init \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# Install kubectl with security verification
+# Install kubectl with enhanced security verification
 RUN curl -LO "https://dl.k8s.io/release/v1.28.0/bin/linux/amd64/kubectl" && \
     curl -LO "https://dl.k8s.io/v1.28.0/bin/linux/amd64/kubectl.sha256" && \
     echo "$(cat kubectl.sha256)  kubectl" | sha256sum --check && \
+    # Verify kubectl signature (GPG verification would be ideal but adds complexity)
+    chmod 755 kubectl && \
+    ./kubectl version --client=true || (echo "kubectl verification failed" && exit 1) && \
     install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl && \
     rm kubectl kubectl.sha256
 
-# Install Kind with security verification
+# Install Kind with enhanced security verification
 RUN curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64 && \
+    curl -Lo ./kind.sha256sum https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64.sha256sum && \
+    echo "$(cat kind.sha256sum)  kind" | sha256sum --check && \
     chmod +x ./kind && \
-    mv ./kind /usr/local/bin/kind
+    # Basic verification that kind binary works
+    ./kind version || (echo "kind verification failed" && exit 1) && \
+    mv ./kind /usr/local/bin/kind && \
+    rm kind.sha256sum
 
-# Install Helm with security verification
-RUN curl -fsSL https://get.helm.sh/helm-v3.13.0-linux-amd64.tar.gz.asc && \
-    curl -fsSL https://get.helm.sh/helm-v3.13.0-linux-amd64.tar.gz | \
-    tar -xz && \
+# Install Helm with enhanced security verification
+RUN curl -fsSL https://get.helm.sh/helm-v3.13.0-linux-amd64.tar.gz -o helm.tar.gz && \
+    curl -fsSL https://get.helm.sh/helm-v3.13.0-linux-amd64.tar.gz.sha256sum -o helm.sha256sum && \
+    echo "$(cat helm.sha256sum)  helm.tar.gz" | sha256sum --check && \
+    tar -xzf helm.tar.gz && \
+    # Verify helm binary works
+    ./linux-amd64/helm version --client || (echo "helm verification failed" && exit 1) && \
     mv linux-amd64/helm /usr/local/bin/helm && \
-    rm -rf linux-amd64
+    rm -rf linux-amd64 helm.tar.gz helm.sha256sum
 
 # Install Python testing dependencies with pinned versions
 COPY deploy/docker/test-framework/requirements.txt /tmp/requirements.txt

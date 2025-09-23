@@ -739,7 +739,7 @@ func saveSnapshot(t *testing.T, filename string, snapshot PlacementSnapshot) {
 
 	// Ensure directory exists
 	dir := filepath.Dir(cleanPath)
-	if err := os.MkdirAll(dir, 0750); err != nil {
+	if err := os.MkdirAll(dir, security.PrivateDirMode); err != nil {
 		t.Fatalf("Failed to create snapshot directory: %v", err)
 	}
 

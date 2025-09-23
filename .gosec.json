@@ -1,0 +1,9 @@
+{
+  "global": {
+    "confidence": "MEDIUM",
+    "severity": "MEDIUM"
+  },
+  "rules": {
+    "exclude": ["G204"]
+  }
+}

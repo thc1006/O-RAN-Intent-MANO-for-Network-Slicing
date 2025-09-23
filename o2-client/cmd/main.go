@@ -101,10 +101,14 @@ func main() {
 		port = defaultPort
 	}
 
-	// Setup server
+	// Setup server with timeout configurations to prevent Slowloris attacks
 	srv := &http.Server{
-		Addr:    ":" + port,
-		Handler: router,
+		Addr:              ":" + port,
+		Handler:           router,
+		ReadHeaderTimeout: 30 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       120 * time.Second,
 	}
 
 	// Start server in a goroutine

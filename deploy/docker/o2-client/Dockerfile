@@ -1,6 +1,6 @@
 # O2 Client Multi-stage Dockerfile
 # Stage 1: Build
-FROM golang:1.24-alpine AS builder
+FROM golang:1.24.7-alpine AS builder
 
 # Security labels and metadata
 LABEL maintainer="O-RAN MANO Team"
@@ -51,19 +51,22 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -o o2-client ./o2-client/cmd/main.go
 
 # Stage 2: Runtime
-FROM alpine:3.20
+FROM alpine:3.20.3
 
 # Security labels
 LABEL org.opencontainers.image.title="O2 Client Runtime"
 LABEL security.scan="trivy,grype,snyk"
 LABEL security.user="non-root"
+LABEL security.base.image="alpine:3.20.3"
+LABEL security.go.version="1.24.7"
+LABEL security.scan.date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
-# Install runtime dependencies and security updates, clean cache
+# Install runtime dependencies with pinned versions, clean cache
 RUN apk update && apk upgrade && apk add --no-cache \
-    ca-certificates \
-    curl \
-    jq \
-    dumb-init && \
+    ca-certificates=20240705-r0 \
+    curl=8.9.0-r0 \
+    jq=1.7.1-r0 \
+    dumb-init=1.2.5-r3 && \
     update-ca-certificates && \
     adduser -D -s /bin/sh -u 10002 appuser && \
     rm -rf /var/cache/apk/* /tmp/* /var/tmp/*
