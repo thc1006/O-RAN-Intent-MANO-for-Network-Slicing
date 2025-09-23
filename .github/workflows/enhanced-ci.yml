@@ -180,7 +180,7 @@ jobs:
 
         # Check for required files
         required_files=(
-          "go.mod" "Makefile" "README.md" "LICENSE"
+          "Makefile" "README.md" "LICENSE"
           ".gitignore" "CLAUDE.md"
         )
 
@@ -704,10 +704,15 @@ jobs:
           pip install coverage[toml] pytest-benchmark
         else
           echo "🐹 Installing Go dependencies..."
-          go mod download
-          go mod verify
+          # Check if go.mod exists in current directory
+          if [ -f "go.mod" ]; then
+            go mod download
+            go mod verify
+          else
+            echo "No go.mod in ${{ matrix.test-dir }}, skipping Go dependency installation"
+          fi
 
-          # Install test tools
+          # Install test tools globally
           go install github.com/onsi/ginkgo/v2/ginkgo@latest
           go install github.com/jstemmer/go-junit-report/v2@latest
           go install github.com/boumenot/gocover-cobertura@latest

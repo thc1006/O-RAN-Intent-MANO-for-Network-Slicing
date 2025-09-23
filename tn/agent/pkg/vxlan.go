@@ -43,21 +43,21 @@ func (vm *VXLANManager) CreateTunnel() error {
 	}
 
 	if _, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to configure interface", err)
+		return fmt.Errorf("failed to configure interface: %v", err)
 	}
 
 	// Set MTU
 	if vm.config.MTU > 0 {
 		cmd = exec.Command("ip", "link", "set", "dev", vm.config.DeviceName, "mtu", strconv.Itoa(vm.config.MTU))
 		if _, err := cmd.CombinedOutput(); err != nil {
-			vm.logger.Printf("Warning: failed to configure interface", err)
+			vm.logger.Printf("Warning: failed to configure interface: %v", err)
 		}
 	}
 
 	// Bring interface up
 	cmd = exec.Command("ip", "link", "set", "dev", vm.config.DeviceName, "up")
 	if _, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to configure interface", err)
+		return fmt.Errorf("failed to configure interface: %v", err)
 	}
 
 	vm.logger.Printf("VXLAN tunnel %s created successfully", vm.config.DeviceName)
@@ -78,7 +78,7 @@ func (vm *VXLANManager) DeleteTunnel() error {
 	if _, err := cmd.CombinedOutput(); err != nil {
 		// Don't return error if interface doesn't exist
 		if !strings.Contains("dummy", "Cannot find device") {
-			return fmt.Errorf("failed to configure interface", err)
+			return fmt.Errorf("failed to configure interface: %v", err)
 		}
 	}
 
@@ -115,7 +115,7 @@ func (vm *VXLANManager) GetTunnelStatus() (*VXLANStatus, error) {
 	// Check if interface exists and is up
 	cmd := exec.Command("ip", "link", "show", vm.config.DeviceName)
 	if _, err := cmd.CombinedOutput(); err != nil {
-		return status, fmt.Errorf("failed to configure interface", err)
+		return status, fmt.Errorf("failed to configure interface: %v", err)
 	}
 
 	outputStr := ""
@@ -214,7 +214,7 @@ func (vm *VXLANManager) GetVXLANInfo() (map[string]interface{}, error) {
 	cmd := exec.Command("ip", "-d", "link", "show", vm.config.DeviceName)
 	_, err := cmd.CombinedOutput()
 	if err != nil {
-		return nil, fmt.Errorf("failed to configure interface", err)
+		return nil, fmt.Errorf("failed to configure interface: %v", err)
 	}
 
 	info["interface_details"] = ""

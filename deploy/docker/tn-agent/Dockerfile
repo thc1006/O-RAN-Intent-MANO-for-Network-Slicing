@@ -63,6 +63,9 @@ EXPOSE 8080 9090 5201
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
 
+# Switch to non-root user
+USER appuser
+
 # Run the binary
 ENTRYPOINT ["/usr/local/bin/tn-agent"]
 CMD ["--config=/config/tn-agent.yaml"]

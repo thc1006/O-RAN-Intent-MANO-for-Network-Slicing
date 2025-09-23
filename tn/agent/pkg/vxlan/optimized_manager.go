@@ -355,11 +355,8 @@ func (m *OptimizedManager) executeOptimizedCommand(args []string) error {
 	cmd.Path = args[0]
 	cmd.Args = args
 
-	// Set optimized process attributes (Windows-compatible)
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		// Windows doesn't support Setpgid, use HideWindow instead
-		HideWindow: true,
-	}
+	// Set platform-specific process attributes
+	setPlatformSysProcAttr(cmd)
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {

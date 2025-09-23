@@ -55,5 +55,12 @@ RUN useradd -m -s /bin/bash tester && \
 # Set working directory
 WORKDIR /tests
 
+# Health check
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+    CMD test -f /usr/local/bin/test-runner || exit 1
+
+# Switch to non-root user
+USER tester
+
 # Default command
 CMD ["/usr/local/bin/test-runner"]

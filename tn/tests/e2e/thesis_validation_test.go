@@ -406,12 +406,12 @@ func (suite *ThesisValidationSuite) buildTNConfig(sliceConfig struct {
 	LossPercent   float64
 	Priority      int
 	ExpectedIndex int
-}) *agentpkg.TNConfig {
+}) *managerpkg.TNConfig {
 
-	return &agentpkg.TNConfig{
+	return &managerpkg.TNConfig{
 		ClusterName: sliceConfig.Name,
 		QoSClass:    sliceConfig.QoSClass,
-		BWPolicy: agentpkg.BandwidthPolicy{
+		BWPolicy: managerpkg.BandwidthPolicy{
 			DownlinkMbps: sliceConfig.BWLimitMbps,
 			UplinkMbps:   sliceConfig.BWLimitMbps,
 			LatencyMs:    sliceConfig.LatencyMs,

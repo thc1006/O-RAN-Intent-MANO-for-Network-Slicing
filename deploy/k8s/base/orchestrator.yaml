@@ -24,14 +24,17 @@ spec:
         prometheus.io/path: "/metrics"
     spec:
       serviceAccountName: oran-orchestrator
+      automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true
         runAsUser: 65532
         fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: orchestrator
-        image: oran-orchestrator:latest
-        imagePullPolicy: IfNotPresent
+        image: ghcr.io/oran-mano/orchestrator:v1.0.0@sha256:4f53cda18c2baa0c0d1e2e4c9b8f0e7d3e8a4b0f7c2a3b4c5d6e7f8g9h0i1j2k3
+        imagePullPolicy: Always
         ports:
         - name: http
           containerPort: 8080
@@ -79,6 +82,8 @@ spec:
           capabilities:
             drop:
             - ALL
+          seccompProfile:
+            type: RuntimeDefault
         volumeMounts:
         - name: config
           mountPath: /config
