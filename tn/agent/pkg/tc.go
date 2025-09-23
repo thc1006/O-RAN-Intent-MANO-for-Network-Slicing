@@ -116,13 +116,13 @@ func (tc *TCManager) CalculateTCOverhead() float64 {
 // GetBandwidthUsage returns current bandwidth utilization
 func (tc *TCManager) GetBandwidthUsage() (map[string]float64, error) {
 	usage := make(map[string]float64)
-	// Validate file path for security
+
+	// Use secure file reading
 	filePath := "/proc/net/dev"
-	if err := security.ValidateFilePath(filePath); err != nil {
-		return usage, fmt.Errorf("invalid file path: %w", err)
-	}
-	cmd := exec.Command("cat", filePath)
-	output, err := cmd.CombinedOutput()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	output, err := security.SecureExecute(ctx, "cat", filePath)
 	if err != nil {
 		return usage, fmt.Errorf("failed to read network statistics: %v", err)
 	}

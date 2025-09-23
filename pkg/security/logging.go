@@ -55,7 +55,7 @@ func SanitizeForLog(input string) string {
 		return ""
 	}
 
-	// Pre-validate for common injection patterns
+	// Pre-validate for critical injection patterns only
 	if containsLogInjectionPatterns(input) {
 		return fmt.Sprintf("<LOG_INJECTION_BLOCKED:len=%d>", len(input))
 	}
