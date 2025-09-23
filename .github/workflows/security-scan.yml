@@ -1,0 +1,494 @@
+name: Security Compliance Scan
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - '**/*.go'
+      - '**/*.yaml'
+      - '**/*.yml'
+      - 'scripts/security-check.sh'
+      - '.github/workflows/security-scan.yml'
+  push:
+    branches: [ main, develop ]
+    paths:
+      - '**/*.go'
+      - '**/*.yaml'
+      - '**/*.yml'
+      - 'scripts/security-check.sh'
+  schedule:
+    # Run security scans daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      skip_install:
+        description: 'Skip tool installation (for debugging)'
+        required: false
+        default: 'false'
+        type: boolean
+      verbose:
+        description: 'Enable verbose output'
+        required: false
+        default: 'false'
+        type: boolean
+
+env:
+  GO_VERSION: '1.23.4'
+  PYTHON_VERSION: '3.11'
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  security-scan:
+    name: Comprehensive Security Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+        cache: true
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y jq yq bc curl wget
+
+    - name: Cache security tools
+      id: cache-tools
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/go/bin/gosec
+          ~/.local/bin/checkov
+          /usr/local/bin/kubesec
+        key: security-tools-${{ runner.os }}-gosec-2.18.2-checkov-3.0.0-kubesec-2.14.0
+        restore-keys: |
+          security-tools-${{ runner.os }}-
+
+    - name: Install Go dependencies
+      run: |
+        go mod download
+        go mod verify
+
+    - name: Run comprehensive security check
+      id: security-check
+      run: |
+        # Set script options based on inputs
+        SCRIPT_OPTS=""
+        if [[ "${{ github.event.inputs.skip_install }}" == "true" ]]; then
+          SCRIPT_OPTS="$SCRIPT_OPTS --skip-install"
+        fi
+        if [[ "${{ github.event.inputs.verbose }}" == "true" ]]; then
+          SCRIPT_OPTS="$SCRIPT_OPTS --verbose"
+        fi
+
+        # Run security check
+        ./scripts/security-check.sh $SCRIPT_OPTS
+      continue-on-error: true
+
+    - name: Upload security report
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: security-report-${{ github.sha }}
+        path: |
+          security-check-report.json
+          security-check.log
+        retention-days: 30
+
+    - name: Parse security report
+      id: parse-report
+      if: always()
+      run: |
+        if [[ -f "security-check-report.json" ]]; then
+          # Extract key metrics from report
+          OVERALL_STATUS=$(jq -r '.overall_status' security-check-report.json)
+          TOTAL_ISSUES=$(jq -r '.summary.total_issues' security-check-report.json)
+          CRITICAL_ISSUES=$(jq -r '.summary.critical_issues' security-check-report.json)
+          HIGH_ISSUES=$(jq -r '.summary.high_issues' security-check-report.json)
+          FAILED_CHECKS=$(jq -r '.statistics.failed_checks' security-check-report.json)
+
+          echo "overall_status=$OVERALL_STATUS" >> $GITHUB_OUTPUT
+          echo "total_issues=$TOTAL_ISSUES" >> $GITHUB_OUTPUT
+          echo "critical_issues=$CRITICAL_ISSUES" >> $GITHUB_OUTPUT
+          echo "high_issues=$HIGH_ISSUES" >> $GITHUB_OUTPUT
+          echo "failed_checks=$FAILED_CHECKS" >> $GITHUB_OUTPUT
+
+          # Create summary for step output
+          echo "## Security Scan Results" >> $GITHUB_STEP_SUMMARY
+          echo "- **Overall Status:** $OVERALL_STATUS" >> $GITHUB_STEP_SUMMARY
+          echo "- **Total Issues:** $TOTAL_ISSUES" >> $GITHUB_STEP_SUMMARY
+          echo "- **Critical Issues:** $CRITICAL_ISSUES" >> $GITHUB_STEP_SUMMARY
+          echo "- **High Issues:** $HIGH_ISSUES" >> $GITHUB_STEP_SUMMARY
+          echo "- **Failed Checks:** $FAILED_CHECKS" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "overall_status=ERROR" >> $GITHUB_OUTPUT
+          echo "Security report not found" >> $GITHUB_STEP_SUMMARY
+        fi
+
+    - name: Comment on PR with security results
+      if: github.event_name == 'pull_request' && always()
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+
+          let reportContent = '';
+          let status = '${{ steps.parse-report.outputs.overall_status }}';
+
+          if (fs.existsSync('security-check-report.json')) {
+            const report = JSON.parse(fs.readFileSync('security-check-report.json', 'utf8'));
+
+            // Create detailed comment
+            reportContent = `## 🔒 Security Compliance Scan Results
+
+          **Overall Status:** ${getStatusEmoji(status)} **${status}**
+
+          ### Summary
+          - **Total Issues:** ${report.summary.total_issues}
+          - **Critical:** ${report.summary.critical_issues}
+          - **High:** ${report.summary.high_issues}
+          - **Medium:** ${report.summary.medium_issues}
+          - **Low:** ${report.summary.low_issues}
+
+          ### Check Results
+          | Check | Status |
+          |-------|--------|
+          | Go Security Scan | ${getStatusEmoji(report.checks.go_security_scan)} ${report.checks.go_security_scan} |
+          | Kubernetes Manifest Scan | ${getStatusEmoji(report.checks.kubernetes_manifest_scan)} ${report.checks.kubernetes_manifest_scan} |
+          | NetworkPolicy Validation | ${getStatusEmoji(report.checks.network_policy_validation)} ${report.checks.network_policy_validation} |
+          | Security Context Validation | ${getStatusEmoji(report.checks.security_context_validation)} ${report.checks.security_context_validation} |
+          | Image Specification Validation | ${getStatusEmoji(report.checks.image_specification_validation)} ${report.checks.image_specification_validation} |
+          | Service Account Validation | ${getStatusEmoji(report.checks.service_account_validation)} ${report.checks.service_account_validation} |
+
+          ### Statistics
+          - **Failed Checks:** ${report.statistics.failed_checks}
+          - **Warning Checks:** ${report.statistics.warning_checks}
+          - **Passed Checks:** ${report.statistics.passed_checks}
+
+          ${status === 'FAILED' ? '⚠️ **Action Required:** Please address the security issues before merging.' : ''}
+          ${status === 'WARNING' ? '⚠️ **Notice:** Some security warnings were found. Please review.' : ''}
+          ${status === 'PASSED' ? '✅ **Great!** All security checks passed.' : ''}
+
+          <details>
+          <summary>View full security report</summary>
+
+          \`\`\`json
+          ${JSON.stringify(report, null, 2)}
+          \`\`\`
+          </details>
+          `;
+          } else {
+            reportContent = `## 🔒 Security Compliance Scan Results
+
+          **Status:** ❌ **ERROR**
+
+          The security scan failed to generate a report. Please check the workflow logs for details.
+          `;
+          }
+
+          function getStatusEmoji(status) {
+            switch(status) {
+              case 'PASSED': return '✅';
+              case 'WARNING': return '⚠️';
+              case 'FAILED': case 'ERROR': return '❌';
+              case 'SKIPPED': return '⏭️';
+              default: return '❓';
+            }
+          }
+
+          // Find existing comment
+          const { data: comments } = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+          });
+
+          const existingComment = comments.find(comment =>
+            comment.user.type === 'Bot' && comment.body.includes('Security Compliance Scan Results')
+          );
+
+          if (existingComment) {
+            // Update existing comment
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: existingComment.id,
+              body: reportContent
+            });
+          } else {
+            // Create new comment
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: reportContent
+            });
+          }
+
+    - name: Create security issue on failure
+      if: steps.parse-report.outputs.overall_status == 'FAILED' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+
+          if (fs.existsSync('security-check-report.json')) {
+            const report = JSON.parse(fs.readFileSync('security-check-report.json', 'utf8'));
+
+            const issueTitle = `🔒 Security Compliance Failure - ${new Date().toISOString().split('T')[0]}`;
+            const issueBody = `## Security Compliance Check Failed
+
+          A security compliance check has failed on the main branch.
+
+          **Details:**
+          - **Commit:** ${context.sha}
+          - **Critical Issues:** ${report.summary.critical_issues}
+          - **High Issues:** ${report.summary.high_issues}
+          - **Failed Checks:** ${report.statistics.failed_checks}
+
+          **Failed Checks:**
+          ${Object.entries(report.checks)
+            .filter(([_, status]) => status === 'FAILED')
+            .map(([check, _]) => `- ${check.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}`)
+            .join('\n')}
+
+          **Action Required:**
+          Please review and address the security issues identified in this scan.
+
+          **Full Report:**
+          See the workflow run for detailed information: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+          ---
+          *This issue was automatically created by the security compliance workflow.*
+          `;
+
+            // Check if similar issue already exists
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'security,automated'
+            });
+
+            const existingIssue = issues.find(issue =>
+              issue.title.includes('Security Compliance Failure') &&
+              issue.created_at > new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+            );
+
+            if (!existingIssue) {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: issueTitle,
+                body: issueBody,
+                labels: ['security', 'automated', 'priority-high']
+              });
+            }
+          }
+
+    - name: Upload to GitHub Security tab
+      if: steps.parse-report.outputs.overall_status == 'FAILED' || steps.parse-report.outputs.critical_issues != '0'
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: security-check.sarif
+        category: security-compliance
+      continue-on-error: true
+
+    - name: Generate SARIF report
+      if: always() && steps.security-check.outcome != 'skipped'
+      run: |
+        # Generate SARIF format report for GitHub Security tab
+        cat > security-check.sarif << 'EOF'
+        {
+          "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+          "version": "2.1.0",
+          "runs": [
+            {
+              "tool": {
+                "driver": {
+                  "name": "O-RAN Security Compliance",
+                  "version": "1.0.0",
+                  "informationUri": "https://github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing",
+                  "rules": []
+                }
+              },
+              "results": []
+            }
+          ]
+        }
+        EOF
+
+        # Add results from security report if available
+        if [[ -f "security-check-report.json" ]]; then
+          python3 << 'PYTHON_SCRIPT'
+        import json
+        import sys
+
+        # Load security report
+        try:
+            with open('security-check-report.json', 'r') as f:
+                report = json.load(f)
+        except:
+            sys.exit(0)
+
+        # Load SARIF template
+        with open('security-check.sarif', 'r') as f:
+            sarif = json.load(f)
+
+        # Add rules and results based on failed checks
+        rule_id_counter = 1
+        for check_name, status in report['checks'].items():
+            if status in ['FAILED', 'WARNING']:
+                rule_id = f"SEC{rule_id_counter:03d}"
+                rule_id_counter += 1
+
+                # Add rule
+                rule = {
+                    "id": rule_id,
+                    "name": check_name.replace('_', ' ').title(),
+                    "shortDescription": {
+                        "text": f"{check_name.replace('_', ' ').title()} check failed"
+                    },
+                    "fullDescription": {
+                        "text": f"Security compliance check for {check_name.replace('_', ' ')} has failed or generated warnings."
+                    },
+                    "defaultConfiguration": {
+                        "level": "error" if status == "FAILED" else "warning"
+                    }
+                }
+                sarif['runs'][0]['tool']['driver']['rules'].append(rule)
+
+                # Add result
+                result = {
+                    "ruleId": rule_id,
+                    "level": "error" if status == "FAILED" else "warning",
+                    "message": {
+                        "text": f"Security compliance check failed: {check_name.replace('_', ' ')}"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "security-check-report.json"
+                                },
+                                "region": {
+                                    "startLine": 1,
+                                    "startColumn": 1
+                                }
+                            }
+                        }
+                    ]
+                }
+                sarif['runs'][0]['results'].append(result)
+
+        # Save updated SARIF
+        with open('security-check.sarif', 'w') as f:
+            json.dump(sarif, f, indent=2)
+        PYTHON_SCRIPT
+        fi
+
+    - name: Set workflow status
+      if: always()
+      run: |
+        STATUS="${{ steps.parse-report.outputs.overall_status }}"
+        case "$STATUS" in
+          "PASSED")
+            echo "✅ Security compliance check passed"
+            exit 0
+            ;;
+          "WARNING")
+            echo "⚠️ Security compliance check completed with warnings"
+            exit 0
+            ;;
+          "FAILED")
+            echo "❌ Security compliance check failed"
+            exit 1
+            ;;
+          *)
+            echo "❓ Security compliance check status unknown: $STATUS"
+            exit 1
+            ;;
+        esac
+
+  # Separate job for dependency security scanning
+  dependency-scan:
+    name: Dependency Security Scan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+
+    - name: Run Nancy (Go dependency check)
+      run: |
+        go list -json -deps ./... | docker run --rm -i sonatypecommunity/nancy:latest sleuth
+      continue-on-error: true
+
+    - name: Run Go Vulnerability Check
+      run: |
+        go install golang.org/x/vuln/cmd/govulncheck@latest
+        govulncheck ./...
+      continue-on-error: true
+
+  # Container image scanning job
+  container-scan:
+    name: Container Image Security Scan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Build test images
+      run: |
+        # Build images if Dockerfiles exist
+        if [[ -f "Dockerfile" ]]; then
+          docker build -t test-image:latest .
+        fi
+
+        if [[ -f "adapters/vnf-operator/Dockerfile" ]]; then
+          docker build -t vnf-operator:latest adapters/vnf-operator/
+        fi
+
+    - name: Run Trivy container scan
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: 'test-image:latest'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+      continue-on-error: true
+
+    - name: Upload Trivy scan results
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+        category: 'container-security'
+      continue-on-error: true

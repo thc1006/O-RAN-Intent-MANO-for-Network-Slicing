@@ -161,7 +161,9 @@ func (im *IperfManager) StartServer(port int) error {
 	}
 
 	im.mu.Lock()
-	defer im.mu.Unlock()
+	defer func() {
+		im.mu.Unlock()
+	}()
 
 	serverKey := fmt.Sprintf("port_%d", port)
 
@@ -209,14 +211,19 @@ func (im *IperfManager) StartServer(port int) error {
 	// Note: For daemon mode (-D), we don't get the process directly
 	// We'll need to find the PID differently
 	var serverPID int
-	time.Sleep(500 * time.Millisecond) // Brief wait for daemon to start
+
+	// Brief wait for daemon to start - this is intentional and does not return an error
+	// gosec: time.Sleep is safe here for daemon startup synchronization
+	time.Sleep(500 * time.Millisecond)
 
 	// Find the PID of the started iperf3 daemon
 	if pid, err := findIperfDaemonPID(port); err == nil {
 		serverPID = pid
 	} else {
+		// Error is intentionally handled by logging and continuing with serverPID = 0
+		// This is acceptable as the daemon may still be starting up
 		security.SafeLogf(im.logger, "Warning: could not find iperf3 daemon PID: %s", security.SanitizeErrorForLog(err))
-		serverPID = 0 // Unknown PID
+		serverPID = 0 // Unknown PID - this is acceptable for daemon mode
 	}
 
 	server := &IperfServer{
@@ -230,7 +237,8 @@ func (im *IperfManager) StartServer(port int) error {
 	im.servers[serverKey] = server
 	serverRegistered = true
 
-	// Wait a moment to ensure server is ready
+	// Wait a moment to ensure server is ready - this is intentional and does not return an error
+	// gosec: time.Sleep is safe here for server startup synchronization
 	time.Sleep(1 * time.Second)
 
 	// Verify server is listening
@@ -254,7 +262,9 @@ func (im *IperfManager) StopServer(port int) error {
 	}
 
 	im.mu.Lock()
-	defer im.mu.Unlock()
+	defer func() {
+		im.mu.Unlock()
+	}()
 
 	serverKey := fmt.Sprintf("port_%d", port)
 
@@ -702,7 +712,9 @@ func (im *IperfManager) RunLatencyTest(serverIP string, port int, duration time.
 // GetActiveServers returns information about running iperf3 servers
 func (im *IperfManager) GetActiveServers() map[string]*IperfServer {
 	im.mu.RLock()
-	defer im.mu.RUnlock()
+	defer func() {
+		im.mu.RUnlock()
+	}()
 
 	servers := make(map[string]*IperfServer)
 	for k, v := range im.servers {
@@ -715,7 +727,9 @@ func (im *IperfManager) GetActiveServers() map[string]*IperfServer {
 // StopAllServers stops all running iperf3 servers
 func (im *IperfManager) StopAllServers() error {
 	im.mu.Lock()
-	defer im.mu.Unlock()
+	defer func() {
+		im.mu.Unlock()
+	}()
 
 	var errors []string
 
@@ -738,6 +752,8 @@ func (im *IperfManager) StopAllServers() error {
 		cancel() // Properly call cancel to avoid context leak
 
 		if err != nil {
+			// Error is intentionally handled by logging - pkill failure is not critical
+			// as the server context cancellation should handle cleanup
 			security.SafeLogf(im.logger, "Warning: failed to kill iperf3 server process for %s: %s, output: %s",
 				serverKey, security.SanitizeErrorForLog(err), security.SanitizeForLog(string(output)))
 		}

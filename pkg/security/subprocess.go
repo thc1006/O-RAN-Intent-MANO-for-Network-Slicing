@@ -6,6 +6,7 @@ package security
 import (
 	"context"
 	"fmt"
+	"net"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -88,7 +89,7 @@ func (se *SecureSubprocessExecutor) registerDefaultCommands() {
 	se.RegisterCommand(&AllowedCommand{
 		Command: "ip",
 		AllowedArgs: map[string]bool{
-			"link": true, "add": true, "del": true, "set": true, "show": true,
+			"link": true, "addr": true, "add": true, "del": true, "set": true, "show": true,
 			"type": true, "vxlan": true, "id": true, "dstport": true, "local": true,
 			"learning": true, "nolearning": true, "mtu": true, "up": true, "down": true,
 			"dev": true, "delete": true, "-s": true, "-d": true,
@@ -97,6 +98,7 @@ func (se *SecureSubprocessExecutor) registerDefaultCommands() {
 			`^[a-zA-Z0-9\-_\.]+$`,         // Interface names and device names
 			`^\d{1,5}$`,                   // Port numbers and VNI values
 			`^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$`, // IPv4 addresses
+			`^(?:[0-9]{1,3}\.){3}[0-9]{1,3}/\d{1,2}$`, // IPv4 CIDR notation
 			`^\d{1,4}$`,                   // MTU values
 		},
 		MaxArgs:     15,
@@ -484,6 +486,8 @@ func ValidateIPArgs(args []string) error {
 	switch subcommand {
 	case "link":
 		return validateIPLinkArgs(args[1:])
+	case "addr":
+		return validateIPAddrArgs(args[1:])
 	default:
 		// Allow other ip subcommands but with basic validation
 		return nil
@@ -518,6 +522,70 @@ func validateIPLinkArgs(args []string) error {
 		return nil
 	default:
 		return fmt.Errorf("ip link action not allowed: %s", action)
+	}
+
+	return nil
+}
+
+// validateIPAddrArgs validates ip addr specific arguments
+func validateIPAddrArgs(args []string) error {
+	if len(args) == 0 {
+		return fmt.Errorf("ip addr requires action")
+	}
+
+	action := args[0]
+	switch action {
+	case "add", "del", "delete":
+		// Validate address addition/deletion arguments
+		for i, arg := range args {
+			if arg == "dev" && i+1 < len(args) {
+				// Validate interface name
+				ifaceName := args[i+1]
+				if err := ValidateNetworkInterface(ifaceName); err != nil {
+					return fmt.Errorf("invalid interface name: %w", err)
+				}
+			}
+			// Validate CIDR addresses (e.g., 10.1.1.1/24)
+			if strings.Contains(arg, "/") {
+				if err := validateCIDRAddress(arg); err != nil {
+					return fmt.Errorf("invalid CIDR address: %w", err)
+				}
+			}
+		}
+	case "show", "list":
+		// These are generally safe read operations
+		return nil
+	default:
+		return fmt.Errorf("ip addr action not allowed: %s", action)
+	}
+
+	return nil
+}
+
+// validateCIDRAddress validates CIDR notation addresses
+func validateCIDRAddress(cidr string) error {
+	if cidr == "" {
+		return fmt.Errorf("CIDR cannot be empty")
+	}
+
+	// Parse CIDR to ensure it's valid
+	ip, network, err := net.ParseCIDR(cidr)
+	if err != nil {
+		return fmt.Errorf("invalid CIDR format: %s (%w)", cidr, err)
+	}
+
+	// Ensure IP is IPv4 for now (extend for IPv6 if needed)
+	if ip.To4() == nil {
+		return fmt.Errorf("only IPv4 addresses currently supported: %s", cidr)
+	}
+
+	// Validate subnet mask is reasonable
+	ones, bits := network.Mask.Size()
+	if bits != 32 { // IPv4
+		return fmt.Errorf("invalid address family: %s", cidr)
+	}
+	if ones < 1 || ones > 32 {
+		return fmt.Errorf("invalid subnet mask: /%d", ones)
 	}
 
 	return nil

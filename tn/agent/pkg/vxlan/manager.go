@@ -3,6 +3,7 @@ package vxlan
 import (
 	"context"
 	"fmt"
+	"net"
 	"strings"
 	"time"
 
@@ -101,11 +102,35 @@ func (m *Manager) CreateTunnel(vxlanID int32, localIP string, remoteIPs []string
 
 	// Assign IP address to VXLAN interface
 	vxlanIP := m.generateVXLANIP(vxlanID, localIP)
+
+	// Security validation: Validate generated VXLAN IP before use
+	if err := security.ValidateIPAddress(vxlanIP); err != nil {
+		return fmt.Errorf("invalid generated VXLAN IP: %w", err)
+	}
+
+	// Additional security: Ensure IP is in private range for VXLAN
+	if err := m.validateVXLANIPSecurity(vxlanIP); err != nil {
+		return fmt.Errorf("VXLAN IP security validation failed: %w", err)
+	}
+
 	ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	addrArgs := []string{"addr", "add", fmt.Sprintf("%s/24", vxlanIP), "dev", ifaceName}
-	// #nosec - Using secure execution with validation
+	// Pre-validate IP address format before constructing command arguments
+	vxlanCIDR := fmt.Sprintf("%s/24", vxlanIP)
+	if err := m.validateIPWithCIDR(vxlanCIDR); err != nil {
+		return fmt.Errorf("invalid VXLAN CIDR format: %w", err)
+	}
+
+	// Security validation: Validate interface name before use
+	if err := security.ValidateNetworkInterface(ifaceName); err != nil {
+		return fmt.Errorf("invalid interface name: %w", err)
+	}
+
+	// Construct arguments with validated inputs only
+	addrArgs := []string{"addr", "add", vxlanCIDR, "dev", ifaceName}
+
+	// Execute with comprehensive validation - gosec G204 compliant
 	if _, err := security.SecureExecuteWithValidation(ctx, "ip", security.ValidateIPArgs, addrArgs...); err != nil {
 		// Ignore if address already exists
 		if !strings.Contains(err.Error(), "exists") {
@@ -186,6 +211,77 @@ func (m *Manager) generateVXLANIP(vxlanID int32, nodeIP string) string {
 	}
 
 	return fmt.Sprintf("10.%d.%d.%s", second, third, fourth)
+}
+
+// validateVXLANIPSecurity performs additional security validation for VXLAN IP addresses
+func (m *Manager) validateVXLANIPSecurity(ip string) error {
+	// Parse IP to ensure it's valid
+	parsedIP := net.ParseIP(ip)
+	if parsedIP == nil {
+		return fmt.Errorf("invalid IP address format: %s", ip)
+	}
+
+	// Ensure VXLAN IPs are in private address ranges for security
+	privateRanges := []string{
+		"10.0.0.0/8",     // RFC 1918
+		"172.16.0.0/12",  // RFC 1918
+		"192.168.0.0/16", // RFC 1918
+	}
+
+	for _, cidr := range privateRanges {
+		_, subnet, err := net.ParseCIDR(cidr)
+		if err != nil {
+			continue
+		}
+		if subnet.Contains(parsedIP) {
+			return nil // Valid private IP
+		}
+	}
+
+	return fmt.Errorf("VXLAN IP must be in private address range: %s", ip)
+}
+
+// validateIPWithCIDR validates IP address with CIDR notation
+func (m *Manager) validateIPWithCIDR(cidr string) error {
+	if cidr == "" {
+		return fmt.Errorf("CIDR cannot be empty")
+	}
+
+	// Parse CIDR to ensure it's valid
+	ip, network, err := net.ParseCIDR(cidr)
+	if err != nil {
+		return fmt.Errorf("invalid CIDR format: %s (%w)", cidr, err)
+	}
+
+	// Ensure IP is valid IPv4
+	if ip.To4() == nil {
+		return fmt.Errorf("only IPv4 addresses supported for VXLAN: %s", cidr)
+	}
+
+	// Validate subnet mask is appropriate for VXLAN (typically /24)
+	ones, bits := network.Mask.Size()
+	if bits != 32 { // IPv4
+		return fmt.Errorf("invalid address family for VXLAN: %s", cidr)
+	}
+	if ones < 8 || ones > 30 {
+		return fmt.Errorf("invalid subnet mask for VXLAN: /%d (must be /8 to /30)", ones)
+	}
+
+	// Additional security: prevent broadcast and network addresses
+	if ip.Equal(network.IP) {
+		return fmt.Errorf("cannot use network address: %s", cidr)
+	}
+
+	broadcast := make(net.IP, len(network.IP))
+	copy(broadcast, network.IP)
+	for i := range broadcast {
+		broadcast[i] |= ^network.Mask[i]
+	}
+	if ip.Equal(broadcast) {
+		return fmt.Errorf("cannot use broadcast address: %s", cidr)
+	}
+
+	return nil
 }
 
 // Cleanup removes all managed VXLAN tunnels

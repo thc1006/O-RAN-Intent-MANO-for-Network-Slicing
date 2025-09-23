@@ -32,7 +32,15 @@ spec:
         container.apparmor.security.beta.kubernetes.io/vnf-operator: runtime/default
     spec:
       serviceAccountName: oran-vnf-operator
-      automountServiceAccountToken: false
+      automountServiceAccountToken: true
+      # SECURITY EXCEPTION JUSTIFICATION:
+      # The VNF operator requires Kubernetes API access for:
+      # 1. Managing VNF pod lifecycle (create, update, delete)
+      # 2. Creating and managing services for VNF networking
+      # 3. Configuring deployments and replicasets for VNF workloads
+      # 4. Processing custom resource events and status updates
+      # 5. Leader election for operator high availability
+      # Service account token is required for controller-runtime operations
       securityContext:
         runAsNonRoot: true
         runAsUser: 65532
@@ -41,7 +49,11 @@ spec:
           type: RuntimeDefault
       containers:
       - name: vnf-operator
-        image: ghcr.io/oran-mano/vnf-operator:v1.0.1@sha256:9f84ced39e4daa1b3c5e7f8a2b4d6e9c3f7a5d8e1b6c9f2a5d7e0b3c8f4a1d9e
+        # Using specific versioned tag for security compliance (digest validation in production)
+        # TODO: Replace with actual SHA256 digest when image is built and published
+        image: ghcr.io/oran-mano/vnf-operator:v1.0.1
+        # SECURITY NOTE: In production, use full digest:
+        # image: ghcr.io/oran-mano/vnf-operator:v1.0.1@sha256:[actual-digest-here]
         imagePullPolicy: Always
         args:
         - --metrics-bind-address=0.0.0.0:8080

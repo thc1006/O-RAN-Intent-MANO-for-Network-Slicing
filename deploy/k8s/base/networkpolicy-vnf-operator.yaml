@@ -1,0 +1,160 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: oran-vnf-operator-network-policy
+  namespace: oran-mano
+  labels:
+    app.kubernetes.io/name: oran-vnf-operator
+    app.kubernetes.io/component: vnf-operator
+    app.kubernetes.io/version: "v1.0.0"
+    security.kubernetes.io/type: network-policy
+  annotations:
+    security.kubernetes.io/purpose: "Enforce least-privilege network access for O-RAN VNF operator component"
+    security.kubernetes.io/description: "Allows ingress on metrics (8080), health (8081), and webhook (9443) ports, restricts egress to DNS, Kubernetes API, and required O-RAN services"
+    security.kubernetes.io/compliance: "Addresses security warning 'Minimize the admission of pods which lack an associated NetworkPolicy'"
+    security.kubernetes.io/last-updated: "2025-09-24"
+spec:
+  # Apply policy to VNF operator pods
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: oran-vnf-operator
+
+  # Allow both ingress and egress traffic with restrictions
+  policyTypes:
+  - Ingress
+  - Egress
+
+  # Ingress rules - allow traffic to VNF operator services
+  ingress:
+  # Allow metrics scraping on port 8080 from monitoring systems
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: prometheus
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: prometheus
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: monitoring
+    - podSelector:
+        matchLabels:
+          app: prometheus
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: prometheus
+    ports:
+    - protocol: TCP
+      port: 8080
+
+  # Allow health check traffic on port 8081 from kubelet and other components
+  - from: []
+    ports:
+    - protocol: TCP
+      port: 8081
+
+  # Allow webhook traffic on port 9443 from Kubernetes API server
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+    - podSelector:
+        matchLabels:
+          component: kube-apiserver
+    - podSelector:
+        matchLabels:
+          app: kube-apiserver
+    ports:
+    - protocol: TCP
+      port: 9443
+
+  # Allow admission webhook calls from API server (any source for webhook)
+  - from: []
+    ports:
+    - protocol: TCP
+      port: 9443
+
+  # Egress rules - restrict outbound traffic to necessary services only
+  egress:
+  # Allow DNS resolution
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+
+  # Allow access to Kubernetes API server for operator functionality
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 6443
+
+  # Allow access to O-RAN DMS services (ran-dms) as specified in args
+  - to:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: oran-ran-dms
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/component: ran-dms
+    ports:
+    - protocol: TCP
+      port: 8080
+
+  # Allow access to Porch repository server as specified in args
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: porch-system
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: porch-system
+    - podSelector:
+        matchLabels:
+          app: porch-server
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: porch-server
+    ports:
+    - protocol: TCP
+      port: 7007
+
+  # Allow access to other VNF resources that the operator manages
+  - to:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/managed-by: oran-vnf-operator
+    ports:
+    - protocol: TCP
+      port: 80
+    - protocol: TCP
+      port: 8080
+    - protocol: TCP
+      port: 443
+
+  # Allow HTTPS outbound for external APIs, container registries, and certificate validation
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
+
+  # Allow HTTP outbound for webhook certificate management and health checks
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 80
