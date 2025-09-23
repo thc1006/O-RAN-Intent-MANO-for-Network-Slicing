@@ -29,24 +29,22 @@ RUN apk update && apk upgrade && apk add --no-cache \
 # Set working directory
 WORKDIR /workspace
 
-# Copy pkg/security dependency first
-COPY pkg/security/ /tmp/pkg/security/
-
-# Copy agent-specific go mod files for better layer caching
-COPY tn/agent/go.mod go.mod
+# Copy go mod files first for better layer caching
+COPY tn/go.mod go.mod
+COPY tn/go.sum go.sum
 
 # Download dependencies
 RUN go mod download
 
-# Copy agent source code
-COPY tn/agent/ .
-COPY pkg/security/ /tmp/pkg/security/
+# Copy source code and pkg/security
+COPY tn/ .
+COPY pkg/security/ ../pkg/security/
 
 # Build the binary with security flags
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -ldflags='-w -s -extldflags "-static"' \
     -a -installsuffix cgo \
-    -o tn-agent .
+    -o tn-agent cmd/agent/main.go
 
 # Stage 2: Runtime
 FROM alpine:3.19
