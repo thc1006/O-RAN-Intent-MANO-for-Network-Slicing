@@ -457,7 +457,7 @@ func (tv *ThesisValidator) ExportResults(filename string) error {
 		return fmt.Errorf("failed to marshal results: %w", err)
 	}
 
-	err = os.WriteFile(filename, data, 0600)
+	err = os.WriteFile(filename, data, security.SecureFileMode)
 	if err != nil {
 		return fmt.Errorf("failed to write results file: %w", err)
 	}

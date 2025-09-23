@@ -157,15 +157,12 @@ func (tc *TCManager) GetTCStatus() (*TCStatus, error) {
 		ShapingActive: false,
 		Interfaces:    []string{tc.iface},
 	}
-	// Validate tc command arguments
+	// Use secure tc command execution
 	tcArgs := []string{"qdisc", "show", "dev", tc.iface}
-	for _, arg := range tcArgs {
-		if err := security.ValidateCommandArgument(arg); err != nil {
-			return status, fmt.Errorf("invalid tc command argument %s: %w", arg, err)
-		}
-	}
-	cmd := exec.Command("tc", tcArgs...)
-	output, err := cmd.CombinedOutput()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	output, err := security.SecureExecuteWithValidation(ctx, "tc", security.ValidateTCArgs, tcArgs...)
 	if err != nil {
 		return status, fmt.Errorf("failed to get qdisc info: %v", err)
 	}
