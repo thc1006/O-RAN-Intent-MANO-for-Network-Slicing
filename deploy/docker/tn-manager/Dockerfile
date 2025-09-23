@@ -1,6 +1,6 @@
 # TN Manager Multi-stage Dockerfile
 # Stage 1: Build
-FROM golang:1.24.7-alpine AS builder
+FROM golang:1.23.4-alpine AS builder
 
 # Security labels and metadata
 LABEL maintainer="O-RAN MANO Team"
@@ -51,14 +51,14 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -o tn-manager cmd/manager/main.go
 
 # Stage 2: Runtime
-FROM alpine:3.20.3
+FROM alpine:3.20.7
 
 # Security labels
 LABEL org.opencontainers.image.title="TN Manager Runtime"
 LABEL security.scan="trivy,grype,snyk"
 LABEL security.user="non-root"
-LABEL security.base.image="alpine:3.20.3"
-LABEL security.go.version="1.24.7"
+LABEL security.base.image="alpine:3.20.7"
+LABEL security.go.version="1.23.4"
 LABEL security.scan.date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 # Install runtime dependencies, clean cache
