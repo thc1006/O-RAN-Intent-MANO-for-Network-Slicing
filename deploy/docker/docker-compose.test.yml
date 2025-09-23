@@ -1,0 +1,139 @@
+# O-RAN Intent-MANO Testing Docker Compose Configuration
+# Extended configuration for comprehensive testing
+version: '3.8'
+
+networks:
+  test-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/16
+
+volumes:
+  test-data:
+  test-results:
+
+services:
+  # Integration Test Suite
+  integration-tests:
+    build:
+      context: ../../
+      dockerfile: deploy/docker/test-framework/Dockerfile
+    container_name: oran-integration-tests
+    networks:
+      - test-net
+    volumes:
+      - test-data:/test-data
+      - test-results:/test-results
+      - ../../tests:/tests:ro
+    environment:
+      - TEST_MODE=integration
+      - TARGET_THROUGHPUT_EMBB=4.57
+      - TARGET_THROUGHPUT_URLLC=2.77
+      - TARGET_THROUGHPUT_MMTC=0.93
+      - TARGET_RTT_EMBB=16.1
+      - TARGET_RTT_URLLC=15.7
+      - TARGET_RTT_MMTC=6.3
+      - MAX_DEPLOYMENT_TIME=600
+    command: ['sh', '/tests/run_integration_tests.sh']
+    profiles:
+      - integration
+
+  # Performance Test Suite
+  performance-tests:
+    build:
+      context: ../../
+      dockerfile: deploy/docker/test-framework/Dockerfile
+    container_name: oran-performance-tests
+    networks:
+      - test-net
+    volumes:
+      - test-data:/test-data
+      - test-results:/test-results
+      - ../../tests:/tests:ro
+    environment:
+      - TEST_MODE=performance
+      - IPERF_DURATION=60
+      - PING_COUNT=100
+      - LOAD_TEST_DURATION=300
+    command: ['sh', '/tests/run_performance_tests.sh']
+    profiles:
+      - performance
+
+  # E2E Test Suite
+  e2e-tests:
+    build:
+      context: ../../
+      dockerfile: deploy/docker/test-framework/Dockerfile
+    container_name: oran-e2e-tests
+    networks:
+      - test-net
+    volumes:
+      - test-data:/test-data
+      - test-results:/test-results
+      - ../../tests:/tests:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - TEST_MODE=e2e
+      - KIND_CLUSTER_COUNT=4
+      - CNI_PLUGIN=kube-ovn
+    command: ['sh', '/tests/run_e2e_tests.sh']
+    profiles:
+      - e2e
+
+  # Security Test Suite
+  security-tests:
+    image: aquasec/trivy:latest
+    container_name: oran-security-tests
+    networks:
+      - test-net
+    volumes:
+      - test-results:/test-results
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command:
+      - sh
+      - -c
+      - |
+        trivy image --format json --output /test-results/security-scan.json oran-orchestrator:latest
+        trivy image --format json --output /test-results/vnf-operator-scan.json oran-vnf-operator:latest
+        trivy image --format json --output /test-results/o2-client-scan.json oran-o2-client:latest
+    profiles:
+      - security
+
+  # Load Test Suite
+  load-tests:
+    image: grafana/k6:latest
+    container_name: oran-load-tests
+    networks:
+      - test-net
+    volumes:
+      - test-results:/test-results
+      - ../../tests/load:/tests:ro
+    environment:
+      - K6_OUT=json=/test-results/load-test-results.json
+    command: ['run', '/tests/load-test.js']
+    profiles:
+      - load
+
+  # Test Results Aggregator
+  test-aggregator:
+    build:
+      context: ../../
+      dockerfile: deploy/docker/test-aggregator/Dockerfile
+    container_name: oran-test-aggregator
+    networks:
+      - test-net
+    volumes:
+      - test-results:/test-results
+      - ../../experiments:/experiments:ro
+    environment:
+      - RESULTS_DIR=/test-results
+      - OUTPUT_DIR=/test-results
+    command: ['python', '/experiments/collect_metrics.py']
+    profiles:
+      - aggregation
+    depends_on:
+      - integration-tests
+      - performance-tests
+      - e2e-tests
+      - security-tests

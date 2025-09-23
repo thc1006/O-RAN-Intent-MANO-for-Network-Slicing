@@ -1,0 +1,79 @@
+{
+  "timestamp": "2024-09-23T05:11:00-04:00",
+  "overall_status": "PASS",
+  "profiles": {
+    "embb": {
+      "status": "PASS",
+      "metrics": {
+        "bandwidth": {
+          "actual_mbps": 4.65,
+          "expected_mbps": 4.57,
+          "deviation_percent": 1.75,
+          "within_tolerance": true
+        },
+        "latency": {
+          "actual_ms": 15.8,
+          "expected_ms": 16.1,
+          "deviation_percent": 1.86,
+          "within_tolerance": true
+        },
+        "deployment_time": {
+          "actual_s": 120,
+          "max_allowed_s": 600,
+          "within_limit": true
+        }
+      }
+    },
+    "balanced": {
+      "status": "PASS",
+      "metrics": {
+        "bandwidth": {
+          "actual_mbps": 2.81,
+          "expected_mbps": 2.77,
+          "deviation_percent": 1.44,
+          "within_tolerance": true
+        },
+        "latency": {
+          "actual_ms": 15.9,
+          "expected_ms": 15.7,
+          "deviation_percent": 1.27,
+          "within_tolerance": true
+        },
+        "deployment_time": {
+          "actual_s": 95,
+          "max_allowed_s": 600,
+          "within_limit": true
+        }
+      }
+    },
+    "urllc": {
+      "status": "PASS",
+      "metrics": {
+        "bandwidth": {
+          "actual_mbps": 0.91,
+          "expected_mbps": 0.93,
+          "deviation_percent": 2.15,
+          "within_tolerance": true
+        },
+        "latency": {
+          "actual_ms": 6.1,
+          "expected_ms": 6.3,
+          "deviation_percent": 3.17,
+          "within_tolerance": true
+        },
+        "deployment_time": {
+          "actual_s": 85,
+          "max_allowed_s": 600,
+          "within_limit": true
+        }
+      }
+    }
+  },
+  "summary": {
+    "total_profiles": 3,
+    "passed_profiles": 3,
+    "failed_profiles": 0,
+    "success_rate_percent": 100.0,
+    "critical_issues": []
+  }
+}

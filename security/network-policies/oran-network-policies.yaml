@@ -1,0 +1,500 @@
+---
+# Default deny all traffic in O-RAN namespaces
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: oran-nlp
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: oran-orchestrator
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: oran-ran
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: oran-cn
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: oran-tn
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+---
+# Allow DNS resolution for all pods
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns
+  namespace: oran-nlp
+spec:
+  podSelector: {}
+  policyTypes:
+  - Egress
+  egress:
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns
+  namespace: oran-orchestrator
+spec:
+  podSelector: {}
+  policyTypes:
+  - Egress
+  egress:
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns
+  namespace: oran-ran
+spec:
+  podSelector: {}
+  policyTypes:
+  - Egress
+  egress:
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns
+  namespace: oran-cn
+spec:
+  podSelector: {}
+  policyTypes:
+  - Egress
+  egress:
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns
+  namespace: oran-tn
+spec:
+  podSelector: {}
+  policyTypes:
+  - Egress
+  egress:
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+---
+# NLP Service Network Policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: nlp-service-policy
+  namespace: oran-nlp
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: nlp
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: oran-orchestrator
+    - namespaceSelector:
+        matchLabels:
+          name: oran-monitoring
+    ports:
+    - protocol: TCP
+      port: 8080
+    - protocol: TCP
+      port: 9090  # metrics
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: oran-orchestrator
+    ports:
+    - protocol: TCP
+      port: 8080
+  - to: []  # Allow external API calls for NLP models
+    ports:
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 80
+---
+# Orchestrator Service Network Policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: orchestrator-service-policy
+  namespace: oran-orchestrator
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: orchestrator
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: oran-nlp
+    - namespaceSelector:
+        matchLabels:
+          name: oran-monitoring
+    ports:
+    - protocol: TCP
+      port: 8080
+    - protocol: TCP
+      port: 9090  # metrics
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: oran-nlp
+    ports:
+    - protocol: TCP
+      port: 8080
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: oran-ran
+    ports:
+    - protocol: TCP
+      port: 8080
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: oran-cn
+    ports:
+    - protocol: TCP
+      port: 8080
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: oran-tn
+    ports:
+    - protocol: TCP
+      port: 8080
+  - to: []  # Kubernetes API and external services
+    ports:
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 6443
+---
+# VNF Operator Network Policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: vnf-operator-policy
+  namespace: oran-orchestrator
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: operator
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: oran-monitoring
+    ports:
+    - protocol: TCP
+      port: 8080
+    - protocol: TCP
+      port: 9090  # metrics
+  egress:
+  - to: []  # Kubernetes API access
+    ports:
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 6443
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: oran-ran
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: oran-cn
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: oran-tn
+---
+# RAN Components Network Policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ran-components-policy
+  namespace: oran-ran
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: ran
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: oran-orchestrator
+    - namespaceSelector:
+        matchLabels:
+          name: oran-monitoring
+    - namespaceSelector:
+        matchLabels:
+          name: oran-tn
+    ports:
+    - protocol: TCP
+      port: 8080
+    - protocol: TCP
+      port: 9090  # metrics
+    - protocol: UDP
+      port: 2152  # GTP-U
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: oran-cn
+    ports:
+    - protocol: TCP
+      port: 8080
+    - protocol: UDP
+      port: 2152  # GTP-U
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: oran-tn
+    ports:
+    - protocol: TCP
+      port: 8080
+---
+# Core Network Components Network Policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: cn-components-policy
+  namespace: oran-cn
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: cn
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: oran-orchestrator
+    - namespaceSelector:
+        matchLabels:
+          name: oran-ran
+    - namespaceSelector:
+        matchLabels:
+          name: oran-monitoring
+    - namespaceSelector:
+        matchLabels:
+          name: oran-tn
+    ports:
+    - protocol: TCP
+      port: 8080
+    - protocol: TCP
+      port: 9090  # metrics
+    - protocol: UDP
+      port: 2152  # GTP-U
+    - protocol: TCP
+      port: 8805  # N4 (PFCP)
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: oran-ran
+    ports:
+    - protocol: TCP
+      port: 8080
+    - protocol: UDP
+      port: 2152  # GTP-U
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: oran-tn
+    ports:
+    - protocol: TCP
+      port: 8080
+  - to: []  # External data networks
+    ports:
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 80
+---
+# Transport Network Network Policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: tn-components-policy
+  namespace: oran-tn
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: tn
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: oran-orchestrator
+    - namespaceSelector:
+        matchLabels:
+          name: oran-ran
+    - namespaceSelector:
+        matchLabels:
+          name: oran-cn
+    - namespaceSelector:
+        matchLabels:
+          name: oran-monitoring
+    ports:
+    - protocol: TCP
+      port: 8080
+    - protocol: TCP
+      port: 9090  # metrics
+    - protocol: UDP
+      port: 4789  # VXLAN
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: oran-ran
+    - namespaceSelector:
+        matchLabels:
+          name: oran-cn
+    ports:
+    - protocol: TCP
+      port: 8080
+    - protocol: UDP
+      port: 4789  # VXLAN
+  - to: []  # Node access for network configuration
+    ports:
+    - protocol: TCP
+      port: 22  # SSH for network configuration
+---
+# Monitoring Services Network Policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: monitoring-services-policy
+  namespace: oran-monitoring
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: monitoring
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from: []  # Allow ingress from anywhere for monitoring dashboards
+    ports:
+    - protocol: TCP
+      port: 3000  # Grafana
+    - protocol: TCP
+      port: 9090  # Prometheus
+    - protocol: TCP
+      port: 16686 # Jaeger UI
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: oran-nlp
+    - namespaceSelector:
+        matchLabels:
+          name: oran-orchestrator
+    - namespaceSelector:
+        matchLabels:
+          name: oran-ran
+    - namespaceSelector:
+        matchLabels:
+          name: oran-cn
+    - namespaceSelector:
+        matchLabels:
+          name: oran-tn
+    ports:
+    - protocol: TCP
+      port: 8080
+    - protocol: TCP
+      port: 9090  # metrics collection
+  - to: []  # Kubernetes API for service discovery
+    ports:
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 6443

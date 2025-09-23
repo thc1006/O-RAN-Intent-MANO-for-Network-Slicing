@@ -1,0 +1,519 @@
+# Inter-Cluster Gateway Configuration for Multi-Site O-RAN
+# Configures gateways for cross-cluster NF connectivity
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gateway-config
+  namespace: kube-ovn
+data:
+  gateway-config.yaml: |
+    # Gateway configuration for different deployment sites
+    sites:
+      central:
+        name: "central"
+        role: "hub"
+        gateway_nodes:
+          - "central-gw-01"
+          - "central-gw-02"
+        external_interface: "eth0"
+        gateway_ip: "192.168.1.100"
+        tunnel_ip: "10.100.1.1"
+        availability_zone: "az-central"
+
+      edge01:
+        name: "edge01"
+        role: "spoke"
+        gateway_nodes:
+          - "edge01-gw-01"
+        external_interface: "eth0"
+        gateway_ip: "192.168.2.100"
+        tunnel_ip: "10.100.2.1"
+        availability_zone: "az-edge01"
+        parent_site: "central"
+
+      edge02:
+        name: "edge02"
+        role: "spoke"
+        gateway_nodes:
+          - "edge02-gw-01"
+        external_interface: "eth0"
+        gateway_ip: "192.168.3.100"
+        tunnel_ip: "10.100.3.1"
+        availability_zone: "az-edge02"
+        parent_site: "central"
+
+    # Routing configuration between sites
+    inter_site_routes:
+      - source_cidr: "10.16.0.0/12"      # Central cluster pods
+        destination_sites: ["edge01", "edge02"]
+        next_hop: "192.168.1.1"
+        metric: 100
+
+      - source_cidr: "10.244.0.0/16"     # Edge01 cluster pods
+        destination_sites: ["central", "edge02"]
+        next_hop: "192.168.2.1"
+        metric: 100
+
+      - source_cidr: "10.32.0.0/16"      # Edge02 cluster pods
+        destination_sites: ["central", "edge01"]
+        next_hop: "192.168.3.1"
+        metric: 100
+
+    # QoS configuration for inter-site traffic
+    qos_policies:
+      high_priority:
+        bandwidth: "1000Mbit"
+        burst: "1250Mbit"
+        priority: 7
+        dscp: 46
+        latency_class: "ultra_low"
+
+      medium_priority:
+        bandwidth: "500Mbit"
+        burst: "625Mbit"
+        priority: 5
+        dscp: 26
+        latency_class: "low"
+
+      low_priority:
+        bandwidth: "100Mbit"
+        burst: "125Mbit"
+        priority: 3
+        dscp: 10
+        latency_class: "best_effort"
+---
+# Gateway Node Configuration DaemonSet
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: ovn-gateway
+  namespace: kube-ovn
+  labels:
+    app: ovn-gateway
+spec:
+  selector:
+    matchLabels:
+      app: ovn-gateway
+  template:
+    metadata:
+      labels:
+        app: ovn-gateway
+        component: network
+        type: infra
+    spec:
+      tolerations:
+      - operator: Exists
+      hostNetwork: true
+      serviceAccountName: ovn
+      containers:
+      - name: ovn-gateway
+        image: kubeovn/kube-ovn:v1.11.5
+        command: ["/kube-ovn/start-gateway.sh"]
+        securityContext:
+          runAsUser: 0
+          privileged: true
+        env:
+        - name: ENABLE_SSL
+          value: "false"
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: KUBE_NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: OVN_DB_IPS
+          value: "${OVN_DB_IPS}"
+        - name: OVN_REMOTE_PROBE_INTERVAL
+          value: "10000"
+        - name: OVN_OPENFLOW_PROBE_INTERVAL
+          value: "180"
+        - name: GATEWAY_INTERFACE
+          value: "eth0"
+        - name: ENABLE_EXTERNAL_VPC
+          value: "true"
+        - name: ENABLE_EIP_SNAT
+          value: "true"
+        - name: ENABLE_ECMP
+          value: "true"
+        volumeMounts:
+        - name: host-modules
+          mountPath: /lib/modules
+          readOnly: true
+        - name: shared-dir
+          mountPath: /var/lib/kubelet/pods
+          mountPropagation: Bidirectional
+        - name: log
+          mountPath: /var/log/kube-ovn
+        - name: run-openvswitch
+          mountPath: /run/openvswitch
+        - name: run-ovn
+          mountPath: /run/ovn
+        - name: gateway-config
+          mountPath: /etc/kube-ovn/gateway
+        resources:
+          requests:
+            cpu: 200m
+            memory: 300Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+        readinessProbe:
+          exec:
+            command:
+            - /kube-ovn/ovn-gateway-healthcheck.sh
+          periodSeconds: 5
+          timeoutSeconds: 45
+        livenessProbe:
+          exec:
+            command:
+            - /kube-ovn/ovn-gateway-healthcheck.sh
+          initialDelaySeconds: 30
+          periodSeconds: 7
+          failureThreshold: 5
+          timeoutSeconds: 45
+      nodeSelector:
+        ovn-role: "gateway"
+      volumes:
+      - name: host-modules
+        hostPath:
+          path: /lib/modules
+      - name: shared-dir
+        hostPath:
+          path: /var/lib/kubelet/pods
+      - name: log
+        hostPath:
+          path: /var/log/kube-ovn
+      - name: run-openvswitch
+        hostPath:
+          path: /run/openvswitch
+      - name: run-ovn
+        hostPath:
+          path: /run/ovn
+      - name: gateway-config
+        configMap:
+          name: gateway-config
+---
+# External Gateway Configuration for each site
+apiVersion: kubeovn.io/v1
+kind: Vpc
+metadata:
+  name: external-vpc
+spec:
+  namespaces: []
+  staticRoutes:
+  - cidr: 0.0.0.0/0
+    nextHopIP: ""
+    policy: policyDst
+  enableExternal: true
+  externalEgressGateway: "ovn-eip-pool"
+---
+# EIP Pool for External Connectivity
+apiVersion: kubeovn.io/v1
+kind: IptablesEIP
+metadata:
+  name: ovn-eip-pool
+spec:
+  natGwDp: "ovn-cluster"
+  cidrBlock: "192.168.100.0/24"
+  excludeIps:
+  - "192.168.100.1"
+  gateway: "192.168.100.1"
+  externalSubnet: "external"
+---
+# SNAT Rules for Outbound Traffic
+apiVersion: kubeovn.io/v1
+kind: IptablesSnatRule
+metadata:
+  name: default-snat
+spec:
+  eip: "ovn-eip-pool"
+  internalCIDR: "10.0.0.0/8"
+  natGwDp: "ovn-cluster"
+---
+# Cross-Cluster Service for Gateway Discovery
+apiVersion: v1
+kind: Service
+metadata:
+  name: ovn-gateway-discovery
+  namespace: kube-ovn
+  labels:
+    app: ovn-gateway
+  annotations:
+    ovn.kubernetes.io/external-traffic: "cluster"
+spec:
+  type: NodePort
+  ports:
+  - name: geneve
+    port: 6081
+    targetPort: 6081
+    protocol: UDP
+    nodePort: 30081
+  - name: stt
+    port: 7471
+    targetPort: 7471
+    protocol: UDP
+    nodePort: 30471
+  - name: vxlan
+    port: 4789
+    targetPort: 4789
+    protocol: UDP
+    nodePort: 30789
+  selector:
+    app: ovn-gateway
+---
+# Gateway Health Monitoring
+apiVersion: v1
+kind: Service
+metadata:
+  name: ovn-gateway-metrics
+  namespace: kube-ovn
+  labels:
+    app: ovn-gateway
+spec:
+  ports:
+  - name: metrics
+    port: 10662
+    targetPort: 10662
+    protocol: TCP
+  selector:
+    app: ovn-gateway
+---
+# ServiceMonitor for Gateway Metrics
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: ovn-gateway
+  namespace: kube-ovn
+  labels:
+    app: ovn-gateway
+spec:
+  selector:
+    matchLabels:
+      app: ovn-gateway
+  endpoints:
+  - port: metrics
+    interval: 30s
+    path: /metrics
+---
+# Load Balancer for Cross-Cluster Services
+apiVersion: kubeovn.io/v1
+kind: SwitchLBRule
+metadata:
+  name: cross-cluster-lb
+  namespace: kube-ovn
+spec:
+  vip: "172.20.255.100"
+  sessionAffinity: "ClientIP"
+  endpoints:
+  - "10.16.1.100:80"    # Central cluster endpoint
+  - "10.244.1.100:80"   # Edge01 cluster endpoint
+  - "10.32.1.100:80"    # Edge02 cluster endpoint
+  vpcName: "ovn-cluster"
+---
+# Gateway Init Job for Node Preparation
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: gateway-node-init
+  namespace: kube-ovn
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      hostNetwork: true
+      tolerations:
+      - operator: Exists
+      serviceAccountName: ovn
+      containers:
+      - name: gateway-init
+        image: kubeovn/kube-ovn:v1.11.5
+        command:
+        - /bin/bash
+        - -c
+        - |
+          set -euo pipefail
+          echo "Initializing gateway nodes..."
+
+          # Label gateway nodes
+          kubectl label nodes --selector='node-role.kubernetes.io/control-plane' ovn-role=gateway --overwrite
+          kubectl label nodes --selector='node-role.kubernetes.io/master' ovn-role=gateway --overwrite
+
+          # Ensure external interface is configured
+          for node in $(kubectl get nodes -l ovn-role=gateway -o name | cut -d'/' -f2); do
+            echo "Configuring gateway node: $node"
+
+            # Add gateway-specific annotations
+            kubectl annotate node $node ovn.kubernetes.io/gateway=true --overwrite
+            kubectl annotate node $node ovn.kubernetes.io/external-interface=eth0 --overwrite
+
+            # Create external bridge if needed
+            if kubectl exec -n kube-ovn ds/ovs-ovn --field-selector spec.nodeName=$node -- \
+               ovs-vsctl br-exists br-ex 2>/dev/null || true; then
+              echo "External bridge already exists on $node"
+            else
+              echo "Creating external bridge on $node"
+              kubectl exec -n kube-ovn ds/ovs-ovn --field-selector spec.nodeName=$node -- \
+                ovs-vsctl --may-exist add-br br-ex
+              kubectl exec -n kube-ovn ds/ovs-ovn --field-selector spec.nodeName=$node -- \
+                ovs-vsctl --may-exist add-port br-ex eth0
+            fi
+          done
+
+          echo "Gateway node initialization completed"
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: kubeconfig
+          mountPath: /root/.kube
+        env:
+        - name: KUBECONFIG
+          value: /root/.kube/config
+      volumes:
+      - name: kubeconfig
+        secret:
+          secretName: kubeconfig
+          optional: true
+---
+# Gateway Configuration Sync DaemonSet
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: gateway-config-sync
+  namespace: kube-ovn
+  labels:
+    app: gateway-config-sync
+spec:
+  selector:
+    matchLabels:
+      app: gateway-config-sync
+  template:
+    metadata:
+      labels:
+        app: gateway-config-sync
+    spec:
+      hostNetwork: true
+      tolerations:
+      - operator: Exists
+      containers:
+      - name: config-sync
+        image: kubeovn/kube-ovn:v1.11.5
+        command:
+        - /bin/bash
+        - -c
+        - |
+          set -euo pipefail
+
+          # Monitor and sync gateway configuration
+          while true; do
+            echo "$(date): Syncing gateway configuration..."
+
+            # Check tunnel interfaces
+            for site in central edge01 edge02; do
+              if ! ovs-vsctl show | grep -q "genev-$site"; then
+                echo "Creating tunnel interface for $site"
+                # Tunnel creation logic would go here
+              fi
+            done
+
+            # Check routing tables
+            ip route show | grep -q "10.16.0.0/12" || echo "Missing route to central"
+            ip route show | grep -q "10.244.0.0/16" || echo "Missing route to edge01"
+            ip route show | grep -q "10.32.0.0/16" || echo "Missing route to edge02"
+
+            sleep 60
+          done
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: run-openvswitch
+          mountPath: /run/openvswitch
+        - name: gateway-config
+          mountPath: /etc/kube-ovn/gateway
+        resources:
+          requests:
+            cpu: 50m
+            memory: 100Mi
+          limits:
+            cpu: 200m
+            memory: 200Mi
+      nodeSelector:
+        ovn-role: "gateway"
+      volumes:
+      - name: run-openvswitch
+        hostPath:
+          path: /run/openvswitch
+      - name: gateway-config
+        configMap:
+          name: gateway-config
+---
+# Gateway Status CRD for monitoring
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: gatewaystatus.kubeovn.io
+spec:
+  group: kubeovn.io
+  versions:
+  - name: v1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              nodeName:
+                type: string
+              tunnelInterfaces:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    remoteIP:
+                      type: string
+                    status:
+                      type: string
+              routes:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    destination:
+                      type: string
+                    nextHop:
+                      type: string
+                    metric:
+                      type: integer
+          status:
+            type: object
+            properties:
+              ready:
+                type: boolean
+              lastUpdated:
+                type: string
+              conditions:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                    status:
+                      type: string
+                    message:
+                      type: string
+  scope: Namespaced
+  names:
+    plural: gatewaystatus
+    singular: gatewaystatus
+    kind: GatewayStatus

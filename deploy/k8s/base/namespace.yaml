@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: oran-mano
+  labels:
+    name: oran-mano
+    app.kubernetes.io/name: oran-mano
+    app.kubernetes.io/version: "v1.0.0"
+    app.kubernetes.io/managed-by: helm
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: oran-edge
+  labels:
+    name: oran-edge
+    app.kubernetes.io/name: oran-edge
+    app.kubernetes.io/version: "v1.0.0"
+    app.kubernetes.io/managed-by: helm
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: oran-core
+  labels:
+    name: oran-core
+    app.kubernetes.io/name: oran-core
+    app.kubernetes.io/version: "v1.0.0"
+    app.kubernetes.io/managed-by: helm
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: oran-monitoring
+  labels:
+    name: oran-monitoring
+    app.kubernetes.io/name: oran-monitoring
+    app.kubernetes.io/version: "v1.0.0"
+    app.kubernetes.io/managed-by: helm

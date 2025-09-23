@@ -1,0 +1,41 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: edge01-gitops
+  annotations:
+    config.kubernetes.io/local-config: "true"
+
+resources:
+  # ConfigSync configuration
+  - configsync/root-sync.yaml
+  - configsync/repo-sync.yaml
+
+  # Nephio package configurations
+  - packages/ran-du-package.yaml
+  - packages/tn-edge-package.yaml
+
+  # Namespace and RBAC
+  - namespace.yaml
+  - rbac.yaml
+
+  # Network policies
+  - network-policies.yaml
+
+patches:
+  - patch: |-
+      - op: replace
+        path: /spec/git/repo
+        value: https://github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing.git
+    target:
+      kind: RootSync
+      name: root-sync
+
+commonLabels:
+  cluster.oran.io/type: edge
+  cluster.oran.io/location: edge01
+  cluster.oran.io/managed-by: gitops
+
+commonAnnotations:
+  config.kubernetes.io/local-config: "true"
+  gitops.oran.io/cluster: edge01

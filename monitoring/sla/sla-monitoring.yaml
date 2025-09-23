@@ -1,0 +1,593 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sla-monitor
+  namespace: oran-monitoring
+  labels:
+    app.kubernetes.io/name: sla-monitor
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/part-of: oran-intent-mano
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: sla-monitor
+  labels:
+    app.kubernetes.io/name: sla-monitor
+    app.kubernetes.io/part-of: oran-intent-mano
+rules:
+- apiGroups: [""]
+  resources: ["pods", "services", "endpoints", "nodes"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets", "statefulsets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["metrics.k8s.io"]
+  resources: ["pods", "nodes"]
+  verbs: ["get", "list"]
+- apiGroups: ["custom.metrics.k8s.io"]
+  resources: ["*"]
+  verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: sla-monitor
+  labels:
+    app.kubernetes.io/name: sla-monitor
+    app.kubernetes.io/part-of: oran-intent-mano
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: sla-monitor
+subjects:
+- kind: ServiceAccount
+  name: sla-monitor
+  namespace: oran-monitoring
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sla-monitor-config
+  namespace: oran-monitoring
+  labels:
+    app.kubernetes.io/name: sla-monitor
+    app.kubernetes.io/part-of: oran-intent-mano
+data:
+  config.yaml: |
+    # O-RAN Intent MANO SLA Monitoring Configuration
+
+    sla_targets:
+      # Thesis Performance Targets
+      deployment_time:
+        target: 600  # 10 minutes in seconds
+        warning_threshold: 480  # 8 minutes
+        critical_threshold: 720  # 12 minutes
+        metric_query: "oran:slice_deployment_duration_seconds:rate5m"
+        description: "E2E slice deployment time must be under 10 minutes"
+
+      throughput_embb:
+        target: 4.57  # Mbps
+        warning_threshold: 4.11  # 90% of target
+        critical_threshold: 3.66  # 80% of target
+        metric_query: "oran:network_slice_throughput_mbps:rate5m{slice_type=\"embb\"}"
+        description: "eMBB slice throughput target"
+
+      throughput_urllc:
+        target: 2.77  # Mbps
+        warning_threshold: 2.49  # 90% of target
+        critical_threshold: 2.22  # 80% of target
+        metric_query: "oran:network_slice_throughput_mbps:rate5m{slice_type=\"urllc\"}"
+        description: "URLLC slice throughput target"
+
+      throughput_mmtc:
+        target: 0.93  # Mbps
+        warning_threshold: 0.84  # 90% of target
+        critical_threshold: 0.74  # 80% of target
+        metric_query: "oran:network_slice_throughput_mbps:rate5m{slice_type=\"mmtc\"}"
+        description: "mMTC slice throughput target"
+
+      latency_embb:
+        target: 16.1  # milliseconds
+        warning_threshold: 18.0  # 110% of target
+        critical_threshold: 20.0  # 125% of target
+        metric_query: "oran:ping_rtt_milliseconds:avg5m{slice_type=\"embb\"}"
+        description: "eMBB slice latency target"
+        invert: true  # Lower is better
+
+      latency_urllc:
+        target: 15.7  # milliseconds
+        warning_threshold: 17.5  # 110% of target
+        critical_threshold: 20.0  # 125% of target
+        metric_query: "oran:ping_rtt_milliseconds:avg5m{slice_type=\"urllc\"}"
+        description: "URLLC slice latency target"
+        invert: true  # Lower is better
+
+      latency_mmtc:
+        target: 6.3  # milliseconds
+        warning_threshold: 7.0   # 110% of target
+        critical_threshold: 8.0  # 125% of target
+        metric_query: "oran:ping_rtt_milliseconds:avg5m{slice_type=\"mmtc\"}"
+        description: "mMTC slice latency target"
+        invert: true  # Lower is better
+
+    # System-level SLA targets
+    system_sla:
+      availability:
+        target: 99.9  # 99.9% uptime
+        warning_threshold: 99.5
+        critical_threshold: 99.0
+        metric_query: "avg(up{job=~\"oran-.*\"})"
+        description: "O-RAN component availability"
+
+      error_rate:
+        target: 0.01  # 1% error rate
+        warning_threshold: 0.05  # 5%
+        critical_threshold: 0.10  # 10%
+        metric_query: "oran:error_rate:5m"
+        description: "Overall system error rate"
+        invert: true  # Lower is better
+
+    # Performance regression detection
+    regression_detection:
+      enabled: true
+      lookback_period: "24h"
+      threshold_percentage: 15  # 15% performance degradation
+      min_samples: 10
+
+    # SLA reporting
+    reporting:
+      enabled: true
+      interval: "1h"
+      retention: "30d"
+      export_formats: ["json", "csv", "prometheus"]
+
+    # Notifications
+    notifications:
+      sla_violation:
+        webhook_url: "http://alertmanager:9093/api/v1/alerts"
+        severity_mapping:
+          warning: "warning"
+          critical: "critical"
+
+      performance_regression:
+        webhook_url: "http://alertmanager:9093/api/v1/alerts"
+        severity: "warning"
+
+  sla-monitor.py: |
+    #!/usr/bin/env python3
+    """
+    O-RAN Intent MANO SLA Monitor
+
+    Monitors thesis performance targets and generates SLA compliance reports.
+    """
+
+    import os
+    import time
+    import json
+    import yaml
+    import logging
+    import requests
+    from datetime import datetime, timedelta
+    from dataclasses import dataclass
+    from typing import Dict, List, Optional
+
+    # Configure logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    logger = logging.getLogger('sla-monitor')
+
+    @dataclass
+    class SLATarget:
+        name: str
+        target: float
+        warning_threshold: float
+        critical_threshold: float
+        metric_query: str
+        description: str
+        invert: bool = False
+
+    @dataclass
+    class SLAResult:
+        timestamp: datetime
+        target_name: str
+        current_value: float
+        target_value: float
+        compliance_percentage: float
+        status: str  # 'ok', 'warning', 'critical'
+
+    class SLAMonitor:
+        def __init__(self, config_path: str = '/etc/sla-monitor/config.yaml'):
+            with open(config_path, 'r') as f:
+                self.config = yaml.safe_load(f)
+
+            self.prometheus_url = os.getenv('PROMETHEUS_URL', 'http://prometheus:9090')
+            self.results: List[SLAResult] = []
+
+        def query_prometheus(self, query: str) -> Optional[float]:
+            """Query Prometheus for metric value"""
+            try:
+                url = f"{self.prometheus_url}/api/v1/query"
+                params = {'query': query}
+                response = requests.get(url, params=params, timeout=10)
+                response.raise_for_status()
+
+                data = response.json()
+                if data['status'] == 'success' and data['data']['result']:
+                    result = data['data']['result'][0]
+                    return float(result['value'][1])
+                return None
+            except Exception as e:
+                logger.error(f"Failed to query Prometheus: {e}")
+                return None
+
+        def evaluate_sla_target(self, target_config: Dict) -> Optional[SLAResult]:
+            """Evaluate a single SLA target"""
+            current_value = self.query_prometheus(target_config['metric_query'])
+            if current_value is None:
+                logger.warning(f"No data for metric: {target_config['metric_query']}")
+                return None
+
+            target = SLATarget(
+                name=target_config.get('name', 'unknown'),
+                target=target_config['target'],
+                warning_threshold=target_config['warning_threshold'],
+                critical_threshold=target_config['critical_threshold'],
+                metric_query=target_config['metric_query'],
+                description=target_config['description'],
+                invert=target_config.get('invert', False)
+            )
+
+            # Calculate compliance
+            if target.invert:
+                # For latency metrics - lower is better
+                if current_value <= target.target:
+                    compliance_percentage = 100.0
+                    status = 'ok'
+                elif current_value <= target.warning_threshold:
+                    compliance_percentage = (target.warning_threshold - current_value) / (target.warning_threshold - target.target) * 100
+                    status = 'warning'
+                elif current_value <= target.critical_threshold:
+                    compliance_percentage = (target.critical_threshold - current_value) / (target.critical_threshold - target.target) * 100
+                    status = 'critical'
+                else:
+                    compliance_percentage = 0.0
+                    status = 'critical'
+            else:
+                # For throughput metrics - higher is better
+                if current_value >= target.target:
+                    compliance_percentage = 100.0
+                    status = 'ok'
+                elif current_value >= target.warning_threshold:
+                    compliance_percentage = (current_value / target.target) * 100
+                    status = 'warning'
+                elif current_value >= target.critical_threshold:
+                    compliance_percentage = (current_value / target.target) * 100
+                    status = 'critical'
+                else:
+                    compliance_percentage = (current_value / target.target) * 100
+                    status = 'critical'
+
+            return SLAResult(
+                timestamp=datetime.now(),
+                target_name=target.name,
+                current_value=current_value,
+                target_value=target.target,
+                compliance_percentage=compliance_percentage,
+                status=status
+            )
+
+        def detect_performance_regression(self, target_name: str) -> bool:
+            """Detect performance regression for a target"""
+            if not self.config['regression_detection']['enabled']:
+                return False
+
+            lookback = self.config['regression_detection']['lookback_period']
+            threshold = self.config['regression_detection']['threshold_percentage']
+
+            # Query historical performance
+            query = f"avg_over_time({self.config['sla_targets'][target_name]['metric_query']}[{lookback}])"
+            historical_avg = self.query_prometheus(query)
+
+            if historical_avg is None:
+                return False
+
+            # Get current value
+            current_query = self.config['sla_targets'][target_name]['metric_query']
+            current_value = self.query_prometheus(current_query)
+
+            if current_value is None:
+                return False
+
+            # Calculate performance change
+            invert = self.config['sla_targets'][target_name].get('invert', False)
+            if invert:
+                # For latency - increase is bad
+                change_percentage = ((current_value - historical_avg) / historical_avg) * 100
+            else:
+                # For throughput - decrease is bad
+                change_percentage = ((historical_avg - current_value) / historical_avg) * 100
+
+            return change_percentage > threshold
+
+        def generate_sla_report(self) -> Dict:
+            """Generate comprehensive SLA report"""
+            report = {
+                'timestamp': datetime.now().isoformat(),
+                'report_period': '5m',
+                'overall_compliance': 0.0,
+                'targets': {},
+                'violations': [],
+                'performance_regressions': []
+            }
+
+            total_compliance = 0.0
+            target_count = 0
+
+            # Evaluate each SLA target
+            for target_name, target_config in self.config['sla_targets'].items():
+                target_config['name'] = target_name
+                result = self.evaluate_sla_target(target_config)
+
+                if result:
+                    report['targets'][target_name] = {
+                        'current_value': result.current_value,
+                        'target_value': result.target_value,
+                        'compliance_percentage': result.compliance_percentage,
+                        'status': result.status,
+                        'description': target_config['description']
+                    }
+
+                    total_compliance += result.compliance_percentage
+                    target_count += 1
+
+                    # Track violations
+                    if result.status in ['warning', 'critical']:
+                        report['violations'].append({
+                            'target': target_name,
+                            'status': result.status,
+                            'current_value': result.current_value,
+                            'target_value': result.target_value,
+                            'compliance_percentage': result.compliance_percentage
+                        })
+
+                    # Check for performance regression
+                    if self.detect_performance_regression(target_name):
+                        report['performance_regressions'].append({
+                            'target': target_name,
+                            'description': f"Performance regression detected for {target_name}"
+                        })
+
+            # Calculate overall compliance
+            if target_count > 0:
+                report['overall_compliance'] = total_compliance / target_count
+
+            return report
+
+        def send_notification(self, report: Dict):
+            """Send notification for SLA violations"""
+            violations = report.get('violations', [])
+            regressions = report.get('performance_regressions', [])
+
+            if not violations and not regressions:
+                return
+
+            notification_config = self.config.get('notifications', {})
+            webhook_url = notification_config.get('sla_violation', {}).get('webhook_url')
+
+            if not webhook_url:
+                return
+
+            # Prepare alert payload for Alertmanager
+            alerts = []
+
+            for violation in violations:
+                alerts.append({
+                    'labels': {
+                        'alertname': 'ORanSlaViolation',
+                        'severity': violation['status'],
+                        'target': violation['target'],
+                        'component': 'sla-monitor'
+                    },
+                    'annotations': {
+                        'summary': f"SLA violation for {violation['target']}",
+                        'description': f"Current value: {violation['current_value']}, Target: {violation['target_value']}, Compliance: {violation['compliance_percentage']:.1f}%"
+                    },
+                    'startsAt': datetime.now().isoformat() + 'Z'
+                })
+
+            for regression in regressions:
+                alerts.append({
+                    'labels': {
+                        'alertname': 'ORanPerformanceRegression',
+                        'severity': 'warning',
+                        'target': regression['target'],
+                        'component': 'sla-monitor'
+                    },
+                    'annotations': {
+                        'summary': f"Performance regression detected for {regression['target']}",
+                        'description': regression['description']
+                    },
+                    'startsAt': datetime.now().isoformat() + 'Z'
+                })
+
+            if alerts:
+                try:
+                    response = requests.post(webhook_url, json=alerts, timeout=10)
+                    response.raise_for_status()
+                    logger.info(f"Sent {len(alerts)} alerts to Alertmanager")
+                except Exception as e:
+                    logger.error(f"Failed to send notification: {e}")
+
+        def export_metrics(self, report: Dict):
+            """Export SLA metrics to Prometheus"""
+            # This would typically use a Prometheus client library
+            # For now, log the metrics
+            logger.info(f"SLA Report: Overall Compliance: {report['overall_compliance']:.1f}%")
+            logger.info(f"Violations: {len(report['violations'])}")
+            logger.info(f"Performance Regressions: {len(report['performance_regressions'])}")
+
+        def run_monitoring_cycle(self):
+            """Run a single monitoring cycle"""
+            logger.info("Starting SLA monitoring cycle")
+
+            try:
+                report = self.generate_sla_report()
+                self.send_notification(report)
+                self.export_metrics(report)
+
+                # Log summary
+                logger.info(f"SLA monitoring completed - Overall compliance: {report['overall_compliance']:.1f}%")
+
+            except Exception as e:
+                logger.error(f"Error in monitoring cycle: {e}")
+
+        def run(self):
+            """Main monitoring loop"""
+            interval = self.config.get('reporting', {}).get('interval', '1h')
+            # Convert interval to seconds (simplified - assumes format like "1h", "30m")
+            if interval.endswith('h'):
+                sleep_time = int(interval[:-1]) * 3600
+            elif interval.endswith('m'):
+                sleep_time = int(interval[:-1]) * 60
+            else:
+                sleep_time = 300  # Default 5 minutes
+
+            logger.info(f"Starting SLA monitor with {interval} interval")
+
+            while True:
+                self.run_monitoring_cycle()
+                time.sleep(sleep_time)
+
+    if __name__ == '__main__':
+        monitor = SLAMonitor()
+        monitor.run()
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sla-monitor
+  namespace: oran-monitoring
+  labels:
+    app.kubernetes.io/name: sla-monitor
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/part-of: oran-intent-mano
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: sla-monitor
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: sla-monitor
+        app.kubernetes.io/component: monitoring
+        app.kubernetes.io/part-of: oran-intent-mano
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: sla-monitor
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: sla-monitor
+        image: python:3.11-slim
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 10001
+          runAsGroup: 10001
+        command:
+        - /bin/sh
+        - -c
+        args:
+        - |
+          pip install --no-cache-dir requests pyyaml prometheus_client
+          python /etc/sla-monitor/sla-monitor.py
+        env:
+        - name: PROMETHEUS_URL
+          value: "http://prometheus:9090"
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        ports:
+        - containerPort: 8080
+          name: metrics
+          protocol: TCP
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - "ps aux | grep sla-monitor.py | grep -v grep"
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - "ps aux | grep sla-monitor.py | grep -v grep"
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
+        volumeMounts:
+        - name: sla-monitor-config
+          mountPath: /etc/sla-monitor
+        - name: tmp
+          mountPath: /tmp
+      volumes:
+      - name: sla-monitor-config
+        configMap:
+          name: sla-monitor-config
+      - name: tmp
+        emptyDir: {}
+      nodeSelector:
+        kubernetes.io/os: linux
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sla-monitor
+  namespace: oran-monitoring
+  labels:
+    app.kubernetes.io/name: sla-monitor
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/part-of: oran-intent-mano
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8080"
+spec:
+  type: ClusterIP
+  ports:
+  - name: metrics
+    port: 8080
+    targetPort: metrics
+    protocol: TCP
+  selector:
+    app.kubernetes.io/name: sla-monitor

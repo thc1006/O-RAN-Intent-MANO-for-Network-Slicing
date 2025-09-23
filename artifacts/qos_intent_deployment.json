@@ -1,0 +1,2339 @@
+{
+  "allocations": [
+    {
+      "slice_id": "slice-eMBB-001",
+      "qos": {
+        "bandwidth": 5,
+        "latency": 9,
+        "slice_type": "eMBB",
+        "packet_loss": 0.1
+      },
+      "placement": {
+        "network_function": {
+          "id": "slice-eMBB-001",
+          "type": "eMBB",
+          "requirements": {
+            "min_cpu_cores": 1,
+            "min_memory_gb": 1,
+            "min_storage_gb": 2,
+            "min_bandwidth_mbps": 5
+          },
+          "qos_requirements": {
+            "max_latency_ms": 18,
+            "min_throughput_mbps": 5,
+            "max_packet_loss_rate": 0.01,
+            "max_jitter_ms": 10
+          }
+        },
+        "site": {
+          "id": "regional01",
+          "name": "Regional Site 01",
+          "type": "regional",
+          "location": {
+            "latitude": 40.7589,
+            "longitude": -73.9851,
+            "region": "us-east",
+            "zone": "us-east-1b"
+          },
+          "capacity": {
+            "cpu_cores": 64,
+            "memory_gb": 256,
+            "storage_gb": 5000,
+            "bandwidth_mbps": 50
+          },
+          "network_profile": {
+            "base_latency_ms": 5,
+            "max_throughput_mbps": 20,
+            "packet_loss_rate": 0.0001,
+            "jitter_ms": 1
+          },
+          "available": true
+        },
+        "score": 87.27777777777777,
+        "reason": "Placed eMBB on Regional Site 01 (regional cloud) for high bandwidth (20.0 Mbps available)",
+        "alternatives": [
+          {
+            "site": {
+              "id": "edge01",
+              "name": "Edge Site 01",
+              "type": "edge",
+              "location": {
+                "latitude": 40.7128,
+                "longitude": -74.006,
+                "region": "us-east",
+                "zone": "us-east-1a"
+              },
+              "capacity": {
+                "cpu_cores": 16,
+                "memory_gb": 64,
+                "storage_gb": 1000,
+                "bandwidth_mbps": 10
+              },
+              "network_profile": {
+                "base_latency_ms": 1,
+                "max_throughput_mbps": 5,
+                "packet_loss_rate": 0.001,
+                "jitter_ms": 0.5
+              },
+              "available": true
+            },
+            "score": 83.05555555555554
+          },
+          {
+            "site": {
+              "id": "central01",
+              "name": "Central Site 01",
+              "type": "central",
+              "location": {
+                "latitude": 39.0458,
+                "longitude": -76.6413,
+                "region": "us-east",
+                "zone": "us-east-1c"
+              },
+              "capacity": {
+                "cpu_cores": 256,
+                "memory_gb": 1024,
+                "storage_gb": 20000,
+                "bandwidth_mbps": 100
+              },
+              "network_profile": {
+                "base_latency_ms": 10,
+                "max_throughput_mbps": 50,
+                "packet_loss_rate": 0.00001,
+                "jitter_ms": 2
+              },
+              "available": true
+            },
+            "score": 76.55555555555556
+          }
+        ],
+        "timestamp": "2025-09-23T05:10:09.8066801+08:00"
+      },
+      "resources": {
+        "ran_resources": {
+          "antennas": 5,
+          "cpu_cores": 1.5,
+          "frequency_mhz": 4000,
+          "memory_mb": 640
+        },
+        "cn_resources": {
+          "cpu_cores": 2,
+          "memory_mb": 1280,
+          "storage_gb": 10,
+          "upf_capacity": 50
+        },
+        "tn_resources": {
+          "bandwidth_mbps": 5,
+          "latency_budget_ms": 9,
+          "qos_class": "eMBB",
+          "vlan_id": 1050
+        }
+      },
+      "status": "deployed"
+    },
+    {
+      "slice_id": "slice-eMBB-002",
+      "qos": {
+        "bandwidth": 5,
+        "latency": 9,
+        "slice_type": "eMBB",
+        "packet_loss": 0.1
+      },
+      "placement": {
+        "network_function": {
+          "id": "slice-eMBB-002",
+          "type": "eMBB",
+          "requirements": {
+            "min_cpu_cores": 1,
+            "min_memory_gb": 1,
+            "min_storage_gb": 2,
+            "min_bandwidth_mbps": 5
+          },
+          "qos_requirements": {
+            "max_latency_ms": 18,
+            "min_throughput_mbps": 5,
+            "max_packet_loss_rate": 0.01,
+            "max_jitter_ms": 10
+          }
+        },
+        "site": {
+          "id": "regional01",
+          "name": "Regional Site 01",
+          "type": "regional",
+          "location": {
+            "latitude": 40.7589,
+            "longitude": -73.9851,
+            "region": "us-east",
+            "zone": "us-east-1b"
+          },
+          "capacity": {
+            "cpu_cores": 64,
+            "memory_gb": 256,
+            "storage_gb": 5000,
+            "bandwidth_mbps": 50
+          },
+          "network_profile": {
+            "base_latency_ms": 5,
+            "max_throughput_mbps": 20,
+            "packet_loss_rate": 0.0001,
+            "jitter_ms": 1
+          },
+          "available": true
+        },
+        "score": 87.27777777777777,
+        "reason": "Placed eMBB on Regional Site 01 (regional cloud) for high bandwidth (20.0 Mbps available)",
+        "alternatives": [
+          {
+            "site": {
+              "id": "edge01",
+              "name": "Edge Site 01",
+              "type": "edge",
+              "location": {
+                "latitude": 40.7128,
+                "longitude": -74.006,
+                "region": "us-east",
+                "zone": "us-east-1a"
+              },
+              "capacity": {
+                "cpu_cores": 16,
+                "memory_gb": 64,
+                "storage_gb": 1000,
+                "bandwidth_mbps": 10
+              },
+              "network_profile": {
+                "base_latency_ms": 1,
+                "max_throughput_mbps": 5,
+                "packet_loss_rate": 0.001,
+                "jitter_ms": 0.5
+              },
+              "available": true
+            },
+            "score": 83.05555555555554
+          },
+          {
+            "site": {
+              "id": "central01",
+              "name": "Central Site 01",
+              "type": "central",
+              "location": {
+                "latitude": 39.0458,
+                "longitude": -76.6413,
+                "region": "us-east",
+                "zone": "us-east-1c"
+              },
+              "capacity": {
+                "cpu_cores": 256,
+                "memory_gb": 1024,
+                "storage_gb": 20000,
+                "bandwidth_mbps": 100
+              },
+              "network_profile": {
+                "base_latency_ms": 10,
+                "max_throughput_mbps": 50,
+                "packet_loss_rate": 0.00001,
+                "jitter_ms": 2
+              },
+              "available": true
+            },
+            "score": 76.55555555555556
+          }
+        ],
+        "timestamp": "2025-09-23T05:10:09.8066801+08:00"
+      },
+      "resources": {
+        "ran_resources": {
+          "antennas": 5,
+          "cpu_cores": 1.5,
+          "frequency_mhz": 4000,
+          "memory_mb": 640
+        },
+        "cn_resources": {
+          "cpu_cores": 2,
+          "memory_mb": 1280,
+          "storage_gb": 10,
+          "upf_capacity": 50
+        },
+        "tn_resources": {
+          "bandwidth_mbps": 5,
+          "latency_budget_ms": 9,
+          "qos_class": "eMBB",
+          "vlan_id": 1050
+        }
+      },
+      "status": "deployed"
+    },
+    {
+      "slice_id": "slice-eMBB-003",
+      "qos": {
+        "bandwidth": 5,
+        "latency": 9,
+        "slice_type": "eMBB",
+        "packet_loss": 0.1
+      },
+      "placement": {
+        "network_function": {
+          "id": "slice-eMBB-003",
+          "type": "eMBB",
+          "requirements": {
+            "min_cpu_cores": 1,
+            "min_memory_gb": 1,
+            "min_storage_gb": 2,
+            "min_bandwidth_mbps": 5
+          },
+          "qos_requirements": {
+            "max_latency_ms": 18,
+            "min_throughput_mbps": 5,
+            "max_packet_loss_rate": 0.01,
+            "max_jitter_ms": 10
+          }
+        },
+        "site": {
+          "id": "regional01",
+          "name": "Regional Site 01",
+          "type": "regional",
+          "location": {
+            "latitude": 40.7589,
+            "longitude": -73.9851,
+            "region": "us-east",
+            "zone": "us-east-1b"
+          },
+          "capacity": {
+            "cpu_cores": 64,
+            "memory_gb": 256,
+            "storage_gb": 5000,
+            "bandwidth_mbps": 50
+          },
+          "network_profile": {
+            "base_latency_ms": 5,
+            "max_throughput_mbps": 20,
+            "packet_loss_rate": 0.0001,
+            "jitter_ms": 1
+          },
+          "available": true
+        },
+        "score": 87.27777777777777,
+        "reason": "Placed eMBB on Regional Site 01 (regional cloud) for high bandwidth (20.0 Mbps available)",
+        "alternatives": [
+          {
+            "site": {
+              "id": "edge01",
+              "name": "Edge Site 01",
+              "type": "edge",
+              "location": {
+                "latitude": 40.7128,
+                "longitude": -74.006,
+                "region": "us-east",
+                "zone": "us-east-1a"
+              },
+              "capacity": {
+                "cpu_cores": 16,
+                "memory_gb": 64,
+                "storage_gb": 1000,
+                "bandwidth_mbps": 10
+              },
+              "network_profile": {
+                "base_latency_ms": 1,
+                "max_throughput_mbps": 5,
+                "packet_loss_rate": 0.001,
+                "jitter_ms": 0.5
+              },
+              "available": true
+            },
+            "score": 83.05555555555554
+          },
+          {
+            "site": {
+              "id": "central01",
+              "name": "Central Site 01",
+              "type": "central",
+              "location": {
+                "latitude": 39.0458,
+                "longitude": -76.6413,
+                "region": "us-east",
+                "zone": "us-east-1c"
+              },
+              "capacity": {
+                "cpu_cores": 256,
+                "memory_gb": 1024,
+                "storage_gb": 20000,
+                "bandwidth_mbps": 100
+              },
+              "network_profile": {
+                "base_latency_ms": 10,
+                "max_throughput_mbps": 50,
+                "packet_loss_rate": 0.00001,
+                "jitter_ms": 2
+              },
+              "available": true
+            },
+            "score": 76.55555555555556
+          }
+        ],
+        "timestamp": "2025-09-23T05:10:09.8066801+08:00"
+      },
+      "resources": {
+        "ran_resources": {
+          "antennas": 5,
+          "cpu_cores": 1.5,
+          "frequency_mhz": 4000,
+          "memory_mb": 640
+        },
+        "cn_resources": {
+          "cpu_cores": 2,
+          "memory_mb": 1280,
+          "storage_gb": 10,
+          "upf_capacity": 50
+        },
+        "tn_resources": {
+          "bandwidth_mbps": 5,
+          "latency_budget_ms": 9,
+          "qos_class": "eMBB",
+          "vlan_id": 1050
+        }
+      },
+      "status": "deployed"
+    },
+    {
+      "slice_id": "slice-eMBB-004",
+      "qos": {
+        "bandwidth": 5,
+        "latency": 9,
+        "slice_type": "eMBB"
+      },
+      "placement": {
+        "network_function": {
+          "id": "slice-eMBB-004",
+          "type": "eMBB",
+          "requirements": {
+            "min_cpu_cores": 1,
+            "min_memory_gb": 1,
+            "min_storage_gb": 2,
+            "min_bandwidth_mbps": 5
+          },
+          "qos_requirements": {
+            "max_latency_ms": 18,
+            "min_throughput_mbps": 5,
+            "max_packet_loss_rate": 0.01,
+            "max_jitter_ms": 10
+          }
+        },
+        "site": {
+          "id": "regional01",
+          "name": "Regional Site 01",
+          "type": "regional",
+          "location": {
+            "latitude": 40.7589,
+            "longitude": -73.9851,
+            "region": "us-east",
+            "zone": "us-east-1b"
+          },
+          "capacity": {
+            "cpu_cores": 64,
+            "memory_gb": 256,
+            "storage_gb": 5000,
+            "bandwidth_mbps": 50
+          },
+          "network_profile": {
+            "base_latency_ms": 5,
+            "max_throughput_mbps": 20,
+            "packet_loss_rate": 0.0001,
+            "jitter_ms": 1
+          },
+          "available": true
+        },
+        "score": 87.27777777777777,
+        "reason": "Placed eMBB on Regional Site 01 (regional cloud) for high bandwidth (20.0 Mbps available)",
+        "alternatives": [
+          {
+            "site": {
+              "id": "edge01",
+              "name": "Edge Site 01",
+              "type": "edge",
+              "location": {
+                "latitude": 40.7128,
+                "longitude": -74.006,
+                "region": "us-east",
+                "zone": "us-east-1a"
+              },
+              "capacity": {
+                "cpu_cores": 16,
+                "memory_gb": 64,
+                "storage_gb": 1000,
+                "bandwidth_mbps": 10
+              },
+              "network_profile": {
+                "base_latency_ms": 1,
+                "max_throughput_mbps": 5,
+                "packet_loss_rate": 0.001,
+                "jitter_ms": 0.5
+              },
+              "available": true
+            },
+            "score": 83.05555555555554
+          },
+          {
+            "site": {
+              "id": "central01",
+              "name": "Central Site 01",
+              "type": "central",
+              "location": {
+                "latitude": 39.0458,
+                "longitude": -76.6413,
+                "region": "us-east",
+                "zone": "us-east-1c"
+              },
+              "capacity": {
+                "cpu_cores": 256,
+                "memory_gb": 1024,
+                "storage_gb": 20000,
+                "bandwidth_mbps": 100
+              },
+              "network_profile": {
+                "base_latency_ms": 10,
+                "max_throughput_mbps": 50,
+                "packet_loss_rate": 0.00001,
+                "jitter_ms": 2
+              },
+              "available": true
+            },
+            "score": 76.55555555555556
+          }
+        ],
+        "timestamp": "2025-09-23T05:10:09.8066801+08:00"
+      },
+      "resources": {
+        "ran_resources": {
+          "antennas": 5,
+          "cpu_cores": 1.5,
+          "frequency_mhz": 4000,
+          "memory_mb": 640
+        },
+        "cn_resources": {
+          "cpu_cores": 2,
+          "memory_mb": 1280,
+          "storage_gb": 10,
+          "upf_capacity": 50
+        },
+        "tn_resources": {
+          "bandwidth_mbps": 5,
+          "latency_budget_ms": 9,
+          "qos_class": "eMBB",
+          "vlan_id": 1050
+        }
+      },
+      "status": "deployed"
+    },
+    {
+      "slice_id": "slice-eMBB-005",
+      "qos": {
+        "bandwidth": 5,
+        "latency": 9,
+        "slice_type": "eMBB"
+      },
+      "placement": {
+        "network_function": {
+          "id": "slice-eMBB-005",
+          "type": "eMBB",
+          "requirements": {
+            "min_cpu_cores": 1,
+            "min_memory_gb": 1,
+            "min_storage_gb": 2,
+            "min_bandwidth_mbps": 5
+          },
+          "qos_requirements": {
+            "max_latency_ms": 18,
+            "min_throughput_mbps": 5,
+            "max_packet_loss_rate": 0.01,
+            "max_jitter_ms": 10
+          }
+        },
+        "site": {
+          "id": "regional01",
+          "name": "Regional Site 01",
+          "type": "regional",
+          "location": {
+            "latitude": 40.7589,
+            "longitude": -73.9851,
+            "region": "us-east",
+            "zone": "us-east-1b"
+          },
+          "capacity": {
+            "cpu_cores": 64,
+            "memory_gb": 256,
+            "storage_gb": 5000,
+            "bandwidth_mbps": 50
+          },
+          "network_profile": {
+            "base_latency_ms": 5,
+            "max_throughput_mbps": 20,
+            "packet_loss_rate": 0.0001,
+            "jitter_ms": 1
+          },
+          "available": true
+        },
+        "score": 87.27777777777777,
+        "reason": "Placed eMBB on Regional Site 01 (regional cloud) for high bandwidth (20.0 Mbps available)",
+        "alternatives": [
+          {
+            "site": {
+              "id": "edge01",
+              "name": "Edge Site 01",
+              "type": "edge",
+              "location": {
+                "latitude": 40.7128,
+                "longitude": -74.006,
+                "region": "us-east",
+                "zone": "us-east-1a"
+              },
+              "capacity": {
+                "cpu_cores": 16,
+                "memory_gb": 64,
+                "storage_gb": 1000,
+                "bandwidth_mbps": 10
+              },
+              "network_profile": {
+                "base_latency_ms": 1,
+                "max_throughput_mbps": 5,
+                "packet_loss_rate": 0.001,
+                "jitter_ms": 0.5
+              },
+              "available": true
+            },
+            "score": 83.05555555555554
+          },
+          {
+            "site": {
+              "id": "central01",
+              "name": "Central Site 01",
+              "type": "central",
+              "location": {
+                "latitude": 39.0458,
+                "longitude": -76.6413,
+                "region": "us-east",
+                "zone": "us-east-1c"
+              },
+              "capacity": {
+                "cpu_cores": 256,
+                "memory_gb": 1024,
+                "storage_gb": 20000,
+                "bandwidth_mbps": 100
+              },
+              "network_profile": {
+                "base_latency_ms": 10,
+                "max_throughput_mbps": 50,
+                "packet_loss_rate": 0.00001,
+                "jitter_ms": 2
+              },
+              "available": true
+            },
+            "score": 76.55555555555556
+          }
+        ],
+        "timestamp": "2025-09-23T05:10:09.8066801+08:00"
+      },
+      "resources": {
+        "ran_resources": {
+          "antennas": 5,
+          "cpu_cores": 1.5,
+          "frequency_mhz": 4000,
+          "memory_mb": 640
+        },
+        "cn_resources": {
+          "cpu_cores": 2,
+          "memory_mb": 1280,
+          "storage_gb": 10,
+          "upf_capacity": 50
+        },
+        "tn_resources": {
+          "bandwidth_mbps": 5,
+          "latency_budget_ms": 9,
+          "qos_class": "eMBB",
+          "vlan_id": 1050
+        }
+      },
+      "status": "deployed"
+    },
+    {
+      "slice_id": "slice-uRLLC-006",
+      "qos": {
+        "bandwidth": 1,
+        "latency": 1,
+        "slice_type": "uRLLC",
+        "reliability": 99.99
+      },
+      "placement": {
+        "network_function": {
+          "id": "slice-uRLLC-006",
+          "type": "uRLLC",
+          "requirements": {
+            "min_cpu_cores": 1,
+            "min_memory_gb": 1,
+            "min_storage_gb": 1,
+            "min_bandwidth_mbps": 1
+          },
+          "qos_requirements": {
+            "max_latency_ms": 2,
+            "min_throughput_mbps": 1,
+            "max_packet_loss_rate": 0.01,
+            "max_jitter_ms": 10
+          }
+        },
+        "site": {
+          "id": "edge01",
+          "name": "Edge Site 01",
+          "type": "edge",
+          "location": {
+            "latitude": 40.7128,
+            "longitude": -74.006,
+            "region": "us-east",
+            "zone": "us-east-1a"
+          },
+          "capacity": {
+            "cpu_cores": 16,
+            "memory_gb": 64,
+            "storage_gb": 1000,
+            "bandwidth_mbps": 10
+          },
+          "network_profile": {
+            "base_latency_ms": 1,
+            "max_throughput_mbps": 5,
+            "packet_loss_rate": 0.001,
+            "jitter_ms": 0.5
+          },
+          "available": true
+        },
+        "score": 77.5,
+        "reason": "Placed uRLLC on Edge Site 01 (edge cloud) for ultra-low latency (1.0ms)",
+        "timestamp": "2025-09-23T05:10:09.8066801+08:00"
+      },
+      "resources": {
+        "ran_resources": {
+          "antennas": 1,
+          "cpu_cores": 0.3,
+          "frequency_mhz": 3600,
+          "memory_mb": 128
+        },
+        "cn_resources": {
+          "cpu_cores": 0.4,
+          "memory_mb": 256,
+          "storage_gb": 2,
+          "upf_capacity": 10
+        },
+        "tn_resources": {
+          "bandwidth_mbps": 1,
+          "latency_budget_ms": 1,
+          "qos_class": "uRLLC",
+          "vlan_id": 1010
+        }
+      },
+      "status": "deployed"
+    },
+    {
+      "slice_id": "slice-uRLLC-007",
+      "qos": {
+        "bandwidth": 1,
+        "latency": 1,
+        "slice_type": "uRLLC"
+      },
+      "placement": {
+        "network_function": {
+          "id": "slice-uRLLC-007",
+          "type": "uRLLC",
+          "requirements": {
+            "min_cpu_cores": 1,
+            "min_memory_gb": 1,
+            "min_storage_gb": 1,
+            "min_bandwidth_mbps": 1
+          },
+          "qos_requirements": {
+            "max_latency_ms": 2,
+            "min_throughput_mbps": 1,
+            "max_packet_loss_rate": 0.01,
+            "max_jitter_ms": 10
+          }
+        },
+        "site": {
+          "id": "edge01",
+          "name": "Edge Site 01",
+          "type": "edge",
+          "location": {
+            "latitude": 40.7128,
+            "longitude": -74.006,
+            "region": "us-east",
+            "zone": "us-east-1a"
+          },
+          "capacity": {
+            "cpu_cores": 16,
+            "memory_gb": 64,
+            "storage_gb": 1000,
+            "bandwidth_mbps": 10
+          },
+          "network_profile": {
+            "base_latency_ms": 1,
+            "max_throughput_mbps": 5,
+            "packet_loss_rate": 0.001,
+            "jitter_ms": 0.5
+          },
+          "available": true
+        },
+        "score": 77.5,
+        "reason": "Placed uRLLC on Edge Site 01 (edge cloud) for ultra-low latency (1.0ms)",
+        "timestamp": "2025-09-23T05:10:09.8066801+08:00"
+      },
+      "resources": {
+        "ran_resources": {
+          "antennas": 1,
+          "cpu_cores": 0.3,
+          "frequency_mhz": 3600,
+          "memory_mb": 128
+        },
+        "cn_resources": {
+          "cpu_cores": 0.4,
+          "memory_mb": 256,
+          "storage_gb": 2,
+          "upf_capacity": 10
+        },
+        "tn_resources": {
+          "bandwidth_mbps": 1,
+          "latency_budget_ms": 1,
+          "qos_class": "uRLLC",
+          "vlan_id": 1010
+        }
+      },
+      "status": "deployed"
+    },
+    {
+      "slice_id": "slice-uRLLC-008",
+      "qos": {
+        "bandwidth": 1,
+        "latency": 1,
+        "slice_type": "uRLLC",
+        "jitter": 1,
+        "reliability": 99.99
+      },
+      "placement": {
+        "network_function": {
+          "id": "slice-uRLLC-008",
+          "type": "uRLLC",
+          "requirements": {
+            "min_cpu_cores": 1,
+            "min_memory_gb": 1,
+            "min_storage_gb": 1,
+            "min_bandwidth_mbps": 1
+          },
+          "qos_requirements": {
+            "max_latency_ms": 2,
+            "min_throughput_mbps": 1,
+            "max_packet_loss_rate": 0.01,
+            "max_jitter_ms": 10
+          }
+        },
+        "site": {
+          "id": "edge01",
+          "name": "Edge Site 01",
+          "type": "edge",
+          "location": {
+            "latitude": 40.7128,
+            "longitude": -74.006,
+            "region": "us-east",
+            "zone": "us-east-1a"
+          },
+          "capacity": {
+            "cpu_cores": 16,
+            "memory_gb": 64,
+            "storage_gb": 1000,
+            "bandwidth_mbps": 10
+          },
+          "network_profile": {
+            "base_latency_ms": 1,
+            "max_throughput_mbps": 5,
+            "packet_loss_rate": 0.001,
+            "jitter_ms": 0.5
+          },
+          "available": true
+        },
+        "score": 77.5,
+        "reason": "Placed uRLLC on Edge Site 01 (edge cloud) for ultra-low latency (1.0ms)",
+        "timestamp": "2025-09-23T05:10:09.8066801+08:00"
+      },
+      "resources": {
+        "ran_resources": {
+          "antennas": 1,
+          "cpu_cores": 0.3,
+          "frequency_mhz": 3600,
+          "memory_mb": 128
+        },
+        "cn_resources": {
+          "cpu_cores": 0.4,
+          "memory_mb": 256,
+          "storage_gb": 2,
+          "upf_capacity": 10
+        },
+        "tn_resources": {
+          "bandwidth_mbps": 1,
+          "latency_budget_ms": 1,
+          "qos_class": "uRLLC",
+          "vlan_id": 1010
+        }
+      },
+      "status": "deployed"
+    },
+    {
+      "slice_id": "slice-uRLLC-009",
+      "qos": {
+        "bandwidth": 1,
+        "latency": 1,
+        "slice_type": "uRLLC",
+        "reliability": 99.99
+      },
+      "placement": {
+        "network_function": {
+          "id": "slice-uRLLC-009",
+          "type": "uRLLC",
+          "requirements": {
+            "min_cpu_cores": 1,
+            "min_memory_gb": 1,
+            "min_storage_gb": 1,
+            "min_bandwidth_mbps": 1
+          },
+          "qos_requirements": {
+            "max_latency_ms": 2,
+            "min_throughput_mbps": 1,
+            "max_packet_loss_rate": 0.01,
+            "max_jitter_ms": 10
+          }
+        },
+        "site": {
+          "id": "edge01",
+          "name": "Edge Site 01",
+          "type": "edge",
+          "location": {
+            "latitude": 40.7128,
+            "longitude": -74.006,
+            "region": "us-east",
+            "zone": "us-east-1a"
+          },
+          "capacity": {
+            "cpu_cores": 16,
+            "memory_gb": 64,
+            "storage_gb": 1000,
+            "bandwidth_mbps": 10
+          },
+          "network_profile": {
+            "base_latency_ms": 1,
+            "max_throughput_mbps": 5,
+            "packet_loss_rate": 0.001,
+            "jitter_ms": 0.5
+          },
+          "available": true
+        },
+        "score": 77.5,
+        "reason": "Placed uRLLC on Edge Site 01 (edge cloud) for ultra-low latency (1.0ms)",
+        "timestamp": "2025-09-23T05:10:09.8066801+08:00"
+      },
+      "resources": {
+        "ran_resources": {
+          "antennas": 1,
+          "cpu_cores": 0.3,
+          "frequency_mhz": 3600,
+          "memory_mb": 128
+        },
+        "cn_resources": {
+          "cpu_cores": 0.4,
+          "memory_mb": 256,
+          "storage_gb": 2,
+          "upf_capacity": 10
+        },
+        "tn_resources": {
+          "bandwidth_mbps": 1,
+          "latency_budget_ms": 1,
+          "qos_class": "uRLLC",
+          "vlan_id": 1010
+        }
+      },
+      "status": "deployed"
+    },
+    {
+      "slice_id": "slice-uRLLC-010",
+      "qos": {
+        "bandwidth": 1,
+        "latency": 1,
+        "slice_type": "uRLLC"
+      },
+      "placement": {
+        "network_function": {
+          "id": "slice-uRLLC-010",
+          "type": "uRLLC",
+          "requirements": {
+            "min_cpu_cores": 1,
+            "min_memory_gb": 1,
+            "min_storage_gb": 1,
+            "min_bandwidth_mbps": 1
+          },
+          "qos_requirements": {
+            "max_latency_ms": 2,
+            "min_throughput_mbps": 1,
+            "max_packet_loss_rate": 0.01,
+            "max_jitter_ms": 10
+          }
+        },
+        "site": {
+          "id": "edge01",
+          "name": "Edge Site 01",
+          "type": "edge",
+          "location": {
+            "latitude": 40.7128,
+            "longitude": -74.006,
+            "region": "us-east",
+            "zone": "us-east-1a"
+          },
+          "capacity": {
+            "cpu_cores": 16,
+            "memory_gb": 64,
+            "storage_gb": 1000,
+            "bandwidth_mbps": 10
+          },
+          "network_profile": {
+            "base_latency_ms": 1,
+            "max_throughput_mbps": 5,
+            "packet_loss_rate": 0.001,
+            "jitter_ms": 0.5
+          },
+          "available": true
+        },
+        "score": 77.5,
+        "reason": "Placed uRLLC on Edge Site 01 (edge cloud) for ultra-low latency (1.0ms)",
+        "timestamp": "2025-09-23T05:10:09.8066801+08:00"
+      },
+      "resources": {
+        "ran_resources": {
+          "antennas": 1,
+          "cpu_cores": 0.3,
+          "frequency_mhz": 3600,
+          "memory_mb": 128
+        },
+        "cn_resources": {
+          "cpu_cores": 0.4,
+          "memory_mb": 256,
+          "storage_gb": 2,
+          "upf_capacity": 10
+        },
+        "tn_resources": {
+          "bandwidth_mbps": 1,
+          "latency_budget_ms": 1,
+          "qos_class": "uRLLC",
+          "vlan_id": 1010
+        }
+      },
+      "status": "deployed"
+    },
+    {
+      "slice_id": "slice-balanced-011",
+      "qos": {
+        "bandwidth": 3,
+        "latency": 9,
+        "slice_type": "balanced"
+      },
+      "placement": {
+        "network_function": {
+          "id": "slice-balanced-011",
+          "type": "balanced",
+          "requirements": {
+            "min_cpu_cores": 1,
+            "min_memory_gb": 1,
+            "min_storage_gb": 1,
+            "min_bandwidth_mbps": 3
+          },
+          "qos_requirements": {
+            "max_latency_ms": 18,
+            "min_throughput_mbps": 3,
+            "max_packet_loss_rate": 0.01,
+            "max_jitter_ms": 10
+          }
+        },
+        "site": {
+          "id": "edge01",
+          "name": "Edge Site 01",
+          "type": "edge",
+          "location": {
+            "latitude": 40.7128,
+            "longitude": -74.006,
+            "region": "us-east",
+            "zone": "us-east-1a"
+          },
+          "capacity": {
+            "cpu_cores": 16,
+            "memory_gb": 64,
+            "storage_gb": 1000,
+            "bandwidth_mbps": 10
+          },
+          "network_profile": {
+            "base_latency_ms": 1,
+            "max_throughput_mbps": 5,
+            "packet_loss_rate": 0.001,
+            "jitter_ms": 0.5
+          },
+          "available": true
+        },
+        "score": 89.72222222222221,
+        "reason": "Placed balanced on Edge Site 01 (edge cloud) with score 89.7/100",
+        "alternatives": [
+          {
+            "site": {
+              "id": "regional01",
+              "name": "Regional Site 01",
+              "type": "regional",
+              "location": {
+                "latitude": 40.7589,
+                "longitude": -73.9851,
+                "region": "us-east",
+                "zone": "us-east-1b"
+              },
+              "capacity": {
+                "cpu_cores": 64,
+                "memory_gb": 256,
+                "storage_gb": 5000,
+                "bandwidth_mbps": 50
+              },
+              "network_profile": {
+                "base_latency_ms": 5,
+                "max_throughput_mbps": 20,
+                "packet_loss_rate": 0.0001,
+                "jitter_ms": 1
+              },
+              "available": true
+            },
+            "score": 87.27777777777777
+          },
+          {
+            "site": {
+              "id": "central01",
+              "name": "Central Site 01",
+              "type": "central",
+              "location": {
+                "latitude": 39.0458,
+                "longitude": -76.6413,
+                "region": "us-east",
+                "zone": "us-east-1c"
+              },
+              "capacity": {
+                "cpu_cores": 256,
+                "memory_gb": 1024,
+                "storage_gb": 20000,
+                "bandwidth_mbps": 100
+              },
+              "network_profile": {
+                "base_latency_ms": 10,
+                "max_throughput_mbps": 50,
+                "packet_loss_rate": 0.00001,
+                "jitter_ms": 2
+              },
+              "available": true
+            },
+            "score": 76.55555555555556
+          }
+        ],
+        "timestamp": "2025-09-23T05:10:09.8066801+08:00"
+      },
+      "resources": {
+        "ran_resources": {
+          "antennas": 3,
+          "cpu_cores": 0.8999999999999999,
+          "frequency_mhz": 3800,
+          "memory_mb": 384
+        },
+        "cn_resources": {
+          "cpu_cores": 1.2000000000000002,
+          "memory_mb": 768,
+          "storage_gb": 6,
+          "upf_capacity": 30
+        },
+        "tn_resources": {
+          "bandwidth_mbps": 3,
+          "latency_budget_ms": 9,
+          "qos_class": "balanced",
+          "vlan_id": 1030
+        }
+      },
+      "status": "deployed"
+    },
+    {
+      "slice_id": "slice-balanced-012",
+      "qos": {
+        "bandwidth": 3,
+        "latency": 9,
+        "slice_type": "balanced"
+      },
+      "placement": {
+        "network_function": {
+          "id": "slice-balanced-012",
+          "type": "balanced",
+          "requirements": {
+            "min_cpu_cores": 1,
+            "min_memory_gb": 1,
+            "min_storage_gb": 1,
+            "min_bandwidth_mbps": 3
+          },
+          "qos_requirements": {
+            "max_latency_ms": 18,
+            "min_throughput_mbps": 3,
+            "max_packet_loss_rate": 0.01,
+            "max_jitter_ms": 10
+          }
+        },
+        "site": {
+          "id": "edge01",
+          "name": "Edge Site 01",
+          "type": "edge",
+          "location": {
+            "latitude": 40.7128,
+            "longitude": -74.006,
+            "region": "us-east",
+            "zone": "us-east-1a"
+          },
+          "capacity": {
+            "cpu_cores": 16,
+            "memory_gb": 64,
+            "storage_gb": 1000,
+            "bandwidth_mbps": 10
+          },
+          "network_profile": {
+            "base_latency_ms": 1,
+            "max_throughput_mbps": 5,
+            "packet_loss_rate": 0.001,
+            "jitter_ms": 0.5
+          },
+          "available": true
+        },
+        "score": 89.72222222222221,
+        "reason": "Placed balanced on Edge Site 01 (edge cloud) with score 89.7/100",
+        "alternatives": [
+          {
+            "site": {
+              "id": "regional01",
+              "name": "Regional Site 01",
+              "type": "regional",
+              "location": {
+                "latitude": 40.7589,
+                "longitude": -73.9851,
+                "region": "us-east",
+                "zone": "us-east-1b"
+              },
+              "capacity": {
+                "cpu_cores": 64,
+                "memory_gb": 256,
+                "storage_gb": 5000,
+                "bandwidth_mbps": 50
+              },
+              "network_profile": {
+                "base_latency_ms": 5,
+                "max_throughput_mbps": 20,
+                "packet_loss_rate": 0.0001,
+                "jitter_ms": 1
+              },
+              "available": true
+            },
+            "score": 87.27777777777777
+          },
+          {
+            "site": {
+              "id": "central01",
+              "name": "Central Site 01",
+              "type": "central",
+              "location": {
+                "latitude": 39.0458,
+                "longitude": -76.6413,
+                "region": "us-east",
+                "zone": "us-east-1c"
+              },
+              "capacity": {
+                "cpu_cores": 256,
+                "memory_gb": 1024,
+                "storage_gb": 20000,
+                "bandwidth_mbps": 100
+              },
+              "network_profile": {
+                "base_latency_ms": 10,
+                "max_throughput_mbps": 50,
+                "packet_loss_rate": 0.00001,
+                "jitter_ms": 2
+              },
+              "available": true
+            },
+            "score": 76.55555555555556
+          }
+        ],
+        "timestamp": "2025-09-23T05:10:09.8066801+08:00"
+      },
+      "resources": {
+        "ran_resources": {
+          "antennas": 3,
+          "cpu_cores": 0.8999999999999999,
+          "frequency_mhz": 3800,
+          "memory_mb": 384
+        },
+        "cn_resources": {
+          "cpu_cores": 1.2000000000000002,
+          "memory_mb": 768,
+          "storage_gb": 6,
+          "upf_capacity": 30
+        },
+        "tn_resources": {
+          "bandwidth_mbps": 3,
+          "latency_budget_ms": 9,
+          "qos_class": "balanced",
+          "vlan_id": 1030
+        }
+      },
+      "status": "deployed"
+    },
+    {
+      "slice_id": "slice-balanced-013",
+      "qos": {
+        "bandwidth": 3,
+        "latency": 9,
+        "slice_type": "balanced"
+      },
+      "placement": {
+        "network_function": {
+          "id": "slice-balanced-013",
+          "type": "balanced",
+          "requirements": {
+            "min_cpu_cores": 1,
+            "min_memory_gb": 1,
+            "min_storage_gb": 1,
+            "min_bandwidth_mbps": 3
+          },
+          "qos_requirements": {
+            "max_latency_ms": 18,
+            "min_throughput_mbps": 3,
+            "max_packet_loss_rate": 0.01,
+            "max_jitter_ms": 10
+          }
+        },
+        "site": {
+          "id": "edge01",
+          "name": "Edge Site 01",
+          "type": "edge",
+          "location": {
+            "latitude": 40.7128,
+            "longitude": -74.006,
+            "region": "us-east",
+            "zone": "us-east-1a"
+          },
+          "capacity": {
+            "cpu_cores": 16,
+            "memory_gb": 64,
+            "storage_gb": 1000,
+            "bandwidth_mbps": 10
+          },
+          "network_profile": {
+            "base_latency_ms": 1,
+            "max_throughput_mbps": 5,
+            "packet_loss_rate": 0.001,
+            "jitter_ms": 0.5
+          },
+          "available": true
+        },
+        "score": 89.72222222222221,
+        "reason": "Placed balanced on Edge Site 01 (edge cloud) with score 89.7/100",
+        "alternatives": [
+          {
+            "site": {
+              "id": "regional01",
+              "name": "Regional Site 01",
+              "type": "regional",
+              "location": {
+                "latitude": 40.7589,
+                "longitude": -73.9851,
+                "region": "us-east",
+                "zone": "us-east-1b"
+              },
+              "capacity": {
+                "cpu_cores": 64,
+                "memory_gb": 256,
+                "storage_gb": 5000,
+                "bandwidth_mbps": 50
+              },
+              "network_profile": {
+                "base_latency_ms": 5,
+                "max_throughput_mbps": 20,
+                "packet_loss_rate": 0.0001,
+                "jitter_ms": 1
+              },
+              "available": true
+            },
+            "score": 87.27777777777777
+          },
+          {
+            "site": {
+              "id": "central01",
+              "name": "Central Site 01",
+              "type": "central",
+              "location": {
+                "latitude": 39.0458,
+                "longitude": -76.6413,
+                "region": "us-east",
+                "zone": "us-east-1c"
+              },
+              "capacity": {
+                "cpu_cores": 256,
+                "memory_gb": 1024,
+                "storage_gb": 20000,
+                "bandwidth_mbps": 100
+              },
+              "network_profile": {
+                "base_latency_ms": 10,
+                "max_throughput_mbps": 50,
+                "packet_loss_rate": 0.00001,
+                "jitter_ms": 2
+              },
+              "available": true
+            },
+            "score": 76.55555555555556
+          }
+        ],
+        "timestamp": "2025-09-23T05:10:09.8066801+08:00"
+      },
+      "resources": {
+        "ran_resources": {
+          "antennas": 3,
+          "cpu_cores": 0.8999999999999999,
+          "frequency_mhz": 3800,
+          "memory_mb": 384
+        },
+        "cn_resources": {
+          "cpu_cores": 1.2000000000000002,
+          "memory_mb": 768,
+          "storage_gb": 6,
+          "upf_capacity": 30
+        },
+        "tn_resources": {
+          "bandwidth_mbps": 3,
+          "latency_budget_ms": 9,
+          "qos_class": "balanced",
+          "vlan_id": 1030
+        }
+      },
+      "status": "deployed"
+    },
+    {
+      "slice_id": "slice-balanced-014",
+      "qos": {
+        "bandwidth": 3,
+        "latency": 9,
+        "slice_type": "balanced"
+      },
+      "placement": {
+        "network_function": {
+          "id": "slice-balanced-014",
+          "type": "balanced",
+          "requirements": {
+            "min_cpu_cores": 1,
+            "min_memory_gb": 1,
+            "min_storage_gb": 1,
+            "min_bandwidth_mbps": 3
+          },
+          "qos_requirements": {
+            "max_latency_ms": 18,
+            "min_throughput_mbps": 3,
+            "max_packet_loss_rate": 0.01,
+            "max_jitter_ms": 10
+          }
+        },
+        "site": {
+          "id": "edge01",
+          "name": "Edge Site 01",
+          "type": "edge",
+          "location": {
+            "latitude": 40.7128,
+            "longitude": -74.006,
+            "region": "us-east",
+            "zone": "us-east-1a"
+          },
+          "capacity": {
+            "cpu_cores": 16,
+            "memory_gb": 64,
+            "storage_gb": 1000,
+            "bandwidth_mbps": 10
+          },
+          "network_profile": {
+            "base_latency_ms": 1,
+            "max_throughput_mbps": 5,
+            "packet_loss_rate": 0.001,
+            "jitter_ms": 0.5
+          },
+          "available": true
+        },
+        "score": 89.72222222222221,
+        "reason": "Placed balanced on Edge Site 01 (edge cloud) with score 89.7/100",
+        "alternatives": [
+          {
+            "site": {
+              "id": "regional01",
+              "name": "Regional Site 01",
+              "type": "regional",
+              "location": {
+                "latitude": 40.7589,
+                "longitude": -73.9851,
+                "region": "us-east",
+                "zone": "us-east-1b"
+              },
+              "capacity": {
+                "cpu_cores": 64,
+                "memory_gb": 256,
+                "storage_gb": 5000,
+                "bandwidth_mbps": 50
+              },
+              "network_profile": {
+                "base_latency_ms": 5,
+                "max_throughput_mbps": 20,
+                "packet_loss_rate": 0.0001,
+                "jitter_ms": 1
+              },
+              "available": true
+            },
+            "score": 87.27777777777777
+          },
+          {
+            "site": {
+              "id": "central01",
+              "name": "Central Site 01",
+              "type": "central",
+              "location": {
+                "latitude": 39.0458,
+                "longitude": -76.6413,
+                "region": "us-east",
+                "zone": "us-east-1c"
+              },
+              "capacity": {
+                "cpu_cores": 256,
+                "memory_gb": 1024,
+                "storage_gb": 20000,
+                "bandwidth_mbps": 100
+              },
+              "network_profile": {
+                "base_latency_ms": 10,
+                "max_throughput_mbps": 50,
+                "packet_loss_rate": 0.00001,
+                "jitter_ms": 2
+              },
+              "available": true
+            },
+            "score": 76.55555555555556
+          }
+        ],
+        "timestamp": "2025-09-23T05:10:09.8066801+08:00"
+      },
+      "resources": {
+        "ran_resources": {
+          "antennas": 3,
+          "cpu_cores": 0.8999999999999999,
+          "frequency_mhz": 3800,
+          "memory_mb": 384
+        },
+        "cn_resources": {
+          "cpu_cores": 1.2000000000000002,
+          "memory_mb": 768,
+          "storage_gb": 6,
+          "upf_capacity": 30
+        },
+        "tn_resources": {
+          "bandwidth_mbps": 3,
+          "latency_budget_ms": 9,
+          "qos_class": "balanced",
+          "vlan_id": 1030
+        }
+      },
+      "status": "deployed"
+    },
+    {
+      "slice_id": "slice-balanced-015",
+      "qos": {
+        "bandwidth": 3,
+        "latency": 9,
+        "slice_type": "balanced"
+      },
+      "placement": {
+        "network_function": {
+          "id": "slice-balanced-015",
+          "type": "balanced",
+          "requirements": {
+            "min_cpu_cores": 1,
+            "min_memory_gb": 1,
+            "min_storage_gb": 1,
+            "min_bandwidth_mbps": 3
+          },
+          "qos_requirements": {
+            "max_latency_ms": 18,
+            "min_throughput_mbps": 3,
+            "max_packet_loss_rate": 0.01,
+            "max_jitter_ms": 10
+          }
+        },
+        "site": {
+          "id": "edge01",
+          "name": "Edge Site 01",
+          "type": "edge",
+          "location": {
+            "latitude": 40.7128,
+            "longitude": -74.006,
+            "region": "us-east",
+            "zone": "us-east-1a"
+          },
+          "capacity": {
+            "cpu_cores": 16,
+            "memory_gb": 64,
+            "storage_gb": 1000,
+            "bandwidth_mbps": 10
+          },
+          "network_profile": {
+            "base_latency_ms": 1,
+            "max_throughput_mbps": 5,
+            "packet_loss_rate": 0.001,
+            "jitter_ms": 0.5
+          },
+          "available": true
+        },
+        "score": 89.72222222222221,
+        "reason": "Placed balanced on Edge Site 01 (edge cloud) with score 89.7/100",
+        "alternatives": [
+          {
+            "site": {
+              "id": "regional01",
+              "name": "Regional Site 01",
+              "type": "regional",
+              "location": {
+                "latitude": 40.7589,
+                "longitude": -73.9851,
+                "region": "us-east",
+                "zone": "us-east-1b"
+              },
+              "capacity": {
+                "cpu_cores": 64,
+                "memory_gb": 256,
+                "storage_gb": 5000,
+                "bandwidth_mbps": 50
+              },
+              "network_profile": {
+                "base_latency_ms": 5,
+                "max_throughput_mbps": 20,
+                "packet_loss_rate": 0.0001,
+                "jitter_ms": 1
+              },
+              "available": true
+            },
+            "score": 87.27777777777777
+          },
+          {
+            "site": {
+              "id": "central01",
+              "name": "Central Site 01",
+              "type": "central",
+              "location": {
+                "latitude": 39.0458,
+                "longitude": -76.6413,
+                "region": "us-east",
+                "zone": "us-east-1c"
+              },
+              "capacity": {
+                "cpu_cores": 256,
+                "memory_gb": 1024,
+                "storage_gb": 20000,
+                "bandwidth_mbps": 100
+              },
+              "network_profile": {
+                "base_latency_ms": 10,
+                "max_throughput_mbps": 50,
+                "packet_loss_rate": 0.00001,
+                "jitter_ms": 2
+              },
+              "available": true
+            },
+            "score": 76.55555555555556
+          }
+        ],
+        "timestamp": "2025-09-23T05:10:09.8066801+08:00"
+      },
+      "resources": {
+        "ran_resources": {
+          "antennas": 3,
+          "cpu_cores": 0.8999999999999999,
+          "frequency_mhz": 3800,
+          "memory_mb": 384
+        },
+        "cn_resources": {
+          "cpu_cores": 1.2000000000000002,
+          "memory_mb": 768,
+          "storage_gb": 6,
+          "upf_capacity": 30
+        },
+        "tn_resources": {
+          "bandwidth_mbps": 3,
+          "latency_budget_ms": 9,
+          "qos_class": "balanced",
+          "vlan_id": 1030
+        }
+      },
+      "status": "deployed"
+    },
+    {
+      "slice_id": "slice-eMBB-016",
+      "qos": {
+        "bandwidth": 5,
+        "latency": 9,
+        "slice_type": "eMBB",
+        "packet_loss": 0.1
+      },
+      "placement": {
+        "network_function": {
+          "id": "slice-eMBB-016",
+          "type": "eMBB",
+          "requirements": {
+            "min_cpu_cores": 1,
+            "min_memory_gb": 1,
+            "min_storage_gb": 2,
+            "min_bandwidth_mbps": 5
+          },
+          "qos_requirements": {
+            "max_latency_ms": 18,
+            "min_throughput_mbps": 5,
+            "max_packet_loss_rate": 0.01,
+            "max_jitter_ms": 10
+          }
+        },
+        "site": {
+          "id": "regional01",
+          "name": "Regional Site 01",
+          "type": "regional",
+          "location": {
+            "latitude": 40.7589,
+            "longitude": -73.9851,
+            "region": "us-east",
+            "zone": "us-east-1b"
+          },
+          "capacity": {
+            "cpu_cores": 64,
+            "memory_gb": 256,
+            "storage_gb": 5000,
+            "bandwidth_mbps": 50
+          },
+          "network_profile": {
+            "base_latency_ms": 5,
+            "max_throughput_mbps": 20,
+            "packet_loss_rate": 0.0001,
+            "jitter_ms": 1
+          },
+          "available": true
+        },
+        "score": 87.27777777777777,
+        "reason": "Placed eMBB on Regional Site 01 (regional cloud) for high bandwidth (20.0 Mbps available)",
+        "alternatives": [
+          {
+            "site": {
+              "id": "edge01",
+              "name": "Edge Site 01",
+              "type": "edge",
+              "location": {
+                "latitude": 40.7128,
+                "longitude": -74.006,
+                "region": "us-east",
+                "zone": "us-east-1a"
+              },
+              "capacity": {
+                "cpu_cores": 16,
+                "memory_gb": 64,
+                "storage_gb": 1000,
+                "bandwidth_mbps": 10
+              },
+              "network_profile": {
+                "base_latency_ms": 1,
+                "max_throughput_mbps": 5,
+                "packet_loss_rate": 0.001,
+                "jitter_ms": 0.5
+              },
+              "available": true
+            },
+            "score": 83.05555555555554
+          },
+          {
+            "site": {
+              "id": "central01",
+              "name": "Central Site 01",
+              "type": "central",
+              "location": {
+                "latitude": 39.0458,
+                "longitude": -76.6413,
+                "region": "us-east",
+                "zone": "us-east-1c"
+              },
+              "capacity": {
+                "cpu_cores": 256,
+                "memory_gb": 1024,
+                "storage_gb": 20000,
+                "bandwidth_mbps": 100
+              },
+              "network_profile": {
+                "base_latency_ms": 10,
+                "max_throughput_mbps": 50,
+                "packet_loss_rate": 0.00001,
+                "jitter_ms": 2
+              },
+              "available": true
+            },
+            "score": 76.55555555555556
+          }
+        ],
+        "timestamp": "2025-09-23T05:10:09.8066801+08:00"
+      },
+      "resources": {
+        "ran_resources": {
+          "antennas": 5,
+          "cpu_cores": 1.5,
+          "frequency_mhz": 4000,
+          "memory_mb": 640
+        },
+        "cn_resources": {
+          "cpu_cores": 2,
+          "memory_mb": 1280,
+          "storage_gb": 10,
+          "upf_capacity": 50
+        },
+        "tn_resources": {
+          "bandwidth_mbps": 5,
+          "latency_budget_ms": 9,
+          "qos_class": "eMBB",
+          "vlan_id": 1050
+        }
+      },
+      "status": "deployed"
+    },
+    {
+      "slice_id": "slice-eMBB-017",
+      "qos": {
+        "bandwidth": 5,
+        "latency": 9,
+        "slice_type": "eMBB",
+        "jitter": 1
+      },
+      "placement": {
+        "network_function": {
+          "id": "slice-eMBB-017",
+          "type": "eMBB",
+          "requirements": {
+            "min_cpu_cores": 1,
+            "min_memory_gb": 1,
+            "min_storage_gb": 2,
+            "min_bandwidth_mbps": 5
+          },
+          "qos_requirements": {
+            "max_latency_ms": 18,
+            "min_throughput_mbps": 5,
+            "max_packet_loss_rate": 0.01,
+            "max_jitter_ms": 10
+          }
+        },
+        "site": {
+          "id": "regional01",
+          "name": "Regional Site 01",
+          "type": "regional",
+          "location": {
+            "latitude": 40.7589,
+            "longitude": -73.9851,
+            "region": "us-east",
+            "zone": "us-east-1b"
+          },
+          "capacity": {
+            "cpu_cores": 64,
+            "memory_gb": 256,
+            "storage_gb": 5000,
+            "bandwidth_mbps": 50
+          },
+          "network_profile": {
+            "base_latency_ms": 5,
+            "max_throughput_mbps": 20,
+            "packet_loss_rate": 0.0001,
+            "jitter_ms": 1
+          },
+          "available": true
+        },
+        "score": 87.27777777777777,
+        "reason": "Placed eMBB on Regional Site 01 (regional cloud) for high bandwidth (20.0 Mbps available)",
+        "alternatives": [
+          {
+            "site": {
+              "id": "edge01",
+              "name": "Edge Site 01",
+              "type": "edge",
+              "location": {
+                "latitude": 40.7128,
+                "longitude": -74.006,
+                "region": "us-east",
+                "zone": "us-east-1a"
+              },
+              "capacity": {
+                "cpu_cores": 16,
+                "memory_gb": 64,
+                "storage_gb": 1000,
+                "bandwidth_mbps": 10
+              },
+              "network_profile": {
+                "base_latency_ms": 1,
+                "max_throughput_mbps": 5,
+                "packet_loss_rate": 0.001,
+                "jitter_ms": 0.5
+              },
+              "available": true
+            },
+            "score": 83.05555555555554
+          },
+          {
+            "site": {
+              "id": "central01",
+              "name": "Central Site 01",
+              "type": "central",
+              "location": {
+                "latitude": 39.0458,
+                "longitude": -76.6413,
+                "region": "us-east",
+                "zone": "us-east-1c"
+              },
+              "capacity": {
+                "cpu_cores": 256,
+                "memory_gb": 1024,
+                "storage_gb": 20000,
+                "bandwidth_mbps": 100
+              },
+              "network_profile": {
+                "base_latency_ms": 10,
+                "max_throughput_mbps": 50,
+                "packet_loss_rate": 0.00001,
+                "jitter_ms": 2
+              },
+              "available": true
+            },
+            "score": 76.55555555555556
+          }
+        ],
+        "timestamp": "2025-09-23T05:10:09.8066801+08:00"
+      },
+      "resources": {
+        "ran_resources": {
+          "antennas": 5,
+          "cpu_cores": 1.5,
+          "frequency_mhz": 4000,
+          "memory_mb": 640
+        },
+        "cn_resources": {
+          "cpu_cores": 2,
+          "memory_mb": 1280,
+          "storage_gb": 10,
+          "upf_capacity": 50
+        },
+        "tn_resources": {
+          "bandwidth_mbps": 5,
+          "latency_budget_ms": 9,
+          "qos_class": "eMBB",
+          "vlan_id": 1050
+        }
+      },
+      "status": "deployed"
+    },
+    {
+      "slice_id": "slice-eMBB-018",
+      "qos": {
+        "bandwidth": 5,
+        "latency": 9,
+        "slice_type": "eMBB",
+        "packet_loss": 0.1,
+        "reliability": 99.99
+      },
+      "placement": {
+        "network_function": {
+          "id": "slice-eMBB-018",
+          "type": "eMBB",
+          "requirements": {
+            "min_cpu_cores": 1,
+            "min_memory_gb": 1,
+            "min_storage_gb": 2,
+            "min_bandwidth_mbps": 5
+          },
+          "qos_requirements": {
+            "max_latency_ms": 18,
+            "min_throughput_mbps": 5,
+            "max_packet_loss_rate": 0.01,
+            "max_jitter_ms": 10
+          }
+        },
+        "site": {
+          "id": "regional01",
+          "name": "Regional Site 01",
+          "type": "regional",
+          "location": {
+            "latitude": 40.7589,
+            "longitude": -73.9851,
+            "region": "us-east",
+            "zone": "us-east-1b"
+          },
+          "capacity": {
+            "cpu_cores": 64,
+            "memory_gb": 256,
+            "storage_gb": 5000,
+            "bandwidth_mbps": 50
+          },
+          "network_profile": {
+            "base_latency_ms": 5,
+            "max_throughput_mbps": 20,
+            "packet_loss_rate": 0.0001,
+            "jitter_ms": 1
+          },
+          "available": true
+        },
+        "score": 87.27777777777777,
+        "reason": "Placed eMBB on Regional Site 01 (regional cloud) for high bandwidth (20.0 Mbps available)",
+        "alternatives": [
+          {
+            "site": {
+              "id": "edge01",
+              "name": "Edge Site 01",
+              "type": "edge",
+              "location": {
+                "latitude": 40.7128,
+                "longitude": -74.006,
+                "region": "us-east",
+                "zone": "us-east-1a"
+              },
+              "capacity": {
+                "cpu_cores": 16,
+                "memory_gb": 64,
+                "storage_gb": 1000,
+                "bandwidth_mbps": 10
+              },
+              "network_profile": {
+                "base_latency_ms": 1,
+                "max_throughput_mbps": 5,
+                "packet_loss_rate": 0.001,
+                "jitter_ms": 0.5
+              },
+              "available": true
+            },
+            "score": 83.05555555555554
+          },
+          {
+            "site": {
+              "id": "central01",
+              "name": "Central Site 01",
+              "type": "central",
+              "location": {
+                "latitude": 39.0458,
+                "longitude": -76.6413,
+                "region": "us-east",
+                "zone": "us-east-1c"
+              },
+              "capacity": {
+                "cpu_cores": 256,
+                "memory_gb": 1024,
+                "storage_gb": 20000,
+                "bandwidth_mbps": 100
+              },
+              "network_profile": {
+                "base_latency_ms": 10,
+                "max_throughput_mbps": 50,
+                "packet_loss_rate": 0.00001,
+                "jitter_ms": 2
+              },
+              "available": true
+            },
+            "score": 76.55555555555556
+          }
+        ],
+        "timestamp": "2025-09-23T05:10:09.8066801+08:00"
+      },
+      "resources": {
+        "ran_resources": {
+          "antennas": 5,
+          "cpu_cores": 1.5,
+          "frequency_mhz": 4000,
+          "memory_mb": 640
+        },
+        "cn_resources": {
+          "cpu_cores": 2,
+          "memory_mb": 1280,
+          "storage_gb": 10,
+          "upf_capacity": 50
+        },
+        "tn_resources": {
+          "bandwidth_mbps": 5,
+          "latency_budget_ms": 9,
+          "qos_class": "eMBB",
+          "vlan_id": 1050
+        }
+      },
+      "status": "deployed"
+    },
+    {
+      "slice_id": "slice-eMBB-019",
+      "qos": {
+        "bandwidth": 5,
+        "latency": 9,
+        "slice_type": "eMBB",
+        "reliability": 99.99
+      },
+      "placement": {
+        "network_function": {
+          "id": "slice-eMBB-019",
+          "type": "eMBB",
+          "requirements": {
+            "min_cpu_cores": 1,
+            "min_memory_gb": 1,
+            "min_storage_gb": 2,
+            "min_bandwidth_mbps": 5
+          },
+          "qos_requirements": {
+            "max_latency_ms": 18,
+            "min_throughput_mbps": 5,
+            "max_packet_loss_rate": 0.01,
+            "max_jitter_ms": 10
+          }
+        },
+        "site": {
+          "id": "regional01",
+          "name": "Regional Site 01",
+          "type": "regional",
+          "location": {
+            "latitude": 40.7589,
+            "longitude": -73.9851,
+            "region": "us-east",
+            "zone": "us-east-1b"
+          },
+          "capacity": {
+            "cpu_cores": 64,
+            "memory_gb": 256,
+            "storage_gb": 5000,
+            "bandwidth_mbps": 50
+          },
+          "network_profile": {
+            "base_latency_ms": 5,
+            "max_throughput_mbps": 20,
+            "packet_loss_rate": 0.0001,
+            "jitter_ms": 1
+          },
+          "available": true
+        },
+        "score": 87.27777777777777,
+        "reason": "Placed eMBB on Regional Site 01 (regional cloud) for high bandwidth (20.0 Mbps available)",
+        "alternatives": [
+          {
+            "site": {
+              "id": "edge01",
+              "name": "Edge Site 01",
+              "type": "edge",
+              "location": {
+                "latitude": 40.7128,
+                "longitude": -74.006,
+                "region": "us-east",
+                "zone": "us-east-1a"
+              },
+              "capacity": {
+                "cpu_cores": 16,
+                "memory_gb": 64,
+                "storage_gb": 1000,
+                "bandwidth_mbps": 10
+              },
+              "network_profile": {
+                "base_latency_ms": 1,
+                "max_throughput_mbps": 5,
+                "packet_loss_rate": 0.001,
+                "jitter_ms": 0.5
+              },
+              "available": true
+            },
+            "score": 83.05555555555554
+          },
+          {
+            "site": {
+              "id": "central01",
+              "name": "Central Site 01",
+              "type": "central",
+              "location": {
+                "latitude": 39.0458,
+                "longitude": -76.6413,
+                "region": "us-east",
+                "zone": "us-east-1c"
+              },
+              "capacity": {
+                "cpu_cores": 256,
+                "memory_gb": 1024,
+                "storage_gb": 20000,
+                "bandwidth_mbps": 100
+              },
+              "network_profile": {
+                "base_latency_ms": 10,
+                "max_throughput_mbps": 50,
+                "packet_loss_rate": 0.00001,
+                "jitter_ms": 2
+              },
+              "available": true
+            },
+            "score": 76.55555555555556
+          }
+        ],
+        "timestamp": "2025-09-23T05:10:09.8066801+08:00"
+      },
+      "resources": {
+        "ran_resources": {
+          "antennas": 5,
+          "cpu_cores": 1.5,
+          "frequency_mhz": 4000,
+          "memory_mb": 640
+        },
+        "cn_resources": {
+          "cpu_cores": 2,
+          "memory_mb": 1280,
+          "storage_gb": 10,
+          "upf_capacity": 50
+        },
+        "tn_resources": {
+          "bandwidth_mbps": 5,
+          "latency_budget_ms": 9,
+          "qos_class": "eMBB",
+          "vlan_id": 1050
+        }
+      },
+      "status": "deployed"
+    },
+    {
+      "slice_id": "slice-balanced-020",
+      "qos": {
+        "bandwidth": 3,
+        "latency": 9,
+        "slice_type": "balanced",
+        "packet_loss": 0.1
+      },
+      "placement": {
+        "network_function": {
+          "id": "slice-balanced-020",
+          "type": "balanced",
+          "requirements": {
+            "min_cpu_cores": 1,
+            "min_memory_gb": 1,
+            "min_storage_gb": 1,
+            "min_bandwidth_mbps": 3
+          },
+          "qos_requirements": {
+            "max_latency_ms": 18,
+            "min_throughput_mbps": 3,
+            "max_packet_loss_rate": 0.01,
+            "max_jitter_ms": 10
+          }
+        },
+        "site": {
+          "id": "edge01",
+          "name": "Edge Site 01",
+          "type": "edge",
+          "location": {
+            "latitude": 40.7128,
+            "longitude": -74.006,
+            "region": "us-east",
+            "zone": "us-east-1a"
+          },
+          "capacity": {
+            "cpu_cores": 16,
+            "memory_gb": 64,
+            "storage_gb": 1000,
+            "bandwidth_mbps": 10
+          },
+          "network_profile": {
+            "base_latency_ms": 1,
+            "max_throughput_mbps": 5,
+            "packet_loss_rate": 0.001,
+            "jitter_ms": 0.5
+          },
+          "available": true
+        },
+        "score": 89.72222222222221,
+        "reason": "Placed balanced on Edge Site 01 (edge cloud) with score 89.7/100",
+        "alternatives": [
+          {
+            "site": {
+              "id": "regional01",
+              "name": "Regional Site 01",
+              "type": "regional",
+              "location": {
+                "latitude": 40.7589,
+                "longitude": -73.9851,
+                "region": "us-east",
+                "zone": "us-east-1b"
+              },
+              "capacity": {
+                "cpu_cores": 64,
+                "memory_gb": 256,
+                "storage_gb": 5000,
+                "bandwidth_mbps": 50
+              },
+              "network_profile": {
+                "base_latency_ms": 5,
+                "max_throughput_mbps": 20,
+                "packet_loss_rate": 0.0001,
+                "jitter_ms": 1
+              },
+              "available": true
+            },
+            "score": 87.27777777777777
+          },
+          {
+            "site": {
+              "id": "central01",
+              "name": "Central Site 01",
+              "type": "central",
+              "location": {
+                "latitude": 39.0458,
+                "longitude": -76.6413,
+                "region": "us-east",
+                "zone": "us-east-1c"
+              },
+              "capacity": {
+                "cpu_cores": 256,
+                "memory_gb": 1024,
+                "storage_gb": 20000,
+                "bandwidth_mbps": 100
+              },
+              "network_profile": {
+                "base_latency_ms": 10,
+                "max_throughput_mbps": 50,
+                "packet_loss_rate": 0.00001,
+                "jitter_ms": 2
+              },
+              "available": true
+            },
+            "score": 76.55555555555556
+          }
+        ],
+        "timestamp": "2025-09-23T05:10:09.8066801+08:00"
+      },
+      "resources": {
+        "ran_resources": {
+          "antennas": 3,
+          "cpu_cores": 0.8999999999999999,
+          "frequency_mhz": 3800,
+          "memory_mb": 384
+        },
+        "cn_resources": {
+          "cpu_cores": 1.2000000000000002,
+          "memory_mb": 768,
+          "storage_gb": 6,
+          "upf_capacity": 30
+        },
+        "tn_resources": {
+          "bandwidth_mbps": 3,
+          "latency_budget_ms": 9,
+          "qos_class": "balanced",
+          "vlan_id": 1030
+        }
+      },
+      "status": "deployed"
+    }
+  ],
+  "timestamp": "27028",
+  "total_slices": 20
+}

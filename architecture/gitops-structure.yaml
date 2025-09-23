@@ -1,0 +1,721 @@
+# GitOps Repository Structure and Configuration
+# Defines the complete GitOps setup for Nephio package management
+
+# Repository Structure Definition
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gitops-repository-structure
+  namespace: nephio-system
+  labels:
+    app.kubernetes.io/name: gitops-config
+    app.kubernetes.io/component: structure
+data:
+  structure.yaml: |
+    repositories:
+      # Package Catalog Repository
+      package_catalog:
+        name: "nephio-package-catalog"
+        url: "https://github.com/oran-mano/nephio-package-catalog"
+        branch: "main"
+        structure:
+          catalog/
+            network-functions/
+              ran/
+                gnb/
+                  v1.0.0/
+                    - package.yaml
+                    - kustomization.yaml
+                    - manifests/
+                        - deployment.yaml
+                        - service.yaml
+                        - configmap.yaml
+                        - secret.yaml
+                    - helm/
+                        - Chart.yaml
+                        - values.yaml
+                        - templates/
+                            - deployment.yaml
+                            - service.yaml
+                    - docs/
+                        - README.md
+                        - CHANGELOG.md
+                  v1.1.0/
+                cu/
+                  v1.0.0/
+                du/
+                  v1.0.0/
+              core/
+                amf/
+                  v1.0.0/
+                smf/
+                  v1.0.0/
+                upf/
+                  v1.0.0/
+                pcf/
+                  v1.0.0/
+                udm/
+                  v1.0.0/
+                nssf/
+                  v1.0.0/
+              transport/
+                ovn/
+                  v1.0.0/
+                tc-shaping/
+                  v1.0.0/
+            network-slices/
+              templates/
+                embb/
+                  - slice-template.yaml
+                  - placement-policy.yaml
+                  - qos-profile.yaml
+                urllc/
+                  - slice-template.yaml
+                  - placement-policy.yaml
+                  - qos-profile.yaml
+                miot/
+                  - slice-template.yaml
+                  - placement-policy.yaml
+                  - qos-profile.yaml
+                balanced/
+                  - slice-template.yaml
+                  - placement-policy.yaml
+                  - qos-profile.yaml
+            vendors/
+              oran-sc/
+              nokia/
+              ericsson/
+              samsung/
+
+      # Blueprint Repository
+      blueprint_repo:
+        name: "nephio-blueprints"
+        url: "https://github.com/oran-mano/nephio-blueprints"
+        branch: "main"
+        structure:
+          blueprints/
+            deployment-patterns/
+              edge-deployment/
+                - pattern.yaml
+                - constraints.yaml
+                - resources.yaml
+              regional-deployment/
+                - pattern.yaml
+                - constraints.yaml
+                - resources.yaml
+              central-deployment/
+                - pattern.yaml
+                - constraints.yaml
+                - resources.yaml
+            slice-blueprints/
+              embb-slice/
+                - blueprint.yaml
+                - network-functions.yaml
+                - placement-rules.yaml
+              urllc-slice/
+                - blueprint.yaml
+                - network-functions.yaml
+                - placement-rules.yaml
+            infrastructure-blueprints/
+              k8s-cluster/
+                - cluster-config.yaml
+                - addons.yaml
+              networking/
+                - cni-config.yaml
+                - ingress-config.yaml
+
+      # Deployment Repository (per-cluster)
+      deployment_repos:
+        management_cluster:
+          name: "nephio-deployments-mgmt"
+          url: "https://github.com/oran-mano/nephio-deployments-mgmt"
+          structure:
+            namespaces/
+              nephio-system/
+                - namespace.yaml
+                - rbac.yaml
+                - network-policies.yaml
+              config-management-system/
+                - config-sync.yaml
+                - policy-controller.yaml
+            clusters/
+              management/
+                - cluster-config.yaml
+                - monitoring.yaml
+                - logging.yaml
+
+        edge_clusters:
+          edge01:
+            name: "nephio-deployments-edge01"
+            url: "https://github.com/oran-mano/nephio-deployments-edge01"
+            structure:
+              namespaces/
+                ran-functions/
+                  - namespace.yaml
+                  - resource-quotas.yaml
+                  - network-policies.yaml
+                monitoring/
+                  - prometheus-config.yaml
+                  - grafana-dashboards.yaml
+              network-slices/
+                slice-001/
+                  - gnb-deployment.yaml
+                  - cu-deployment.yaml
+                  - monitoring.yaml
+              clusters/
+                edge01/
+                  - cluster-info.yaml
+                  - node-configs.yaml
+
+          edge02:
+            name: "nephio-deployments-edge02"
+            url: "https://github.com/oran-mano/nephio-deployments-edge02"
+            structure:
+              namespaces/
+                core-functions/
+                  - namespace.yaml
+                  - resource-quotas.yaml
+                  - network-policies.yaml
+                monitoring/
+                  - prometheus-config.yaml
+                  - grafana-dashboards.yaml
+              network-slices/
+                slice-001/
+                  - amf-deployment.yaml
+                  - smf-deployment.yaml
+                  - upf-deployment.yaml
+                  - monitoring.yaml
+
+---
+# Package Catalog Configuration
+apiVersion: config.porch.kpt.dev/v1alpha1
+kind: Repository
+metadata:
+  name: nephio-package-catalog
+  namespace: porch-system
+spec:
+  type: git
+  content: Package
+  git:
+    repo: https://github.com/oran-mano/nephio-package-catalog
+    branch: main
+    directory: catalog
+    secretRef:
+      name: git-credentials
+  deployment: true
+
+---
+apiVersion: config.porch.kpt.dev/v1alpha1
+kind: Repository
+metadata:
+  name: nephio-blueprints
+  namespace: porch-system
+spec:
+  type: git
+  content: Package
+  git:
+    repo: https://github.com/oran-mano/nephio-blueprints
+    branch: main
+    directory: blueprints
+    secretRef:
+      name: git-credentials
+  deployment: false
+
+---
+# ConfigSync Configuration for Management Cluster
+apiVersion: configsync.gke.io/v1beta1
+kind: RootSync
+metadata:
+  name: management-cluster-sync
+  namespace: config-management-system
+spec:
+  sourceFormat: unstructured
+  git:
+    repo: https://github.com/oran-mano/nephio-deployments-mgmt
+    branch: main
+    dir: clusters/management
+    auth: token
+    secretRef:
+      name: git-creds
+    period: 15s
+  override:
+    resources:
+    - group: apps
+      kind: Deployment
+      operations:
+      - operation: "replace"
+        path: "/spec/template/spec/nodeSelector"
+        value:
+          node-role.kubernetes.io/control-plane: ""
+
+---
+# ConfigSync Configuration for Edge Cluster 01
+apiVersion: configsync.gke.io/v1beta1
+kind: RootSync
+metadata:
+  name: edge01-cluster-sync
+  namespace: config-management-system
+spec:
+  sourceFormat: unstructured
+  git:
+    repo: https://github.com/oran-mano/nephio-deployments-edge01
+    branch: main
+    dir: clusters/edge01
+    auth: token
+    secretRef:
+      name: git-creds
+    period: 30s
+  override:
+    resources:
+    - group: apps
+      kind: Deployment
+      operations:
+      - operation: "replace"
+        path: "/spec/template/spec/nodeSelector"
+        value:
+          kubernetes.io/arch: amd64
+          node-type: edge-compute
+          site-id: edge01-tokyo
+
+---
+# ConfigSync Configuration for Edge Cluster 02
+apiVersion: configsync.gke.io/v1beta1
+kind: RootSync
+metadata:
+  name: edge02-cluster-sync
+  namespace: config-management-system
+spec:
+  sourceFormat: unstructured
+  git:
+    repo: https://github.com/oran-mano/nephio-deployments-edge02
+    branch: main
+    dir: clusters/edge02
+    auth: token
+    secretRef:
+      name: git-creds
+    period: 30s
+  override:
+    resources:
+    - group: apps
+      kind: Deployment
+      operations:
+      - operation: "replace"
+        path: "/spec/template/spec/nodeSelector"
+        value:
+          kubernetes.io/arch: amd64
+          node-type: edge-compute
+          site-id: edge02-osaka
+
+---
+# Namespace-scoped RepoSync for Network Slices
+apiVersion: configsync.gke.io/v1beta1
+kind: RepoSync
+metadata:
+  name: ran-functions-sync
+  namespace: ran-functions
+spec:
+  sourceFormat: unstructured
+  git:
+    repo: https://github.com/oran-mano/nephio-deployments-edge01
+    branch: main
+    dir: namespaces/ran-functions
+    auth: token
+    secretRef:
+      name: git-creds
+    period: 30s
+
+---
+apiVersion: configsync.gke.io/v1beta1
+kind: RepoSync
+metadata:
+  name: core-functions-sync
+  namespace: core-functions
+spec:
+  sourceFormat: unstructured
+  git:
+    repo: https://github.com/oran-mano/nephio-deployments-edge02
+    branch: main
+    dir: namespaces/core-functions
+    auth: token
+    secretRef:
+      name: git-creds
+    period: 30s
+
+---
+# Package Distribution Controller
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: package-distributor
+  namespace: nephio-system
+  labels:
+    app.kubernetes.io/name: package-distributor
+    app.kubernetes.io/component: distribution
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: package-distributor
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: package-distributor
+        app.kubernetes.io/component: distribution
+    spec:
+      serviceAccountName: package-distributor
+      containers:
+      - name: distributor
+        image: oran-mano/package-distributor:latest
+        ports:
+        - containerPort: 8080
+          name: metrics
+        - containerPort: 8081
+          name: health
+        env:
+        - name: CLUSTER_SELECTOR_POLICY
+          value: "qos-aware"
+        - name: DISTRIBUTION_STRATEGY
+          value: "rolling"
+        - name: MAX_PARALLEL_DISTRIBUTIONS
+          value: "3"
+        - name: GIT_REPOSITORIES_CONFIG
+          value: "/etc/config/repositories.yaml"
+        - name: WEBHOOK_ENABLED
+          value: "true"
+        - name: WEBHOOK_PORT
+          value: "9443"
+        volumeMounts:
+        - name: config
+          mountPath: /etc/config
+          readOnly: true
+        - name: git-credentials
+          mountPath: /etc/git-credentials
+          readOnly: true
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8081
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8081
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: config
+        configMap:
+          name: package-distributor-config
+      - name: git-credentials
+        secret:
+          secretName: git-credentials
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: package-distributor-config
+  namespace: nephio-system
+  labels:
+    app.kubernetes.io/name: package-distributor
+data:
+  repositories.yaml: |
+    repositories:
+      package_catalog:
+        url: "https://github.com/oran-mano/nephio-package-catalog"
+        branch: "main"
+        type: "catalog"
+        sync_interval: "5m"
+
+      management_cluster:
+        url: "https://github.com/oran-mano/nephio-deployments-mgmt"
+        branch: "main"
+        type: "deployment"
+        target_cluster: "management"
+        sync_interval: "1m"
+
+      edge01_cluster:
+        url: "https://github.com/oran-mano/nephio-deployments-edge01"
+        branch: "main"
+        type: "deployment"
+        target_cluster: "edge01"
+        sync_interval: "2m"
+
+      edge02_cluster:
+        url: "https://github.com/oran-mano/nephio-deployments-edge02"
+        branch: "main"
+        type: "deployment"
+        target_cluster: "edge02"
+        sync_interval: "2m"
+
+    distribution_policies:
+      - name: "ran-functions-policy"
+        package_selector:
+          category: "ran"
+        cluster_selector:
+          cloud_type: "edge"
+          has_ran_capability: "true"
+        placement_strategy: "latency-aware"
+
+      - name: "core-functions-policy"
+        package_selector:
+          category: "core"
+        cluster_selector:
+          cloud_type: ["edge", "regional"]
+          has_core_capability: "true"
+        placement_strategy: "resource-aware"
+
+      - name: "transport-functions-policy"
+        package_selector:
+          category: "transport"
+        cluster_selector:
+          cloud_type: ["regional", "central"]
+        placement_strategy: "bandwidth-aware"
+
+    validation_rules:
+      - name: "resource-validation"
+        type: "resource-quota"
+        enforce: true
+        rules:
+          - resource: "cpu"
+            limit: "80%"
+          - resource: "memory"
+            limit: "85%"
+
+      - name: "network-validation"
+        type: "network-policy"
+        enforce: true
+        rules:
+          - policy: "slice-isolation"
+            required: true
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: package-distributor
+  namespace: nephio-system
+  labels:
+    app.kubernetes.io/name: package-distributor
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: package-distributor
+  labels:
+    app.kubernetes.io/name: package-distributor
+rules:
+- apiGroups: [""]
+  resources: ["namespaces", "configmaps", "secrets"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "statefulsets"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["porch.kpt.dev"]
+  resources: ["packagerevisions", "packages", "repositories"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["configsync.gke.io"]
+  resources: ["rootsyncs", "reposyncs"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["mano.oran.io"]
+  resources: ["networksliceintents", "vnfs"]
+  verbs: ["get", "list", "watch", "update", "patch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: package-distributor
+  labels:
+    app.kubernetes.io/name: package-distributor
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: package-distributor
+subjects:
+- kind: ServiceAccount
+  name: package-distributor
+  namespace: nephio-system
+
+---
+# Git Webhook Handler for Package Updates
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: git-webhook-handler
+  namespace: nephio-system
+  labels:
+    app.kubernetes.io/name: git-webhook-handler
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: git-webhook-handler
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: git-webhook-handler
+    spec:
+      containers:
+      - name: webhook-handler
+        image: oran-mano/git-webhook-handler:latest
+        ports:
+        - containerPort: 8080
+          name: webhook
+        env:
+        - name: WEBHOOK_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: git-webhook-secret
+              key: secret
+        - name: PACKAGE_SYNC_ENABLED
+          value: "true"
+        - name: AUTO_DEPLOY_ENABLED
+          value: "false"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: git-webhook-handler
+  namespace: nephio-system
+  labels:
+    app.kubernetes.io/name: git-webhook-handler
+spec:
+  selector:
+    app.kubernetes.io/name: git-webhook-handler
+  ports:
+  - name: webhook
+    port: 80
+    targetPort: 8080
+
+---
+# Package Validation Webhook
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionWebhook
+metadata:
+  name: package-validation-webhook
+  labels:
+    app.kubernetes.io/name: package-distributor
+webhooks:
+- name: package-validation.nephio.io
+  clientConfig:
+    service:
+      name: package-distributor
+      namespace: nephio-system
+      path: "/validate/package"
+  rules:
+  - operations: ["CREATE", "UPDATE"]
+    apiGroups: ["porch.kpt.dev"]
+    apiVersions: ["v1alpha1"]
+    resources: ["packagerevisions"]
+  admissionReviewVersions: ["v1", "v1beta1"]
+  sideEffects: None
+  failurePolicy: Fail
+
+---
+# Package Mutation Webhook for Auto-enrichment
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingAdmissionWebhook
+metadata:
+  name: package-mutation-webhook
+  labels:
+    app.kubernetes.io/name: package-distributor
+webhooks:
+- name: package-mutation.nephio.io
+  clientConfig:
+    service:
+      name: package-distributor
+      namespace: nephio-system
+      path: "/mutate/package"
+  rules:
+  - operations: ["CREATE"]
+    apiGroups: ["porch.kpt.dev"]
+    apiVersions: ["v1alpha1"]
+    resources: ["packagerevisions"]
+  admissionReviewVersions: ["v1", "v1beta1"]
+  sideEffects: None
+  failurePolicy: Fail
+
+---
+# Monitoring and Alerting for GitOps
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: gitops-metrics
+  namespace: nephio-system
+  labels:
+    app.kubernetes.io/name: gitops-monitoring
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: package-distributor
+  endpoints:
+  - port: metrics
+    interval: 30s
+    path: /metrics
+
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: gitops-alerts
+  namespace: nephio-system
+  labels:
+    app.kubernetes.io/name: gitops-monitoring
+spec:
+  groups:
+  - name: gitops.rules
+    rules:
+    - alert: PackageDistributionFailed
+      expr: increase(package_distribution_failures_total[5m]) > 0
+      for: 1m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Package distribution failures detected"
+        description: "{{ $value }} package distribution failures in the last 5 minutes"
+
+    - alert: ConfigSyncOutOfSync
+      expr: config_sync_status == 0
+      for: 2m
+      labels:
+        severity: critical
+      annotations:
+        summary: "ConfigSync is out of sync"
+        description: "ConfigSync has been out of sync for more than 2 minutes"
+
+    - alert: GitRepositoryUnreachable
+      expr: git_repository_reachable == 0
+      for: 1m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Git repository is unreachable"
+        description: "Git repository {{ $labels.repository }} is unreachable"
+
+    - alert: PackageValidationErrors
+      expr: rate(package_validation_errors_total[5m]) > 0.1
+      for: 1m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High package validation error rate"
+        description: "Package validation error rate is {{ $value }} errors per second"

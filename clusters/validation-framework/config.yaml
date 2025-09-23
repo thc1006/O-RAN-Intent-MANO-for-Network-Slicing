@@ -1,0 +1,235 @@
+# GitOps Validation Framework Configuration
+# O-RAN Intent-based MANO System
+
+clusters:
+  - name: edge01
+    type: edge
+    kubeconfig: ${HOME}/.kube/edge01-config
+    context: edge01-context
+    environment: production
+    packages:
+      - ran-du-packages
+      - tn-edge-packages
+    capabilities:
+      - ran-du
+      - transport-network
+      - edge-computing
+    labels:
+      cluster.oran.io/type: edge
+      cluster.oran.io/location: edge01
+      cluster.oran.io/ran-type: du
+
+  - name: edge02
+    type: edge
+    kubeconfig: ${HOME}/.kube/edge02-config
+    context: edge02-context
+    environment: production
+    packages:
+      - ran-du-packages
+      - tn-edge-packages
+    capabilities:
+      - ran-du
+      - transport-network
+      - edge-computing
+    labels:
+      cluster.oran.io/type: edge
+      cluster.oran.io/location: edge02
+      cluster.oran.io/ran-type: du
+
+  - name: regional
+    type: regional
+    kubeconfig: ${HOME}/.kube/regional-config
+    context: regional-context
+    environment: production
+    packages:
+      - ran-cu-packages
+      - cn-regional-packages
+      - tn-regional-packages
+    capabilities:
+      - ran-cu
+      - cn-upf
+      - transport-network
+      - regional-orchestration
+    labels:
+      cluster.oran.io/type: regional
+      cluster.oran.io/location: regional
+      cluster.oran.io/ran-type: cu
+
+  - name: central
+    type: central
+    kubeconfig: ${HOME}/.kube/central-config
+    context: central-context
+    environment: production
+    packages:
+      - cn-core-packages
+      - orchestrator-packages
+      - o2-packages
+    capabilities:
+      - cn-core
+      - mano-orchestrator
+      - o2-interface
+      - intent-processing
+    labels:
+      cluster.oran.io/type: central
+      cluster.oran.io/location: central
+      cluster.oran.io/role: core
+
+git:
+  repoUrl: "https://github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing.git"
+  branch: main
+  path: clusters
+  # authToken: ${GITHUB_TOKEN}  # Set via environment variable
+  # sshKeyPath: ${HOME}/.ssh/id_rsa  # Alternative auth method
+
+nephio:
+  porchServer: "https://porch.nephio.io"
+  repositories:
+    - nephio-packages
+    - oran-packages
+    - vendor-packages
+  packagePaths:
+    ran-du-packages: clusters/edge01/packages/ran-du
+    ran-cu-packages: clusters/regional/packages/ran-cu
+    cn-core-packages: clusters/central/packages/cn-core
+    cn-regional-packages: clusters/regional/packages/cn-regional
+    tn-edge-packages: clusters/edge01/packages/tn
+    tn-regional-packages: clusters/regional/packages/tn
+    orchestrator-packages: clusters/central/packages/orchestrator
+    o2-packages: clusters/central/packages/o2
+  renderTimeout: 5m
+
+validation:
+  readinessTimeout: 10m
+  requiredResources:
+    # RAN Components
+    - apiVersion: mano.oran.io/v1alpha1
+      kind: VNF
+      namespace: ran-du
+      labels:
+        component: ran-du
+    - apiVersion: mano.oran.io/v1alpha1
+      kind: VNF
+      namespace: ran-cu
+      labels:
+        component: ran-cu
+
+    # Core Network Components
+    - apiVersion: mano.oran.io/v1alpha1
+      kind: VNF
+      namespace: cn-core
+      labels:
+        component: cn-core
+
+    # Transport Network Components
+    - apiVersion: mano.oran.io/v1alpha1
+      kind: VNF
+      namespace: transport
+      labels:
+        component: transport-network
+
+    # Orchestrator Components
+    - apiVersion: apps/v1
+      kind: Deployment
+      namespace: orchestrator
+      name: orchestrator-manager
+
+    # O2 Interface Components
+    - apiVersion: apps/v1
+      kind: Deployment
+      namespace: o2-system
+      name: o2-client
+
+    # GitOps Components
+    - apiVersion: apps/v1
+      kind: Deployment
+      namespace: config-management-system
+      name: reconciler-manager
+    - apiVersion: apps/v1
+      kind: Deployment
+      namespace: argocd
+      name: argocd-server
+
+  driftTolerance:
+    maxDriftPercentage: 5.0
+    checkInterval: 30s
+    autoCorrect: true
+
+  performanceThresholds:
+    deploymentTime: 10m          # Must be under 10 minutes (DoD requirement)
+    throughputMbps: [4.57, 2.77, 0.93]  # Expected throughput values (DoD)
+    pingRttMs: [16.1, 15.7, 6.3]        # Expected RTT values (DoD)
+    cpuUtilization: 80.0         # Max 80% CPU utilization
+    memoryUtilization: 85.0      # Max 85% memory utilization
+
+monitoring:
+  enabled: true
+  prometheusUrl: "http://prometheus.monitoring.svc.cluster.local:9090"
+  grafanaUrl: "http://grafana.monitoring.svc.cluster.local:3000"
+  alertManager: "http://alertmanager.monitoring.svc.cluster.local:9093"
+  metricsPath: /metrics
+  scrapeInterval: 30s
+
+rollback:
+  enabled: true
+  maxRollbacks: 5
+  rollbackTimeout: 15m
+  healthCheckTimeout: 5m
+  preserveData: true
+
+driftDetection:
+  enabled: true
+  scanInterval: 5m
+  remediation: correct  # alert, correct, rollback
+  ignoreFields:
+    - metadata.resourceVersion
+    - metadata.generation
+    - metadata.managedFields
+    - status
+    - metadata.annotations.kubectl.kubernetes.io/last-applied-configuration
+
+performance:
+  enabled: true
+  collectionInterval: 1m
+  retentionPeriod: 24h
+  alertThresholds:
+    cpu_high: 85.0
+    memory_high: 90.0
+    deployment_time_exceeded: 600  # 10 minutes in seconds
+    throughput_below_threshold: 0.9  # 90% of expected throughput
+
+# ConfigSync specific configuration
+configSync:
+  namespace: config-management-system
+  rootSyncName: root-sync
+  repoSyncTimeout: 5m
+  validationTimeout: 10m
+  expectedSyncResources:
+    - v1:Namespace::ran-du
+    - v1:Namespace::ran-cu
+    - v1:Namespace::cn-core
+    - v1:Namespace::transport
+    - v1:Namespace::orchestrator
+    - v1:Namespace::o2-system
+    - apps/v1:Deployment:orchestrator:orchestrator-manager
+    - apps/v1:Deployment:o2-system:o2-client
+  healthCheckInterval: 30s
+
+# ArgoCD specific configuration
+argocd:
+  namespace: argocd
+  serverName: argocd-server
+  applicationTimeout: 5m
+  syncTimeout: 10m
+  healthCheckTimeout: 5m
+  expectedApplications:
+    - ran-du-app
+    - ran-cu-app
+    - cn-core-app
+    - transport-app
+    - orchestrator-app
+    - o2-interface-app
+  projectNamespaces:
+    - oran-ran
+    - oran-cn
+    - oran-tn
+    - oran-orchestrator

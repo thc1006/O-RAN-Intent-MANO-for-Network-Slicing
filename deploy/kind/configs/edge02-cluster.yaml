@@ -1,0 +1,89 @@
+# Kind cluster configuration for Edge 02
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: edge02
+networking:
+  apiServerAddress: "127.0.0.1"
+  apiServerPort: 6444  # Different port from edge01
+  podSubnet: "10.245.0.0/16"  # Different subnet
+  serviceSubnet: "10.97.0.0/12"  # Different subnet
+  disableDefaultCNI: true
+  kubeProxyMode: "iptables"
+
+nodes:
+- role: control-plane
+  image: kindest/node:v1.28.0
+  kubeadmConfigPatches:
+  - |
+    kind: InitConfiguration
+    nodeRegistration:
+      kubeletExtraArgs:
+        node-labels: "cluster=edge02,site=edge,zone=edge-zone-2"
+        node-ip: "172.19.0.2"
+  - |
+    kind: ClusterConfiguration
+    metadata:
+      name: config
+    networking:
+      podSubnet: "10.245.0.0/16"
+      serviceSubnet: "10.97.0.0/12"
+    apiServer:
+      extraArgs:
+        runtime-config: "api/all=true"
+        enable-admission-plugins: "NodeRestriction,ResourceQuota,PodSecurityPolicy"
+      certSANs:
+      - "127.0.0.1"
+      - "localhost"
+      - "edge02-control-plane"
+  extraMounts:
+  - hostPath: /tmp/edge02-logs
+    containerPath: /var/log
+  - hostPath: /tmp/edge02-data
+    containerPath: /var/lib/edge02
+  extraPortMappings:
+  - containerPort: 30080
+    hostPort: 30081
+    protocol: TCP
+  - containerPort: 30443
+    hostPort: 30444
+    protocol: TCP
+  - containerPort: 6641
+    hostPort: 6643
+    protocol: TCP
+  - containerPort: 6642
+    hostPort: 6644
+    protocol: TCP
+
+- role: worker
+  image: kindest/node:v1.28.0
+  kubeadmConfigPatches:
+  - |
+    kind: JoinConfiguration
+    nodeRegistration:
+      kubeletExtraArgs:
+        node-labels: "cluster=edge02,site=edge,zone=edge-zone-2,workload=ran"
+        node-ip: "172.19.0.3"
+  extraMounts:
+  - hostPath: /tmp/edge02-worker1-logs
+    containerPath: /var/log
+  - hostPath: /tmp/edge02-worker1-data
+    containerPath: /var/lib/worker
+
+- role: worker
+  image: kindest/node:v1.28.0
+  kubeadmConfigPatches:
+  - |
+    kind: JoinConfiguration
+    nodeRegistration:
+      kubeletExtraArgs:
+        node-labels: "cluster=edge02,site=edge,zone=edge-zone-2,workload=tn"
+        node-ip: "172.19.0.4"
+  extraMounts:
+  - hostPath: /tmp/edge02-worker2-logs
+    containerPath: /var/log
+  - hostPath: /tmp/edge02-worker2-data
+    containerPath: /var/lib/worker
+
+featureGates:
+  "EphemeralContainers": true
+  "PodSecurity": true

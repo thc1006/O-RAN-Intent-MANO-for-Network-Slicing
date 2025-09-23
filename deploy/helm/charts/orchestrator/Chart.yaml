@@ -1,0 +1,26 @@
+apiVersion: v2
+name: oran-orchestrator
+description: O-RAN Intent-MANO Orchestrator Helm Chart
+home: https://github.com/o-ran/intent-mano
+sources:
+  - https://github.com/o-ran/intent-mano
+keywords:
+  - oran
+  - mano
+  - orchestrator
+  - 5g
+  - network-slicing
+maintainers:
+  - name: thc1006
+    email: 84045975+thc1006@users.noreply.github.com
+type: application
+version: 1.0.0
+appVersion: "v1.0.0"
+dependencies:
+  - name: common
+    version: "2.x.x"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: common.enabled
+annotations:
+  category: NetworkingAndSecurity
+  licenses: Apache-2.0

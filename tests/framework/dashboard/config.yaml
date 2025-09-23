@@ -1,0 +1,414 @@
+# O-RAN Intent-MANO Test Dashboard Configuration
+
+# Dashboard settings
+dashboard:
+  title: "O-RAN Intent-MANO Test Dashboard"
+  refresh_rate: 30  # seconds
+  port: 8080
+  output_dir: "reports/dashboard"
+  enable_realtime: true
+  max_history_size: 100
+
+# Data sources for metrics aggregation
+data_sources:
+  # Test results
+  - name: "unit-tests"
+    type: "junit"
+    path: "reports/unit-tests.xml"
+    format: "xml"
+    metadata:
+      component: "all"
+      test_type: "unit"
+
+  - name: "integration-tests"
+    type: "junit"
+    path: "reports/integration-tests.xml"
+    format: "xml"
+    metadata:
+      component: "all"
+      test_type: "integration"
+
+  - name: "e2e-tests"
+    type: "junit"
+    path: "reports/e2e-tests.xml"
+    format: "xml"
+    metadata:
+      component: "all"
+      test_type: "e2e"
+
+  - name: "performance-tests"
+    type: "junit"
+    path: "reports/performance-tests.xml"
+    format: "xml"
+    metadata:
+      component: "all"
+      test_type: "performance"
+
+  # Code coverage
+  - name: "coverage-go"
+    type: "coverage"
+    path: "reports/coverage.out"
+    format: "text"
+    metadata:
+      language: "go"
+
+  - name: "coverage-python"
+    type: "coverage"
+    path: "reports/coverage.json"
+    format: "json"
+    metadata:
+      language: "python"
+
+  # Performance metrics
+  - name: "performance-metrics"
+    type: "performance"
+    path: "reports/performance.json"
+    format: "json"
+    metadata:
+      component: "all"
+
+  - name: "thesis-validation"
+    type: "performance"
+    path: "reports/thesis_validation.json"
+    format: "json"
+    metadata:
+      component: "thesis"
+
+  # Security scans
+  - name: "trivy-scan"
+    type: "security"
+    path: "reports/trivy.json"
+    format: "json"
+    metadata:
+      scanner: "trivy"
+      scan_type: "container"
+
+  - name: "gosec-scan"
+    type: "security"
+    path: "reports/gosec.json"
+    format: "json"
+    metadata:
+      scanner: "gosec"
+      scan_type: "static"
+
+  - name: "bandit-scan"
+    type: "security"
+    path: "reports/bandit.json"
+    format: "json"
+    metadata:
+      scanner: "bandit"
+      scan_type: "static"
+
+  - name: "grype-scan"
+    type: "security"
+    path: "reports/grype.json"
+    format: "json"
+    metadata:
+      scanner: "grype"
+      scan_type: "dependency"
+
+# Quality gate thresholds
+thresholds:
+  # Code coverage thresholds
+  coverage.overall: 90.0
+  coverage.statement: 90.0
+  coverage.branch: 85.0
+  coverage.function: 90.0
+
+  # Test success rate thresholds
+  test.success_rate: 95.0
+  test.unit_success_rate: 98.0
+  test.integration_success_rate: 95.0
+  test.e2e_success_rate: 90.0
+
+  # Performance thresholds (thesis targets)
+  performance.deployment_time: 10.0  # minutes
+  performance.urllc_throughput: 4.57  # Mbps
+  performance.embb_throughput: 2.77   # Mbps
+  performance.mmtc_throughput: 0.93   # Mbps
+  performance.urllc_latency: 6.3      # ms
+  performance.embb_latency: 15.7      # ms
+  performance.mmtc_latency: 16.1      # ms
+
+  # Security thresholds
+  security.critical_vulns: 0
+  security.high_vulns: 5
+  security.medium_vulns: 20
+  security.license_violations: 0
+
+  # Quality metrics
+  quality.complexity_violations: 3
+  quality.duplications: 5.0  # percentage
+  quality.technical_debt_ratio: 10.0  # percentage
+
+# Alert configuration
+alerts:
+  # Webhook URLs for notifications
+  webhooks:
+    - "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK"
+    - "https://api.teams.microsoft.com/YOUR/TEAMS/WEBHOOK"
+
+  # Email notifications
+  email:
+    enabled: false
+    smtp_server: "smtp.gmail.com"
+    smtp_port: 587
+    username: "notifications@yourcompany.com"
+    recipients:
+      - "team@yourcompany.com"
+      - "qa@yourcompany.com"
+
+  # Alert severity levels
+  severity_levels:
+    critical:
+      color: "#dc3545"
+      icon: "🚨"
+      notify_immediately: true
+    error:
+      color: "#fd7e14"
+      icon: "❌"
+      notify_immediately: true
+    warning:
+      color: "#ffc107"
+      icon: "⚠️"
+      notify_immediately: false
+    info:
+      color: "#17a2b8"
+      icon: "ℹ️"
+      notify_immediately: false
+
+# Metrics aggregation settings
+aggregation:
+  update_interval: "1m"      # How often to collect metrics
+  retention_period: "24h"    # How long to keep historical data
+  max_history_size: 100      # Maximum number of historical entries
+  enable_realtime: true      # Enable real-time WebSocket updates
+  output_directory: "reports/aggregated"
+
+# Dashboard customization
+customization:
+  # Color scheme
+  colors:
+    primary: "#667eea"
+    secondary: "#764ba2"
+    success: "#48bb78"
+    warning: "#ed8936"
+    error: "#f56565"
+    info: "#4299e1"
+
+  # Chart settings
+  charts:
+    enable_animations: true
+    default_theme: "light"
+    responsive: true
+
+  # Layout settings
+  layout:
+    grid_columns: 3
+    card_spacing: "2rem"
+    enable_drag_drop: false
+
+  # Features
+  features:
+    enable_export: true
+    enable_filters: true
+    enable_fullscreen: true
+    enable_print: true
+
+# Component-specific settings
+components:
+  # NLP Module
+  nlp:
+    test_coverage_target: 95.0
+    performance_targets:
+      parsing_time: 100  # ms
+      accuracy: 98.0     # percentage
+
+  # Orchestrator
+  orchestrator:
+    test_coverage_target: 92.0
+    performance_targets:
+      placement_time: 500  # ms
+      optimization_ratio: 85.0  # percentage
+
+  # VNF Operator
+  vnf_operator:
+    test_coverage_target: 88.0
+    performance_targets:
+      deployment_time: 300  # seconds
+      success_rate: 95.0    # percentage
+
+  # O2 Client
+  o2_client:
+    test_coverage_target: 85.0
+    performance_targets:
+      api_response_time: 1000  # ms
+      success_rate: 99.0       # percentage
+
+  # TN Manager
+  tn_manager:
+    test_coverage_target: 82.0
+    performance_targets:
+      bandwidth_allocation_time: 200  # ms
+      qos_enforcement_accuracy: 95.0   # percentage
+
+  # TN Agent
+  tn_agent:
+    test_coverage_target: 80.0
+    performance_targets:
+      traffic_shaping_latency: 50  # ms
+      throughput_accuracy: 98.0    # percentage
+
+  # Nephio Generator
+  nephio_generator:
+    test_coverage_target: 78.0
+    performance_targets:
+      package_generation_time: 1000  # ms
+      validation_success_rate: 95.0   # percentage
+
+# Reporting settings
+reporting:
+  # Report formats
+  formats:
+    - "html"
+    - "json"
+    - "pdf"
+    - "xml"
+
+  # Report schedules
+  schedules:
+    daily:
+      enabled: true
+      time: "06:00"
+      format: "html"
+      recipients:
+        - "team@yourcompany.com"
+
+    weekly:
+      enabled: true
+      day: "monday"
+      time: "08:00"
+      format: "pdf"
+      recipients:
+        - "management@yourcompany.com"
+
+    monthly:
+      enabled: true
+      day: 1
+      time: "09:00"
+      format: "pdf"
+      recipients:
+        - "stakeholders@yourcompany.com"
+
+  # Report templates
+  templates:
+    daily: "templates/daily_report.html"
+    weekly: "templates/weekly_report.html"
+    monthly: "templates/monthly_report.html"
+    executive: "templates/executive_summary.html"
+
+# Integration settings
+integrations:
+  # GitHub integration
+  github:
+    enabled: true
+    token_env: "GITHUB_TOKEN"
+    repo: "O-RAN-Intent-MANO-for-Network-Slicing"
+    update_pr_status: true
+    create_check_runs: true
+
+  # Prometheus integration
+  prometheus:
+    enabled: false
+    endpoint: "http://prometheus:9090"
+    push_gateway: "http://pushgateway:9091"
+    job_name: "oran-intent-mano-tests"
+
+  # Grafana integration
+  grafana:
+    enabled: false
+    endpoint: "http://grafana:3000"
+    api_key_env: "GRAFANA_API_KEY"
+    dashboard_id: "oran-intent-mano"
+
+  # Slack integration
+  slack:
+    enabled: false
+    webhook_env: "SLACK_WEBHOOK_URL"
+    channel: "#oran-intent-mano"
+    mention_on_failure: "@channel"
+
+  # JIRA integration
+  jira:
+    enabled: false
+    endpoint: "https://yourcompany.atlassian.net"
+    username_env: "JIRA_USERNAME"
+    token_env: "JIRA_TOKEN"
+    project_key: "ORAN"
+    create_issues_on_failure: true
+
+# Storage settings
+storage:
+  # Local storage
+  local:
+    base_path: "reports"
+    max_size: "1GB"
+    cleanup_after: "30d"
+
+  # Cloud storage (optional)
+  s3:
+    enabled: false
+    bucket: "oran-intent-mano-reports"
+    region: "us-east-1"
+    access_key_env: "AWS_ACCESS_KEY_ID"
+    secret_key_env: "AWS_SECRET_ACCESS_KEY"
+
+  # Database storage (optional)
+  database:
+    enabled: false
+    type: "postgresql"
+    connection_string_env: "DATABASE_URL"
+    table_prefix: "oran_metrics"
+
+# Security settings
+security:
+  # Authentication
+  auth:
+    enabled: false
+    type: "basic"  # basic, oauth, jwt
+    users:
+      - username: "admin"
+        password_hash: "$2a$10$..."
+        role: "admin"
+      - username: "viewer"
+        password_hash: "$2a$10$..."
+        role: "viewer"
+
+  # Authorization
+  authz:
+    roles:
+      admin:
+        permissions:
+          - "view_dashboard"
+          - "modify_settings"
+          - "export_data"
+          - "delete_data"
+      viewer:
+        permissions:
+          - "view_dashboard"
+          - "export_data"
+
+  # HTTPS settings
+  https:
+    enabled: false
+    cert_file: "certs/server.crt"
+    key_file: "certs/server.key"
+    auto_redirect: true
+
+# Development settings
+development:
+  debug: false
+  log_level: "info"  # debug, info, warn, error
+  enable_profiling: false
+  mock_data: false
+  hot_reload: false

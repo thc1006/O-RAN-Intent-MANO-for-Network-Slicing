@@ -1,0 +1,23 @@
+apiVersion: tn.oran.io/v1alpha1
+kind: TNSlice
+metadata:
+  name: urllc-slice
+  namespace: default
+spec:
+  sliceId: urllc-slice-001
+  profile: uRLLC
+  bandwidth: 0.93
+  latency: 6.3
+  jitter: 0.5
+  packetLoss: 0.001
+  vxlanId: 1002
+  priority: 10  # Higher priority for URLLC
+  endpoints:
+    - nodeName: kind-worker
+      ip: 172.18.0.3
+      interface: eth0
+      role: source
+    - nodeName: kind-worker2
+      ip: 172.18.0.4
+      interface: eth0
+      role: destination

@@ -1,0 +1,325 @@
+# O-RAN Intent-MANO Docker Compose Configuration
+# Local development and testing environment
+version: '3.8'
+
+networks:
+  mano-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+  oran-edge:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16
+  oran-core:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.22.0.0/16
+
+volumes:
+  orchestrator-data:
+  vnf-operator-data:
+  o2-client-data:
+  tn-manager-data:
+  tn-agent-data:
+  ran-dms-data:
+  cn-dms-data:
+  prometheus-data:
+  grafana-data:
+
+services:
+  # Core Orchestrator Service
+  orchestrator:
+    build:
+      context: ../../
+      dockerfile: deploy/docker/orchestrator/Dockerfile
+    container_name: oran-orchestrator
+    restart: unless-stopped
+    networks:
+      - mano-net
+    ports:
+      - "8080:8080"
+      - "9090:9090"
+    environment:
+      - LOG_LEVEL=debug
+      - METRICS_ENABLED=true
+      - DMS_ENDPOINT=http://ran-dms:8080
+      - PORCH_ENDPOINT=http://localhost:7007
+    volumes:
+      - orchestrator-data:/data
+      - ./configs/orchestrator:/config:ro
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    depends_on:
+      - ran-dms
+      - cn-dms
+
+  # VNF Operator
+  vnf-operator:
+    build:
+      context: ../../
+      dockerfile: deploy/docker/vnf-operator/Dockerfile
+    container_name: oran-vnf-operator
+    restart: unless-stopped
+    networks:
+      - mano-net
+    ports:
+      - "8081:8080"
+      - "8082:8081"
+    environment:
+      - LOG_LEVEL=debug
+      - DMS_ENDPOINT=http://ran-dms:8080
+      - PORCH_REPO=http://localhost:7007/api/porch/v1alpha1
+    volumes:
+      - vnf-operator-data:/data
+      - ./configs/vnf-operator:/config:ro
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8081/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # O2 Client
+  o2-client:
+    build:
+      context: ../../
+      dockerfile: deploy/docker/o2-client/Dockerfile
+    container_name: oran-o2-client
+    restart: unless-stopped
+    networks:
+      - mano-net
+    ports:
+      - "8083:8080"
+    environment:
+      - LOG_LEVEL=debug
+      - O2IMS_ENDPOINT=http://localhost:5005
+      - O2DMS_ENDPOINT=http://ran-dms:8080
+    volumes:
+      - o2-client-data:/data
+      - ./configs/o2-client:/config:ro
+      - ./certs:/certs:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # TN Manager
+  tn-manager:
+    build:
+      context: ../../
+      dockerfile: deploy/docker/tn-manager/Dockerfile
+    container_name: oran-tn-manager
+    restart: unless-stopped
+    networks:
+      - mano-net
+      - oran-edge
+    ports:
+      - "8084:8080"
+      - "9091:9090"
+    environment:
+      - LOG_LEVEL=debug
+      - ORCHESTRATOR_ENDPOINT=http://orchestrator:8080
+    volumes:
+      - tn-manager-data:/data
+      - ./configs/tn-manager:/config:ro
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    depends_on:
+      - orchestrator
+
+  # TN Agent (Edge 01)
+  tn-agent-edge01:
+    build:
+      context: ../../
+      dockerfile: deploy/docker/tn-agent/Dockerfile
+    container_name: oran-tn-agent-edge01
+    restart: unless-stopped
+    networks:
+      - oran-edge
+    ports:
+      - "8085:8080"
+      - "5201:5201"
+    environment:
+      - LOG_LEVEL=debug
+      - NODE_ID=edge01
+      - TN_MANAGER_ENDPOINT=http://tn-manager:8080
+      - SITE_LOCATION=edge
+    volumes:
+      - tn-agent-data:/data
+      - ./configs/tn-agent:/config:ro
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    depends_on:
+      - tn-manager
+
+  # TN Agent (Edge 02)
+  tn-agent-edge02:
+    build:
+      context: ../../
+      dockerfile: deploy/docker/tn-agent/Dockerfile
+    container_name: oran-tn-agent-edge02
+    restart: unless-stopped
+    networks:
+      - oran-edge
+    ports:
+      - "8086:8080"
+      - "5202:5201"
+    environment:
+      - LOG_LEVEL=debug
+      - NODE_ID=edge02
+      - TN_MANAGER_ENDPOINT=http://tn-manager:8080
+      - SITE_LOCATION=edge
+    volumes:
+      - tn-agent-data:/data
+      - ./configs/tn-agent:/config:ro
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    depends_on:
+      - tn-manager
+
+  # RAN DMS
+  ran-dms:
+    build:
+      context: ../../
+      dockerfile: deploy/docker/ran-dms/Dockerfile
+    container_name: oran-ran-dms
+    restart: unless-stopped
+    networks:
+      - mano-net
+      - oran-edge
+    ports:
+      - "8087:8080"
+      - "8443:8443"
+    environment:
+      - LOG_LEVEL=debug
+      - METRICS_ENABLED=true
+    volumes:
+      - ran-dms-data:/var/lib/ran-dms
+      - ./configs/ran-dms:/config:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # CN DMS
+  cn-dms:
+    build:
+      context: ../../
+      dockerfile: deploy/docker/cn-dms/Dockerfile
+    container_name: oran-cn-dms
+    restart: unless-stopped
+    networks:
+      - mano-net
+      - oran-core
+    ports:
+      - "8088:8080"
+      - "8444:8443"
+    environment:
+      - LOG_LEVEL=debug
+      - METRICS_ENABLED=true
+    volumes:
+      - cn-dms-data:/var/lib/cn-dms
+      - ./configs/cn-dms:/config:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Monitoring: Prometheus
+  prometheus:
+    image: prom/prometheus:v2.47.2
+    container_name: oran-prometheus
+    restart: unless-stopped
+    networks:
+      - mano-net
+    ports:
+      - "9090:9090"
+    volumes:
+      - prometheus-data:/prometheus
+      - ./configs/prometheus:/etc/prometheus:ro
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Monitoring: Grafana
+  grafana:
+    image: grafana/grafana:10.2.0
+    container_name: oran-grafana
+    restart: unless-stopped
+    networks:
+      - mano-net
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./configs/grafana:/etc/grafana/provisioning:ro
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    depends_on:
+      - prometheus
+
+  # Testing: Performance Test Suite
+  test-runner:
+    image: alpine:3.18
+    container_name: oran-test-runner
+    networks:
+      - mano-net
+      - oran-edge
+      - oran-core
+    volumes:
+      - ./test:/test:ro
+      - ./results:/results
+    working_dir: /test
+    command: ['sh', '-c', 'sleep infinity']
+    profiles:
+      - testing

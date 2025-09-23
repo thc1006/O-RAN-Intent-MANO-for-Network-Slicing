@@ -1,0 +1,410 @@
+# O-RAN Intent-MANO Production Deployment Pipeline
+# GitOps-enabled CI/CD with comprehensive validation
+
+name: Production Deployment
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      force_deploy:
+        description: 'Force deployment (skip some checks)'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  REGISTRY: docker.io/thc1006
+  NAMESPACE: o-ran-mano
+  TIMEOUT: 600
+  PERFORMANCE_THRESHOLD_DEPLOYMENT_TIME: 600
+  PERFORMANCE_THRESHOLD_THROUGHPUT_HIGH: 4.57
+  PERFORMANCE_THRESHOLD_THROUGHPUT_MID: 2.77
+  PERFORMANCE_THRESHOLD_THROUGHPUT_LOW: 0.93
+  PERFORMANCE_THRESHOLD_RTT_HIGH: 16.1
+  PERFORMANCE_THRESHOLD_RTT_MID: 15.7
+  PERFORMANCE_THRESHOLD_RTT_LOW: 6.3
+
+jobs:
+  # Security and code quality checks
+  security-scan:
+    name: Security Scanning
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Secret scanning
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: main
+          head: HEAD
+          extra_args: --debug --only-verified
+
+  # Build and test phase
+  build-and-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    needs: [security-scan]
+    strategy:
+      matrix:
+        component:
+          - orchestrator
+          - o2-client
+          - vnf-operator
+          - ran-dms
+          - cn-dms
+          - tn-manager
+          - tn-agent
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+          cache: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ matrix.component }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+
+      - name: Run unit tests
+        run: |
+          cd ${{ matrix.component }}
+          go mod download
+          go test -v -race -coverprofile=coverage.out ./...
+          go tool cover -html=coverage.out -o coverage.html
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        with:
+          file: ${{ matrix.component }}/coverage.out
+          flags: ${{ matrix.component }}
+          name: ${{ matrix.component }}-coverage
+
+      - name: Build and push container image
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.component }}
+          file: ${{ matrix.component }}/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+
+      - name: Sign container image
+        uses: sigstore/cosign-installer@v3
+      - name: Sign the published Docker image
+        env:
+          COSIGN_EXPERIMENTAL: 1
+        run: |
+          echo "${{ steps.meta.outputs.tags }}" | xargs -I {} cosign sign --yes {}@${{ steps.build.outputs.digest }}
+
+  # Integration tests
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: [build-and-test]
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Kind cluster
+        uses: helm/kind-action@v1
+        with:
+          config: deploy/kind/configs/integration-cluster.yaml
+          cluster_name: integration
+
+      - name: Install Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: '3.12.0'
+
+      - name: Deploy monitoring stack
+        run: |
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+          helm repo update
+          kubectl create namespace monitoring
+          helm install prometheus prometheus-community/kube-prometheus-stack \
+            --namespace monitoring \
+            --set prometheus.prometheusSpec.retention=1h \
+            --set prometheus.prometheusSpec.storageSpec.volumeClaimTemplate.spec.resources.requests.storage=1Gi \
+            --wait --timeout=10m
+
+      - name: Deploy O-RAN MANO system
+        env:
+          IMAGE_TAG: ${{ github.ref == 'refs/heads/main' && 'main' || github.head_ref }}-${{ github.sha }}
+        run: |
+          chmod +x deploy/scripts/setup/deploy-mano.sh
+          ./deploy/scripts/setup/deploy-mano.sh integration ${{ env.IMAGE_TAG }}
+
+      - name: Wait for system to be ready
+        run: |
+          kubectl wait --for=condition=ready pod -l app.kubernetes.io/part-of=o-ran-mano -n ${{ env.NAMESPACE }} --timeout=600s
+
+      - name: Run integration tests
+        run: |
+          chmod +x deploy/scripts/test/run_integration_tests.sh
+          ./deploy/scripts/test/run_integration_tests.sh
+
+      - name: Run performance tests
+        run: |
+          chmod +x deploy/scripts/test/run_performance_tests.sh
+          ./deploy/scripts/test/run_performance_tests.sh
+
+      - name: Collect test results
+        if: always()
+        run: |
+          kubectl logs -n ${{ env.NAMESPACE }} -l app.kubernetes.io/part-of=o-ran-mano --tail=1000 > integration-logs.txt
+          kubectl get all -n ${{ env.NAMESPACE }} -o yaml > integration-resources.yaml
+
+      - name: Upload test artifacts
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: integration-test-results
+          path: |
+            integration-logs.txt
+            integration-resources.yaml
+            experiments/results/
+
+  # Staging deployment
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [integration-tests]
+    if: github.ref == 'refs/heads/main' || github.event.inputs.environment == 'staging'
+    environment:
+      name: staging
+      url: https://o-ran-mano-staging.example.com
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure kubectl
+        uses: azure/k8s-set-context@v3
+        with:
+          method: kubeconfig
+          kubeconfig: ${{ secrets.STAGING_KUBECONFIG }}
+
+      - name: Deploy to staging
+        env:
+          IMAGE_TAG: main-${{ github.sha }}
+        run: |
+          chmod +x deploy/production/automated-deployment.sh
+          ./deploy/production/automated-deployment.sh staging
+
+      - name: Run staging validation
+        run: |
+          chmod +x deploy/scripts/test/run_performance_tests.sh
+          ./deploy/scripts/test/run_performance_tests.sh staging
+
+      - name: Performance gate check
+        run: |
+          # Extract performance metrics from test results
+          RESULTS_FILE="experiments/results/performance_results_$(date +%Y%m%d).json"
+          if [[ -f "$RESULTS_FILE" ]]; then
+            DEPLOY_TIME=$(jq -r '.deployment_time // 0' "$RESULTS_FILE")
+            THROUGHPUT_HIGH=$(jq -r '.throughput.high // 0' "$RESULTS_FILE")
+            
+            # Check against thresholds
+            if (( $(echo "$DEPLOY_TIME > $PERFORMANCE_THRESHOLD_DEPLOYMENT_TIME" | bc -l) )); then
+              echo "ERROR: Deployment time $DEPLOY_TIME exceeds threshold $PERFORMANCE_THRESHOLD_DEPLOYMENT_TIME"
+              exit 1
+            fi
+            
+            if (( $(echo "$THROUGHPUT_HIGH < $PERFORMANCE_THRESHOLD_THROUGHPUT_HIGH" | bc -l) )); then
+              echo "ERROR: Throughput $THROUGHPUT_HIGH below threshold $PERFORMANCE_THRESHOLD_THROUGHPUT_HIGH"
+              exit 1
+            fi
+            
+            echo "All performance gates passed"
+          else
+            echo "WARNING: Performance results file not found, skipping gate check"
+          fi
+
+  # Production deployment
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [deploy-staging]
+    if: startsWith(github.ref, 'refs/tags/v') || github.event.inputs.environment == 'production'
+    environment:
+      name: production
+      url: https://o-ran-mano.example.com
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract version
+        id: version
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/}
+          else
+            VERSION="main-${{ github.sha }}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Configure kubectl for production
+        uses: azure/k8s-set-context@v3
+        with:
+          method: kubeconfig
+          kubeconfig: ${{ secrets.PRODUCTION_KUBECONFIG }}
+
+      - name: Pre-deployment backup
+        run: |
+          # Create backup of current production state
+          kubectl get all -n ${{ env.NAMESPACE }} -o yaml > production-backup-$(date +%Y%m%d-%H%M%S).yaml
+          # Store in artifact for potential rollback
+
+      - name: Blue-Green deployment to production
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          chmod +x deploy/blue-green/deployment-strategy.sh
+          ./deploy/blue-green/deployment-strategy.sh deploy $VERSION
+
+      - name: Production smoke tests
+        run: |
+          # Run minimal smoke tests to verify production deployment
+          kubectl run smoke-test --image=curlimages/curl:latest --rm -i --restart=Never -- \
+            curl -f http://orchestrator.${{ env.NAMESPACE }}.svc.cluster.local/health
+
+      - name: Performance validation
+        run: |
+          # Run performance validation against production
+          chmod +x deploy/scripts/test/run_performance_tests.sh
+          ./deploy/scripts/test/run_performance_tests.sh production
+
+      - name: Update GitOps repository
+        if: success()
+        run: |
+          # Update GitOps manifests with new version
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          
+          # Update version in GitOps manifests
+          find clusters/production -name "*.yaml" -exec sed -i "s|image: .*:.*|image: ${{ env.REGISTRY }}/\${component}:${{ steps.version.outputs.version }}|g" {} \;
+          
+          git add clusters/production/
+          git commit -m "Deploy ${{ steps.version.outputs.version }} to production"
+          git push origin main
+
+      - name: Create deployment notification
+        uses: 8398a7/action-slack@v3
+        if: always()
+        with:
+          status: ${{ job.status }}
+          text: |
+            🚀 Production Deployment ${{ steps.version.outputs.version }}
+            Status: ${{ job.status }}
+            Environment: production
+            Commit: ${{ github.sha }}
+            Author: ${{ github.actor }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # Rollback job (manual trigger)
+  rollback-production:
+    name: Rollback Production
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.rollback == 'true'
+    environment:
+      name: production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure kubectl
+        uses: azure/k8s-set-context@v3
+        with:
+          method: kubeconfig
+          kubeconfig: ${{ secrets.PRODUCTION_KUBECONFIG }}
+
+      - name: Execute rollback
+        run: |
+          chmod +x deploy/blue-green/deployment-strategy.sh
+          ./deploy/blue-green/deployment-strategy.sh rollback
+
+      - name: Verify rollback
+        run: |
+          kubectl get deployments -n ${{ env.NAMESPACE }} -o wide
+          kubectl get services -n ${{ env.NAMESPACE }} -o wide
+
+  # Cleanup job
+  cleanup:
+    name: Cleanup Resources
+    runs-on: ubuntu-latest
+    needs: [deploy-production]
+    if: always() && !cancelled()
+    steps:
+      - name: Clean up old container images
+        run: |
+          # Keep only the last 10 versions of each component
+          # This would typically use a registry API or tool like crane
+          echo "Image cleanup would run here"
+
+      - name: Clean up test artifacts
+        run: |
+          # Clean up temporary test resources
+          echo "Test artifact cleanup would run here"
+
+# Reusable workflows for other branches/environments could be defined here

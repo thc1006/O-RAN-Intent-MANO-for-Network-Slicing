@@ -1,0 +1,214 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: vnfs.mano.oran.io
+spec:
+  group: mano.oran.io
+  names:
+    categories:
+    - oran
+    - mano
+    kind: VNF
+    listKind: VNFList
+    plural: vnfs
+    singular: vnf
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.type
+      name: Type
+      type: string
+    - jsonPath: .status.phase
+      name: Phase
+      type: string
+    - jsonPath: .status.deployedClusters
+      name: Clusters
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: VNF is the Schema for the vnfs API
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: VNFSpec defines the desired state of VNF
+            properties:
+              configData:
+                additionalProperties:
+                  type: string
+                description: ConfigData contains VNF-specific configuration
+                type: object
+              placement:
+                description: Placement defines where this VNF should be deployed
+                properties:
+                  antiAffinity:
+                    description: AntiAffinity rules
+                    items:
+                      type: string
+                    type: array
+                  cloudType:
+                    description: CloudType specifies the preferred cloud type
+                    enum:
+                    - edge
+                    - regional
+                    - central
+                    type: string
+                  maxLatency:
+                    description: MaxLatency in milliseconds from placement point
+                    format: int32
+                    type: integer
+                  preferredZones:
+                    description: PreferredZones for deployment
+                    items:
+                      type: string
+                    type: array
+                required:
+                - cloudType
+                type: object
+              qos:
+                description: QoS parameters for this VNF
+                properties:
+                  bandwidth:
+                    description: Bandwidth in Mbps (1-5 for standard profiles)
+                    type: number
+                  jitter:
+                    description: Jitter in milliseconds
+                    type: number
+                  latency:
+                    description: Latency in milliseconds (1-10 for standard profiles)
+                    type: number
+                  packetLoss:
+                    description: PacketLoss as percentage (0-1)
+                    type: number
+                  reliability:
+                    description: Reliability as percentage (95-99.999)
+                    type: number
+                required:
+                - bandwidth
+                - latency
+                type: object
+              resources:
+                description: Resources required by this VNF
+                properties:
+                  cpu:
+                    description: CPU in millicores
+                    type: string
+                  memory:
+                    description: Memory in Mi or Gi
+                    type: string
+                  networkBandwidth:
+                    description: NetworkBandwidth in Mbps
+                    format: int32
+                    type: integer
+                  storage:
+                    description: Storage in Gi
+                    type: string
+                required:
+                - cpu
+                - memory
+                type: object
+              targetClusters:
+                description: TargetClusters specifies which clusters to deploy to
+                items:
+                  type: string
+                type: array
+              type:
+                description: Type specifies the VNF domain type
+                enum:
+                - RAN
+                - CN
+                - TN
+                type: string
+              version:
+                description: Version of the VNF implementation
+                type: string
+            required:
+            - placement
+            - qos
+            - resources
+            - type
+            - version
+            type: object
+          status:
+            description: VNFStatus defines the observed state of VNF
+            properties:
+              conditions:
+                description: Conditions represent the latest available observations
+                items:
+                  description: "Condition contains details for one aspect of the current state"
+                  properties:
+                    lastTransitionTime:
+                      format: date-time
+                      type: string
+                    message:
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+              deployedClusters:
+                description: DeployedClusters lists clusters where VNF is deployed
+                items:
+                  type: string
+                type: array
+              dmsDeploymentId:
+                description: DMSDeploymentID from O2 DMS
+                type: string
+              lastReconcileTime:
+                description: LastReconcileTime of the resource
+                format: date-time
+                type: string
+              observedGeneration:
+                description: ObservedGeneration reflects the generation most recently observed
+                format: int64
+                type: integer
+              phase:
+                description: Phase of the VNF deployment
+                enum:
+                - Pending
+                - Creating
+                - Running
+                - Failed
+                - Deleting
+                type: string
+              porchPackageRevision:
+                description: PorchPackageRevision tracks the Porch package version
+                type: string
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

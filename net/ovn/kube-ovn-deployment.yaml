@@ -1,0 +1,605 @@
+# OVN-Kubernetes Complete Deployment Manifests
+# Comprehensive deployment for multi-site O-RAN connectivity
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kube-ovn
+  labels:
+    app: kube-ovn
+---
+# OVN-Kubernetes CNI DaemonSet
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: kube-ovn-cni
+  namespace: kube-ovn
+  labels:
+    app: kube-ovn-cni
+spec:
+  selector:
+    matchLabels:
+      app: kube-ovn-cni
+  updateStrategy:
+    type: OnDelete
+  template:
+    metadata:
+      labels:
+        app: kube-ovn-cni
+        component: network
+        type: infra
+    spec:
+      tolerations:
+      - operator: Exists
+      serviceAccountName: ovn
+      hostNetwork: true
+      hostPID: true
+      initContainers:
+      - name: install-cni
+        image: kubeovn/kube-ovn:v1.11.5
+        imagePullPolicy: IfNotPresent
+        command: ["/kube-ovn/install-cni.sh"]
+        securityContext:
+          runAsUser: 0
+          privileged: true
+        volumeMounts:
+        - name: cni-conf
+          mountPath: /etc/cni/net.d
+        - name: cni-bin
+          mountPath: /opt/cni/bin
+        - name: log
+          mountPath: /var/log/kube-ovn
+        env:
+        - name: ENABLE_SSL
+          value: "false"
+        - name: CNI_CONF_NAME
+          value: "01-kube-ovn.conflist"
+        - name: CNI_BRIDGE
+          value: "true"
+        - name: CNI_CONF_FILE
+          value: |
+            {
+              "cniVersion": "0.3.1",
+              "name": "kube-ovn",
+              "plugins": [
+                {
+                  "type": "kube-ovn",
+                  "server_socket": "/run/openvswitch/kube-ovn-daemon.sock",
+                  "provider": "ovn",
+                  "service_account": "/var/run/secrets/kubernetes.io/serviceaccount/token",
+                  "cni_conf": {
+                    "cniVersion": "0.3.1",
+                    "name": "kube-ovn",
+                    "type": "kube-ovn"
+                  }
+                },
+                {
+                  "type": "portmap",
+                  "capabilities": {
+                    "portMappings": true
+                  }
+                },
+                {
+                  "type": "firewall"
+                }
+              ]
+            }
+      containers:
+      - name: cni-server
+        image: kubeovn/kube-ovn:v1.11.5
+        imagePullPolicy: IfNotPresent
+        command:
+        - bash
+        - /kube-ovn/start-cniserver.sh
+        args:
+        - --enable-mirror=false
+        - --encap-checksum=true
+        - --service-cluster-ip-range=10.96.0.0/12
+        - --iface=""
+        - --dpdk-tunnel-iface=""
+        - --network-type=geneve
+        - --default-interface-name=""
+        - --cni-conf-dir=/etc/cni/net.d
+        - --cni-bin-dir=/opt/cni/bin
+        - --logtostderr=false
+        - --alsologtostderr=true
+        - --log_file=/var/log/kube-ovn/kube-ovn-cni.log
+        - --log_file_max_size=200
+        - --log_file_max_num=10
+        - --v=3
+        securityContext:
+          runAsUser: 0
+          privileged: true
+        env:
+        - name: ENABLE_SSL
+          value: "false"
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: KUBE_NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: POD_IPS
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIPs
+        volumeMounts:
+        - name: host-modules
+          mountPath: /lib/modules
+          readOnly: true
+        - name: shared-dir
+          mountPath: /var/lib/kubelet/pods
+          mountPropagation: Bidirectional
+        - name: log
+          mountPath: /var/log/kube-ovn
+        - name: run-openvswitch
+          mountPath: /run/openvswitch
+        - name: run-ovn
+          mountPath: /run/ovn
+        - name: cni-conf
+          mountPath: /etc/cni/net.d
+        - name: cni-bin
+          mountPath: /opt/cni/bin
+        - name: netns
+          mountPath: /var/run/netns
+          mountPropagation: Bidirectional
+        resources:
+          requests:
+            cpu: 200m
+            memory: 300Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+        readinessProbe:
+          exec:
+            command:
+            - /kube-ovn/kube-ovn-daemon-healthcheck.sh
+          periodSeconds: 5
+          timeoutSeconds: 45
+        livenessProbe:
+          exec:
+            command:
+            - /kube-ovn/kube-ovn-daemon-healthcheck.sh
+          initialDelaySeconds: 60
+          periodSeconds: 5
+          failureThreshold: 5
+          timeoutSeconds: 45
+      nodeSelector:
+        kubernetes.io/os: "linux"
+      volumes:
+      - name: host-modules
+        hostPath:
+          path: /lib/modules
+      - name: shared-dir
+        hostPath:
+          path: /var/lib/kubelet/pods
+      - name: log
+        hostPath:
+          path: /var/log/kube-ovn
+      - name: run-openvswitch
+        hostPath:
+          path: /run/openvswitch
+      - name: run-ovn
+        hostPath:
+          path: /run/ovn
+      - name: cni-conf
+        hostPath:
+          path: /etc/cni/net.d
+      - name: cni-bin
+        hostPath:
+          path: /opt/cni/bin
+      - name: netns
+        hostPath:
+          path: /var/run/netns
+---
+# OVN-Kubernetes Monitor DaemonSet
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: kube-ovn-monitor
+  namespace: kube-ovn
+  labels:
+    app: kube-ovn-monitor
+spec:
+  selector:
+    matchLabels:
+      app: kube-ovn-monitor
+  template:
+    metadata:
+      labels:
+        app: kube-ovn-monitor
+        component: network
+        type: infra
+    spec:
+      tolerations:
+      - operator: Exists
+      serviceAccountName: ovn
+      hostNetwork: true
+      containers:
+      - name: kube-ovn-monitor
+        image: kubeovn/kube-ovn:v1.11.5
+        imagePullPolicy: IfNotPresent
+        command: ["/kube-ovn/start-ovn-monitor.sh"]
+        securityContext:
+          runAsUser: 0
+          privileged: true
+        env:
+        - name: ENABLE_SSL
+          value: "false"
+        - name: KUBE_NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        resources:
+          requests:
+            cpu: 200m
+            memory: 300Mi
+          limits:
+            cpu: 400m
+            memory: 400Mi
+        volumeMounts:
+        - name: log
+          mountPath: /var/log/kube-ovn
+        - name: run-openvswitch
+          mountPath: /run/openvswitch
+        - name: run-ovn
+          mountPath: /run/ovn
+        ports:
+        - name: metrics
+          containerPort: 10661
+          protocol: TCP
+        readinessProbe:
+          httpGet:
+            path: /metrics
+            port: 10661
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /metrics
+            port: 10661
+          initialDelaySeconds: 60
+          periodSeconds: 10
+      nodeSelector:
+        kubernetes.io/os: "linux"
+      volumes:
+      - name: log
+        hostPath:
+          path: /var/log/kube-ovn
+      - name: run-openvswitch
+        hostPath:
+          path: /run/openvswitch
+      - name: run-ovn
+        hostPath:
+          path: /run/ovn
+---
+# Default VPC and Subnet Configuration
+apiVersion: kubeovn.io/v1
+kind: Vpc
+metadata:
+  name: ovn-cluster
+spec:
+  namespaces: []
+  staticRoutes:
+  - cidr: 0.0.0.0/0
+    nextHopIP: ""
+    policy: policyDst
+  enableExternal: true
+  externalEgressGateway: ""
+---
+apiVersion: kubeovn.io/v1
+kind: Subnet
+metadata:
+  name: ovn-default
+  namespace: kube-ovn
+spec:
+  cidrBlock: 10.244.0.0/16
+  excludeIps:
+  - 10.244.0.1
+  gateway: 10.244.0.1
+  gatewayType: distributed
+  default: true
+  protocol: IPv4
+  provider: ovn
+  vpc: ovn-cluster
+  vlan: ""
+  underlayGateway: false
+  disableGatewayCheck: false
+  enableDHCP: true
+  dhcpV4Options: ""
+  enableIPv6RA: false
+  ipv6RAConfigs: ""
+  namespaces: []
+---
+# Service for OVN Controller
+apiVersion: v1
+kind: Service
+metadata:
+  name: kube-ovn-controller
+  namespace: kube-ovn
+  labels:
+    app: kube-ovn-controller
+spec:
+  selector:
+    app: kube-ovn-controller
+  ports:
+  - name: metrics
+    port: 10660
+    targetPort: 10660
+    protocol: TCP
+---
+# Service for OVN Monitor
+apiVersion: v1
+kind: Service
+metadata:
+  name: kube-ovn-monitor
+  namespace: kube-ovn
+  labels:
+    app: kube-ovn-monitor
+spec:
+  selector:
+    app: kube-ovn-monitor
+  ports:
+  - name: metrics
+    port: 10661
+    targetPort: 10661
+    protocol: TCP
+  - name: pprof
+    port: 10665
+    targetPort: 10665
+    protocol: TCP
+---
+# ServiceMonitor for Prometheus Integration
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: kube-ovn-controller
+  namespace: kube-ovn
+  labels:
+    app: kube-ovn-controller
+spec:
+  selector:
+    matchLabels:
+      app: kube-ovn-controller
+  endpoints:
+  - port: metrics
+    interval: 30s
+    path: /metrics
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: kube-ovn-monitor
+  namespace: kube-ovn
+  labels:
+    app: kube-ovn-monitor
+spec:
+  selector:
+    matchLabels:
+      app: kube-ovn-monitor
+  endpoints:
+  - port: metrics
+    interval: 30s
+    path: /metrics
+---
+# RBAC Configuration
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  namespace: kube-ovn
+  name: ovn
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  annotations:
+    rbac.authorization.k8s.io/autoupdate: "true"
+  name: system:ovn
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  - pods/exec
+  - nodes
+  - services
+  - endpoints
+  - persistentvolumeclaims
+  - configmaps
+  - secrets
+  - namespaces
+  - events
+  verbs:
+  - "*"
+- apiGroups:
+  - networking.k8s.io
+  resources:
+  - networkpolicies
+  - ingresses
+  verbs:
+  - "*"
+- apiGroups:
+  - extensions
+  resources:
+  - networkpolicies
+  - ingresses
+  verbs:
+  - "*"
+- apiGroups:
+  - apps
+  resources:
+  - daemonsets
+  - deployments
+  - replicasets
+  verbs:
+  - "*"
+- apiGroups:
+  - discovery.k8s.io
+  resources:
+  - endpointslices
+  verbs:
+  - "*"
+- apiGroups:
+  - kubeovn.io
+  resources:
+  - "*"
+  verbs:
+  - "*"
+- apiGroups:
+  - k8s.cni.cncf.io
+  resources:
+  - network-attachment-definitions
+  verbs:
+  - "*"
+- apiGroups:
+  - ""
+  - events.k8s.io
+  resources:
+  - events
+  verbs:
+  - "*"
+- apiGroups:
+  - metrics.k8s.io
+  resources:
+  - pods
+  - nodes
+  verbs:
+  - "*"
+- apiGroups:
+  - authentication.k8s.io
+  resources:
+  - tokenreviews
+  verbs:
+  - create
+- apiGroups:
+  - authorization.k8s.io
+  resources:
+  - subjectaccessreviews
+  verbs:
+  - create
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: ovn
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:ovn
+subjects:
+- kind: ServiceAccount
+  name: ovn
+  namespace: kube-ovn
+---
+# Node Readiness Check Job
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ovn-node-init
+  namespace: kube-ovn
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      hostNetwork: true
+      tolerations:
+      - operator: Exists
+      containers:
+      - name: ovn-node-init
+        image: kubeovn/kube-ovn:v1.11.5
+        command:
+        - /bin/bash
+        - -c
+        - |
+          set -euo pipefail
+          # Wait for OVS to be ready
+          while ! ovs-vsctl show > /dev/null 2>&1; do
+            echo "Waiting for OVS to be ready..."
+            sleep 5
+          done
+          echo "OVS is ready"
+
+          # Initialize bridge
+          ovs-vsctl --may-exist add-br br-int
+          ovs-vsctl --may-exist add-port br-int ovn-k8s-mp0 -- \
+            set interface ovn-k8s-mp0 type=internal -- \
+            set interface ovn-k8s-mp0 external-ids:iface-id=ovn-k8s-mp0
+
+          # Set controller
+          ovs-vsctl set-controller br-int tcp:127.0.0.1:6654
+
+          echo "OVN node initialization completed"
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: run-openvswitch
+          mountPath: /run/openvswitch
+        - name: run-ovn
+          mountPath: /run/ovn
+      volumes:
+      - name: run-openvswitch
+        hostPath:
+          path: /run/openvswitch
+      - name: run-ovn
+        hostPath:
+          path: /run/ovn
+---
+# ConfigMap for OVN-Kubernetes Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ovn-config
+  namespace: kube-ovn
+data:
+  net_cidr: "10.244.0.0/16"
+  svc_cidr: "10.96.0.0/12"
+  join_cidr: "100.64.0.0/16"
+  pinger_external_address: "114.114.114.114"
+  pinger_external_dns: "8.8.8.8"
+  enable_lb: "true"
+  enable_np: "true"
+  enable_eip_snat: "true"
+  enable_external_vpc: "true"
+  ls_dnat_mod_dl_dst: "true"
+  ls_ct_skip_dst_lport_ips: "true"
+  pod_nic_type: "veth-pair"
+  enable_mirror: "false"
+  enable_arp_detect_ip_conflict: "true"
+  enable_ssl: "false"
+  encap_checksum: "true"
+  default_interface_name: ""
+  default_exchange_link_name: "false"
+  default_vlan_name: "ovn-vlan"
+  default_vlan_id: "100"
+  default_provider_name: "provider"
+  default_host_interface: "br-provider"
+  default_vlan_gateway: ""
+  default_exclude_ips: ""
+---
+# Kustomization for environment-specific configs
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ovn-env-config
+  namespace: kube-ovn
+data:
+  central-env: |
+    # Central cluster specific configuration
+    OVN_CLUSTER_ROLE=central
+    OVN_IC_ENABLE=true
+    OVN_IC_NB_DB=tcp:ovn-ic-nb.kube-ovn.svc.cluster.local:6645
+    OVN_IC_SB_DB=tcp:ovn-ic-sb.kube-ovn.svc.cluster.local:6646
+
+  edge-env: |
+    # Edge cluster specific configuration
+    OVN_CLUSTER_ROLE=edge
+    OVN_IC_ENABLE=true
+    OVN_CENTRAL_NB_DB=${CENTRAL_OVN_NB_HOST}:6641
+    OVN_CENTRAL_SB_DB=${CENTRAL_OVN_SB_HOST}:6642
+    OVN_IC_NB_DB=${CENTRAL_OVN_IC_NB_HOST}:6645
+    OVN_IC_SB_DB=${CENTRAL_OVN_IC_SB_HOST}:6646

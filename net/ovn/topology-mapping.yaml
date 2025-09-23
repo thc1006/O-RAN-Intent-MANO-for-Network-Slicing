@@ -1,0 +1,550 @@
+# Network Topology Mapping for Multi-Site O-RAN Deployment
+# Defines logical and physical network topology relationships
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: network-topology
+  namespace: kube-ovn
+  labels:
+    app: kube-ovn
+    component: topology
+data:
+  topology.yaml: |
+    # O-RAN Network Topology Configuration
+    topology:
+      deployment_model: "distributed"
+      architecture: "hub_and_spoke"
+
+      # Site definitions
+      sites:
+        central:
+          type: "hub"
+          role: "central_unit"
+          location:
+            region: "us-west-1"
+            zone: "us-west-1a"
+            coordinates:
+              lat: 37.7749
+              lon: -122.4194
+          network:
+            cluster_cidr: "10.16.0.0/12"
+            service_cidr: "10.96.0.0/12"
+            pod_cidr: "10.16.0.0/16"
+            external_cidr: "192.168.1.0/24"
+          capacity:
+            max_nodes: 100
+            max_pods_per_node: 110
+            bandwidth_capacity: "10Gbps"
+          components:
+            - "O-RAN-Central-DU"
+            - "O-RAN-Near-RT-RIC"
+            - "O-RAN-Non-RT-RIC"
+            - "O2-IMS"
+            - "SMO"
+
+        edge01:
+          type: "spoke"
+          role: "distributed_unit"
+          parent: "central"
+          location:
+            region: "us-west-1"
+            zone: "us-west-1b"
+            coordinates:
+              lat: 37.8044
+              lon: -122.2711
+          network:
+            cluster_cidr: "10.244.0.0/16"
+            service_cidr: "10.97.0.0/12"
+            pod_cidr: "10.244.0.0/16"
+            external_cidr: "192.168.2.0/24"
+          capacity:
+            max_nodes: 50
+            max_pods_per_node: 110
+            bandwidth_capacity: "1Gbps"
+          components:
+            - "O-RAN-DU"
+            - "O-RAN-RU-Simulator"
+            - "Edge-SMO"
+
+        edge02:
+          type: "spoke"
+          role: "radio_unit"
+          parent: "central"
+          location:
+            region: "us-west-1"
+            zone: "us-west-1c"
+            coordinates:
+              lat: 37.6879
+              lon: -122.4702
+          network:
+            cluster_cidr: "10.32.0.0/16"
+            service_cidr: "10.98.0.0/12"
+            pod_cidr: "10.32.0.0/16"
+            external_cidr: "192.168.3.0/24"
+          capacity:
+            max_nodes: 20
+            max_pods_per_node: 110
+            bandwidth_capacity: "1Gbps"
+          components:
+            - "O-RAN-RU"
+            - "Edge-Monitoring"
+
+      # Network connections and paths
+      connections:
+        central_to_edge01:
+          type: "geneve_tunnel"
+          endpoints:
+            source: "central"
+            destination: "edge01"
+          path:
+            - hop: "central-gw-01"
+              ip: "192.168.1.100"
+              interface: "eth0"
+            - hop: "internet-transit"
+              latency: "5ms"
+              bandwidth: "1Gbps"
+            - hop: "edge01-gw-01"
+              ip: "192.168.2.100"
+              interface: "eth0"
+          metrics:
+            latency: "10ms"
+            bandwidth: "1Gbps"
+            packet_loss: "0.01%"
+            jitter: "1ms"
+
+        central_to_edge02:
+          type: "geneve_tunnel"
+          endpoints:
+            source: "central"
+            destination: "edge02"
+          path:
+            - hop: "central-gw-01"
+              ip: "192.168.1.100"
+              interface: "eth0"
+            - hop: "internet-transit"
+              latency: "8ms"
+              bandwidth: "1Gbps"
+            - hop: "edge02-gw-01"
+              ip: "192.168.3.100"
+              interface: "eth0"
+          metrics:
+            latency: "15ms"
+            bandwidth: "1Gbps"
+            packet_loss: "0.02%"
+            jitter: "2ms"
+
+        edge01_to_edge02:
+          type: "geneve_tunnel"
+          endpoints:
+            source: "edge01"
+            destination: "edge02"
+          via: "central"  # Traffic routes through central hub
+          metrics:
+            latency: "20ms"
+            bandwidth: "500Mbps"
+            packet_loss: "0.03%"
+            jitter: "3ms"
+
+      # QoS mapping across topology
+      qos_mapping:
+        high_priority:
+          slice_type: "eMBB"
+          latency_requirement: "<10ms"
+          bandwidth_guarantee: "100Mbps"
+          path_preference: "shortest"
+          redundancy: "active_active"
+          sites: ["central", "edge01", "edge02"]
+
+        medium_priority:
+          slice_type: "URLLC"
+          latency_requirement: "<20ms"
+          bandwidth_guarantee: "50Mbps"
+          path_preference: "balanced"
+          redundancy: "active_standby"
+          sites: ["central", "edge01"]
+
+        low_priority:
+          slice_type: "mMTC"
+          latency_requirement: "<100ms"
+          bandwidth_guarantee: "10Mbps"
+          path_preference: "cost_optimized"
+          redundancy: "none"
+          sites: ["central"]
+
+      # Physical infrastructure mapping
+      infrastructure:
+        compute_nodes:
+          central:
+            master_nodes:
+              - name: "central-master-01"
+                ip: "192.168.1.10"
+                cpu: "8 cores"
+                memory: "32GB"
+                storage: "500GB SSD"
+                roles: ["control-plane", "ovn-central"]
+              - name: "central-master-02"
+                ip: "192.168.1.11"
+                cpu: "8 cores"
+                memory: "32GB"
+                storage: "500GB SSD"
+                roles: ["control-plane", "ovn-central"]
+            worker_nodes:
+              - name: "central-worker-01"
+                ip: "192.168.1.20"
+                cpu: "16 cores"
+                memory: "64GB"
+                storage: "1TB SSD"
+                roles: ["worker", "gateway"]
+              - name: "central-worker-02"
+                ip: "192.168.1.21"
+                cpu: "16 cores"
+                memory: "64GB"
+                storage: "1TB SSD"
+                roles: ["worker"]
+
+          edge01:
+            master_nodes:
+              - name: "edge01-master-01"
+                ip: "192.168.2.10"
+                cpu: "4 cores"
+                memory: "16GB"
+                storage: "250GB SSD"
+                roles: ["control-plane"]
+            worker_nodes:
+              - name: "edge01-worker-01"
+                ip: "192.168.2.20"
+                cpu: "8 cores"
+                memory: "32GB"
+                storage: "500GB SSD"
+                roles: ["worker", "gateway"]
+
+          edge02:
+            master_nodes:
+              - name: "edge02-master-01"
+                ip: "192.168.3.10"
+                cpu: "4 cores"
+                memory: "16GB"
+                storage: "250GB SSD"
+                roles: ["control-plane"]
+            worker_nodes:
+              - name: "edge02-worker-01"
+                ip: "192.168.3.20"
+                cpu: "4 cores"
+                memory: "16GB"
+                storage: "250GB SSD"
+                roles: ["worker", "gateway"]
+
+        network_devices:
+          switches:
+            - name: "central-switch-01"
+              ip: "192.168.1.1"
+              ports: 48
+              bandwidth: "10Gbps"
+              location: "central"
+            - name: "edge01-switch-01"
+              ip: "192.168.2.1"
+              ports: 24
+              bandwidth: "1Gbps"
+              location: "edge01"
+            - name: "edge02-switch-01"
+              ip: "192.168.3.1"
+              ports: 24
+              bandwidth: "1Gbps"
+              location: "edge02"
+
+          routers:
+            - name: "central-router-01"
+              ip: "192.168.1.254"
+              interfaces:
+                - "192.168.1.0/24"
+                - "10.100.1.0/24"
+              location: "central"
+            - name: "edge01-router-01"
+              ip: "192.168.2.254"
+              interfaces:
+                - "192.168.2.0/24"
+                - "10.100.2.0/24"
+              location: "edge01"
+            - name: "edge02-router-01"
+              ip: "192.168.3.254"
+              interfaces:
+                - "192.168.3.0/24"
+                - "10.100.3.0/24"
+              location: "edge02"
+
+  # Service discovery mapping
+  service-discovery.yaml: |
+    # Service discovery configuration for cross-cluster services
+    services:
+      o-ran-central-du:
+        type: "central-unit"
+        endpoints:
+          - site: "central"
+            ip: "10.16.1.100"
+            port: 36421
+            protocol: "SCTP"
+            health_check: "/health"
+
+      o-ran-distributed-du:
+        type: "distributed-unit"
+        endpoints:
+          - site: "edge01"
+            ip: "10.244.1.100"
+            port: 36422
+            protocol: "SCTP"
+            health_check: "/health"
+
+      o-ran-radio-unit:
+        type: "radio-unit"
+        endpoints:
+          - site: "edge02"
+            ip: "10.32.1.100"
+            port: 36423
+            protocol: "UDP"
+            health_check: "/health"
+
+      near-rt-ric:
+        type: "near-real-time-ric"
+        endpoints:
+          - site: "central"
+            ip: "10.16.2.100"
+            port: 8080
+            protocol: "HTTP"
+            health_check: "/api/v1/health"
+
+      non-rt-ric:
+        type: "non-real-time-ric"
+        endpoints:
+          - site: "central"
+            ip: "10.16.3.100"
+            port: 8081
+            protocol: "HTTP"
+            health_check: "/api/v1/health"
+
+      smo:
+        type: "service-management-orchestration"
+        endpoints:
+          - site: "central"
+            ip: "10.16.4.100"
+            port: 8082
+            protocol: "HTTP"
+            health_check: "/api/v1/health"
+
+  # Traffic flow patterns
+  traffic-flows.yaml: |
+    # Expected traffic flows and patterns
+    flows:
+      cu_du_interface:
+        description: "F1 interface between CU and DU"
+        source: "central"
+        destination: "edge01"
+        protocol: "SCTP"
+        ports: [36421, 36422]
+        bandwidth: "100Mbps"
+        latency: "<10ms"
+        qos_class: "high"
+
+      du_ru_interface:
+        description: "Fronthaul interface between DU and RU"
+        source: "edge01"
+        destination: "edge02"
+        protocol: "UDP"
+        ports: [36423]
+        bandwidth: "1Gbps"
+        latency: "<1ms"
+        qos_class: "high"
+
+      ric_du_interface:
+        description: "E2 interface between RIC and DU"
+        source: "central"
+        destination: "edge01"
+        protocol: "HTTP"
+        ports: [8080]
+        bandwidth: "10Mbps"
+        latency: "<20ms"
+        qos_class: "medium"
+
+      smo_management:
+        description: "Management interface to SMO"
+        source: ["edge01", "edge02"]
+        destination: "central"
+        protocol: "HTTP"
+        ports: [8082]
+        bandwidth: "5Mbps"
+        latency: "<100ms"
+        qos_class: "low"
+
+      monitoring_flows:
+        description: "Monitoring and telemetry data"
+        source: ["edge01", "edge02"]
+        destination: "central"
+        protocol: "HTTP"
+        ports: [9090, 9091]
+        bandwidth: "20Mbps"
+        latency: "<50ms"
+        qos_class: "low"
+
+---
+# Network Topology Discovery Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: topology-discovery
+  namespace: kube-ovn
+  labels:
+    app: topology-discovery
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: topology-discovery
+  template:
+    metadata:
+      labels:
+        app: topology-discovery
+    spec:
+      serviceAccountName: ovn
+      containers:
+      - name: topology-discovery
+        image: kubeovn/kube-ovn:v1.11.5
+        command:
+        - /bin/bash
+        - -c
+        - |
+          set -euo pipefail
+          echo "Starting topology discovery service..."
+
+          while true; do
+            echo "$(date): Discovering network topology..."
+
+            # Discover OVN logical topology
+            ovn-nbctl --timeout=3 show > /tmp/ovn-topology.txt || echo "OVN discovery failed"
+
+            # Discover physical connectivity
+            ping -c 1 -W 2 192.168.1.100 > /dev/null 2>&1 && echo "Central gateway: UP" || echo "Central gateway: DOWN"
+            ping -c 1 -W 2 192.168.2.100 > /dev/null 2>&1 && echo "Edge01 gateway: UP" || echo "Edge01 gateway: DOWN"
+            ping -c 1 -W 2 192.168.3.100 > /dev/null 2>&1 && echo "Edge02 gateway: UP" || echo "Edge02 gateway: DOWN"
+
+            # Check tunnel status
+            ovs-vsctl show | grep -A 5 "genev-" | head -20
+
+            # Update service registry
+            kubectl apply -f - <<EOF
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: topology-status
+            namespace: kube-ovn
+          data:
+            last_updated: "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            discovery_status: "active"
+            discovered_sites: "central,edge01,edge02"
+          EOF
+
+            sleep 60
+          done
+        env:
+        - name: OVN_NB_DAEMON
+          value: "tcp:ovn-nb.kube-ovn.svc.cluster.local:6641"
+        - name: OVN_SB_DAEMON
+          value: "tcp:ovn-sb.kube-ovn.svc.cluster.local:6642"
+        volumeMounts:
+        - name: ovn-config
+          mountPath: /etc/ovn
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+      volumes:
+      - name: ovn-config
+        configMap:
+          name: network-topology
+---
+# Service for topology discovery
+apiVersion: v1
+kind: Service
+metadata:
+  name: topology-discovery
+  namespace: kube-ovn
+  labels:
+    app: topology-discovery
+spec:
+  ports:
+  - name: api
+    port: 8080
+    targetPort: 8080
+    protocol: TCP
+  selector:
+    app: topology-discovery
+---
+# Network Topology CRD
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: networktopologies.kubeovn.io
+spec:
+  group: kubeovn.io
+  versions:
+  - name: v1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              sites:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    type:
+                      type: string
+                    network:
+                      type: object
+                      properties:
+                        cidr:
+                          type: string
+                        gateway:
+                          type: string
+              connections:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    source:
+                      type: string
+                    destination:
+                      type: string
+                    type:
+                      type: string
+                    metrics:
+                      type: object
+          status:
+            type: object
+            properties:
+              phase:
+                type: string
+              conditions:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                    status:
+                      type: string
+                    message:
+                      type: string
+  scope: Namespaced
+  names:
+    plural: networktopologies
+    singular: networktopology
+    kind: NetworkTopology

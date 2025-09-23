@@ -1,0 +1,44 @@
+apiVersion: mano.oran.io/v1alpha1
+kind: VNF
+metadata:
+  name: vnf-tn-sample
+  namespace: default
+spec:
+  # Transport Network VNF for network slicing
+  type: TN
+  version: 1.5.0
+
+  # Placement policy for edge deployment (low latency)
+  placement:
+    cloudType: edge
+    maxLatency: 1
+    preferredZones:
+      - edge-zone-1
+
+  # Resource requirements for TN agent
+  resources:
+    cpu: "500m"
+    memory: "1Gi"
+    networkBandwidth: 100
+
+  # QoS parameters for uRLLC profile
+  qos:
+    bandwidth: 1.0  # Low bandwidth
+    latency: 1.0    # Ultra-low latency requirement
+    jitter: 0.5
+    packetLoss: 0.001
+    reliability: 99.999
+
+  # Target clusters for deployment
+  targetClusters:
+    - edge01
+    - edge02
+
+  # TN-specific configuration for traffic control
+  configData:
+    VXLAN_ID: "1000"
+    TC_QUEUE: "prio"
+    SHAPING_RATE: "1mbit"
+    BURST_SIZE: "32kbit"
+    LATENCY_TARGET: "1ms"
+    TC_HANDLE: "1:0"

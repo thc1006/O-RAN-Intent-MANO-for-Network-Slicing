@@ -1,0 +1,46 @@
+apiVersion: mano.oran.io/v1alpha1
+kind: VNF
+metadata:
+  name: vnf-cn-sample
+  namespace: default
+spec:
+  # Core Network VNF (UPF - User Plane Function)
+  type: CN
+  version: 2.0.0
+
+  # Placement policy for regional deployment
+  placement:
+    cloudType: regional
+    maxLatency: 10
+    preferredZones:
+      - regional-dc1
+      - regional-dc2
+
+  # Resource requirements for UPF
+  resources:
+    cpu: "4"
+    memory: "8Gi"
+    storage: "100Gi"
+    networkBandwidth: 10000
+
+  # QoS parameters for balanced profile
+  qos:
+    bandwidth: 3.0  # Moderate bandwidth
+    latency: 9.0    # Standard latency
+    jitter: 3.0
+    packetLoss: 0.05
+    reliability: 99.5
+
+  # Target cluster for deployment
+  targetClusters:
+    - regional
+
+  # CN-specific configuration
+  configData:
+    DNN: "internet"
+    UPF_MODE: "inline"
+    N3_INTERFACE: "eth1"
+    N6_INTERFACE: "eth2"
+    N4_INTERFACE: "eth0"
+    PFCP_ADDRESS: "10.0.0.10"
+    GTPU_ADDRESS: "10.0.1.10"

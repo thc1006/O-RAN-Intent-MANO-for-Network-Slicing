@@ -1,0 +1,30 @@
+# Sample Natural Language Intents for QoS Mapping
+# Lines starting with # are comments and will be ignored
+
+# Enhanced Mobile Broadband (eMBB) Use Cases
+I need high bandwidth streaming for video content delivery
+Create a slice for 4K video streaming service
+High throughput connection for multimedia applications
+Enhanced mobile broadband for AR/VR applications
+Maximum bandwidth for content download service
+
+# Ultra-Reliable Low Latency Communication (uRLLC) Use Cases
+Critical low-latency control for robotics automation
+Need ultra-low latency slice for factory automation
+Real-time control system for industrial equipment
+Mission critical emergency communication slice
+Low latency connection for autonomous vehicle control
+
+# Balanced Performance Use Cases
+Balanced performance for general usage applications
+Standard enterprise application hosting requirements
+General purpose slice for business applications
+Typical performance needs for office connectivity
+Medium performance requirements for web services
+
+# Complex Mixed Requirements
+High bandwidth with moderate latency for video conferencing
+Real-time gaming with balanced throughput requirements
+Emergency video streaming with critical latency needs
+Industrial monitoring with standard bandwidth needs
+Enterprise multimedia with balanced performance profile

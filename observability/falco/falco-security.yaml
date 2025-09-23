@@ -1,0 +1,751 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: falco-system
+  labels:
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/audit: privileged
+    pod-security.kubernetes.io/warn: privileged
+    app.kubernetes.io/name: falco
+    app.kubernetes.io/part-of: oran-intent-mano
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: falco
+  namespace: falco-system
+  labels:
+    app.kubernetes.io/name: falco
+    app.kubernetes.io/part-of: oran-intent-mano
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: falco
+  labels:
+    app.kubernetes.io/name: falco
+    app.kubernetes.io/part-of: oran-intent-mano
+rules:
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["create", "patch"]
+- apiGroups: [""]
+  resources: ["pods", "nodes"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: falco
+  labels:
+    app.kubernetes.io/name: falco
+    app.kubernetes.io/part-of: oran-intent-mano
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: falco
+subjects:
+- kind: ServiceAccount
+  name: falco
+  namespace: falco-system
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: falco-config
+  namespace: falco-system
+  labels:
+    app.kubernetes.io/name: falco
+    app.kubernetes.io/part-of: oran-intent-mano
+data:
+  falco.yaml: |
+    # Falco configuration for O-RAN Intent MANO security monitoring
+
+    # Rules files to load
+    rules_file:
+      - /etc/falco/falco_rules.yaml
+      - /etc/falco/falco_rules.local.yaml
+      - /etc/falco/k8s_audit_rules.yaml
+      - /etc/falco/oran_rules.yaml
+
+    # Plugins
+    plugins:
+      - name: k8saudit
+        library_path: libk8saudit.so
+        init_config:
+          ""
+        open_params: ""
+
+      - name: json
+        library_path: libjson.so
+        init_config:
+          ""
+
+    # Engine settings
+    engine:
+      kind: kmod
+      kmod:
+        buf_size_preset: 4
+        drop_failed_exit: false
+
+    # Outputs
+    stdout_output:
+      enabled: true
+
+    file_output:
+      enabled: true
+      keep_alive: false
+      filename: /var/log/falco/events.txt
+
+    http_output:
+      enabled: true
+      url: "http://falco-exporter:9376/events"
+      user_agent: "falco/0.36.2"
+
+    program_output:
+      enabled: false
+      keep_alive: false
+      program: "jq '{text: .output}' | curl -d @- -X POST https://hooks.slack.com/services/XXX"
+
+    json_output: true
+    json_include_output_property: true
+    json_include_tags_property: true
+
+    # Logging
+    log_stderr: true
+    log_syslog: false
+    log_level: info
+
+    # Rule settings
+    priority: debug
+    rule_matching: first
+
+    # Metrics
+    metrics:
+      enabled: true
+      interval: 1h
+      output_rule: true
+      rules_counters_enabled: true
+      resource_utilization_enabled: true
+      state_counters_enabled: true
+      kernel_event_counters_enabled: true
+      libbpf_stats_enabled: true
+      convert_memory_to_mb: true
+      include_empty_values: false
+
+    # Watch config files for changes
+    watch_config_files: true
+
+    # Buffered output
+    buffered_outputs: false
+
+    # Syscall event drops
+    syscall_event_drops:
+      threshold: 0.1
+      actions:
+        - log
+        - alert
+
+    # Modern BPF
+    modern_bpf:
+      cpus_for_each_syscall_buffer: 2
+
+  # O-RAN specific security rules
+  oran_rules.yaml: |
+    # O-RAN Intent MANO Security Rules
+
+    - macro: oran_namespaces
+      condition: (ka.target.namespace in (oran-nlp, oran-orchestrator, oran-ran, oran-cn, oran-tn, oran-monitoring))
+
+    - macro: oran_containers
+      condition: (container.name contains "oran-" or container.name contains "nlp" or container.name contains "orchestrator" or container.name contains "vnf")
+
+    - macro: oran_processes
+      condition: (proc.name in (orchestrator, nlp-service, vnf-operator, ran-manager, cn-manager, tn-agent))
+
+    # Rule: Detect privilege escalation in O-RAN components
+    - rule: O-RAN Privilege Escalation
+      desc: Detect attempts to escalate privileges in O-RAN components
+      condition: >
+        spawned_process and oran_containers and
+        (proc.name in (su, sudo, doas) or
+         (proc.name contains setuid or proc.name contains setgid) or
+         proc.args contains "chmod +s")
+      output: >
+        Privilege escalation detected in O-RAN component
+        (user=%user.name process=%proc.name cmdline=%proc.cmdline
+         container=%container.name namespace=%k8s.ns.name
+         image=%container.image.repository:%container.image.tag)
+      priority: CRITICAL
+      tags: [oran, privilege_escalation, security]
+
+    # Rule: Detect unauthorized network connections from O-RAN components
+    - rule: O-RAN Unauthorized Network Connection
+      desc: Detect unauthorized outbound network connections from O-RAN components
+      condition: >
+        outbound and oran_containers and
+        not (fd.rip in (prometheus, grafana, jaeger-collector, loki, alertmanager)) and
+        not (fd.rport in (443, 80, 53, 8080, 9090, 3100, 16686, 14268)) and
+        not (proc.name in (curl, wget, orchestrator, nlp-service))
+      output: >
+        Unauthorized network connection from O-RAN component
+        (user=%user.name process=%proc.name connection=%fd.name
+         container=%container.name namespace=%k8s.ns.name
+         dest_ip=%fd.rip dest_port=%fd.rport)
+      priority: HIGH
+      tags: [oran, network, unauthorized_connection]
+
+    # Rule: Detect file system modifications in O-RAN containers
+    - rule: O-RAN File System Modification
+      desc: Detect unauthorized file system modifications in O-RAN containers
+      condition: >
+        modify and oran_containers and
+        not (fd.name startswith "/tmp" or
+             fd.name startswith "/var/tmp" or
+             fd.name startswith "/var/log" or
+             fd.name startswith "/proc" or
+             fd.name startswith "/sys") and
+        not (proc.name in (orchestrator, nlp-service, vnf-operator))
+      output: >
+        Unauthorized file modification in O-RAN component
+        (user=%user.name process=%proc.name file=%fd.name
+         container=%container.name namespace=%k8s.ns.name
+         operation=%evt.type)
+      priority: WARNING
+      tags: [oran, filesystem, unauthorized_modification]
+
+    # Rule: Detect sensitive file access in O-RAN components
+    - rule: O-RAN Sensitive File Access
+      desc: Detect access to sensitive files from O-RAN components
+      condition: >
+        open_read and oran_containers and
+        (fd.name startswith "/etc/shadow" or
+         fd.name startswith "/etc/passwd" or
+         fd.name startswith "/etc/ssh" or
+         fd.name contains "secret" or
+         fd.name contains "key" or
+         fd.name contains "cert" or
+         fd.name contains "token")
+      output: >
+        Sensitive file access detected in O-RAN component
+        (user=%user.name process=%proc.name file=%fd.name
+         container=%container.name namespace=%k8s.ns.name)
+      priority: HIGH
+      tags: [oran, sensitive_files, unauthorized_access]
+
+    # Rule: Detect container escape attempts
+    - rule: O-RAN Container Escape Attempt
+      desc: Detect potential container escape attempts in O-RAN components
+      condition: >
+        spawned_process and oran_containers and
+        (proc.name in (runc, docker, containerd, ctr) or
+         proc.args contains "nsenter" or
+         proc.args contains "unshare" or
+         proc.args contains "chroot" or
+         proc.args contains "/proc/1/root")
+      output: >
+        Container escape attempt detected in O-RAN component
+        (user=%user.name process=%proc.name cmdline=%proc.cmdline
+         container=%container.name namespace=%k8s.ns.name)
+      priority: CRITICAL
+      tags: [oran, container_escape, security]
+
+    # Rule: Detect cryptocurrency mining activities
+    - rule: O-RAN Cryptocurrency Mining
+      desc: Detect cryptocurrency mining activities in O-RAN components
+      condition: >
+        spawned_process and oran_containers and
+        (proc.name in (xmrig, ccminer, cgminer, ethminer, minerd) or
+         proc.args contains "stratum" or
+         proc.args contains "mining" or
+         proc.args contains "cryptonight")
+      output: >
+        Cryptocurrency mining detected in O-RAN component
+        (user=%user.name process=%proc.name cmdline=%proc.cmdline
+         container=%container.name namespace=%k8s.ns.name)
+      priority: CRITICAL
+      tags: [oran, cryptocurrency, malware]
+
+    # Rule: Detect shell spawning in O-RAN components
+    - rule: O-RAN Shell Spawning
+      desc: Detect shell spawning in O-RAN production components
+      condition: >
+        spawned_process and oran_containers and
+        proc.name in (sh, bash, zsh, fish, csh, ksh) and
+        not (proc.pname in (orchestrator, nlp-service, vnf-operator, entrypoint.sh, start.sh))
+      output: >
+        Shell spawned in O-RAN component
+        (user=%user.name process=%proc.name parent=%proc.pname
+         container=%container.name namespace=%k8s.ns.name
+         cmdline=%proc.cmdline)
+      priority: WARNING
+      tags: [oran, shell, suspicious_activity]
+
+    # Rule: Detect package management activities
+    - rule: O-RAN Package Management
+      desc: Detect package installation/modification in O-RAN components
+      condition: >
+        spawned_process and oran_containers and
+        proc.name in (apt, apt-get, yum, dnf, pip, npm, wget, curl) and
+        not (proc.args contains "update" and proc.args contains "list")
+      output: >
+        Package management activity in O-RAN component
+        (user=%user.name process=%proc.name cmdline=%proc.cmdline
+         container=%container.name namespace=%k8s.ns.name)
+      priority: WARNING
+      tags: [oran, package_management, configuration_change]
+
+    # Rule: Detect VNF lifecycle security events
+    - rule: O-RAN VNF Security Event
+      desc: Detect security-relevant VNF lifecycle events
+      condition: >
+        spawned_process and oran_containers and
+        (proc.args contains "vnf" and
+         (proc.args contains "delete" or proc.args contains "terminate" or proc.args contains "scale"))
+      output: >
+        VNF lifecycle security event detected
+        (user=%user.name process=%proc.name cmdline=%proc.cmdline
+         container=%container.name namespace=%k8s.ns.name)
+      priority: INFO
+      tags: [oran, vnf, lifecycle]
+
+    # Rule: Detect intent processing anomalies
+    - rule: O-RAN Intent Processing Anomaly
+      desc: Detect anomalies in intent processing
+      condition: >
+        spawned_process and container.name contains "nlp" and
+        (proc.args contains "exec" or proc.args contains "eval" or proc.args contains "system")
+      output: >
+        Intent processing anomaly detected
+        (user=%user.name process=%proc.name cmdline=%proc.cmdline
+         container=%container.name namespace=%k8s.ns.name)
+      priority: HIGH
+      tags: [oran, nlp, intent, security]
+
+    # Rule: Detect slice deployment security events
+    - rule: O-RAN Slice Deployment Security
+      desc: Detect security events during slice deployment
+      condition: >
+        spawned_process and container.name contains "orchestrator" and
+        (proc.args contains "kubectl" or proc.args contains "helm") and
+        not (proc.pname in (orchestrator, deployment-manager))
+      output: >
+        Slice deployment security event detected
+        (user=%user.name process=%proc.name cmdline=%proc.cmdline
+         container=%container.name namespace=%k8s.ns.name)
+      priority: WARNING
+      tags: [oran, orchestrator, slice, deployment]
+
+  # Kubernetes audit rules for O-RAN
+  k8s_audit_oran_rules.yaml: |
+    # O-RAN Kubernetes Audit Rules
+
+    - rule: O-RAN Secret Access
+      desc: Detect access to O-RAN secrets
+      condition: >
+        ka and
+        ka.target.resource=secrets and
+        ka.target.namespace in (oran-nlp, oran-orchestrator, oran-ran, oran-cn, oran-tn) and
+        not ka.user.name in (system:serviceaccount:oran-nlp:oran-nlp-service,
+                             system:serviceaccount:oran-orchestrator:oran-orchestrator-service)
+      output: >
+        O-RAN secret accessed
+        (user=%ka.user.name verb=%ka.verb secret=%ka.target.name
+         namespace=%ka.target.namespace reason=%ka.reason.reason)
+      priority: WARNING
+      tags: [oran, k8s_audit, secrets]
+
+    - rule: O-RAN ConfigMap Modification
+      desc: Detect modifications to O-RAN ConfigMaps
+      condition: >
+        ka and
+        ka.verb in (create, update, patch, delete) and
+        ka.target.resource=configmaps and
+        ka.target.namespace in (oran-nlp, oran-orchestrator, oran-ran, oran-cn, oran-tn)
+      output: >
+        O-RAN ConfigMap modified
+        (user=%ka.user.name verb=%ka.verb configmap=%ka.target.name
+         namespace=%ka.target.namespace)
+      priority: INFO
+      tags: [oran, k8s_audit, configmap]
+
+    - rule: O-RAN RBAC Violation
+      desc: Detect RBAC violations in O-RAN namespaces
+      condition: >
+        ka and
+        ka.response_code >= 400 and
+        ka.target.namespace in (oran-nlp, oran-orchestrator, oran-ran, oran-cn, oran-tn)
+      output: >
+        O-RAN RBAC violation detected
+        (user=%ka.user.name verb=%ka.verb resource=%ka.target.resource
+         namespace=%ka.target.namespace response_code=%ka.response_code
+         reason=%ka.response_reason)
+      priority: WARNING
+      tags: [oran, k8s_audit, rbac_violation]
+
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: falco
+  namespace: falco-system
+  labels:
+    app.kubernetes.io/name: falco
+    app.kubernetes.io/component: security
+    app.kubernetes.io/part-of: oran-intent-mano
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: falco
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: falco
+        app.kubernetes.io/component: security
+        app.kubernetes.io/part-of: oran-intent-mano
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8765"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: falco
+      hostNetwork: true
+      hostPID: true
+      securityContext:
+        runAsUser: 0
+        runAsGroup: 0
+      containers:
+      - name: falco
+        image: falcosecurity/falco:0.36.2
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          privileged: true
+        args:
+        - /usr/bin/falco
+        - --cri=/run/containerd/containerd.sock
+        - --k8s-api=http://127.0.0.1:8080
+        - --k8s-api-cert=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        - --k8s-api-token=/var/run/secrets/kubernetes.io/serviceaccount/token
+        env:
+        - name: FALCO_K8S_NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: FALCO_GRPC_ENABLED
+          value: "true"
+        - name: FALCO_GRPC_BIND_ADDRESS
+          value: "unix:///var/run/falco/falco.sock"
+        - name: FALCO_METRICS_ENABLED
+          value: "true"
+        - name: FALCO_METRICS_BIND_ADDRESS
+          value: "0.0.0.0:8765"
+        ports:
+        - containerPort: 8765
+          name: metrics
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8765
+          initialDelaySeconds: 60
+          periodSeconds: 15
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 8765
+          initialDelaySeconds: 30
+          periodSeconds: 15
+          timeoutSeconds: 5
+          failureThreshold: 3
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+          requests:
+            cpu: 100m
+            memory: 256Mi
+        volumeMounts:
+        - name: falco-config
+          mountPath: /etc/falco
+        - name: boot
+          mountPath: /host/boot
+          readOnly: true
+        - name: lib-modules
+          mountPath: /host/lib/modules
+          readOnly: true
+        - name: usr-src
+          mountPath: /host/usr/src
+          readOnly: true
+        - name: etc
+          mountPath: /host/etc
+          readOnly: true
+        - name: dev
+          mountPath: /host/dev
+          readOnly: true
+        - name: proc
+          mountPath: /host/proc
+          readOnly: true
+        - name: var-run
+          mountPath: /host/var/run
+          readOnly: true
+        - name: sys
+          mountPath: /host/sys
+          readOnly: true
+        - name: docker-sock
+          mountPath: /var/run/docker.sock
+          readOnly: true
+        - name: containerd-sock
+          mountPath: /run/containerd/containerd.sock
+          readOnly: true
+        - name: falco-sock
+          mountPath: /var/run/falco
+        - name: falco-logs
+          mountPath: /var/log/falco
+
+      # Falco Exporter sidecar
+      - name: falco-exporter
+        image: falcosecurity/falco-exporter:0.8.3
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 65534
+          runAsGroup: 65534
+        args:
+        - --web.listen-address=0.0.0.0:9376
+        - --client.socket-path=unix:///var/run/falco/falco.sock
+        ports:
+        - containerPort: 9376
+          name: http-metrics
+          protocol: TCP
+        resources:
+          limits:
+            cpu: 200m
+            memory: 256Mi
+          requests:
+            cpu: 50m
+            memory: 64Mi
+        volumeMounts:
+        - name: falco-sock
+          mountPath: /var/run/falco
+        - name: tmp
+          mountPath: /tmp
+
+      volumes:
+      - name: falco-config
+        configMap:
+          name: falco-config
+      - name: boot
+        hostPath:
+          path: /boot
+      - name: lib-modules
+        hostPath:
+          path: /lib/modules
+      - name: usr-src
+        hostPath:
+          path: /usr/src
+      - name: etc
+        hostPath:
+          path: /etc
+      - name: dev
+        hostPath:
+          path: /dev
+      - name: proc
+        hostPath:
+          path: /proc
+      - name: var-run
+        hostPath:
+          path: /var/run
+      - name: sys
+        hostPath:
+          path: /sys
+      - name: docker-sock
+        hostPath:
+          path: /var/run/docker.sock
+          type: Socket
+      - name: containerd-sock
+        hostPath:
+          path: /run/containerd/containerd.sock
+          type: Socket
+      - name: falco-sock
+        emptyDir: {}
+      - name: falco-logs
+        hostPath:
+          path: /var/log/falco
+          type: DirectoryOrCreate
+      - name: tmp
+        emptyDir: {}
+
+      tolerations:
+      - effect: NoSchedule
+        operator: Exists
+      - effect: NoExecute
+        operator: Exists
+      nodeSelector:
+        kubernetes.io/os: linux
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: falco-exporter
+  namespace: falco-system
+  labels:
+    app.kubernetes.io/name: falco-exporter
+    app.kubernetes.io/component: security
+    app.kubernetes.io/part-of: oran-intent-mano
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9376"
+spec:
+  type: ClusterIP
+  ports:
+  - name: http-metrics
+    port: 9376
+    targetPort: http-metrics
+    protocol: TCP
+  selector:
+    app.kubernetes.io/name: falco
+---
+# ServiceMonitor for Prometheus to scrape Falco metrics
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: falco
+  namespace: falco-system
+  labels:
+    app.kubernetes.io/name: falco
+    app.kubernetes.io/part-of: oran-intent-mano
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: falco-exporter
+  endpoints:
+  - port: http-metrics
+    interval: 30s
+    path: /metrics
+---
+# Falco Sidekick for alert routing
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: falco-sidekick
+  namespace: falco-system
+  labels:
+    app.kubernetes.io/name: falco-sidekick
+    app.kubernetes.io/component: security
+    app.kubernetes.io/part-of: oran-intent-mano
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: falco-sidekick
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: falco-sidekick
+        app.kubernetes.io/component: security
+        app.kubernetes.io/part-of: oran-intent-mano
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1234
+        runAsGroup: 1234
+        fsGroup: 1234
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: falco-sidekick
+        image: falcosecurity/falco-sidekick:2.28.0
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1234
+          runAsGroup: 1234
+        env:
+        - name: WEBHOOK_URL
+          value: "http://alertmanager.oran-monitoring:9093/api/v1/alerts"
+        - name: WEBHOOK_METHOD
+          value: "POST"
+        - name: WEBHOOK_MINIMUMPRIORITY
+          value: "warning"
+        - name: PROMETHEUS_ENABLED
+          value: "true"
+        - name: PROMETHEUS_ADDRESS
+          value: "0.0.0.0:2112"
+        ports:
+        - containerPort: 2801
+          name: http
+          protocol: TCP
+        - containerPort: 2112
+          name: metrics
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ping
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+      volumes:
+      - name: tmp
+        emptyDir: {}
+      nodeSelector:
+        kubernetes.io/os: linux
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: falco-sidekick
+  namespace: falco-system
+  labels:
+    app.kubernetes.io/name: falco-sidekick
+    app.kubernetes.io/component: security
+    app.kubernetes.io/part-of: oran-intent-mano
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "2112"
+spec:
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 2801
+    targetPort: http
+    protocol: TCP
+  - name: metrics
+    port: 2112
+    targetPort: metrics
+    protocol: TCP
+  selector:
+    app.kubernetes.io/name: falco-sidekick

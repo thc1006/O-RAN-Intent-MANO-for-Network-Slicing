@@ -1,0 +1,171 @@
+# Default values for oran-orchestrator
+replicaCount: 1
+
+image:
+  repository: oran-orchestrator
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  automount: true
+  annotations: {}
+  name: ""
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "9090"
+  prometheus.io/path: "/metrics"
+
+podLabels: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  fsGroup: 65532
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 65532
+  capabilities:
+    drop:
+    - ALL
+
+service:
+  type: ClusterIP
+  port: 8080
+  metricsPort: 9090
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: orchestrator.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+volumes: []
+volumeMounts: []
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+config:
+  server:
+    port: 8080
+    host: "0.0.0.0"
+
+  metrics:
+    enabled: true
+    port: 9090
+    path: "/metrics"
+
+  logging:
+    level: "info"
+    format: "json"
+
+  orchestration:
+    policy:
+      placement:
+        algorithm: "optimal-fit"
+        constraints:
+          - type: "latency"
+            value: "10ms"
+          - type: "throughput"
+            value: "1Gbps"
+
+    intents:
+      processing:
+        timeout: "30s"
+        retries: 3
+
+      validation:
+        strict: true
+        schema_validation: true
+
+  integrations:
+    o2ims:
+      endpoint: "http://o2ims-server:5005"
+      timeout: "10s"
+
+    o2dms:
+      ran_endpoint: "http://oran-ran-dms:8080"
+      cn_endpoint: "http://oran-cn-dms:8080"
+      timeout: "10s"
+
+    porch:
+      endpoint: "http://porch-server.porch-system:7007"
+      repository: "mano-packages"
+      timeout: "30s"
+
+# Performance targets for validation
+targets:
+  throughput:
+    embb: 4.57  # Mbps
+    urllc: 2.77  # Mbps
+    mmtc: 0.93   # Mbps
+  latency:
+    embb: 16.1   # ms
+    urllc: 15.7  # ms
+    mmtc: 6.3    # ms
+  deployment:
+    maxTime: 600  # seconds (10 minutes)
+
+# Monitoring configuration
+monitoring:
+  prometheus:
+    enabled: true
+    serviceMonitor:
+      enabled: false
+      labels: {}
+      interval: 30s
+      scrapeTimeout: 10s
+
+# Network policies
+networkPolicy:
+  enabled: false
+  ingress: []
+  egress: []

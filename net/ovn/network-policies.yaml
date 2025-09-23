@@ -1,0 +1,489 @@
+# QoS-Aware Network Policies for O-RAN Network Slicing
+# Implements bandwidth guarantees and network isolation per QoS class
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: o-ran-slices
+  labels:
+    networking.kubeovn.io/ns: o-ran-slices
+  annotations:
+    ovn.kubernetes.io/logical_switch: o-ran-switch
+    ovn.kubernetes.io/cidr: 10.16.0.0/16
+    ovn.kubernetes.io/gateway: 10.16.0.1
+    ovn.kubernetes.io/exclude_ips: 10.16.0.1
+---
+# High Priority QoS Class Subnet
+apiVersion: kubeovn.io/v1
+kind: Subnet
+metadata:
+  name: high-priority-slice
+  namespace: kube-ovn
+spec:
+  cidrBlock: 10.16.10.0/24
+  excludeIps:
+  - 10.16.10.1
+  gateway: 10.16.10.1
+  gatewayType: distributed
+  default: false
+  protocol: IPv4
+  provider: ovn
+  vpc: ovn-cluster
+  namespaces:
+  - o-ran-slices
+  vlan: ""
+  underlayGateway: false
+  disableGatewayCheck: false
+  enableDHCP: true
+  acls:
+  - direction: to-lport
+    match: "ip"
+    action: allow
+    priority: 1001
+  - direction: from-lport
+    match: "ip"
+    action: allow
+    priority: 1001
+  gatewayQos:
+    burstRate: "125m"    # 100Mbit burst
+    maxRate: "100m"      # 100Mbit sustained
+  annotations:
+    ovn.kubernetes.io/qos_class: "high"
+    ovn.kubernetes.io/bandwidth: "100Mbit"
+    ovn.kubernetes.io/priority: "100"
+    ovn.kubernetes.io/dscp: "46"
+---
+# Medium Priority QoS Class Subnet
+apiVersion: kubeovn.io/v1
+kind: Subnet
+metadata:
+  name: medium-priority-slice
+  namespace: kube-ovn
+spec:
+  cidrBlock: 10.16.20.0/24
+  excludeIps:
+  - 10.16.20.1
+  gateway: 10.16.20.1
+  gatewayType: distributed
+  default: false
+  protocol: IPv4
+  provider: ovn
+  vpc: ovn-cluster
+  namespaces:
+  - o-ran-slices
+  vlan: ""
+  underlayGateway: false
+  disableGatewayCheck: false
+  enableDHCP: true
+  acls:
+  - direction: to-lport
+    match: "ip"
+    action: allow
+    priority: 1001
+  - direction: from-lport
+    match: "ip"
+    action: allow
+    priority: 1001
+  gatewayQos:
+    burstRate: "62.5m"   # 50Mbit burst
+    maxRate: "50m"       # 50Mbit sustained
+  annotations:
+    ovn.kubernetes.io/qos_class: "medium"
+    ovn.kubernetes.io/bandwidth: "50Mbit"
+    ovn.kubernetes.io/priority: "50"
+    ovn.kubernetes.io/dscp: "26"
+---
+# Low Priority QoS Class Subnet
+apiVersion: kubeovn.io/v1
+kind: Subnet
+metadata:
+  name: low-priority-slice
+  namespace: kube-ovn
+spec:
+  cidrBlock: 10.16.30.0/24
+  excludeIps:
+  - 10.16.30.1
+  gateway: 10.16.30.1
+  gatewayType: distributed
+  default: false
+  protocol: IPv4
+  provider: ovn
+  vpc: ovn-cluster
+  namespaces:
+  - o-ran-slices
+  vlan: ""
+  underlayGateway: false
+  disableGatewayCheck: false
+  enableDHCP: true
+  acls:
+  - direction: to-lport
+    match: "ip"
+    action: allow
+    priority: 1001
+  - direction: from-lport
+    match: "ip"
+    action: allow
+    priority: 1001
+  gatewayQos:
+    burstRate: "12.5m"   # 10Mbit burst
+    maxRate: "10m"       # 10Mbit sustained
+  annotations:
+    ovn.kubernetes.io/qos_class: "low"
+    ovn.kubernetes.io/bandwidth: "10Mbit"
+    ovn.kubernetes.io/priority: "10"
+    ovn.kubernetes.io/dscp: "10"
+---
+# Network Policy: High Priority Slice Isolation
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: high-priority-isolation
+  namespace: o-ran-slices
+spec:
+  podSelector:
+    matchLabels:
+      qos-class: high
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          qos-class: high
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+  - from:
+    - podSelector:
+        matchLabels:
+          app: o-ran-monitoring
+  - ports:
+    - protocol: TCP
+      port: 8080  # Health checks
+    - protocol: TCP
+      port: 9090  # Metrics
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          qos-class: high
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+  - to: []  # Allow external egress
+    ports:
+    - protocol: TCP
+      port: 53   # DNS
+    - protocol: UDP
+      port: 53   # DNS
+    - protocol: TCP
+      port: 443  # HTTPS
+---
+# Network Policy: Medium Priority Slice Isolation
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: medium-priority-isolation
+  namespace: o-ran-slices
+spec:
+  podSelector:
+    matchLabels:
+      qos-class: medium
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          qos-class: medium
+    - podSelector:
+        matchLabels:
+          qos-class: high  # Allow high priority access
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+  - from:
+    - podSelector:
+        matchLabels:
+          app: o-ran-monitoring
+  - ports:
+    - protocol: TCP
+      port: 8080  # Health checks
+    - protocol: TCP
+      port: 9090  # Metrics
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          qos-class: medium
+  - to:
+    - podSelector:
+        matchLabels:
+          qos-class: high  # Allow high priority access
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+  - to: []  # Allow external egress
+    ports:
+    - protocol: TCP
+      port: 53   # DNS
+    - protocol: UDP
+      port: 53   # DNS
+    - protocol: TCP
+      port: 443  # HTTPS
+---
+# Network Policy: Low Priority Slice Isolation
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: low-priority-isolation
+  namespace: o-ran-slices
+spec:
+  podSelector:
+    matchLabels:
+      qos-class: low
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          qos-class: low
+    - podSelector:
+        matchLabels:
+          qos-class: medium  # Allow medium priority access
+    - podSelector:
+        matchLabels:
+          qos-class: high   # Allow high priority access
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+  - from:
+    - podSelector:
+        matchLabels:
+          app: o-ran-monitoring
+  - ports:
+    - protocol: TCP
+      port: 8080  # Health checks
+    - protocol: TCP
+      port: 9090  # Metrics
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          qos-class: low
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+  - to: []  # Allow external egress
+    ports:
+    - protocol: TCP
+      port: 53   # DNS
+    - protocol: UDP
+      port: 53   # DNS
+    - protocol: TCP
+      port: 80   # HTTP only for low priority
+---
+# QoS Policy CRD for OVN
+apiVersion: kubeovn.io/v1
+kind: QoSPolicy
+metadata:
+  name: o-ran-qos-policy
+  namespace: kube-ovn
+spec:
+  bindingType: namespace
+  bindings:
+  - name: o-ran-slices
+  shared: false
+  bandwidthLimitRules:
+  - direction: ingress
+    priority: 100
+    match: 'ip4.dst == 10.16.10.0/24'  # High priority
+    rate: 100000000  # 100 Mbps in bits
+    burst: 125000000 # 125 Mbps burst
+  - direction: ingress
+    priority: 50
+    match: 'ip4.dst == 10.16.20.0/24'  # Medium priority
+    rate: 50000000   # 50 Mbps in bits
+    burst: 62500000  # 62.5 Mbps burst
+  - direction: ingress
+    priority: 10
+    match: 'ip4.dst == 10.16.30.0/24'  # Low priority
+    rate: 10000000   # 10 Mbps in bits
+    burst: 12500000  # 12.5 Mbps burst
+  - direction: egress
+    priority: 100
+    match: 'ip4.src == 10.16.10.0/24'  # High priority
+    rate: 100000000  # 100 Mbps in bits
+    burst: 125000000 # 125 Mbps burst
+  - direction: egress
+    priority: 50
+    match: 'ip4.src == 10.16.20.0/24'  # Medium priority
+    rate: 50000000   # 50 Mbps in bits
+    burst: 62500000  # 62.5 Mbps burst
+  - direction: egress
+    priority: 10
+    match: 'ip4.src == 10.16.30.0/24'  # Low priority
+    rate: 10000000   # 10 Mbps in bits
+    burst: 12500000  # 12.5 Mbps burst
+---
+# DSCP Marking Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dscp-marking-config
+  namespace: kube-ovn
+data:
+  dscp-rules.yaml: |
+    # DSCP marking rules for QoS classes
+    rules:
+      high-priority:
+        dscp: 46      # EF (Expedited Forwarding)
+        subnets:
+          - 10.16.10.0/24
+        ports:
+          - 80
+          - 443
+          - 8080
+      medium-priority:
+        dscp: 26      # AF31 (Assured Forwarding)
+        subnets:
+          - 10.16.20.0/24
+        ports:
+          - 80
+          - 443
+          - 8080
+      low-priority:
+        dscp: 10      # AF11 (Assured Forwarding)
+        subnets:
+          - 10.16.30.0/24
+        ports:
+          - 80
+          - 8080
+---
+# OVN Load Balancer for Cross-Cluster Services
+apiVersion: kubeovn.io/v1
+kind: SwitchLBRule
+metadata:
+  name: cross-cluster-lb
+  namespace: kube-ovn
+spec:
+  vip: 172.20.100.100
+  sessionAffinity: ""
+  endpoints:
+  - "10.16.10.10:8080"  # High priority endpoint
+  - "10.16.20.10:8080"  # Medium priority endpoint
+  - "10.16.30.10:8080"  # Low priority endpoint
+  vpcName: ovn-cluster
+---
+# Security Group for Slice Isolation
+apiVersion: kubeovn.io/v1
+kind: SecurityGroup
+metadata:
+  name: o-ran-slice-sg
+  namespace: kube-ovn
+spec:
+  allowSameGroupTraffic: false
+  ingressRules:
+  - priority: 100
+    protocol: icmp
+    remoteType: address
+    remoteAddress: "10.16.0.0/12"
+    action: allow
+  - priority: 90
+    protocol: tcp
+    remoteType: securityGroup
+    remoteSecurityGroup: o-ran-slice-sg
+    portRangeMin: 8080
+    portRangeMax: 8080
+    action: allow
+  - priority: 80
+    protocol: tcp
+    remoteType: address
+    remoteAddress: "0.0.0.0/0"
+    portRangeMin: 443
+    portRangeMax: 443
+    action: allow
+  - priority: 1
+    protocol: ""
+    remoteType: address
+    remoteAddress: "0.0.0.0/0"
+    action: drop
+  egressRules:
+  - priority: 100
+    protocol: ""
+    remoteType: address
+    remoteAddress: "0.0.0.0/0"
+    action: allow
+---
+# Pod Annotation Templates for QoS Classes
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: qos-annotations
+  namespace: kube-ovn
+data:
+  high-priority.yaml: |
+    metadata:
+      annotations:
+        ovn.kubernetes.io/logical_switch: "high-priority-slice"
+        ovn.kubernetes.io/ip_address: "10.16.10.0/24"
+        ovn.kubernetes.io/mac_address: ""
+        ovn.kubernetes.io/ip_pool: "10.16.10.10,10.16.10.11,10.16.10.12"
+        ovn.kubernetes.io/ingress_rate: "100"
+        ovn.kubernetes.io/egress_rate: "100"
+        ovn.kubernetes.io/priority: "100"
+        ovn.kubernetes.io/latency: "1"
+        ovn.kubernetes.io/limit: "1"
+        ovn.kubernetes.io/allocated: "false"
+        traffic.sidecar.istio.io/includeInboundPorts: "8080,9090"
+        traffic.sidecar.istio.io/excludeOutboundPorts: "15090,15021,15020"
+      labels:
+        qos-class: "high"
+        network-slice: "embb"
+        priority-level: "critical"
+
+  medium-priority.yaml: |
+    metadata:
+      annotations:
+        ovn.kubernetes.io/logical_switch: "medium-priority-slice"
+        ovn.kubernetes.io/ip_address: "10.16.20.0/24"
+        ovn.kubernetes.io/mac_address: ""
+        ovn.kubernetes.io/ip_pool: "10.16.20.10,10.16.20.11,10.16.20.12"
+        ovn.kubernetes.io/ingress_rate: "50"
+        ovn.kubernetes.io/egress_rate: "50"
+        ovn.kubernetes.io/priority: "50"
+        ovn.kubernetes.io/latency: "10"
+        ovn.kubernetes.io/limit: "2"
+        ovn.kubernetes.io/allocated: "false"
+        traffic.sidecar.istio.io/includeInboundPorts: "8080,9090"
+        traffic.sidecar.istio.io/excludeOutboundPorts: "15090,15021,15020"
+      labels:
+        qos-class: "medium"
+        network-slice: "urllc"
+        priority-level: "standard"
+
+  low-priority.yaml: |
+    metadata:
+      annotations:
+        ovn.kubernetes.io/logical_switch: "low-priority-slice"
+        ovn.kubernetes.io/ip_address: "10.16.30.0/24"
+        ovn.kubernetes.io/mac_address: ""
+        ovn.kubernetes.io/ip_pool: "10.16.30.10,10.16.30.11,10.16.30.12"
+        ovn.kubernetes.io/ingress_rate: "10"
+        ovn.kubernetes.io/egress_rate: "10"
+        ovn.kubernetes.io/priority: "10"
+        ovn.kubernetes.io/latency: "100"
+        ovn.kubernetes.io/limit: "10"
+        ovn.kubernetes.io/allocated: "false"
+        traffic.sidecar.istio.io/includeInboundPorts: "8080"
+        traffic.sidecar.istio.io/excludeOutboundPorts: "15090,15021,15020"
+      labels:
+        qos-class: "low"
+        network-slice: "mmtc"
+        priority-level: "best-effort"

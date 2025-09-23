@@ -1,0 +1,285 @@
+package v1alpha1
+
+import (
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"sigs.k8s.io/controller-runtime/pkg/scheme"
+)
+
+var (
+	// GroupVersion is group version used to register these objects
+	GroupVersion = schema.GroupVersion{Group: "vnf.oran.io", Version: "v1alpha1"}
+
+	// SchemeBuilder is used to add go types to the GroupVersionKind scheme
+	SchemeBuilder = &scheme.Builder{GroupVersion: GroupVersion}
+
+	// AddToScheme adds the types in this group-version to the given scheme.
+	AddToScheme = SchemeBuilder.AddToScheme
+)
+
+// VNFSpec defines the desired state of VNF
+// +kubebuilder:object:generate=true
+type VNFSpec struct {
+	// Name of the VNF
+	Name string `json:"name"`
+
+	// Type of VNF (UPF, AMF, SMF, etc.)
+	Type VNFType `json:"type"`
+
+	// Version of the VNF
+	Version string `json:"version"`
+
+	// QoS requirements for the VNF
+	QoS QoSRequirements `json:"qos"`
+
+	// Placement requirements
+	Placement PlacementRequirements `json:"placement"`
+
+	// Target clusters for deployment
+	TargetClusters []string `json:"targetClusters"`
+
+	// Resources required by the VNF
+	Resources ResourceRequirements `json:"resources,omitempty"`
+
+	// Configuration parameters
+	Config map[string]string `json:"config,omitempty"`
+
+	// Configuration data for environment variables
+	ConfigData map[string]string `json:"configData,omitempty"`
+
+	// Image configuration
+	Image ImageSpec `json:"image"`
+}
+
+// VNFType represents the type of Network Function
+// +kubebuilder:validation:Enum=UPF;AMF;SMF;PCF;UDM;AUSF;NSSF;NEF;NRF;gNB;CU;DU;RU;RAN;CN;TN
+type VNFType string
+
+const (
+	VNFTypeUPF   VNFType = "UPF"
+	VNFTypeAMF   VNFType = "AMF"
+	VNFTypeSMF   VNFType = "SMF"
+	VNFTypePCF   VNFType = "PCF"
+	VNFTypeUDM   VNFType = "UDM"
+	VNFTypeAUSF  VNFType = "AUSF"
+	VNFTypeNSSF  VNFType = "NSSF"
+	VNFTypeNEF   VNFType = "NEF"
+	VNFTypeNRF   VNFType = "NRF"
+	VNFTypegNB   VNFType = "gNB"
+	VNFTypeCU    VNFType = "CU"
+	VNFTypeDU    VNFType = "DU"
+	VNFTypeRU    VNFType = "RU"
+	VNFTypeRAN   VNFType = "RAN"
+	VNFTypeCN    VNFType = "CN"
+	VNFTypeTN    VNFType = "TN"
+)
+
+// QoSRequirements defines QoS parameters for the VNF
+type QoSRequirements struct {
+	// Bandwidth allocation in Mbps
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=5
+	Bandwidth float64 `json:"bandwidth"`
+
+	// Maximum latency in milliseconds
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=10
+	Latency float64 `json:"latency"`
+
+	// Maximum jitter in milliseconds
+	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:validation:Maximum=5
+	Jitter *float64 `json:"jitter,omitempty"`
+
+	// Maximum packet loss rate as percentage
+	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:validation:Maximum=1
+	PacketLoss *float64 `json:"packetLoss,omitempty"`
+
+	// Required reliability as percentage
+	// +kubebuilder:validation:Minimum=95
+	// +kubebuilder:validation:Maximum=99.999
+	Reliability *float64 `json:"reliability,omitempty"`
+
+	// Type of network slice
+	// +kubebuilder:validation:Enum=eMBB;uRLLC;mIoT;balanced
+	SliceType string `json:"sliceType,omitempty"`
+}
+
+// PlacementRequirements defines placement constraints
+type PlacementRequirements struct {
+	// Type of cloud deployment
+	// +kubebuilder:validation:Enum=edge;regional;central
+	CloudType string `json:"cloudType"`
+
+	// Geographic region
+	Region string `json:"region,omitempty"`
+
+	// Availability zone
+	Zone string `json:"zone,omitempty"`
+
+	// Specific site
+	Site string `json:"site,omitempty"`
+
+	// Preferred zones for placement
+	PreferredZones []string `json:"preferredZones,omitempty"`
+
+	// Affinity rules
+	AffinityRules []AffinityRule `json:"affinityRules,omitempty"`
+}
+
+// AffinityRule defines placement affinity or anti-affinity
+type AffinityRule struct {
+	// Type of affinity rule
+	// +kubebuilder:validation:Enum=affinity;anti-affinity
+	Type string `json:"type"`
+
+	// Scope of the rule
+	// +kubebuilder:validation:Enum=host;rack;zone;region
+	Scope string `json:"scope"`
+
+	// Target VNF or service
+	Target string `json:"target"`
+}
+
+// ResourceRequirements defines compute resources
+type ResourceRequirements struct {
+	// CPU cores required
+	CPUCores int `json:"cpuCores,omitempty"`
+
+	// Memory in GB
+	MemoryGB int `json:"memoryGB,omitempty"`
+
+	// Storage in GB
+	StorageGB int `json:"storageGB,omitempty"`
+
+	// Legacy CPU field for backward compatibility
+	CPU string `json:"cpu,omitempty"`
+
+	// Legacy Memory field for backward compatibility
+	Memory string `json:"memory,omitempty"`
+
+	// GPU requirements
+	GPU *GPURequirements `json:"gpu,omitempty"`
+}
+
+// GPURequirements defines GPU resource requirements
+type GPURequirements struct {
+	// Number of GPUs
+	Count int `json:"count"`
+
+	// GPU type
+	Type string `json:"type,omitempty"`
+}
+
+// ImageSpec defines container image configuration
+type ImageSpec struct {
+	// Container image repository
+	Repository string `json:"repository"`
+
+	// Image tag
+	Tag string `json:"tag"`
+
+	// Pull policy
+	// +kubebuilder:validation:Enum=Always;IfNotPresent;Never
+	PullPolicy string `json:"pullPolicy,omitempty"`
+
+	// Pull secrets
+	PullSecrets []string `json:"pullSecrets,omitempty"`
+}
+
+// VNFStatus defines the observed state of VNF
+type VNFStatus struct {
+	// Current phase of the VNF
+	// +kubebuilder:validation:Enum=Pending;Creating;Running;Failed;Deleting
+	Phase string `json:"phase,omitempty"`
+
+	// Human-readable message indicating details about last transition
+	Message string `json:"message,omitempty"`
+
+	// Last observed generation
+	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
+
+	// Last reconcile time
+	LastReconcileTime *metav1.Time `json:"lastReconcileTime,omitempty"`
+
+	// Porch package revision
+	PorchPackageRevision string `json:"porchPackageRevision,omitempty"`
+
+	// DMS deployment ID
+	DMSDeploymentID string `json:"dmsDeploymentID,omitempty"`
+
+	// Deployed clusters
+	DeployedClusters []string `json:"deployedClusters,omitempty"`
+
+	// Conditions represent the latest available observations
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
+
+	// Runtime status of deployed instances
+	Instances []VNFInstance `json:"instances,omitempty"`
+}
+
+// VNFInstance represents a deployed instance of the VNF
+type VNFInstance struct {
+	// Cluster where the instance is deployed
+	Cluster string `json:"cluster"`
+
+	// Namespace of the instance
+	Namespace string `json:"namespace"`
+
+	// Name of the instance
+	Name string `json:"name"`
+
+	// Status of the instance
+	Status string `json:"status"`
+
+	// IP address assigned to the instance
+	IPAddress string `json:"ipAddress,omitempty"`
+
+	// Endpoints exposed by the instance
+	Endpoints []VNFEndpoint `json:"endpoints,omitempty"`
+}
+
+// VNFEndpoint represents a network endpoint
+type VNFEndpoint struct {
+	// Name of the endpoint
+	Name string `json:"name"`
+
+	// Protocol (TCP, UDP, SCTP)
+	Protocol string `json:"protocol"`
+
+	// Port number
+	Port int32 `json:"port"`
+
+	// External IP (if exposed externally)
+	ExternalIP string `json:"externalIP,omitempty"`
+}
+
+//+kubebuilder:object:root=true
+//+kubebuilder:subresource:status
+//+kubebuilder:printcolumn:name="Type",type=string,JSONPath=`.spec.type`
+//+kubebuilder:printcolumn:name="Phase",type=string,JSONPath=`.status.phase`
+//+kubebuilder:printcolumn:name="Cloud Type",type=string,JSONPath=`.spec.placement.cloudType`
+//+kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
+
+// VNF is the Schema for the vnfs API
+type VNF struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec   VNFSpec   `json:"spec,omitempty"`
+	Status VNFStatus `json:"status,omitempty"`
+}
+
+//+kubebuilder:object:root=true
+
+// VNFList contains a list of VNF
+type VNFList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []VNF `json:"items"`
+}
+
+func init() {
+	SchemeBuilder.Register(&VNF{}, &VNFList{})
+}

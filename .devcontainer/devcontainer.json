@@ -1,0 +1,104 @@
+{
+  "name": "O-RAN Intent MANO Development",
+  "image": "mcr.microsoft.com/devcontainers/universal:2-linux",
+  "features": {
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.11"
+    },
+    "ghcr.io/devcontainers/features/go:1": {
+      "version": "1.21"
+    },
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "20"
+    },
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {
+      "kubectl": "latest",
+      "helm": "latest",
+      "minikube": "none"
+    },
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers-contrib/features/kind:1": {},
+    "ghcr.io/devcontainers-contrib/features/k3s-asdf:2": {}
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-python.black-formatter",
+        "golang.go",
+        "redhat.vscode-yaml",
+        "ms-kubernetes-tools.vscode-kubernetes-tools",
+        "ms-azuretools.vscode-docker",
+        "hashicorp.terraform",
+        "esbenp.prettier-vscode",
+        "streetsidesoftware.code-spell-checker",
+        "GitHub.copilot",
+        "eamodio.gitlens",
+        "mhutchie.git-graph",
+        "timonwong.shellcheck",
+        "foxundermoon.shell-format"
+      ],
+      "settings": {
+        "python.defaultInterpreter": "/usr/local/bin/python",
+        "python.linting.enabled": true,
+        "python.linting.pylintEnabled": false,
+        "python.linting.flake8Enabled": false,
+        "python.formatting.provider": "black",
+        "python.formatting.blackPath": "/usr/local/bin/black",
+        "go.gopath": "/go",
+        "go.toolsManagement.autoUpdate": true,
+        "editor.formatOnSave": true,
+        "editor.rulers": [80, 120],
+        "files.trimTrailingWhitespace": true,
+        "files.insertFinalNewline": true,
+        "yaml.schemas": {
+          "kubernetes": "*.yaml"
+        },
+        "cSpell.enabled": true,
+        "cSpell.words": [
+          "MANO",
+          "ORAN",
+          "Nephio",
+          "Porch",
+          "ConfigSync",
+          "Kube",
+          "VXLAN",
+          "GitOps",
+          "CRDs",
+          "kubectl",
+          "kustomize",
+          "devcontainer",
+          "ruff",
+          "golangci",
+          "shellcheck",
+          "hadolint",
+          "yamllint",
+          "markdownlint",
+          "aspell",
+          "O2ims",
+          "O2dms"
+        ]
+      }
+    }
+  },
+  "postCreateCommand": "bash scripts/bootstrap.sh",
+  "postStartCommand": "make setup",
+  "remoteUser": "vscode",
+  "mounts": [
+    "source=${localWorkspaceFolder}/.env,target=/workspace/.env,type=bind,consistency=cached"
+  ],
+  "runArgs": [
+    "--init",
+    "--privileged"
+  ],
+  "containerEnv": {
+    "SHELL": "/bin/bash",
+    "PYTHONPATH": "/workspace",
+    "GOPATH": "/go",
+    "PATH": "/workspace/scripts:/usr/local/go/bin:/go/bin:${PATH}"
+  },
+  "workspaceFolder": "/workspace",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached"
+}

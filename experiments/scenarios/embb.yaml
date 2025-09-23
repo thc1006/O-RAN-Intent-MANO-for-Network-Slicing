@@ -1,0 +1,65 @@
+# eMBB Scenario - Enhanced Mobile Broadband
+# Target deployment time: 407s (fast) or 532s (slow)
+
+intent: "Create a high-bandwidth slice for 4K video streaming service with content delivery optimization"
+
+profile: eMBB
+
+requirements:
+  bandwidth: 4.57  # Mbps
+  latency: 16.1    # ms
+  jitter: 2.0      # ms
+  packet_loss: 0.01  # 1%
+  reliability: 99.9  # %
+
+network_functions:
+  ran:
+    - type: gNodeB
+      count: 2
+      placement: edge
+  transport:
+    - type: vxlan_tunnel
+      endpoints: 2
+      bandwidth_shaping: true
+  core:
+    - type: UPF
+      count: 1
+      placement: regional
+    - type: SMF
+      count: 1
+      placement: regional
+      expected_bottleneck: true  # SMF initialization bottleneck
+    - type: AMF
+      count: 1
+      placement: regional
+
+placement:
+  strategy: distributed
+  constraints:
+    - cloud_type: edge  # RAN at edge
+    - cloud_type: regional  # Core at regional
+  anti_affinity:
+    - scope: host
+      target: critical_services
+
+resource_requirements:
+  total_cpu: 8  # cores
+  total_memory: 16  # GB
+  total_storage: 100  # GB
+
+deployment_sequence:
+  1: RAN  # Deploy RAN first
+  2: TN   # Setup transport network
+  3: CN   # Deploy core network
+
+expected_metrics:
+  smo_cpu_peak: 1.8  # cores during deployment
+  smo_memory_peak: 4096  # MB
+  ocloud_memory_avg: 8192  # MB per node
+  smf_init_delay: 120  # seconds (bottleneck)
+
+validation:
+  connectivity_test: iperf3
+  throughput_target: 4.57  # Mbps
+  latency_target: 16.1  # ms
+  tolerance: 10  # %

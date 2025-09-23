@@ -1,0 +1,77 @@
+# Golden test file for UPF VNF deployment to edge cluster
+apiVersion: mano.oran.io/v1alpha1
+kind: VNF
+metadata:
+  name: upf-edge-001
+  namespace: oran-system
+  labels:
+    app.kubernetes.io/name: upf-edge-001
+    app.kubernetes.io/component: UPF
+    oran.io/test-scenario: edge-deployment
+spec:
+  name: upf-edge-001
+  type: UPF
+  qos:
+    bandwidth: 4.57
+    latency: 6.3
+    jitter: 2.0
+    packetLoss: 0.001
+    reliability: 99.9
+    sliceType: uRLLC
+  placement:
+    cloudType: edge
+    region: us-west-2
+    zone: us-west-2a
+    site: edge01
+    affinityRules:
+    - type: anti-affinity
+      scope: host
+      target: upf-edge-002
+  targetClusters:
+  - edge01
+  - edge02
+  resources:
+    cpuCores: 4
+    memoryGB: 8
+    storageGB: 100
+  config:
+    upf.config.slice_id: "gaming-slice-001"
+    upf.config.max_sessions: "10000"
+    upf.config.buffering_enabled: "true"
+  image:
+    repository: oran/upf
+    tag: v1.2.3
+    pullPolicy: IfNotPresent
+    pullSecrets:
+    - oran-registry-secret
+---
+# Expected Porch Package Resources
+# This section documents the expected generated package structure
+#
+# Package Name: upf-edge-001-UPF
+# Repository: nephio-packages
+# Resources:
+#   - Kptfile
+#   - manifests/deployment.yaml
+#   - manifests/service.yaml
+#   - manifests/configmap.yaml
+#   - kustomization.yaml
+#
+# Key QoS Annotations:
+#   oran.io/qos-bandwidth: "4.57"
+#   oran.io/qos-latency: "6.30"
+#   oran.io/qos-jitter: "2.00"
+#
+# Expected Deployment Targets:
+#   - Cluster: edge01 (primary)
+#   - Cluster: edge02 (backup)
+#
+# Expected Placement Policy Application:
+#   - CloudType: edge (due to 6.3ms latency requirement)
+#   - Anti-affinity with upf-edge-002 on host scope
+#
+# Performance Targets:
+#   - DL Throughput: 4.57 Mbps
+#   - RTT: 6.3 ms (with TC overhead)
+#   - Packet Loss: < 0.1%
+#   - Reliability: 99.9%

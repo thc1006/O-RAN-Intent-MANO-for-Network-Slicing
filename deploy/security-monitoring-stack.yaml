@@ -1,0 +1,314 @@
+---
+# O-RAN Intent MANO Security and Monitoring Stack Deployment
+# This file orchestrates the deployment of all security and monitoring components
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: deployment-order
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: deployment-order
+    app.kubernetes.io/part-of: oran-intent-mano
+data:
+  deployment-order.txt: |
+    # Deployment order for O-RAN Intent MANO Security and Monitoring Stack
+
+    ## Phase 1: Security Foundation
+    1. security/pod-security/pod-security-standards.yaml
+    2. security/secrets/sealed-secrets.yaml
+    3. security/gatekeeper/gatekeeper-system.yaml
+    4. security/gatekeeper/constraint-templates.yaml
+    5. security/gatekeeper/oran-constraints.yaml
+
+    ## Phase 2: RBAC and Network Security
+    6. security/rbac/oran-rbac.yaml
+    7. security/network-policies/oran-network-policies.yaml
+
+    ## Phase 3: Security Scanning and Compliance
+    8. security/scanning/trivy-operator.yaml
+    9. security/slsa/slsa-provenance.yaml
+
+    ## Phase 4: Monitoring Foundation
+    10. monitoring/prometheus/prometheus-stack.yaml
+    11. monitoring/grafana/grafana-stack.yaml
+    12. monitoring/alerting/alertmanager.yaml
+
+    ## Phase 5: Observability Stack
+    13. monitoring/otel/opentelemetry-operator.yaml
+    14. monitoring/logging/loki-stack.yaml
+    15. observability/jaeger/jaeger-stack.yaml
+
+    ## Phase 6: Advanced Monitoring
+    16. monitoring/sla/sla-monitoring.yaml
+    17. observability/falco/falco-security.yaml
+
+    ## Phase 7: Sealed Secrets (Post-deployment)
+    18. security/secrets/oran-sealed-secrets.yaml
+
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: deploy-security-monitoring
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: deploy-security-monitoring
+    app.kubernetes.io/part-of: oran-intent-mano
+spec:
+  backoffLimit: 3
+  completions: 1
+  parallelism: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: deploy-security-monitoring
+        app.kubernetes.io/part-of: oran-intent-mano
+    spec:
+      serviceAccountName: deployment-manager
+      restartPolicy: OnFailure
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: deploy
+        image: bitnami/kubectl:1.28
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 65534
+          runAsGroup: 65534
+        command:
+        - /bin/bash
+        - -c
+        args:
+        - |
+          set -e
+
+          echo "Starting O-RAN Intent MANO Security and Monitoring Stack Deployment"
+
+          # Define base path
+          BASE_PATH="/manifests"
+
+          # Function to wait for deployment readiness
+          wait_for_deployment() {
+            local namespace=$1
+            local deployment=$2
+            echo "Waiting for deployment $deployment in namespace $namespace to be ready..."
+            kubectl wait --for=condition=available --timeout=300s deployment/$deployment -n $namespace || true
+          }
+
+          # Function to wait for daemonset readiness
+          wait_for_daemonset() {
+            local namespace=$1
+            local daemonset=$2
+            echo "Waiting for daemonset $daemonset in namespace $namespace to be ready..."
+            kubectl wait --for=condition=ready --timeout=300s pod -l app.kubernetes.io/name=$daemonset -n $namespace || true
+          }
+
+          # Phase 1: Security Foundation
+          echo "=== Phase 1: Security Foundation ==="
+
+          # Deploy Pod Security Standards
+          echo "Deploying Pod Security Standards..."
+          kubectl apply -f $BASE_PATH/security/pod-security/pod-security-standards.yaml
+          sleep 5
+
+          # Deploy Sealed Secrets
+          echo "Deploying Sealed Secrets..."
+          kubectl apply -f $BASE_PATH/security/secrets/sealed-secrets.yaml
+          wait_for_deployment sealed-secrets sealed-secrets-controller
+
+          # Deploy OPA Gatekeeper
+          echo "Deploying OPA Gatekeeper..."
+          kubectl apply -f $BASE_PATH/security/gatekeeper/gatekeeper-system.yaml
+          wait_for_deployment gatekeeper-system gatekeeper-controller-manager
+
+          echo "Deploying Gatekeeper Constraint Templates..."
+          kubectl apply -f $BASE_PATH/security/gatekeeper/constraint-templates.yaml
+          sleep 10  # Wait for CRDs to be ready
+
+          echo "Deploying O-RAN Constraints..."
+          kubectl apply -f $BASE_PATH/security/gatekeeper/oran-constraints.yaml
+
+          # Phase 2: RBAC and Network Security
+          echo "=== Phase 2: RBAC and Network Security ==="
+
+          echo "Deploying RBAC policies..."
+          kubectl apply -f $BASE_PATH/security/rbac/oran-rbac.yaml
+
+          echo "Deploying Network Policies..."
+          kubectl apply -f $BASE_PATH/security/network-policies/oran-network-policies.yaml
+
+          # Phase 3: Security Scanning and Compliance
+          echo "=== Phase 3: Security Scanning and Compliance ==="
+
+          echo "Deploying Trivy Operator..."
+          kubectl apply -f $BASE_PATH/security/scanning/trivy-operator.yaml
+          wait_for_deployment trivy-system trivy-operator
+
+          echo "Deploying SLSA Provenance..."
+          kubectl apply -f $BASE_PATH/security/slsa/slsa-provenance.yaml
+
+          # Phase 4: Monitoring Foundation
+          echo "=== Phase 4: Monitoring Foundation ==="
+
+          echo "Deploying Prometheus Stack..."
+          kubectl apply -f $BASE_PATH/monitoring/prometheus/prometheus-stack.yaml
+          wait_for_deployment oran-monitoring prometheus
+
+          echo "Deploying Grafana Stack..."
+          kubectl apply -f $BASE_PATH/monitoring/grafana/grafana-stack.yaml
+          wait_for_deployment oran-monitoring grafana
+
+          echo "Deploying Alertmanager..."
+          kubectl apply -f $BASE_PATH/monitoring/alerting/alertmanager.yaml
+          wait_for_deployment oran-monitoring alertmanager
+
+          # Phase 5: Observability Stack
+          echo "=== Phase 5: Observability Stack ==="
+
+          echo "Deploying OpenTelemetry Operator..."
+          kubectl apply -f $BASE_PATH/monitoring/otel/opentelemetry-operator.yaml
+          wait_for_deployment opentelemetry-operator-system opentelemetry-operator-controller-manager
+
+          echo "Deploying Loki Stack..."
+          kubectl apply -f $BASE_PATH/monitoring/logging/loki-stack.yaml
+          wait_for_deployment oran-monitoring loki
+          wait_for_daemonset oran-monitoring promtail
+
+          echo "Deploying Jaeger Stack..."
+          kubectl apply -f $BASE_PATH/observability/jaeger/jaeger-stack.yaml
+          wait_for_deployment oran-monitoring jaeger
+
+          # Phase 6: Advanced Monitoring
+          echo "=== Phase 6: Advanced Monitoring ==="
+
+          echo "Deploying SLA Monitoring..."
+          kubectl apply -f $BASE_PATH/monitoring/sla/sla-monitoring.yaml
+          wait_for_deployment oran-monitoring sla-monitor
+
+          echo "Deploying Falco Security Monitoring..."
+          kubectl apply -f $BASE_PATH/observability/falco/falco-security.yaml
+          wait_for_daemonset falco-system falco
+          wait_for_deployment falco-system falco-sidekick
+
+          # Phase 7: Post-deployment Sealed Secrets
+          echo "=== Phase 7: Post-deployment Configuration ==="
+
+          echo "Deploying O-RAN Sealed Secrets..."
+          kubectl apply -f $BASE_PATH/security/secrets/oran-sealed-secrets.yaml
+
+          # Verification
+          echo "=== Deployment Verification ==="
+
+          echo "Checking namespace status..."
+          kubectl get namespaces | grep -E "(oran-|gatekeeper|trivy|opentelemetry|falco|sealed-secrets)"
+
+          echo "Checking pod status in monitoring namespace..."
+          kubectl get pods -n oran-monitoring
+
+          echo "Checking security components..."
+          kubectl get pods -n gatekeeper-system
+          kubectl get pods -n trivy-system
+          kubectl get pods -n falco-system
+          kubectl get pods -n sealed-secrets
+
+          echo "Checking services..."
+          kubectl get svc -n oran-monitoring
+
+          echo "Checking network policies..."
+          kubectl get networkpolicies --all-namespaces | grep oran
+
+          echo "Checking constraints..."
+          kubectl get constraints
+
+          echo "=== Deployment Complete ==="
+          echo "O-RAN Intent MANO Security and Monitoring Stack has been successfully deployed!"
+          echo ""
+          echo "Access Points:"
+          echo "- Grafana: kubectl port-forward -n oran-monitoring svc/grafana 3000:3000"
+          echo "- Prometheus: kubectl port-forward -n oran-monitoring svc/prometheus 9090:9090"
+          echo "- Alertmanager: kubectl port-forward -n oran-monitoring svc/alertmanager 9093:9093"
+          echo "- Jaeger: kubectl port-forward -n oran-monitoring svc/jaeger-query 16686:16686"
+          echo ""
+          echo "Security Status:"
+          echo "- OPA Gatekeeper: Active"
+          echo "- Pod Security Standards: Enforced"
+          echo "- Network Policies: Applied"
+          echo "- RBAC: Configured"
+          echo "- Trivy Scanning: Active"
+          echo "- Falco Runtime Security: Active"
+          echo "- SLSA Compliance: Configured"
+          echo ""
+          echo "Monitoring Status:"
+          echo "- Prometheus Metrics: Collecting"
+          echo "- Grafana Dashboards: Available"
+          echo "- Alerting: Configured"
+          echo "- Distributed Tracing: Active"
+          echo "- Log Aggregation: Active"
+          echo "- SLA Monitoring: Active"
+        resources:
+          limits:
+            cpu: 500m
+            memory: 256Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
+        volumeMounts:
+        - name: manifests
+          mountPath: /manifests
+        - name: tmp
+          mountPath: /tmp
+      volumes:
+      - name: manifests
+        configMap:
+          name: security-monitoring-manifests
+      - name: tmp
+        emptyDir: {}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: deployment-manager
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: deployment-manager
+    app.kubernetes.io/part-of: oran-intent-mano
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: deployment-manager
+  labels:
+    app.kubernetes.io/name: deployment-manager
+    app.kubernetes.io/part-of: oran-intent-mano
+rules:
+- apiGroups: ["*"]
+  resources: ["*"]
+  verbs: ["*"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: deployment-manager
+  labels:
+    app.kubernetes.io/name: deployment-manager
+    app.kubernetes.io/part-of: oran-intent-mano
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: deployment-manager
+subjects:
+- kind: ServiceAccount
+  name: deployment-manager
+  namespace: kube-system

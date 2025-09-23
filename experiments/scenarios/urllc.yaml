@@ -1,0 +1,64 @@
+# uRLLC Scenario - Ultra-Reliable Low Latency Communication
+# Target deployment time: 353s (fast) or 292s (slow)
+
+intent: "Deploy ultra-low latency slice for industrial automation and robotic control systems"
+
+profile: uRLLC
+
+requirements:
+  bandwidth: 0.93  # Mbps
+  latency: 6.3     # ms
+  jitter: 0.5      # ms
+  packet_loss: 0.001  # 0.1%
+  reliability: 99.999  # %
+
+network_functions:
+  ran:
+    - type: gNodeB
+      count: 1
+      placement: edge
+      priority: high
+  transport:
+    - type: vxlan_tunnel
+      endpoints: 2
+      latency_optimization: true
+      tc_priority: 10  # Highest priority
+  core:
+    - type: UPF
+      count: 1
+      placement: edge  # Co-located for low latency
+    - type: SMF
+      count: 1
+      placement: edge
+      expected_bottleneck: false  # Less pronounced in uRLLC
+
+placement:
+  strategy: co_located
+  constraints:
+    - cloud_type: edge  # All functions at edge
+    - max_latency: 5  # ms between components
+  anti_affinity:
+    - scope: rack
+      target: non_critical_services
+
+resource_requirements:
+  total_cpu: 4  # cores (less than eMBB)
+  total_memory: 8  # GB
+  total_storage: 50  # GB
+
+deployment_sequence:
+  1: TN   # Setup transport first for uRLLC
+  2: RAN  # Deploy RAN
+  3: CN   # Deploy core network
+
+expected_metrics:
+  smo_cpu_peak: 1.2  # cores (lighter load)
+  smo_memory_peak: 2048  # MB
+  ocloud_memory_avg: 6144  # MB per node
+  smf_init_delay: 30  # seconds (minimal bottleneck)
+
+validation:
+  connectivity_test: ping
+  throughput_target: 0.93  # Mbps
+  latency_target: 6.3  # ms
+  tolerance: 5  # % (stricter tolerance)

@@ -1,0 +1,585 @@
+# ConfigSync Multi-Cluster Configuration Examples
+# Production-ready configurations for multi-site O-RAN deployments
+
+---
+# Central Management Cluster - Root Sync Configuration
+apiVersion: configsync.gke.io/v1beta1
+kind: RootSync
+metadata:
+  name: central-management-sync
+  namespace: config-management-system
+  labels:
+    cluster-type: "central"
+    deployment-tier: "management"
+spec:
+  sourceFormat: unstructured
+  git:
+    repo: https://github.com/oran-mano/nephio-deployments
+    branch: main
+    dir: /clusters/central/central-01
+    auth: ssh
+    secretRef:
+      name: git-creds
+    noSSLVerify: false
+    gcpServiceAccountEmail: config-sync@oran-project.iam.gserviceaccount.com
+
+  # Override settings for central management
+  override:
+    resources:
+    # Management plane resources
+    - group: ""
+      kind: "Namespace"
+      operations: ["*"]
+    - group: "workload.nephio.org"
+      kind: "*"
+      operations: ["*"]
+    - group: "o2ims.o-ran.org"
+      kind: "*"
+      operations: ["*"]
+    - group: "o2dms.o-ran.org"
+      kind: "*"
+      operations: ["*"]
+    - group: "config.porch.kpt.dev"
+      kind: "*"
+      operations: ["*"]
+
+    # Network and storage management
+    - group: "networking.k8s.io"
+      kind: "*"
+      operations: ["*"]
+    - group: "storage.k8s.io"
+      kind: "*"
+      operations: ["*"]
+
+    # RBAC and security
+    - group: "rbac.authorization.k8s.io"
+      kind: "*"
+      operations: ["*"]
+    - group: "security.istio.io"
+      kind: "*"
+      operations: ["*"]
+
+  # Rendering configuration
+  renderingRequired: true
+  hydrationController:
+    enabled: true
+    source:
+      path: /blueprints/central
+      sourceFormat: unstructured
+
+  # Status mode for observability
+  statusMode: "enabled"
+
+  # Reconciliation settings
+  reconcileTimeout: "5m"
+  retryPeriod: "10s"
+
+---
+# Regional Cluster - Repo Sync Configuration
+apiVersion: configsync.gke.io/v1beta1
+kind: RepoSync
+metadata:
+  name: regional-workloads-sync
+  namespace: nephio-workloads
+  labels:
+    cluster-type: "regional"
+    deployment-tier: "aggregation"
+spec:
+  sourceFormat: unstructured
+  git:
+    repo: https://github.com/oran-mano/nephio-deployments
+    branch: main
+    dir: /clusters/regional/regional-01/workloads
+    auth: ssh
+    secretRef:
+      name: git-creds
+    noSSLVerify: false
+
+  # Namespace strategy for multi-tenancy
+  override:
+    namespaceStrategy: explicit
+    resources:
+    # Core network functions
+    - group: "workload.nephio.org"
+      kind: "CoreFunction"
+      operations: ["create", "update", "patch"]
+      namespaces: ["core-workloads"]
+
+    # Network slice management
+    - group: "workload.nephio.org"
+      kind: "NetworkSlice"
+      operations: ["create", "update", "patch"]
+      namespaces: ["slice-management"]
+
+    # Service mesh configuration
+    - group: "networking.istio.io"
+      kind: "*"
+      operations: ["create", "update", "patch"]
+      namespaces: ["core-workloads", "slice-management"]
+
+    # Storage for regional data
+    - group: ""
+      kind: "PersistentVolume"
+      operations: ["create", "update", "patch"]
+    - group: ""
+      kind: "PersistentVolumeClaim"
+      operations: ["create", "update", "patch"]
+      namespaces: ["core-workloads"]
+
+  # Hydration for regional customization
+  renderingRequired: true
+  hydrationController:
+    enabled: true
+    source:
+      path: /blueprints/regional
+      sourceFormat: unstructured
+
+  # Performance tuning
+  reconcileTimeout: "3m"
+  retryPeriod: "15s"
+
+---
+# Edge Cluster - Repo Sync Configuration for RAN Functions
+apiVersion: configsync.gke.io/v1beta1
+kind: RepoSync
+metadata:
+  name: edge-ran-sync
+  namespace: ran-workloads
+  labels:
+    cluster-type: "edge"
+    deployment-tier: "access"
+    site-id: "edge-01"
+spec:
+  sourceFormat: unstructured
+  git:
+    repo: https://github.com/oran-mano/nephio-deployments
+    branch: main
+    dir: /clusters/edge/edge-01/ran-workloads
+    auth: ssh
+    secretRef:
+      name: git-creds
+    noSSLVerify: false
+
+  # Edge-specific overrides
+  override:
+    namespaceStrategy: explicit
+    resources:
+    # RAN function management
+    - group: "workload.nephio.org"
+      kind: "RANFunction"
+      operations: ["create", "update", "patch", "delete"]
+      namespaces: ["ran-workloads"]
+
+    # Edge UPF functions
+    - group: "workload.nephio.org"
+      kind: "CoreFunction"
+      resourceNames: ["upf*"]
+      operations: ["create", "update", "patch", "delete"]
+      namespaces: ["edge-upf"]
+
+    # Network attachments for edge
+    - group: "k8s.cni.cncf.io"
+      kind: "NetworkAttachmentDefinition"
+      operations: ["create", "update", "patch"]
+      namespaces: ["ran-workloads", "edge-upf"]
+
+    # Real-time applications
+    - group: "realtime.nephio.org"
+      kind: "*"
+      operations: ["create", "update", "patch"]
+      namespaces: ["ran-workloads"]
+
+  # Edge-optimized hydration
+  renderingRequired: true
+  hydrationController:
+    enabled: true
+    source:
+      path: /blueprints/edge
+      sourceFormat: unstructured
+
+  # Fast reconciliation for edge
+  reconcileTimeout: "2m"
+  retryPeriod: "5s"
+
+---
+# Edge Cluster - Additional Sync for Edge Applications
+apiVersion: configsync.gke.io/v1beta1
+kind: RepoSync
+metadata:
+  name: edge-apps-sync
+  namespace: edge-applications
+  labels:
+    cluster-type: "edge"
+    workload-type: "applications"
+spec:
+  sourceFormat: unstructured
+  git:
+    repo: https://github.com/oran-mano/nephio-deployments
+    branch: main
+    dir: /clusters/edge/edge-01/applications
+    auth: ssh
+    secretRef:
+      name: git-creds
+
+  override:
+    namespaceStrategy: explicit
+    resources:
+    # Edge computing applications
+    - group: "apps"
+      kind: "Deployment"
+      operations: ["create", "update", "patch"]
+      namespaces: ["edge-applications"]
+
+    # Edge services
+    - group: ""
+      kind: "Service"
+      operations: ["create", "update", "patch"]
+      namespaces: ["edge-applications"]
+
+    # Edge-specific ConfigMaps and Secrets
+    - group: ""
+      kind: "ConfigMap"
+      operations: ["create", "update", "patch"]
+      namespaces: ["edge-applications"]
+    - group: ""
+      kind: "Secret"
+      operations: ["create", "update", "patch"]
+      namespaces: ["edge-applications"]
+
+  renderingRequired: false  # Simple applications don't need hydration
+
+---
+# Multi-Cluster Resource Quota Management
+apiVersion: configmanagement.gke.io/v1
+kind: ResourceQuota
+metadata:
+  name: network-slice-quotas
+  namespace: slice-management
+  annotations:
+    configmanagement.gke.io/cluster-selector: "deployment-tier in (regional, edge)"
+spec:
+  hard:
+    # Compute resources
+    requests.cpu: "50"
+    requests.memory: "100Gi"
+    limits.cpu: "80"
+    limits.memory: "160Gi"
+
+    # Network function limits
+    count/networkfunctions: "20"
+    count/networkslices: "5"
+    count/ranfunctions: "10"
+    count/corefunctions: "10"
+
+    # Network resources
+    count/networkattachmentdefinitions: "50"
+    count/networkpolicies: "100"
+
+    # Storage resources
+    requests.storage: "1Ti"
+    persistentvolumeclaims: "50"
+
+---
+# Cluster Role for Multi-Cluster Operations
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: multi-cluster-operator
+  annotations:
+    configmanagement.gke.io/cluster-selector: "cluster-type in (central, regional, edge)"
+rules:
+# ConfigSync operations
+- apiGroups: ["configsync.gke.io"]
+  resources: ["*"]
+  verbs: ["get", "list", "watch"]
+
+# Network function management
+- apiGroups: ["workload.nephio.org"]
+  resources: ["networkfunctions", "networkslices", "ranfunctions", "corefunctions"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+
+# O2 interface operations
+- apiGroups: ["o2ims.o-ran.org", "o2dms.o-ran.org"]
+  resources: ["*"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+
+# Network attachments
+- apiGroups: ["k8s.cni.cncf.io"]
+  resources: ["networkattachmentdefinitions"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+
+# Service mesh operations
+- apiGroups: ["networking.istio.io", "security.istio.io"]
+  resources: ["*"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+
+---
+# Network Policy for Cross-Cluster Communication
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: cross-cluster-communication
+  namespace: nephio-system
+  annotations:
+    configmanagement.gke.io/cluster-selector: "cluster-type in (central, regional, edge)"
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: "cross-cluster"
+  policyTypes:
+  - Ingress
+  - Egress
+
+  ingress:
+  # Allow from management cluster
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          cluster-type: "central"
+    ports:
+    - protocol: TCP
+      port: 8080
+    - protocol: TCP
+      port: 9090
+
+  # Allow from same cluster type
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: "nephio-system"
+    ports:
+    - protocol: TCP
+      port: 8080
+
+  egress:
+  # Allow to management cluster
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          cluster-type: "central"
+    ports:
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 8080
+
+  # Allow DNS resolution
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+
+---
+# Hierarchical Repository Configuration
+apiVersion: configsync.gke.io/v1beta1
+kind: HierarchyConfig
+metadata:
+  name: nephio-hierarchy
+  namespace: config-management-system
+spec:
+  # Repository hierarchy definition
+  sourceFormat: hierarchy
+  git:
+    repo: https://github.com/oran-mano/nephio-hierarchical-config
+    branch: main
+    dir: /
+    auth: ssh
+    secretRef:
+      name: git-creds
+
+  # Hierarchy structure
+  hierarchy:
+    # Abstract configurations
+    - name: "abstract"
+      path: "/abstract"
+      selectors: []
+
+    # Cluster type configurations
+    - name: "central-clusters"
+      path: "/cluster-types/central"
+      selectors:
+      - cluster-type: "central"
+      inherit: ["abstract"]
+
+    - name: "regional-clusters"
+      path: "/cluster-types/regional"
+      selectors:
+      - cluster-type: "regional"
+      inherit: ["abstract"]
+
+    - name: "edge-clusters"
+      path: "/cluster-types/edge"
+      selectors:
+      - cluster-type: "edge"
+      inherit: ["abstract"]
+
+    # Workload type configurations
+    - name: "ran-workloads"
+      path: "/workload-types/ran"
+      selectors:
+      - workload-type: "ran"
+      inherit: ["edge-clusters"]
+
+    - name: "core-workloads"
+      path: "/workload-types/core"
+      selectors:
+      - workload-type: "core"
+      inherit: ["regional-clusters"]
+
+    # Site-specific configurations
+    - name: "london-sites"
+      path: "/sites/london"
+      selectors:
+      - location.region: "london"
+      inherit: ["edge-clusters", "regional-clusters"]
+
+---
+# Sync Status Monitoring
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sync-monitoring-config
+  namespace: config-management-system
+  annotations:
+    configmanagement.gke.io/cluster-selector: "cluster-type in (central, regional, edge)"
+data:
+  monitoring.yaml: |
+    monitoring:
+      sync_status:
+        enabled: true
+        interval: "30s"
+
+      metrics:
+        - name: "sync_success_rate"
+          description: "Percentage of successful syncs"
+          type: "gauge"
+
+        - name: "sync_duration"
+          description: "Time taken for sync operations"
+          type: "histogram"
+          buckets: [0.1, 0.5, 1.0, 2.0, 5.0, 10.0]
+
+        - name: "resource_drift_count"
+          description: "Number of resources with drift detected"
+          type: "counter"
+
+        - name: "error_count"
+          description: "Number of sync errors"
+          type: "counter"
+          labels: ["cluster", "namespace", "resource_type"]
+
+      alerts:
+        - name: "SyncFailure"
+          condition: "sync_success_rate < 0.95"
+          severity: "critical"
+          message: "ConfigSync success rate below 95%"
+
+        - name: "SyncLatency"
+          condition: "sync_duration_p95 > 300"
+          severity: "warning"
+          message: "ConfigSync taking longer than 5 minutes"
+
+        - name: "ResourceDrift"
+          condition: "resource_drift_count > 10"
+          severity: "warning"
+          message: "High number of resources with drift detected"
+
+---
+# Multi-Cluster Service Discovery
+apiVersion: networking.istio.io/v1alpha3
+kind: ServiceEntry
+metadata:
+  name: cross-cluster-services
+  namespace: nephio-system
+  annotations:
+    configmanagement.gke.io/cluster-selector: "cluster-type in (regional, edge)"
+spec:
+  hosts:
+  - central-management.nephio.local
+  - regional-aggregation.nephio.local
+  ports:
+  - number: 443
+    name: https
+    protocol: HTTPS
+  - number: 8080
+    name: http
+    protocol: HTTP
+  location: MESH_EXTERNAL
+  resolution: DNS
+  endpoints:
+  - address: central-management.nephio.local
+    ports:
+      https: 443
+      http: 8080
+  - address: regional-aggregation.nephio.local
+    ports:
+      https: 443
+      http: 8080
+
+---
+# Config Sync Performance Tuning
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: configsync-performance-config
+  namespace: config-management-system
+data:
+  performance.yaml: |
+    performance:
+      reconciler:
+        # Reconciliation frequency
+        sync_period: "15s"
+
+        # Resource limits for reconciler
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "256Mi"
+          limits:
+            cpu: "1000m"
+            memory: "1Gi"
+
+        # Concurrency settings
+        worker_count: 10
+        max_concurrent_reconciles: 5
+
+        # Timeout settings
+        reconcile_timeout: "10m"
+        api_server_timeout: "30s"
+
+        # Retry configuration
+        retry_backoff:
+          initial: "1s"
+          max: "60s"
+          multiplier: 2
+
+      git_sync:
+        # Git polling frequency
+        poll_period: "15s"
+
+        # Git operation timeouts
+        clone_timeout: "60s"
+        fetch_timeout: "30s"
+
+        # Resource limits for git-sync
+        resources:
+          requests:
+            cpu: "50m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+
+      rendering:
+        # Hydration controller settings
+        enabled: true
+        timeout: "5m"
+
+        # Resource limits for rendering
+        resources:
+          requests:
+            cpu: "200m"
+            memory: "512Mi"
+          limits:
+            cpu: "2000m"
+            memory: "4Gi"

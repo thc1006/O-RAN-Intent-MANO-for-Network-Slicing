@@ -1,0 +1,491 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: alertmanager
+  namespace: oran-monitoring
+  labels:
+    app.kubernetes.io/name: alertmanager
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/part-of: oran-intent-mano
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alertmanager-config
+  namespace: oran-monitoring
+  labels:
+    app.kubernetes.io/name: alertmanager
+    app.kubernetes.io/part-of: oran-intent-mano
+data:
+  alertmanager.yml: |
+    global:
+      smtp_smarthost: 'localhost:587'
+      smtp_from: 'oran-alerts@example.com'
+
+    route:
+      group_by: ['alertname', 'cluster', 'service']
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 12h
+      receiver: 'oran-alerts'
+      routes:
+      - match:
+          severity: critical
+        receiver: 'oran-critical-alerts'
+        group_wait: 10s
+        repeat_interval: 1h
+      - match:
+          severity: warning
+        receiver: 'oran-warning-alerts'
+        group_wait: 30s
+        repeat_interval: 6h
+      - match:
+          component: security
+        receiver: 'oran-security-alerts'
+        group_wait: 10s
+        repeat_interval: 30m
+
+    receivers:
+    - name: 'oran-alerts'
+      email_configs:
+      - to: 'oran-team@example.com'
+        subject: '[O-RAN Alert] {{ .GroupLabels.alertname }}'
+        body: |
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Instance: {{ .Labels.instance }}
+          Severity: {{ .Labels.severity }}
+          {{ end }}
+      webhook_configs:
+      - url: 'http://slack-webhook:3000/webhook'
+        send_resolved: true
+
+    - name: 'oran-critical-alerts'
+      email_configs:
+      - to: 'oran-oncall@example.com'
+        subject: '[O-RAN CRITICAL] {{ .GroupLabels.alertname }}'
+        body: |
+          CRITICAL ALERT for O-RAN Intent MANO System
+
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Instance: {{ .Labels.instance }}
+          Component: {{ .Labels.component }}
+          Severity: {{ .Labels.severity }}
+          Runbook: {{ .Annotations.runbook_url }}
+          {{ end }}
+      pagerduty_configs:
+      - routing_key: 'YOUR_PAGERDUTY_INTEGRATION_KEY'
+        description: '{{ .GroupLabels.alertname }} - {{ .CommonAnnotations.summary }}'
+
+    - name: 'oran-warning-alerts'
+      email_configs:
+      - to: 'oran-team@example.com'
+        subject: '[O-RAN Warning] {{ .GroupLabels.alertname }}'
+        body: |
+          Warning Alert for O-RAN Intent MANO System
+
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Instance: {{ .Labels.instance }}
+          Component: {{ .Labels.component }}
+          {{ end }}
+
+    - name: 'oran-security-alerts'
+      email_configs:
+      - to: 'oran-security@example.com'
+        subject: '[O-RAN SECURITY] {{ .GroupLabels.alertname }}'
+        body: |
+          SECURITY ALERT for O-RAN Intent MANO System
+
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Instance: {{ .Labels.instance }}
+          Severity: {{ .Labels.severity }}
+          Security Issue: {{ .Annotations.security_issue }}
+          Remediation: {{ .Annotations.remediation }}
+          {{ end }}
+      webhook_configs:
+      - url: 'http://security-webhook:3000/webhook'
+        send_resolved: true
+
+    inhibit_rules:
+    - source_match:
+        severity: 'critical'
+      target_match:
+        severity: 'warning'
+      equal: ['alertname', 'instance']
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-alert-rules
+  namespace: oran-monitoring
+  labels:
+    app.kubernetes.io/name: prometheus-rules
+    app.kubernetes.io/part-of: oran-intent-mano
+data:
+  oran-alerts.yml: |
+    groups:
+    - name: oran.thesis.performance
+      interval: 30s
+      rules:
+      # Thesis Target: E2E deployment time < 10 minutes
+      - alert: ORanSliceDeploymentTooSlow
+        expr: oran:slice_deployment_duration_seconds:rate5m > 600
+        for: 2m
+        labels:
+          severity: warning
+          component: orchestrator
+          thesis_target: deployment_time
+        annotations:
+          summary: "O-RAN slice deployment exceeding thesis target"
+          description: "E2E slice deployment time is {{ $value }}s, exceeding thesis target of 600s (10 minutes)"
+          runbook_url: "https://wiki.oran.org/runbooks/deployment-performance"
+
+      # Thesis Target: DL throughput targets per slice type
+      - alert: ORanThroughputBelowTarget
+        expr: oran:network_slice_throughput_mbps:rate5m{slice_type="embb"} < 4.57
+        for: 5m
+        labels:
+          severity: critical
+          component: ran
+          slice_type: embb
+          thesis_target: throughput
+        annotations:
+          summary: "eMBB slice throughput below thesis target"
+          description: "eMBB slice throughput is {{ $value }} Mbps, below thesis target of 4.57 Mbps"
+          runbook_url: "https://wiki.oran.org/runbooks/throughput-optimization"
+
+      - alert: ORanThroughputBelowTarget
+        expr: oran:network_slice_throughput_mbps:rate5m{slice_type="urllc"} < 2.77
+        for: 5m
+        labels:
+          severity: critical
+          component: ran
+          slice_type: urllc
+          thesis_target: throughput
+        annotations:
+          summary: "URLLC slice throughput below thesis target"
+          description: "URLLC slice throughput is {{ $value }} Mbps, below thesis target of 2.77 Mbps"
+
+      - alert: ORanThroughputBelowTarget
+        expr: oran:network_slice_throughput_mbps:rate5m{slice_type="mmtc"} < 0.93
+        for: 5m
+        labels:
+          severity: warning
+          component: ran
+          slice_type: mmtc
+          thesis_target: throughput
+        annotations:
+          summary: "mMTC slice throughput below thesis target"
+          description: "mMTC slice throughput is {{ $value }} Mbps, below thesis target of 0.93 Mbps"
+
+      # Thesis Target: Ping RTT targets per slice type
+      - alert: ORanLatencyAboveTarget
+        expr: oran:ping_rtt_milliseconds:avg5m{slice_type="embb"} > 16.1
+        for: 3m
+        labels:
+          severity: warning
+          component: tn
+          slice_type: embb
+          thesis_target: latency
+        annotations:
+          summary: "eMBB slice latency above thesis target"
+          description: "eMBB slice RTT is {{ $value }} ms, above thesis target of 16.1 ms"
+
+      - alert: ORanLatencyAboveTarget
+        expr: oran:ping_rtt_milliseconds:avg5m{slice_type="urllc"} > 15.7
+        for: 1m
+        labels:
+          severity: critical
+          component: tn
+          slice_type: urllc
+          thesis_target: latency
+        annotations:
+          summary: "URLLC slice latency above thesis target"
+          description: "URLLC slice RTT is {{ $value }} ms, above thesis target of 15.7 ms"
+
+      - alert: ORanLatencyAboveTarget
+        expr: oran:ping_rtt_milliseconds:avg5m{slice_type="mmtc"} > 6.3
+        for: 2m
+        labels:
+          severity: warning
+          component: tn
+          slice_type: mmtc
+          thesis_target: latency
+        annotations:
+          summary: "mMTC slice latency above thesis target"
+          description: "mMTC slice RTT is {{ $value }} ms, above thesis target of 6.3 ms"
+
+    - name: oran.system.health
+      interval: 30s
+      rules:
+      # Component availability
+      - alert: ORanComponentDown
+        expr: up{job=~"oran-.*"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: "{{ $labels.oran_service }}"
+        annotations:
+          summary: "O-RAN component is down"
+          description: "O-RAN component {{ $labels.oran_service }} has been down for more than 1 minute"
+
+      # High error rate
+      - alert: ORanHighErrorRate
+        expr: oran:error_rate:5m > 0.05
+        for: 2m
+        labels:
+          severity: warning
+          component: "{{ $labels.component }}"
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }} for component {{ $labels.component }}"
+
+      # Resource utilization
+      - alert: ORanHighCpuUsage
+        expr: oran:cpu_utilization:avg5m > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          component: infrastructure
+        annotations:
+          summary: "High CPU utilization"
+          description: "CPU utilization is {{ $value | humanizePercentage }} on {{ $labels.instance }}"
+
+      - alert: ORanHighMemoryUsage
+        expr: oran:memory_utilization:avg5m > 0.9
+        for: 5m
+        labels:
+          severity: critical
+          component: infrastructure
+        annotations:
+          summary: "High memory utilization"
+          description: "Memory utilization is {{ $value | humanizePercentage }} on {{ $labels.instance }}"
+
+    - name: oran.security
+      interval: 30s
+      rules:
+      # Security vulnerabilities
+      - alert: ORanCriticalVulnerabilities
+        expr: sum(trivy_vulnerabilities{severity="Critical"}) > 0
+        for: 0s
+        labels:
+          severity: critical
+          component: security
+        annotations:
+          summary: "Critical security vulnerabilities detected"
+          description: "{{ $value }} critical vulnerabilities found in O-RAN components"
+          security_issue: "vulnerability_scan"
+          remediation: "Update container images and apply security patches"
+
+      # Policy violations
+      - alert: ORanPolicyViolations
+        expr: increase(gatekeeper_violations_total[5m]) > 0
+        for: 0s
+        labels:
+          severity: warning
+          component: security
+        annotations:
+          summary: "OPA Gatekeeper policy violations"
+          description: "{{ $value }} policy violations detected in the last 5 minutes"
+          security_issue: "policy_violation"
+          remediation: "Review and fix policy violations"
+
+      # Runtime security alerts
+      - alert: ORanRuntimeSecurityAlert
+        expr: increase(falco_events_total{priority="Critical"}[5m]) > 0
+        for: 0s
+        labels:
+          severity: critical
+          component: security
+        annotations:
+          summary: "Critical runtime security event"
+          description: "{{ $value }} critical runtime security events detected"
+          security_issue: "runtime_threat"
+          remediation: "Investigate suspicious activity immediately"
+
+    - name: oran.sla
+      interval: 60s
+      rules:
+      # SLA compliance
+      - alert: ORanSlaViolation
+        expr: |
+          (
+            avg_over_time(oran:slice_deployment_duration_seconds:rate5m[1h]) > 600 or
+            avg_over_time(oran:network_slice_throughput_mbps:rate5m{slice_type="embb"}[1h]) < 4.57 or
+            avg_over_time(oran:ping_rtt_milliseconds:avg5m{slice_type="urllc"}[1h]) > 15.7
+          )
+        for: 5m
+        labels:
+          severity: critical
+          component: sla
+          thesis_target: sla_compliance
+        annotations:
+          summary: "O-RAN SLA violation detected"
+          description: "One or more thesis performance targets are not being met over the last hour"
+          runbook_url: "https://wiki.oran.org/runbooks/sla-violation"
+
+      # Performance regression
+      - alert: ORanPerformanceRegression
+        expr: |
+          (
+            increase(oran:slice_deployment_duration_seconds:rate5m[1h]) > 60 or
+            increase(oran:ping_rtt_milliseconds:avg5m[1h]) > 5
+          )
+        for: 10m
+        labels:
+          severity: warning
+          component: performance
+        annotations:
+          summary: "Performance regression detected"
+          description: "Performance metrics have degraded significantly over the last hour"
+          runbook_url: "https://wiki.oran.org/runbooks/performance-regression"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alertmanager
+  namespace: oran-monitoring
+  labels:
+    app.kubernetes.io/name: alertmanager
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/part-of: oran-intent-mano
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: alertmanager
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: alertmanager
+        app.kubernetes.io/component: monitoring
+        app.kubernetes.io/part-of: oran-intent-mano
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9093"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: alertmanager
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: alertmanager
+        image: prom/alertmanager:v0.26.0
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 65534
+          runAsGroup: 65534
+        args:
+        - '--config.file=/etc/alertmanager/alertmanager.yml'
+        - '--storage.path=/alertmanager'
+        - '--data.retention=120h'
+        - '--web.external-url=http://localhost:9093'
+        - '--web.route-prefix=/'
+        - '--cluster.listen-address=0.0.0.0:9094'
+        ports:
+        - containerPort: 9093
+          name: web
+          protocol: TCP
+        - containerPort: 9094
+          name: cluster
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /-/healthy
+            port: web
+          initialDelaySeconds: 30
+          periodSeconds: 15
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /-/ready
+            port: web
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 4
+          failureThreshold: 3
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
+        volumeMounts:
+        - name: alertmanager-config
+          mountPath: /etc/alertmanager
+        - name: alertmanager-storage
+          mountPath: /alertmanager
+        - name: tmp
+          mountPath: /tmp
+      volumes:
+      - name: alertmanager-config
+        configMap:
+          name: alertmanager-config
+      - name: alertmanager-storage
+        persistentVolumeClaim:
+          claimName: alertmanager-storage
+      - name: tmp
+        emptyDir: {}
+      nodeSelector:
+        kubernetes.io/os: linux
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: alertmanager
+  namespace: oran-monitoring
+  labels:
+    app.kubernetes.io/name: alertmanager
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/part-of: oran-intent-mano
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9093"
+spec:
+  type: ClusterIP
+  ports:
+  - name: web
+    port: 9093
+    targetPort: web
+    protocol: TCP
+  selector:
+    app.kubernetes.io/name: alertmanager
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: alertmanager-storage
+  namespace: oran-monitoring
+  labels:
+    app.kubernetes.io/name: alertmanager
+    app.kubernetes.io/part-of: oran-intent-mano
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: default
