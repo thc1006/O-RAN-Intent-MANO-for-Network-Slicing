@@ -331,6 +331,8 @@ jobs:
             curl -sSfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
             # Install gosec for Go security analysis
             go install github.com/securego/gosec/v2/cmd/gosec@latest
+            # Add Go bin to PATH for gosec
+            echo "$HOME/go/bin" >> $GITHUB_PATH
             ;;
           "license-check")
             echo "🔧 Installing license checking tools..."
