@@ -74,7 +74,7 @@ jobs:
 
     - name: Cache security tools
       id: cache-tools
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           ~/go/bin/gosec
@@ -106,7 +106,7 @@ jobs:
       continue-on-error: true
 
     - name: Upload security report
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: security-report-${{ github.sha }}
