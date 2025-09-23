@@ -60,12 +60,12 @@ LABEL security.base.image="alpine:3.20.3"
 LABEL security.go.version="1.24.7"
 LABEL security.scan.date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
-# Install runtime dependencies with pinned versions and security updates, clean cache
+# Install runtime dependencies and security updates, clean cache
 RUN apk update && apk upgrade && apk add --no-cache \
-    ca-certificates=20240705-r0 \
-    tzdata=2024a-r1 \
-    curl=8.9.0-r0 \
-    dumb-init=1.2.5-r3 && \
+    ca-certificates \
+    tzdata \
+    curl \
+    dumb-init && \
     update-ca-certificates && \
     adduser -D -s /bin/sh -u 10003 appuser && \
     rm -rf /var/cache/apk/* /tmp/* /var/tmp/*

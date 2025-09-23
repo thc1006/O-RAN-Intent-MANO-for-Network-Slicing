@@ -57,10 +57,10 @@ LABEL security.scan.date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 # Install runtime dependencies with pinned versions, clean cache
 RUN apk update && apk upgrade && apk add --no-cache \
-    ca-certificates=20240705-r0 \
-    curl=8.9.0-r0 \
+    ca-certificates \
+    curl \
     jq=1.7.1-r0 \
-    dumb-init=1.2.5-r3 && \
+    dumb-init && \
     update-ca-certificates && \
     adduser -D -s /bin/sh -u 10004 appuser && \
     rm -rf /var/cache/apk/* /tmp/* /var/tmp/*
