@@ -1,13 +1,31 @@
 # Orchestrator Multi-stage Dockerfile
 # Stage 1: Build
-FROM golang:1.24.5-alpine AS builder
+FROM golang:1.24.5-alpine3.19 AS builder
+
+# Security labels and metadata
+LABEL maintainer="O-RAN MANO Team"
+LABEL org.opencontainers.image.title="Orchestrator"
+LABEL org.opencontainers.image.description="O-RAN Intent-based Orchestrator"
+LABEL org.opencontainers.image.version="1.0.0"
+LABEL org.opencontainers.image.vendor="O-RAN Alliance"
+LABEL org.opencontainers.image.licenses="Apache-2.0"
+LABEL org.opencontainers.image.url="https://o-ran.org"
+LABEL security.scan="trivy,grype,snyk"
+LABEL security.distroless="false"
+LABEL security.user="non-root"
 
 # Security: Use non-root user for build
 RUN adduser -D -s /bin/sh appuser
 
-# Install security updates and necessary tools
-RUN apk update && apk add --no-cache git ca-certificates tzdata gcc musl-dev && \
-    update-ca-certificates
+# Install security updates and necessary tools, clean cache
+RUN apk update && apk upgrade && apk add --no-cache \
+    git \
+    ca-certificates \
+    tzdata \
+    gcc \
+    musl-dev && \
+    update-ca-certificates && \
+    rm -rf /var/cache/apk/* /tmp/* /var/tmp/*
 
 # Set working directory
 WORKDIR /workspace
@@ -32,12 +50,22 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -o orchestrator cmd/orchestrator/main.go
 
 # Stage 2: Runtime
-FROM alpine:3.18
+FROM alpine:3.19
 
-# Install runtime dependencies and security updates
-RUN apk update && apk add --no-cache ca-certificates tzdata && \
+# Security labels
+LABEL org.opencontainers.image.title="Orchestrator Runtime"
+LABEL security.scan="trivy,grype,snyk"
+LABEL security.user="non-root"
+
+# Install runtime dependencies and security updates, clean cache
+RUN apk update && apk upgrade && apk add --no-cache \
+    ca-certificates \
+    tzdata \
+    curl \
+    dumb-init && \
     update-ca-certificates && \
-    adduser -D -s /bin/sh appuser
+    adduser -D -s /bin/sh -u 10003 appuser && \
+    rm -rf /var/cache/apk/* /tmp/* /var/tmp/*
 
 # Copy the binary
 COPY --from=builder /workspace/orchestrator /usr/local/bin/orchestrator
@@ -51,10 +79,10 @@ VOLUME ["/config"]
 # Expose ports
 EXPOSE 8080 8090 9090
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
+# Health check with improved security
+HEALTHCHECK --interval=30s --timeout=10s --start-period=45s --retries=3 \
+    CMD curl -f --max-time 5 --retry 2 --retry-delay 1 http://localhost:8080/health || exit 1
 
-# Run the binary
-ENTRYPOINT ["/usr/local/bin/orchestrator"]
-CMD ["--config=/config/orchestrator.yaml"]
+# Security: Run as non-root with dumb-init
+ENTRYPOINT ["/usr/bin/dumb-init", "--"]
+CMD ["/usr/local/bin/orchestrator", "--config=/config/orchestrator.yaml"]

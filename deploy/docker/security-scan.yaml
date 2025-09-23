@@ -1,0 +1,113 @@
+# Security Scanning Configuration for Container Images
+# Trivy, Grype, and Snyk scanner configurations
+
+trivy:
+  # Trivy security scanner configuration
+  severity: "HIGH,CRITICAL"
+  vuln-type: "os,library"
+  security-checks: "vuln,config,secret"
+  format: "json"
+  output: "trivy-report.json"
+  exit-code: 1  # Fail build on vulnerabilities
+
+  # Ignore list for known false positives
+  ignorefile: ".trivyignore"
+
+  # Custom policies
+  config-policy: |
+    package main
+
+    deny[msg] {
+      input.Layers[_].CreatedBy contains "USER root"
+      msg := "Container should not run as root user"
+    }
+
+    deny[msg] {
+      input.Config.User == ""
+      msg := "Container should specify a non-root user"
+    }
+
+grype:
+  # Grype vulnerability scanner configuration
+  scope: "all-layers"
+  output: "json"
+  file: "grype-report.json"
+  fail-on: "high"
+
+  # Configuration file
+  config: |
+    ignore:
+      - vulnerability: "CVE-2023-XXXX"  # Example ignore
+        fix-state: "not-fixed"
+
+snyk:
+  # Snyk security scanner configuration
+  severity-threshold: "high"
+  json: true
+  output: "snyk-report.json"
+
+  # Dockerfile scanning
+  dockerfile: true
+  exclude-base-image-vulns: false
+
+security-policies:
+  # Container security policies
+  base-images:
+    allowed:
+      - "alpine:3.19"
+      - "alpine:3.20"
+      - "debian:12-slim"
+      - "gcr.io/distroless/static:nonroot"
+      - "golang:1.24.5-alpine3.19"
+    denied:
+      - "alpine:3.18"
+      - "ubuntu:18.04"
+      - "centos:*"
+
+  users:
+    # Require non-root users
+    deny-root: true
+    require-user-id: true
+    min-user-id: 10000
+
+  capabilities:
+    # Allowed Linux capabilities
+    allowed:
+      - "NET_ADMIN"  # Only for TN Agent
+      - "NET_RAW"    # Only for TN Agent
+    denied:
+      - "SYS_ADMIN"
+      - "SYS_PTRACE"
+      - "DAC_OVERRIDE"
+
+  volumes:
+    # Volume mount security
+    deny-host-paths:
+      - "/var/run/docker.sock"
+      - "/proc"
+      - "/sys"
+    require-readonly:
+      - "/etc"
+
+  secrets:
+    # Secret management
+    deny-embedded-secrets: true
+    require-secret-mount: true
+    allowed-secret-paths:
+      - "/config"
+      - "/certs"
+      - "/secrets"
+
+compliance:
+  # Security compliance standards
+  cis-benchmark: true
+  nist-800-190: true
+  owasp-top-10: true
+
+  # Required security labels
+  required-labels:
+    - "org.opencontainers.image.title"
+    - "org.opencontainers.image.version"
+    - "org.opencontainers.image.vendor"
+    - "security.scan"
+    - "security.user"
