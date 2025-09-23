@@ -22,7 +22,7 @@ on:
         - infrastructure
 
 env:
-  GO_VERSION: '1.23.4'
+  GO_VERSION: '1.24.0'
 
 # Enhanced security permissions
 permissions:
