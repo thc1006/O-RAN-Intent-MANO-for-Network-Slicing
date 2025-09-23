@@ -16,11 +16,11 @@ maintainers:
 type: application
 version: 1.0.0
 appVersion: "v1.0.0"
-dependencies:
-  - name: common
-    version: "2.x.x"
-    repository: "https://charts.bitnami.com/bitnami"
-    condition: common.enabled
+# dependencies:
+#   - name: common
+#     version: "2.x.x"
+#     repository: "https://charts.bitnami.com/bitnami"
+#     condition: common.enabled
 annotations:
   category: NetworkingAndSecurity
   licenses: Apache-2.0
