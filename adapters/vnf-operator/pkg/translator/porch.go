@@ -65,37 +65,37 @@ func (t *PorchTranslator) TranslateVNF(vnf *manov1alpha1.VNF) (*PorchPackage, er
 
 	// Create resources based on VNF type
 	switch vnf.Spec.Type {
-	case manov1alpha1.VNFTypeRAN, "RAN":
+	case manov1alpha1.VNFTypeRAN:
 		pkg.Resources = t.generateRANResources(vnf)
-	case manov1alpha1.VNFTypeCN, "CN":
+	case manov1alpha1.VNFTypeCN:
 		pkg.Resources = t.generateCNResources(vnf)
-	case manov1alpha1.VNFTypeTN, "TN":
+	case manov1alpha1.VNFTypeTN:
 		pkg.Resources = t.generateTNResources(vnf)
-	case manov1alpha1.VNFTypeUPF, "UPF":
+	case manov1alpha1.VNFTypeUPF:
 		pkg.Resources = t.generateUPFResources(vnf)
-	case manov1alpha1.VNFTypeAMF, "AMF":
+	case manov1alpha1.VNFTypeAMF:
 		pkg.Resources = t.generateAMFResources(vnf)
-	case manov1alpha1.VNFTypeSMF, "SMF":
+	case manov1alpha1.VNFTypeSMF:
 		pkg.Resources = t.generateSMFResources(vnf)
-	case manov1alpha1.VNFTypePCF, "PCF":
+	case manov1alpha1.VNFTypePCF:
 		pkg.Resources = t.generatePCFResources(vnf)
-	case manov1alpha1.VNFTypeUDM, "UDM":
+	case manov1alpha1.VNFTypeUDM:
 		pkg.Resources = t.generateUDMResources(vnf)
-	case manov1alpha1.VNFTypeAUSF, "AUSF":
+	case manov1alpha1.VNFTypeAUSF:
 		pkg.Resources = t.generateAUSFResources(vnf)
-	case manov1alpha1.VNFTypeNSSF, "NSSF":
+	case manov1alpha1.VNFTypeNSSF:
 		pkg.Resources = t.generateNSSFResources(vnf)
-	case manov1alpha1.VNFTypeNEF, "NEF":
+	case manov1alpha1.VNFTypeNEF:
 		pkg.Resources = t.generateNEFResources(vnf)
-	case manov1alpha1.VNFTypeNRF, "NRF":
+	case manov1alpha1.VNFTypeNRF:
 		pkg.Resources = t.generateNRFResources(vnf)
-	case manov1alpha1.VNFTypegNB, "gNB":
+	case manov1alpha1.VNFTypegNB:
 		pkg.Resources = t.generateGNBResources(vnf)
-	case manov1alpha1.VNFTypeCU, "CU":
+	case manov1alpha1.VNFTypeCU:
 		pkg.Resources = t.generateCUResources(vnf)
-	case manov1alpha1.VNFTypeDU, "DU":
+	case manov1alpha1.VNFTypeDU:
 		pkg.Resources = t.generateDUResources(vnf)
-	case manov1alpha1.VNFTypeRU, "RU":
+	case manov1alpha1.VNFTypeRU:
 		pkg.Resources = t.generateRUResources(vnf)
 	default:
 		return nil, fmt.Errorf("unknown VNF type: %s", vnf.Spec.Type)
