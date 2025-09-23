@@ -374,7 +374,7 @@ func (r *TNSliceReconciler) finalizeTNSlice(ctx context.Context, slice *tnv1alph
 	log.Info("Finalizing TNSlice", "sliceId", slice.Spec.SliceID)
 
 	// Delete agent configurations
-	for _, endpoint := range slice.Spec.Endpoints {
+	for range slice.Spec.Endpoints {
 		configMapName := fmt.Sprintf("%s-%s", agentConfigMap, slice.Spec.SliceID)
 		configMap := &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{

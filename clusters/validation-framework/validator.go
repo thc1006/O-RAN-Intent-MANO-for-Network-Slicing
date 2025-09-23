@@ -10,11 +10,11 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 	"time"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/discovery"
@@ -478,7 +478,7 @@ func (vf *ValidationFramework) validateResources(ctx context.Context, client *Cl
 		}
 
 		// List resources
-		list, err := client.DynamicClient.Resource(gvr).Namespace(rule.Namespace).List(ctx, v1.ListOptions{})
+		list, err := client.DynamicClient.Resource(gvr).Namespace(rule.Namespace).List(ctx, metav1.ListOptions{})
 		if err != nil {
 			return nil, fmt.Errorf("failed to list %s: %w", rule.Kind, err)
 		}

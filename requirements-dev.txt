@@ -1,0 +1,22 @@
+# O-RAN Intent-MANO Development Dependencies
+# Updated with modern Python tools (2025) using UV package manager
+
+# Core NLP and Schema Validation
+pyyaml>=6.0
+jsonschema>=4.17.3
+
+# Testing Framework
+pytest>=7.2.0
+pytest-cov>=4.0.0
+
+# Memory and Performance Monitoring
+psutil>=7.1.0
+
+# Optional Dependencies for Extended Functionality
+redis>=4.5.1  # For intent caching
+
+# Security and Audit Tools
+pip-audit>=2.9.0
+
+# Development Tools
+uv>=0.8.20  # Ultra-fast dependency management

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -9,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -203,10 +205,15 @@ func handleDashboard(dashboardInstance *dashboard.Dashboard) http.HandlerFunc {
 		w.Header().Set("Pragma", "no-cache")
 		w.Header().Set("Expires", "0")
 
-		if err := dashboardInstance.GenerateHTML(w); err != nil {
+		// Create temporary file for HTML output
+		tmpFile := filepath.Join(os.TempDir(), "dashboard.html")
+		if err := dashboardInstance.GenerateHTML(tmpFile); err != nil {
 			http.Error(w, fmt.Sprintf("Failed to generate dashboard: %v", err), http.StatusInternalServerError)
 			return
 		}
+
+		// Serve the generated HTML file
+		http.ServeFile(w, r, tmpFile)
 	}
 }
 

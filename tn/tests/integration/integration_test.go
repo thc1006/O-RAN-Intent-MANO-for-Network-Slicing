@@ -13,8 +13,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/o-ran/intent-mano/tn/agent/pkg"
-	"github.com/o-ran/intent-mano/tn/manager/pkg"
+	agentpkg "github.com/o-ran/intent-mano/tn/agent/pkg"
+	managerpkg "github.com/o-ran/intent-mano/tn/manager/pkg"
 )
 
 // TNIntegrationTestSuite provides integration testing for TN components
@@ -23,8 +23,8 @@ type TNIntegrationTestSuite struct {
 	ctx         context.Context
 	cancel      context.CancelFunc
 	logger      *log.Logger
-	manager     *pkg.TNManager
-	agents      map[string]*pkg.TNAgent
+	manager     *managerpkg.TNManager
+	agents      map[string]*agentpkg.TNAgent
 	testConfig  *TestConfiguration
 }
 
@@ -75,7 +75,7 @@ type ThesisTargets struct {
 func (suite *TNIntegrationTestSuite) SetupSuite() {
 	suite.ctx, suite.cancel = context.WithCancel(context.Background())
 	suite.logger = log.New(os.Stdout, "[TN-Integration] ", log.LstdFlags|log.Lshortfile)
-	suite.agents = make(map[string]*pkg.TNAgent)
+	suite.agents = make(map[string]*agentpkg.TNAgent)
 
 	// Load test configuration
 	suite.loadTestConfiguration()
@@ -181,12 +181,12 @@ func (suite *TNIntegrationTestSuite) loadTestConfiguration() {
 
 // initializeTNManager initializes the TN manager
 func (suite *TNIntegrationTestSuite) initializeTNManager() {
-	config := &pkg.TNConfig{
+	config := &managerpkg.TNConfig{
 		ClusterName:    "tn-manager",
 		MonitoringPort: 9090,
 	}
 
-	suite.manager = pkg.NewTNManager(config, suite.logger)
+	suite.manager = managerpkg.NewTNManager(config, suite.logger)
 	require.NoError(suite.T(), suite.manager.Start())
 
 	suite.logger.Println("TN Manager initialized successfully")
@@ -208,7 +208,7 @@ func (suite *TNIntegrationTestSuite) initializeTNAgents() {
 }
 
 // createTNAgent creates a TN agent with test configuration
-func (suite *TNIntegrationTestSuite) createTNAgent(clusterConfig ClusterConfig) *pkg.TNAgent {
+func (suite *TNIntegrationTestSuite) createTNAgent(clusterConfig ClusterConfig) *agentpkg.TNAgent {
 	// Build remote IPs list (all other clusters)
 	var remoteIPs []string
 	for _, otherCluster := range suite.testConfig.Clusters {
@@ -217,12 +217,12 @@ func (suite *TNIntegrationTestSuite) createTNAgent(clusterConfig ClusterConfig) 
 		}
 	}
 
-	config := &pkg.TNConfig{
+	config := &agentpkg.TNConfig{
 		ClusterName:    clusterConfig.Name,
 		NetworkCIDR:    fmt.Sprintf("%s/24", clusterConfig.LocalIP),
 		MonitoringPort: clusterConfig.MonitoringPort,
 		QoSClass:       "test",
-		VXLANConfig: pkg.VXLANConfig{
+		VXLANConfig: agentpkg.VXLANConfig{
 			VNI:        clusterConfig.VNI,
 			RemoteIPs:  remoteIPs,
 			LocalIP:    clusterConfig.LocalIP,
@@ -231,7 +231,7 @@ func (suite *TNIntegrationTestSuite) createTNAgent(clusterConfig ClusterConfig) 
 			DeviceName: fmt.Sprintf("vxlan%d", clusterConfig.VNI),
 			Learning:   false,
 		},
-		BWPolicy: pkg.BandwidthPolicy{
+		BWPolicy: agentpkg.BandwidthPolicy{
 			DownlinkMbps: clusterConfig.BWLimitMbps,
 			UplinkMbps:   clusterConfig.BWLimitMbps,
 			LatencyMs:    10.0,
@@ -239,7 +239,7 @@ func (suite *TNIntegrationTestSuite) createTNAgent(clusterConfig ClusterConfig) 
 			LossPercent:  0.1,
 			Priority:     1,
 			QueueClass:   "htb",
-			Filters: []pkg.Filter{
+			Filters: []agentpkg.Filter{
 				{
 					Protocol: "tcp",
 					Priority: 10,
@@ -252,7 +252,7 @@ func (suite *TNIntegrationTestSuite) createTNAgent(clusterConfig ClusterConfig) 
 				},
 			},
 		},
-		Interfaces: []pkg.NetworkInterface{
+		Interfaces: []agentpkg.NetworkInterface{
 			{
 				Name:    "eth0",
 				Type:    "physical",
@@ -264,7 +264,7 @@ func (suite *TNIntegrationTestSuite) createTNAgent(clusterConfig ClusterConfig) 
 		},
 	}
 
-	agent := pkg.NewTNAgent(config, suite.logger)
+	agent := agentpkg.NewTNAgent(config, suite.logger)
 	require.NoError(suite.T(), agent.Start())
 
 	return agent
@@ -311,7 +311,7 @@ func (suite *TNIntegrationTestSuite) TestThroughputMeasurement() {
 	for _, scenario := range suite.testConfig.TestScenarios {
 		suite.logger.Printf("Running throughput test for scenario: %s", scenario.Name)
 
-		testConfig := &pkg.PerformanceTestConfig{
+		testConfig := &managerpkg.PerformanceTestConfig{
 			TestID:    fmt.Sprintf("throughput_%s_%d", scenario.SliceType, time.Now().Unix()),
 			SliceID:   fmt.Sprintf("slice_%s", scenario.SliceType),
 			SliceType: scenario.SliceType,
@@ -347,7 +347,7 @@ func (suite *TNIntegrationTestSuite) TestLatencyMeasurement() {
 	for _, scenario := range suite.testConfig.TestScenarios {
 		suite.logger.Printf("Running latency test for scenario: %s", scenario.Name)
 
-		testConfig := &pkg.PerformanceTestConfig{
+		testConfig := &managerpkg.PerformanceTestConfig{
 			TestID:    fmt.Sprintf("latency_%s_%d", scenario.SliceType, time.Now().Unix()),
 			SliceID:   fmt.Sprintf("slice_%s", scenario.SliceType),
 			SliceType: scenario.SliceType,
@@ -379,13 +379,13 @@ func (suite *TNIntegrationTestSuite) TestThesisValidation() {
 
 	duration, _ := time.ParseDuration(suite.testConfig.NetworkConfig.TestDuration)
 
-	var allResults []*pkg.NetworkSliceMetrics
+	var allResults []*managerpkg.NetworkSliceMetrics
 
 	// Run tests for all scenarios
 	for i, scenario := range suite.testConfig.TestScenarios {
 		suite.logger.Printf("Running thesis validation test %d: %s", i+1, scenario.Name)
 
-		testConfig := &pkg.PerformanceTestConfig{
+		testConfig := &managerpkg.PerformanceTestConfig{
 			TestID:    fmt.Sprintf("thesis_%s_%d", scenario.SliceType, time.Now().Unix()),
 			SliceID:   fmt.Sprintf("slice_%s", scenario.SliceType),
 			SliceType: scenario.SliceType,
@@ -472,7 +472,7 @@ func (suite *TNIntegrationTestSuite) TestMultiClusterIntegration() {
 
 			suite.logger.Printf("Testing connectivity: %s -> %s", source.Name, target.Name)
 
-			testConfig := &pkg.PerformanceTestConfig{
+			testConfig := &managerpkg.PerformanceTestConfig{
 				TestID:        fmt.Sprintf("connectivity_%s_%s_%d", source.Name, target.Name, time.Now().Unix()),
 				SliceID:       "multi_cluster_test",
 				SliceType:     "connectivity",
@@ -521,7 +521,7 @@ func (suite *TNIntegrationTestSuite) TestPerformanceReporting() {
 	suite.logger.Println("Testing performance reporting...")
 
 	// Run a comprehensive test
-	testConfig := &pkg.PerformanceTestConfig{
+	testConfig := &managerpkg.PerformanceTestConfig{
 		TestID:    fmt.Sprintf("reporting_test_%d", time.Now().Unix()),
 		SliceID:   "reporting_slice",
 		SliceType: "comprehensive",
@@ -561,7 +561,7 @@ func (suite *TNIntegrationTestSuite) TestErrorHandling() {
 	suite.logger.Println("Testing error handling...")
 
 	// Test with invalid configuration
-	invalidConfig := &pkg.PerformanceTestConfig{
+	invalidConfig := &managerpkg.PerformanceTestConfig{
 		TestID:        "invalid_test",
 		SliceID:       "invalid_slice",
 		SliceType:     "invalid",
@@ -627,7 +627,7 @@ func BenchmarkThroughputTest(b *testing.B) {
 	suite.SetupSuite()
 	defer suite.TearDownSuite()
 
-	testConfig := &pkg.PerformanceTestConfig{
+	testConfig := &managerpkg.PerformanceTestConfig{
 		TestID:    "benchmark_throughput",
 		SliceID:   "benchmark_slice",
 		SliceType: "eMBB",
@@ -652,7 +652,7 @@ func BenchmarkLatencyTest(b *testing.B) {
 	suite.SetupSuite()
 	defer suite.TearDownSuite()
 
-	testConfig := &pkg.PerformanceTestConfig{
+	testConfig := &managerpkg.PerformanceTestConfig{
 		TestID:    "benchmark_latency",
 		SliceID:   "benchmark_slice",
 		SliceType: "URLLC",

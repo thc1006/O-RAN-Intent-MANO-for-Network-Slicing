@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/onsi/ginkgo/v2/reporters"
@@ -177,7 +178,7 @@ func (tr *TestReporter) generateJUnitReport() error {
 	}
 
 	// Use Ginkgo's JUnit reporter as a base and adapt it
-	junitReporter := reporters.NewJUnitReporter(tr.JUnitPath)
+	_ = reporters.NewJUnitReporter(tr.JUnitPath)
 
 	// Create a fake Ginkgo spec summary to leverage existing JUnit generation
 	for category, results := range suites {
@@ -186,7 +187,7 @@ func (tr *TestReporter) generateJUnitReport() error {
 				ComponentTexts: []string{category, result.Name},
 				State:          tr.convertStatusToGinkgoState(result.Status),
 				RunTime:        result.Duration,
-				Failure:        tr.createFailureIfNeeded(result),
+				Failure:        tr.createSpecFailureIfNeeded(result),
 			}
 
 			// This is a simplified approach - in practice, you'd want to create
@@ -378,9 +379,9 @@ func (tr *TestReporter) checkThresholds() {
 
 // printSummary prints a test summary to console
 func (tr *TestReporter) printSummary() {
-	fmt.Println("\n" + "="*60)
+	fmt.Println("\n" + strings.Repeat("=", 60))
 	fmt.Println("📊 TEST EXECUTION SUMMARY")
-	fmt.Println("="*60)
+	fmt.Println(strings.Repeat("=", 60))
 	fmt.Printf("⏱️  Duration: %v\n", tr.Summary.Duration)
 	fmt.Printf("📈 Total Tests: %d\n", tr.Summary.TotalTests)
 	fmt.Printf("✅ Passed: %d\n", tr.Summary.PassedTests)
@@ -391,7 +392,7 @@ func (tr *TestReporter) printSummary() {
 
 	if tr.Summary.Performance != nil {
 		fmt.Println("\n📋 PERFORMANCE METRICS")
-		fmt.Println("-"*30)
+		fmt.Println(strings.Repeat("-", 30))
 		fmt.Printf("🚀 Deployment Time: %v\n", tr.Summary.Performance.DeploymentTime)
 		fmt.Printf("📡 Throughput: %.2f Mbps\n", tr.Summary.Performance.ThroughputMbps)
 		fmt.Printf("⚡ Latency: %.2f ms\n", tr.Summary.Performance.LatencyMs)
@@ -400,7 +401,7 @@ func (tr *TestReporter) printSummary() {
 	}
 
 	fmt.Println("\n🎯 THRESHOLD VALIDATION")
-	fmt.Println("-"*30)
+	fmt.Println(strings.Repeat("-", 30))
 	if tr.Summary.ThresholdsMet {
 		fmt.Println("✅ All thresholds met!")
 	} else {
@@ -408,7 +409,7 @@ func (tr *TestReporter) printSummary() {
 	}
 
 	fmt.Printf("\n📄 Reports generated in: %s\n", tr.OutputDir)
-	fmt.Println("="*60)
+	fmt.Println(strings.Repeat("=", 60))
 }
 
 // Helper methods
@@ -425,13 +426,13 @@ func (tr *TestReporter) convertStatusToGinkgoState(status string) types.SpecStat
 	}
 }
 
-func (tr *TestReporter) createFailureIfNeeded(result TestResult) types.Failure {
+func (tr *TestReporter) createSpecFailureIfNeeded(result TestResult) types.SpecFailure {
 	if result.Status == "failed" {
-		return types.Failure{
+		return types.SpecFailure{
 			Message: result.Error,
 		}
 	}
-	return types.Failure{}
+	return types.SpecFailure{}
 }
 
 // UpdatePerformanceMetrics updates the performance metrics in the summary

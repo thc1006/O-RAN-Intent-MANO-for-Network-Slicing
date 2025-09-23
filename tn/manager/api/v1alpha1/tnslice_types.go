@@ -2,6 +2,7 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // TNSliceSpec defines the desired state of TNSlice
@@ -169,6 +170,121 @@ type TNSliceList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []TNSlice `json:"items"`
+}
+
+// DeepCopyObject returns a deep copy of TNSlice as runtime.Object
+func (t *TNSlice) DeepCopyObject() runtime.Object {
+	if c := t.DeepCopy(); c != nil {
+		return c
+	}
+	return nil
+}
+
+// DeepCopy returns a deep copy of TNSlice
+func (t *TNSlice) DeepCopy() *TNSlice {
+	if t == nil {
+		return nil
+	}
+	out := new(TNSlice)
+	t.DeepCopyInto(out)
+	return out
+}
+
+// DeepCopyInto copies all properties of this object into another object of the same type
+func (t *TNSlice) DeepCopyInto(out *TNSlice) {
+	*out = *t
+	out.TypeMeta = t.TypeMeta
+	t.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
+	t.Spec.DeepCopyInto(&out.Spec)
+	t.Status.DeepCopyInto(&out.Status)
+}
+
+// DeepCopyObject returns a deep copy of TNSliceList as runtime.Object
+func (t *TNSliceList) DeepCopyObject() runtime.Object {
+	if c := t.DeepCopy(); c != nil {
+		return c
+	}
+	return nil
+}
+
+// DeepCopy returns a deep copy of TNSliceList
+func (t *TNSliceList) DeepCopy() *TNSliceList {
+	if t == nil {
+		return nil
+	}
+	out := new(TNSliceList)
+	t.DeepCopyInto(out)
+	return out
+}
+
+// DeepCopyInto copies all properties of this object into another object of the same type
+func (t *TNSliceList) DeepCopyInto(out *TNSliceList) {
+	*out = *t
+	out.TypeMeta = t.TypeMeta
+	t.ListMeta.DeepCopyInto(&out.ListMeta)
+	if t.Items != nil {
+		in, out := &t.Items, &out.Items
+		*out = make([]TNSlice, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
+}
+
+// DeepCopyInto copies all properties of TNSliceSpec into another object of the same type
+func (t *TNSliceSpec) DeepCopyInto(out *TNSliceSpec) {
+	*out = *t
+	if t.Endpoints != nil {
+		in, out := &t.Endpoints, &out.Endpoints
+		*out = make([]Endpoint, len(*in))
+		copy(*out, *in)
+	}
+	if t.NodeSelector != nil {
+		in, out := &t.NodeSelector, &out.NodeSelector
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
+}
+
+// DeepCopyInto copies all properties of TNSliceStatus into another object of the same type
+func (t *TNSliceStatus) DeepCopyInto(out *TNSliceStatus) {
+	*out = *t
+	if t.ActiveTunnels != nil {
+		in, out := &t.ActiveTunnels, &out.ActiveTunnels
+		*out = make([]TunnelStatus, len(*in))
+		copy(*out, *in)
+	}
+	if t.MeasuredMetrics != nil {
+		out.MeasuredMetrics = new(Metrics)
+		t.MeasuredMetrics.DeepCopyInto(out.MeasuredMetrics)
+	}
+	if t.Conditions != nil {
+		in, out := &t.Conditions, &out.Conditions
+		*out = make([]metav1.Condition, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
+	if t.LastConfigTime != nil {
+		in, out := &t.LastConfigTime, &out.LastConfigTime
+		*out = (*in).DeepCopy()
+	}
+	if t.ConfiguredNodes != nil {
+		in, out := &t.ConfiguredNodes, &out.ConfiguredNodes
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
+}
+
+// DeepCopyInto copies all properties of Metrics into another object of the same type
+func (m *Metrics) DeepCopyInto(out *Metrics) {
+	*out = *m
+	if m.LastMeasurement != nil {
+		in, out := &m.LastMeasurement, &out.LastMeasurement
+		*out = (*in).DeepCopy()
+	}
 }
 
 func init() {
