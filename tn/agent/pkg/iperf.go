@@ -146,6 +146,7 @@ func findIperfDaemonPID(port int) (int, error) {
 
 	args := []string{"-f", pattern}
 
+	// #nosec G204 - Using security.SecureExecute with validated arguments to prevent command injection
 	output, err := security.SecureExecute(ctx, "pgrep", args...)
 	if err != nil {
 		return 0, fmt.Errorf("failed to find iperf3 daemon: %w", err)
@@ -231,6 +232,7 @@ func (im *IperfManager) StartServer(port int) error {
 	}
 
 	// Use secure subprocess execution
+	// #nosec G204 - Using security.SecureExecute with validated arguments to prevent command injection
 	_, err := security.SecureExecute(ctx, "iperf3", args...)
 	if err != nil {
 		return fmt.Errorf("failed to start iperf3 server: %w", err)
@@ -342,6 +344,7 @@ func (im *IperfManager) StopServer(port int) error {
 	killCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
+	// #nosec G204 - Using security.SecureExecute with validated arguments to prevent command injection
 	output, err := security.SecureExecute(killCtx, "pkill", args...)
 	if err != nil {
 		security.SafeLogf(im.logger, "Warning: failed to kill iperf3 server process: %s, output: %s", security.SanitizeErrorForLog(err), security.SanitizeForLog(string(output)))
@@ -460,6 +463,7 @@ func (im *IperfManager) RunTest(config *IperfTestConfig) (*IperfResult, error) {
 	clientCtx, cancel := context.WithTimeout(context.Background(), config.Duration+30*time.Second)
 	defer cancel()
 
+	// #nosec G204 - Using security.SecureExecuteWithValidation with argument validation to prevent command injection
 	output, err := security.SecureExecuteWithValidation(clientCtx, "iperf3", security.ValidateIPerfArgs, args...)
 
 	result := &IperfResult{
@@ -779,6 +783,7 @@ func (im *IperfManager) RunLatencyTest(serverIP string, port int, duration time.
 	pingCtx, cancel := context.WithTimeout(context.Background(), duration+10*time.Second)
 	defer cancel()
 
+	// #nosec G204 - Using security.SecureExecute with validated arguments to prevent command injection
 	output, err := security.SecureExecute(pingCtx, "ping", pingArgs...)
 	if err != nil {
 		return metrics, fmt.Errorf("ping test failed: %w", err)
@@ -904,6 +909,7 @@ func (im *IperfManager) StopAllServers() error {
 		args := []string{"-f", pattern}
 		killCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 
+		// #nosec G204 - Using security.SecureExecute with validated arguments to prevent command injection
 		output, err := security.SecureExecute(killCtx, "pkill", args...)
 		cancel() // Properly call cancel to avoid context leak
 

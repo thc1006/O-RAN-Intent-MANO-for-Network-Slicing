@@ -1,0 +1,232 @@
+#!/usr/bin/env bash
+
+# CI Guardian v2025-09 - Pre-push hook to run local CI validation
+# This hook ensures code quality before pushing to remote repository
+
+set -euo pipefail
+
+# Configuration
+CI_JOB="${CI_JOB:-ci}"
+CONTAINER_ARCH="linux/amd64"
+SKIP_ACT="${SKIP_ACT:-false}"
+SKIP_SECRETS="${SKIP_SECRETS:-false}"
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Logging functions
+log_info() {
+    echo -e "${BLUE}[CI-GUARD]${NC} $1"
+}
+
+log_success() {
+    echo -e "${GREEN}[CI-GUARD]${NC} ✅ $1"
+}
+
+log_warning() {
+    echo -e "${YELLOW}[CI-GUARD]${NC} ⚠️  $1"
+}
+
+log_error() {
+    echo -e "${RED}[CI-GUARD]${NC} ❌ $1"
+}
+
+# Check if required tools are installed
+check_dependencies() {
+    local missing_tools=()
+
+    if ! command -v git &> /dev/null; then
+        missing_tools+=("git")
+    fi
+
+    if [[ "$SKIP_ACT" != "true" ]] && ! command -v act &> /dev/null; then
+        log_warning "act not found - CI simulation will be skipped"
+        log_warning "Install with: gh extension install https://github.com/nektos/act or brew install act"
+        SKIP_ACT="true"
+    fi
+
+    if [[ "$SKIP_SECRETS" != "true" ]] && ! command -v gitleaks &> /dev/null; then
+        log_warning "gitleaks not found - secret scanning will be skipped"
+        log_warning "Install with: brew install gitleaks or download from https://github.com/gitleaks/gitleaks"
+        SKIP_SECRETS="true"
+    fi
+
+    if [[ ${#missing_tools[@]} -gt 0 ]]; then
+        log_error "Missing required tools: ${missing_tools[*]}"
+        exit 1
+    fi
+}
+
+# Run secret detection scan
+run_secret_scan() {
+    if [[ "$SKIP_SECRETS" == "true" ]]; then
+        log_warning "Secret scanning skipped"
+        return 0
+    fi
+
+    log_info "Running secret detection scan..."
+
+    if ! gitleaks detect --verbose --no-git 2>/dev/null; then
+        log_error "Secret detection failed - potential secrets found!"
+        log_error "Please review and remove any secrets before pushing"
+        return 1
+    fi
+
+    log_success "No secrets detected"
+    return 0
+}
+
+# Run local CI with act
+run_local_ci() {
+    if [[ "$SKIP_ACT" == "true" ]]; then
+        log_warning "Local CI simulation skipped"
+        return 0
+    fi
+
+    log_info "Running local CI simulation with act..."
+    log_info "Job: $CI_JOB, Architecture: $CONTAINER_ARCH"
+
+    # Create act configuration if it doesn't exist
+    if [[ ! -f .actrc ]]; then
+        cat > .actrc << EOF
+# CI Guardian act configuration
+--container-architecture $CONTAINER_ARCH
+--artifact-server-path /tmp/act-artifacts
+--env CI=true
+--env GITHUB_ACTIONS=true
+EOF
+        log_info "Created .actrc configuration"
+    fi
+
+    # Run act with specified job
+    if [[ "$CI_JOB" == "all" ]]; then
+        if ! act --container-architecture "$CONTAINER_ARCH" --env CI=true; then
+            log_error "Local CI simulation failed for all jobs"
+            return 1
+        fi
+    else
+        if ! act -j "$CI_JOB" --container-architecture "$CONTAINER_ARCH" --env CI=true; then
+            log_error "Local CI simulation failed for job: $CI_JOB"
+            return 1
+        fi
+    fi
+
+    log_success "Local CI simulation passed"
+    return 0
+}
+
+# Check for uncommitted changes
+check_git_status() {
+    if [[ -n "$(git status --porcelain)" ]]; then
+        log_warning "You have uncommitted changes:"
+        git status --short
+        echo
+        read -p "Continue with push? (y/N): " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            log_info "Push cancelled by user"
+            exit 1
+        fi
+    fi
+}
+
+# Validate GitHub Actions workflows
+validate_workflows() {
+    log_info "Validating GitHub Actions workflows..."
+
+    local workflow_dir=".github/workflows"
+    if [[ ! -d "$workflow_dir" ]]; then
+        log_warning "No GitHub Actions workflows found"
+        return 0
+    fi
+
+    local invalid_workflows=()
+    for workflow in "$workflow_dir"/*.yml "$workflow_dir"/*.yaml; do
+        if [[ -f "$workflow" ]]; then
+            # Basic YAML validation
+            if ! python3 -c "import yaml; yaml.safe_load(open('$workflow'))" 2>/dev/null; then
+                invalid_workflows+=("$(basename "$workflow")")
+            fi
+        fi
+    done
+
+    if [[ ${#invalid_workflows[@]} -gt 0 ]]; then
+        log_error "Invalid workflow files: ${invalid_workflows[*]}"
+        return 1
+    fi
+
+    log_success "All workflows are valid"
+    return 0
+}
+
+# Main execution
+main() {
+    log_info "CI Guardian v2025-09 starting pre-push validation..."
+
+    # Parse command line arguments
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --skip-act)
+                SKIP_ACT="true"
+                shift
+                ;;
+            --skip-secrets)
+                SKIP_SECRETS="true"
+                shift
+                ;;
+            --ci-job)
+                CI_JOB="$2"
+                shift 2
+                ;;
+            --help)
+                cat << EOF
+CI Guardian Pre-push Hook
+
+Usage: pre-push [OPTIONS]
+
+Options:
+    --skip-act          Skip local CI simulation with act
+    --skip-secrets      Skip secret detection scan
+    --ci-job JOB        Specify CI job to run (default: ci)
+    --help              Show this help message
+
+Environment Variables:
+    CI_JOB              CI job to run (default: ci)
+    SKIP_ACT            Skip act if set to 'true'
+    SKIP_SECRETS        Skip secret scan if set to 'true'
+
+Examples:
+    pre-push                           # Run all checks
+    pre-push --skip-act                # Skip CI simulation
+    pre-push --ci-job security-scan    # Run specific job
+    CI_JOB=all pre-push                # Run all CI jobs
+
+EOF
+                exit 0
+                ;;
+            *)
+                log_error "Unknown option: $1"
+                exit 1
+                ;;
+        esac
+    done
+
+    # Run all checks
+    check_dependencies
+    check_git_status
+    validate_workflows
+    run_secret_scan
+    run_local_ci
+
+    log_success "All pre-push checks passed! 🚀"
+    log_info "Push will proceed..."
+}
+
+# Handle script being sourced vs executed
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi

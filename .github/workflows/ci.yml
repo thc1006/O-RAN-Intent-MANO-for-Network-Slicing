@@ -188,6 +188,8 @@ jobs:
           - adapters/vnf-operator
           - o2-client
           - tn
+          - cn-dms
+          - ran-dms
 
     steps:
     - name: Checkout code

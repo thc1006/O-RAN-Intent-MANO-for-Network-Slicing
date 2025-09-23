@@ -65,11 +65,29 @@ func (agent *TNAgent) startHTTPServer() error {
 	router.Use(loggingMiddleware(agent.logger))
 
 	agent.server = &http.Server{
-		Addr:         fmt.Sprintf(":%d", agent.config.MonitoringPort),
-		Handler:      router,
-		ReadTimeout:  30 * time.Second,
+		Addr:    fmt.Sprintf(":%d", agent.config.MonitoringPort),
+		Handler: router,
+
+		// Security timeouts to prevent attacks:
+		// ReadHeaderTimeout prevents Slowloris attacks by limiting time to read request headers
+		// This is critical as attackers can send partial headers slowly to exhaust server resources
+		ReadHeaderTimeout: 10 * time.Second,
+
+		// ReadTimeout limits total time to read the entire request (headers + body)
+		// Prevents slow request body attacks and ensures requests complete in reasonable time
+		ReadTimeout: 30 * time.Second,
+
+		// WriteTimeout limits time to write the response
+		// Prevents slow client attacks where clients read responses very slowly
 		WriteTimeout: 30 * time.Second,
-		IdleTimeout:  60 * time.Second,
+
+		// IdleTimeout limits how long keep-alive connections can remain idle
+		// Prevents connection exhaustion by closing idle connections
+		IdleTimeout: 60 * time.Second,
+
+		// MaxHeaderBytes limits the size of request headers
+		// Prevents memory exhaustion from oversized headers
+		MaxHeaderBytes: 1 << 20, // 1MB max header size
 	}
 
 	go func() {

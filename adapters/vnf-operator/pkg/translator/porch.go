@@ -65,12 +65,38 @@ func (t *PorchTranslator) TranslateVNF(vnf *manov1alpha1.VNF) (*PorchPackage, er
 
 	// Create resources based on VNF type
 	switch vnf.Spec.Type {
-	case "RAN":
+	case manov1alpha1.VNFTypeRAN, "RAN":
 		pkg.Resources = t.generateRANResources(vnf)
-	case "CN":
+	case manov1alpha1.VNFTypeCN, "CN":
 		pkg.Resources = t.generateCNResources(vnf)
-	case "TN":
+	case manov1alpha1.VNFTypeTN, "TN":
 		pkg.Resources = t.generateTNResources(vnf)
+	case manov1alpha1.VNFTypeUPF, "UPF":
+		pkg.Resources = t.generateUPFResources(vnf)
+	case manov1alpha1.VNFTypeAMF, "AMF":
+		pkg.Resources = t.generateAMFResources(vnf)
+	case manov1alpha1.VNFTypeSMF, "SMF":
+		pkg.Resources = t.generateSMFResources(vnf)
+	case manov1alpha1.VNFTypePCF, "PCF":
+		pkg.Resources = t.generatePCFResources(vnf)
+	case manov1alpha1.VNFTypeUDM, "UDM":
+		pkg.Resources = t.generateUDMResources(vnf)
+	case manov1alpha1.VNFTypeAUSF, "AUSF":
+		pkg.Resources = t.generateAUSFResources(vnf)
+	case manov1alpha1.VNFTypeNSSF, "NSSF":
+		pkg.Resources = t.generateNSSFResources(vnf)
+	case manov1alpha1.VNFTypeNEF, "NEF":
+		pkg.Resources = t.generateNEFResources(vnf)
+	case manov1alpha1.VNFTypeNRF, "NRF":
+		pkg.Resources = t.generateNRFResources(vnf)
+	case manov1alpha1.VNFTypegNB, "gNB":
+		pkg.Resources = t.generateGNBResources(vnf)
+	case manov1alpha1.VNFTypeCU, "CU":
+		pkg.Resources = t.generateCUResources(vnf)
+	case manov1alpha1.VNFTypeDU, "DU":
+		pkg.Resources = t.generateDUResources(vnf)
+	case manov1alpha1.VNFTypeRU, "RU":
+		pkg.Resources = t.generateRUResources(vnf)
 	default:
 		return nil, fmt.Errorf("unknown VNF type: %s", vnf.Spec.Type)
 	}
@@ -116,17 +142,8 @@ func (t *PorchTranslator) generateRANResources(vnf *manov1alpha1.VNF) []Resource
 					"containers": []map[string]interface{}{
 						{
 							"name":  "ran",
-							"image": fmt.Sprintf("oran/ran:%s", vnf.Spec.Version),
-							"resources": map[string]interface{}{
-								"requests": map[string]interface{}{
-									"cpu":    vnf.Spec.Resources.CPU,
-									"memory": vnf.Spec.Resources.Memory,
-								},
-								"limits": map[string]interface{}{
-									"cpu":    vnf.Spec.Resources.CPU,
-									"memory": vnf.Spec.Resources.Memory,
-								},
-							},
+							"image": fmt.Sprintf("%s:%s", vnf.Spec.Image.Repository, vnf.Spec.Image.Tag),
+							"resources": t.generateResourceRequirements(vnf),
 							"env": t.generateEnvVars(vnf),
 						},
 					},
@@ -168,21 +185,7 @@ func (t *PorchTranslator) generateRANResources(vnf *manov1alpha1.VNF) []Resource
 	resources = append(resources, service)
 
 	// QoS ConfigMap
-	qosConfig := Resource{
-		APIVersion: "v1",
-		Kind:       "ConfigMap",
-		Metadata: map[string]interface{}{
-			"name":      fmt.Sprintf("%s-qos-config", vnf.Name),
-			"namespace": vnf.Namespace,
-		},
-		Spec: map[string]interface{}{
-			"data": map[string]interface{}{
-				"bandwidth": fmt.Sprintf("%.2f", vnf.Spec.QoS.Bandwidth),
-				"latency":   fmt.Sprintf("%.2f", vnf.Spec.QoS.Latency),
-				"jitter":    getJitterString(vnf.Spec.QoS.Jitter),
-			},
-		},
-	}
+	qosConfig := t.generateQoSConfigMap(vnf)
 	resources = append(resources, qosConfig)
 
 	return resources
@@ -217,13 +220,8 @@ func (t *PorchTranslator) generateCNResources(vnf *manov1alpha1.VNF) []Resource 
 					"containers": []map[string]interface{}{
 						{
 							"name":  "upf",
-							"image": fmt.Sprintf("oran/upf:%s", vnf.Spec.Version),
-							"resources": map[string]interface{}{
-								"requests": map[string]interface{}{
-									"cpu":    vnf.Spec.Resources.CPU,
-									"memory": vnf.Spec.Resources.Memory,
-								},
-							},
+							"image": fmt.Sprintf("%s:%s", vnf.Spec.Image.Repository, vnf.Spec.Image.Tag),
+							"resources": t.generateResourceRequirements(vnf),
 							"env": t.generateEnvVars(vnf),
 						},
 					},
@@ -264,7 +262,7 @@ func (t *PorchTranslator) generateTNResources(vnf *manov1alpha1.VNF) []Resource 
 					"containers": []map[string]interface{}{
 						{
 							"name":  "tn-agent",
-							"image": fmt.Sprintf("oran/tn-agent:%s", vnf.Spec.Version),
+							"image": fmt.Sprintf("%s:%s", vnf.Spec.Image.Repository, vnf.Spec.Image.Tag),
 							"securityContext": map[string]interface{}{
 								"privileged": true,
 							},
@@ -378,4 +376,408 @@ func getJitterString(jitter *float64) string {
 		return "0.0"
 	}
 	return fmt.Sprintf("%.2f", *jitter)
+}
+
+// generateUPFResources creates resources for UPF VNF
+func (t *PorchTranslator) generateUPFResources(vnf *manov1alpha1.VNF) []Resource {
+	resources := []Resource{}
+
+	// UPF StatefulSet
+	statefulset := Resource{
+		APIVersion: "apps/v1",
+		Kind:       "StatefulSet",
+		Metadata: map[string]interface{}{
+			"name":      fmt.Sprintf("%s-upf", vnf.Name),
+			"namespace": vnf.Namespace,
+			"labels": map[string]interface{}{
+				"vnf-type": "UPF",
+				"vnf-name": vnf.Name,
+			},
+		},
+		Spec: map[string]interface{}{
+			"serviceName": fmt.Sprintf("%s-upf", vnf.Name),
+			"replicas":    1,
+			"selector": map[string]interface{}{
+				"matchLabels": map[string]interface{}{
+					"app": fmt.Sprintf("%s-upf", vnf.Name),
+				},
+			},
+			"template": map[string]interface{}{
+				"metadata": map[string]interface{}{
+					"labels": map[string]interface{}{
+						"app": fmt.Sprintf("%s-upf", vnf.Name),
+					},
+				},
+				"spec": map[string]interface{}{
+					"containers": []map[string]interface{}{
+						{
+							"name":  "upf",
+							"image": fmt.Sprintf("%s:%s", vnf.Spec.Image.Repository, vnf.Spec.Image.Tag),
+							"resources": t.generateResourceRequirements(vnf),
+							"env": t.generateEnvVars(vnf),
+							"ports": []map[string]interface{}{
+								{
+									"name":          "n4",
+									"containerPort": 8805,
+									"protocol":      "UDP",
+								},
+								{
+									"name":          "n3",
+									"containerPort": 2152,
+									"protocol":      "UDP",
+								},
+								},
+						},
+					},
+					"nodeSelector": t.generateNodeSelector(vnf),
+				},
+			},
+		},
+	}
+	resources = append(resources, statefulset)
+
+	// UPF Service
+	service := Resource{
+		APIVersion: "v1",
+		Kind:       "Service",
+		Metadata: map[string]interface{}{
+			"name":      fmt.Sprintf("%s-upf-svc", vnf.Name),
+			"namespace": vnf.Namespace,
+		},
+		Spec: map[string]interface{}{
+			"selector": map[string]interface{}{
+				"app": fmt.Sprintf("%s-upf", vnf.Name),
+			},
+			"ports": []map[string]interface{}{
+				{
+					"name":       "n4",
+					"port":       8805,
+					"targetPort": 8805,
+					"protocol":   "UDP",
+				},
+				{
+					"name":       "n3",
+					"port":       2152,
+					"targetPort": 2152,
+					"protocol":   "UDP",
+				},
+			},
+		},
+	}
+	resources = append(resources, service)
+
+	// QoS ConfigMap
+	qosConfig := t.generateQoSConfigMap(vnf)
+	resources = append(resources, qosConfig)
+
+	return resources
+}
+
+// generateAMFResources creates resources for AMF VNF
+func (t *PorchTranslator) generateAMFResources(vnf *manov1alpha1.VNF) []Resource {
+	resources := []Resource{}
+
+	// AMF Deployment
+	deployment := Resource{
+		APIVersion: "apps/v1",
+		Kind:       "Deployment",
+		Metadata: map[string]interface{}{
+			"name":      fmt.Sprintf("%s-amf", vnf.Name),
+			"namespace": vnf.Namespace,
+			"labels": map[string]interface{}{
+				"vnf-type": "AMF",
+				"vnf-name": vnf.Name,
+			},
+		},
+		Spec: map[string]interface{}{
+			"replicas": 1,
+			"selector": map[string]interface{}{
+				"matchLabels": map[string]interface{}{
+					"app": fmt.Sprintf("%s-amf", vnf.Name),
+				},
+			},
+			"template": map[string]interface{}{
+				"metadata": map[string]interface{}{
+					"labels": map[string]interface{}{
+						"app": fmt.Sprintf("%s-amf", vnf.Name),
+					},
+				},
+				"spec": map[string]interface{}{
+					"containers": []map[string]interface{}{
+						{
+							"name":  "amf",
+							"image": fmt.Sprintf("%s:%s", vnf.Spec.Image.Repository, vnf.Spec.Image.Tag),
+							"resources": t.generateResourceRequirements(vnf),
+							"env": t.generateEnvVars(vnf),
+							"ports": []map[string]interface{}{
+								{
+									"name":          "n1-n2",
+									"containerPort": 38412,
+									"protocol":      "SCTP",
+								},
+								{
+									"name":          "sbi",
+									"containerPort": 8080,
+									"protocol":      "TCP",
+								},
+								},
+						},
+					},
+					"nodeSelector": t.generateNodeSelector(vnf),
+				},
+			},
+		},
+	}
+	resources = append(resources, deployment)
+
+	// AMF Service
+	service := Resource{
+		APIVersion: "v1",
+		Kind:       "Service",
+		Metadata: map[string]interface{}{
+			"name":      fmt.Sprintf("%s-amf-svc", vnf.Name),
+			"namespace": vnf.Namespace,
+		},
+		Spec: map[string]interface{}{
+			"selector": map[string]interface{}{
+				"app": fmt.Sprintf("%s-amf", vnf.Name),
+			},
+			"ports": []map[string]interface{}{
+				{
+					"name":       "n1-n2",
+					"port":       38412,
+					"targetPort": 38412,
+					"protocol":   "SCTP",
+				},
+				{
+					"name":       "sbi",
+					"port":       8080,
+					"targetPort": 8080,
+					"protocol":   "TCP",
+				},
+			},
+		},
+	}
+	resources = append(resources, service)
+
+	// QoS ConfigMap
+	qosConfig := t.generateQoSConfigMap(vnf)
+	resources = append(resources, qosConfig)
+
+	return resources
+}
+
+// Simplified generators for other VNF types
+func (t *PorchTranslator) generateSMFResources(vnf *manov1alpha1.VNF) []Resource {
+	return t.generateGenericNFResources(vnf, "smf", []map[string]interface{}{
+		{"name": "sbi", "port": 8080, "protocol": "TCP"},
+		{"name": "n4", "port": 8805, "protocol": "UDP"},
+	})
+}
+
+func (t *PorchTranslator) generatePCFResources(vnf *manov1alpha1.VNF) []Resource {
+	return t.generateGenericNFResources(vnf, "pcf", []map[string]interface{}{
+		{"name": "sbi", "port": 8080, "protocol": "TCP"},
+	})
+}
+
+func (t *PorchTranslator) generateUDMResources(vnf *manov1alpha1.VNF) []Resource {
+	return t.generateGenericNFResources(vnf, "udm", []map[string]interface{}{
+		{"name": "sbi", "port": 8080, "protocol": "TCP"},
+	})
+}
+
+func (t *PorchTranslator) generateAUSFResources(vnf *manov1alpha1.VNF) []Resource {
+	return t.generateGenericNFResources(vnf, "ausf", []map[string]interface{}{
+		{"name": "sbi", "port": 8080, "protocol": "TCP"},
+	})
+}
+
+func (t *PorchTranslator) generateNSSFResources(vnf *manov1alpha1.VNF) []Resource {
+	return t.generateGenericNFResources(vnf, "nssf", []map[string]interface{}{
+		{"name": "sbi", "port": 8080, "protocol": "TCP"},
+	})
+}
+
+func (t *PorchTranslator) generateNEFResources(vnf *manov1alpha1.VNF) []Resource {
+	return t.generateGenericNFResources(vnf, "nef", []map[string]interface{}{
+		{"name": "sbi", "port": 8080, "protocol": "TCP"},
+	})
+}
+
+func (t *PorchTranslator) generateNRFResources(vnf *manov1alpha1.VNF) []Resource {
+	return t.generateGenericNFResources(vnf, "nrf", []map[string]interface{}{
+		{"name": "sbi", "port": 8080, "protocol": "TCP"},
+	})
+}
+
+func (t *PorchTranslator) generateGNBResources(vnf *manov1alpha1.VNF) []Resource {
+	return t.generateGenericNFResources(vnf, "gnb", []map[string]interface{}{
+		{"name": "n2", "port": 38412, "protocol": "SCTP"},
+		{"name": "n3", "port": 2152, "protocol": "UDP"},
+	})
+}
+
+func (t *PorchTranslator) generateCUResources(vnf *manov1alpha1.VNF) []Resource {
+	return t.generateGenericNFResources(vnf, "cu", []map[string]interface{}{
+		{"name": "f1", "port": 38470, "protocol": "SCTP"},
+	})
+}
+
+func (t *PorchTranslator) generateDUResources(vnf *manov1alpha1.VNF) []Resource {
+	return t.generateGenericNFResources(vnf, "du", []map[string]interface{}{
+		{"name": "f1", "port": 38470, "protocol": "SCTP"},
+	})
+}
+
+func (t *PorchTranslator) generateRUResources(vnf *manov1alpha1.VNF) []Resource {
+	return t.generateGenericNFResources(vnf, "ru", []map[string]interface{}{
+		{"name": "fronthaul", "port": 7777, "protocol": "UDP"},
+	})
+}
+
+// generateGenericNFResources creates resources for generic network functions
+func (t *PorchTranslator) generateGenericNFResources(vnf *manov1alpha1.VNF, nfType string, ports []map[string]interface{}) []Resource {
+	resources := []Resource{}
+
+	// Generic Deployment
+	deployment := Resource{
+		APIVersion: "apps/v1",
+		Kind:       "Deployment",
+		Metadata: map[string]interface{}{
+			"name":      fmt.Sprintf("%s-%s", vnf.Name, nfType),
+			"namespace": vnf.Namespace,
+			"labels": map[string]interface{}{
+				"vnf-type": string(vnf.Spec.Type),
+				"vnf-name": vnf.Name,
+			},
+		},
+		Spec: map[string]interface{}{
+			"replicas": 1,
+			"selector": map[string]interface{}{
+				"matchLabels": map[string]interface{}{
+					"app": fmt.Sprintf("%s-%s", vnf.Name, nfType),
+				},
+			},
+			"template": map[string]interface{}{
+				"metadata": map[string]interface{}{
+					"labels": map[string]interface{}{
+						"app": fmt.Sprintf("%s-%s", vnf.Name, nfType),
+					},
+				},
+				"spec": map[string]interface{}{
+					"containers": []map[string]interface{}{
+						{
+							"name":  nfType,
+							"image": fmt.Sprintf("%s:%s", vnf.Spec.Image.Repository, vnf.Spec.Image.Tag),
+							"resources": t.generateResourceRequirements(vnf),
+							"env": t.generateEnvVars(vnf),
+							"ports": t.generateContainerPorts(ports),
+						},
+					},
+					"nodeSelector": t.generateNodeSelector(vnf),
+				},
+			},
+		},
+	}
+	resources = append(resources, deployment)
+
+	// Generic Service
+	service := Resource{
+		APIVersion: "v1",
+		Kind:       "Service",
+		Metadata: map[string]interface{}{
+			"name":      fmt.Sprintf("%s-%s-svc", vnf.Name, nfType),
+			"namespace": vnf.Namespace,
+		},
+		Spec: map[string]interface{}{
+			"selector": map[string]interface{}{
+				"app": fmt.Sprintf("%s-%s", vnf.Name, nfType),
+			},
+			"ports": t.generateServicePorts(ports),
+		},
+	}
+	resources = append(resources, service)
+
+	// QoS ConfigMap
+	qosConfig := t.generateQoSConfigMap(vnf)
+	resources = append(resources, qosConfig)
+
+	return resources
+}
+
+// generateQoSConfigMap creates a QoS ConfigMap for any VNF
+func (t *PorchTranslator) generateQoSConfigMap(vnf *manov1alpha1.VNF) Resource {
+	return Resource{
+		APIVersion: "v1",
+		Kind:       "ConfigMap",
+		Metadata: map[string]interface{}{
+			"name":      fmt.Sprintf("%s-qos-config", vnf.Name),
+			"namespace": vnf.Namespace,
+		},
+		Spec: map[string]interface{}{
+			"data": map[string]interface{}{
+				"bandwidth": fmt.Sprintf("%.2f", vnf.Spec.QoS.Bandwidth),
+				"latency":   fmt.Sprintf("%.2f", vnf.Spec.QoS.Latency),
+				"jitter":    getJitterString(vnf.Spec.QoS.Jitter),
+				"sliceType": vnf.Spec.QoS.SliceType,
+			},
+		},
+	}
+}
+
+// generateResourceRequirements creates resource requirements
+func (t *PorchTranslator) generateResourceRequirements(vnf *manov1alpha1.VNF) map[string]interface{} {
+	resources := map[string]interface{}{
+		"requests": map[string]interface{}{},
+		"limits":   map[string]interface{}{},
+	}
+
+	// Use new CPUCores and MemoryGB fields if available
+	if vnf.Spec.Resources.CPUCores > 0 {
+		resources["requests"].(map[string]interface{})["cpu"] = fmt.Sprintf("%dm", vnf.Spec.Resources.CPUCores*1000)
+		resources["limits"].(map[string]interface{})["cpu"] = fmt.Sprintf("%dm", vnf.Spec.Resources.CPUCores*1000)
+	} else if vnf.Spec.Resources.CPU != "" {
+		// Fallback to legacy CPU field
+		resources["requests"].(map[string]interface{})["cpu"] = vnf.Spec.Resources.CPU
+		resources["limits"].(map[string]interface{})["cpu"] = vnf.Spec.Resources.CPU
+	}
+
+	if vnf.Spec.Resources.MemoryGB > 0 {
+		resources["requests"].(map[string]interface{})["memory"] = fmt.Sprintf("%dGi", vnf.Spec.Resources.MemoryGB)
+		resources["limits"].(map[string]interface{})["memory"] = fmt.Sprintf("%dGi", vnf.Spec.Resources.MemoryGB)
+	} else if vnf.Spec.Resources.Memory != "" {
+		// Fallback to legacy Memory field
+		resources["requests"].(map[string]interface{})["memory"] = vnf.Spec.Resources.Memory
+		resources["limits"].(map[string]interface{})["memory"] = vnf.Spec.Resources.Memory
+	}
+
+	return resources
+}
+
+// generateContainerPorts creates container port configurations
+func (t *PorchTranslator) generateContainerPorts(ports []map[string]interface{}) []map[string]interface{} {
+	containerPorts := []map[string]interface{}{}
+	for _, port := range ports {
+		containerPorts = append(containerPorts, map[string]interface{}{
+			"name":          port["name"],
+			"containerPort": port["port"],
+			"protocol":      port["protocol"],
+		})
+	}
+	return containerPorts
+}
+
+// generateServicePorts creates service port configurations
+func (t *PorchTranslator) generateServicePorts(ports []map[string]interface{}) []map[string]interface{} {
+	servicePorts := []map[string]interface{}{}
+	for _, port := range ports {
+		servicePorts = append(servicePorts, map[string]interface{}{
+			"name":       port["name"],
+			"port":       port["port"],
+			"targetPort": port["port"],
+			"protocol":   port["protocol"],
+		})
+	}
+	return servicePorts
 }

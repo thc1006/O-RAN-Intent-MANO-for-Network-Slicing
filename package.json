@@ -1,0 +1,67 @@
+{
+  "name": "o-ran-intent-mano",
+  "version": "1.0.0",
+  "description": "O-RAN Intent-Based MANO for Network Slicing",
+  "private": true,
+  "scripts": {
+    "ci:local": "act -j \"${CI_JOB:-all}\" --container-architecture linux/amd64",
+    "ci:watch": "gh run watch --exit-status --interval 10 --compact",
+    "ci:status": "gh run list --limit 5",
+    "ci:rerun": "gh run rerun --failed",
+    "ci:view": "gh run view",
+    "ci:logs": "gh run view --log",
+    "ci:artifacts": "gh run download",
+    "ci:cancel": "gh run cancel",
+    "hooks:install": "git config core.hooksPath .githooks",
+    "hooks:uninstall": "git config --unset core.hooksPath",
+    "security:scan": "npm run security:secrets && npm run security:deps",
+    "security:secrets": "gitleaks detect --verbose --no-git",
+    "security:deps": "if command -v osv-scanner > /dev/null; then osv-scanner --recursive .; else echo 'osv-scanner not installed'; fi",
+    "security:act": "act workflow_dispatch -W .github/workflows/security-scan.yml",
+    "docker:build": "docker build -t oran-mano:local .",
+    "docker:scan": "if command -v trivy > /dev/null; then trivy image oran-mano:local; else echo 'trivy not installed'; fi",
+    "test:unit": "find . -name 'go.mod' -execdir go test -v ./... ';'",
+    "test:coverage": "find . -name 'go.mod' -execdir go test -race -coverprofile=coverage.out -covermode=atomic ./... ';'",
+    "lint:go": "find . -name 'go.mod' -execdir golangci-lint run ';'",
+    "lint:yaml": "if command -v yamllint > /dev/null; then yamllint .; else echo 'yamllint not installed'; fi",
+    "format:go": "find . -name '*.go' -exec gofmt -w {} ';'",
+    "dev:setup": "npm run hooks:install && echo 'Development environment configured'",
+    "dev:cleanup": "docker system prune -f && go clean -cache -modcache -testcache",
+    "build": "echo 'Go modules build - use go build in specific directories'",
+    "start": "echo 'Use kubectl or docker-compose to start services'"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing.git"
+  },
+  "keywords": [
+    "o-ran",
+    "intent-based",
+    "mano",
+    "network-slicing",
+    "kubernetes",
+    "go",
+    "5g"
+  ],
+  "author": "thc1006",
+  "license": "Apache-2.0",
+  "devDependencies": {},
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "ci": {
+    "jobs": {
+      "default": "ci",
+      "security": "security-scan",
+      "build": "build-images",
+      "test": "unit-tests"
+    },
+    "tools": {
+      "act": "^0.2.50",
+      "gh": "^2.35.0",
+      "gitleaks": "^8.18.0",
+      "golangci-lint": "^1.54.0",
+      "trivy": "^0.45.0"
+    }
+  }
+}

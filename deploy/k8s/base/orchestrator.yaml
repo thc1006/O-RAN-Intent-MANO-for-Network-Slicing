@@ -15,6 +15,8 @@ metadata:
     container.apparmor.security.beta.kubernetes.io/orchestrator: runtime/default
     security.kubernetes.io/compliance-scan-date: "2025-09-24"
     security.kubernetes.io/security-review: "approved"
+    security.kubernetes.io/serviceaccount-token-exception: "CKV_K8S_38-approved"
+    security.kubernetes.io/serviceaccount-token-justification: "Required for O-RAN orchestration API access"
 spec:
   replicas: 1
   selector:

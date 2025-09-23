@@ -9,6 +9,7 @@ require (
 	github.com/prometheus/client_golang v1.23.2
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/viper v1.21.0
+	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security v0.0.0-20250923183514-2726ad9c2243
 	golang.org/x/time v0.13.0
 )
 

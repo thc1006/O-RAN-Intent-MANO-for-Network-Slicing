@@ -17,10 +17,12 @@ replace (
 
 require (
 	github.com/GoogleContainerTools/kpt/porch/api v0.0.0-20240427025202-5cbd3cbd9237
+	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674
 	github.com/onsi/ginkgo/v2 v2.25.3
 	github.com/onsi/gomega v1.38.2
 	github.com/prometheus/client_golang v1.23.2
+	github.com/stretchr/testify v1.11.1
 	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/adapters/vnf-operator/api/v1alpha1 v0.0.0-00010101000000-000000000000
 	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/o2-client v0.0.0-00010101000000-000000000000
 	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/orchestrator v0.0.0-00010101000000-000000000000
