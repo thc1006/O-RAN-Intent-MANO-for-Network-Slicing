@@ -51,7 +51,7 @@ jobs:
           if [ -f "$dir/go.mod" ]; then
             echo "Testing $dir..."
             cd "$dir"
-            go test ./... -v -short || echo "Tests need improvement in $dir"
+            GOWORK=off go test ./... -v -short || echo "Tests need improvement in $dir"
             cd -
           fi
         done

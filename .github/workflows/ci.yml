@@ -182,7 +182,8 @@ jobs:
       working-directory: ${{ env.COMPONENT_PATH }}
       run: |
         if [ -f go.mod ]; then
-          go mod download
+          # Disable workspace mode for individual module dependency installation
+          GOWORK=off go mod download
         else
           echo "No go.mod found, skipping dependency installation for ${{ matrix.component }}"
         fi
@@ -191,7 +192,8 @@ jobs:
       working-directory: ${{ env.COMPONENT_PATH }}
       run: |
         if [ -f go.mod ]; then
-          go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+          # Disable workspace mode for individual module tests
+          GOWORK=off go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
         else
           echo "No go.mod found, skipping tests for ${{ matrix.component }}"
         fi
