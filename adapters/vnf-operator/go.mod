@@ -1,6 +1,6 @@
 module github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/adapters/vnf-operator
 
-go 1.23
+go 1.24
 
 require (
 	github.com/onsi/ginkgo/v2 v2.25.3
