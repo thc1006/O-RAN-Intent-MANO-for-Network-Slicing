@@ -5,7 +5,7 @@ go 1.24.0
 toolchain go1.24.5
 
 replace (
-	github.com/o-ran-intent-mano/pkg/security => ./pkg/security
+	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security => ./pkg/security
 	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/cn-dms => ./cn-dms
 	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/orchestrator => ./orchestrator
 	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/ran-dms => ./ran-dms
@@ -17,7 +17,7 @@ require (
 	github.com/GoogleContainerTools/kpt/porch/api v0.0.0-20240427025202-5cbd3cbd9237
 	github.com/gin-gonic/gin v1.9.1
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674
-	github.com/o-ran-intent-mano/pkg/security v0.0.0-00010101000000-000000000000
+	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security v0.0.0-00010101000000-000000000000
 	github.com/onsi/ginkgo/v2 v2.22.0
 	github.com/onsi/gomega v1.36.1
 	github.com/prometheus/client_golang v1.22.0

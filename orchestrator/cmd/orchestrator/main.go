@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 
 	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/orchestrator/pkg/placement"
-	"github.com/o-ran-intent-mano/pkg/security"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security"
 )
 
 const (

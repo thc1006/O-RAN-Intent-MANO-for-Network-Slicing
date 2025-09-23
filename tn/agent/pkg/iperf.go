@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/o-ran-intent-mano/pkg/security"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security"
 )
 
 // IperfManager manages iperf3 testing operations
@@ -129,11 +129,11 @@ func (im *IperfManager) StartServer(port int) error {
 
 	// Check if server is already running
 	if server, exists := im.servers[serverKey]; exists {
-		im.logger.Printf("Iperf3 server already running on port %d (PID: %d)", port, server.PID)
+		security.SafeLogf(im.logger, "Iperf3 server already running on port %d (PID: %d)", port, server.PID)
 		return nil
 	}
 
-	im.logger.Printf("Starting iperf3 server on port %d", port)
+	security.SafeLogf(im.logger, "Starting iperf3 server on port %d", port)
 
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -164,7 +164,7 @@ func (im *IperfManager) StartServer(port int) error {
 		return fmt.Errorf("iperf3 server failed to start listening on port %d", port)
 	}
 
-	im.logger.Printf("Iperf3 server started successfully on port %d (PID: %d)", port, server.PID)
+	security.SafeLogf(im.logger, "Iperf3 server started successfully on port %d (PID: %d)", port, server.PID)
 	return nil
 }
 
@@ -185,7 +185,7 @@ func (im *IperfManager) StopServer(port int) error {
 		return fmt.Errorf("no iperf3 server running on port %d", port)
 	}
 
-	im.logger.Printf("Stopping iperf3 server on port %d (PID: %d)", port, server.PID)
+	security.SafeLogf(im.logger, "Stopping iperf3 server on port %d (PID: %d)", port, server.PID)
 
 	// Cancel context to stop the server
 	server.Cancel()
@@ -193,12 +193,12 @@ func (im *IperfManager) StopServer(port int) error {
 	// Kill the process if it's still running
 	cmd := exec.Command("pkill", "-f", fmt.Sprintf("iperf3.*-p %d", port))
 	if output, err := cmd.CombinedOutput(); err != nil {
-		im.logger.Printf("Warning: failed to kill iperf3 server process: %s, output: %s", err, output)
+		security.SafeLogf(im.logger, "Warning: failed to kill iperf3 server process: %s, output: %s", security.SanitizeErrorForLog(err), security.SanitizeForLog(string(output)))
 	}
 
 	delete(im.servers, serverKey)
 
-	im.logger.Printf("Iperf3 server stopped on port %d", port)
+	security.SafeLogf(im.logger, "Iperf3 server stopped on port %d", port)
 	return nil
 }
 
@@ -233,7 +233,7 @@ func (im *IperfManager) RunTest(config *IperfTestConfig) (*IperfResult, error) {
 		}
 	}
 
-	im.logger.Printf("Running iperf3 test to %s:%d", config.ServerIP, config.Port)
+	security.SafeLogf(im.logger, "Running iperf3 test to %s:%d", security.SanitizeIPForLog(config.ServerIP), config.Port)
 
 	testID := fmt.Sprintf("test_%d", time.Now().Unix())
 	startTime := time.Now()
@@ -302,7 +302,7 @@ func (im *IperfManager) RunTest(config *IperfTestConfig) (*IperfResult, error) {
 
 	if err != nil {
 		result.ErrorMessages = append(result.ErrorMessages, fmt.Sprintf("iperf3 command failed: %s", err))
-		im.logger.Printf("Iperf3 test failed: %v", err)
+		security.SafeLogError(im.logger, "Iperf3 test failed", err)
 		return result, fmt.Errorf("iperf3 test failed: %w", err)
 	}
 
@@ -310,16 +310,16 @@ func (im *IperfManager) RunTest(config *IperfTestConfig) (*IperfResult, error) {
 	if config.JSON {
 		if err := im.parseJSONOutput(string(output), result); err != nil {
 			result.ErrorMessages = append(result.ErrorMessages, fmt.Sprintf("Failed to parse JSON output: %s", err))
-			im.logger.Printf("Failed to parse iperf3 JSON output: %v", err)
+			security.SafeLogError(im.logger, "Failed to parse iperf3 JSON output", err)
 		}
 	} else {
 		if err := im.parseTextOutput(string(output), result); err != nil {
 			result.ErrorMessages = append(result.ErrorMessages, fmt.Sprintf("Failed to parse text output: %s", err))
-			im.logger.Printf("Failed to parse iperf3 text output: %v", err)
+			security.SafeLogError(im.logger, "Failed to parse iperf3 text output", err)
 		}
 	}
 
-	im.logger.Printf("Iperf3 test completed: %.2f Mbps", result.Summary.Received.MbitsPerSec)
+	security.SafeLogf(im.logger, "Iperf3 test completed: %.2f Mbps", result.Summary.Received.MbitsPerSec)
 	return result, nil
 }
 
@@ -442,7 +442,7 @@ func (im *IperfManager) RunThroughputTest(serverIP string, port int, duration ti
 		return nil, fmt.Errorf("duration too long: %v (max: 1 hour)", duration)
 	}
 
-	im.logger.Printf("Running throughput test to %s:%d for %v", serverIP, port, duration)
+	security.SafeLogf(im.logger, "Running throughput test to %s:%d for %v", security.SanitizeIPForLog(serverIP), port, duration)
 
 	metrics := &ThroughputMetrics{}
 
@@ -467,7 +467,7 @@ func (im *IperfManager) RunThroughputTest(serverIP string, port int, duration ti
 	tcpConfig.Reverse = true
 	tcpUpResult, err := im.RunTest(tcpConfig)
 	if err != nil {
-		im.logger.Printf("TCP upload test failed: %v", err)
+		security.SafeLogError(im.logger, "TCP upload test failed", err)
 	} else {
 		metrics.UplinkMbps = tcpUpResult.Summary.Sent.MbitsPerSec
 	}
@@ -477,7 +477,7 @@ func (im *IperfManager) RunThroughputTest(serverIP string, port int, duration ti
 	tcpConfig.Bidir = true
 	bidirResult, err := im.RunTest(tcpConfig)
 	if err != nil {
-		im.logger.Printf("Bidirectional test failed: %v", err)
+		security.SafeLogError(im.logger, "Bidirectional test failed", err)
 	} else {
 		metrics.BiDirMbps = bidirResult.Summary.Received.MbitsPerSec
 	}
@@ -493,7 +493,7 @@ func (im *IperfManager) RunThroughputTest(serverIP string, port int, duration ti
 		metrics.MinMbps = metrics.UplinkMbps
 	}
 
-	im.logger.Printf("Throughput test completed: DL=%.2f Mbps, UL=%.2f Mbps, Avg=%.2f Mbps",
+	security.SafeLogf(im.logger, "Throughput test completed: DL=%.2f Mbps, UL=%.2f Mbps, Avg=%.2f Mbps",
 		metrics.DownlinkMbps, metrics.UplinkMbps, metrics.AvgMbps)
 
 	return metrics, nil
@@ -512,7 +512,7 @@ func (im *IperfManager) RunLatencyTest(serverIP string, port int, duration time.
 		return nil, fmt.Errorf("duration too long: %v (max: 10 minutes)", duration)
 	}
 
-	im.logger.Printf("Running latency test to %s:%d", serverIP, port)
+	security.SafeLogf(im.logger, "Running latency test to %s:%d", security.SanitizeIPForLog(serverIP), port)
 
 	metrics := &LatencyMetrics{}
 
@@ -575,7 +575,7 @@ func (im *IperfManager) RunLatencyTest(serverIP string, port int, duration time.
 		}
 	}
 
-	im.logger.Printf("Latency test completed: Avg=%.2f ms, Min=%.2f ms, Max=%.2f ms",
+	security.SafeLogf(im.logger, "Latency test completed: Avg=%.2f ms, Min=%.2f ms, Max=%.2f ms",
 		metrics.AvgRTTMs, metrics.MinRTTMs, metrics.MaxRTTMs)
 
 	return metrics, nil
