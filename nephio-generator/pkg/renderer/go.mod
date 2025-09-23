@@ -1,6 +1,6 @@
 module github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/nephio-generator/pkg/renderer
 
-go 1.23
+go 1.24
 
 require (
 	sigs.k8s.io/kustomize/api v0.20.1

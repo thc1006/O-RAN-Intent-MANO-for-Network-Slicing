@@ -1,6 +1,6 @@
 module github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/ran-dms
 
-go 1.23
+go 1.24
 
 require (
 	github.com/gin-gonic/gin v1.11.0
