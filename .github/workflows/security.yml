@@ -20,6 +20,7 @@ permissions:
   actions: read
   packages: read
   pull-requests: write  # Needed for PR comments
+  issues: write  # Needed for creating security issues
 
 jobs:
   # Code security analysis
