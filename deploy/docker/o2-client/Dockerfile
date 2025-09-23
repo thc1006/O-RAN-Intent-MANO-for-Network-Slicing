@@ -48,7 +48,7 @@ RUN go mod download
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -ldflags='-w -s -extldflags "-static"' \
     -a -installsuffix cgo \
-    -o o2-client ./cmd/main.go
+    -o o2-client ./o2-client/cmd/main.go
 
 # Stage 2: Runtime
 FROM alpine:3.20
