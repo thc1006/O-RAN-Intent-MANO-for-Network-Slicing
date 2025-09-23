@@ -44,6 +44,33 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -a -installsuffix cgo \
     -o manager cmd/manager/main.go
 
+# Build a minimal health check binary
+RUN echo 'package main
+import (
+    "fmt"
+    "net/http"
+    "os"
+    "time"
+)
+func main() {
+    client := &http.Client{Timeout: 3 * time.Second}
+    resp, err := client.Get("http://localhost:8080/healthz")
+    if err != nil {
+        fmt.Printf("Health check failed: %v\n", err)
+        os.Exit(1)
+    }
+    defer resp.Body.Close()
+    if resp.StatusCode != 200 {
+        fmt.Printf("Health check failed with status: %d\n", resp.StatusCode)
+        os.Exit(1)
+    }
+    fmt.Println("Health check passed")
+}' > healthcheck.go && \
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+    -ldflags='-w -s -extldflags "-static"' \
+    -a -installsuffix cgo \
+    -o healthcheck healthcheck.go
+
 # Stage 2: Runtime with distroless for maximum security
 FROM gcr.io/distroless/static:nonroot
 
@@ -53,8 +80,9 @@ LABEL security.scan="trivy,grype,snyk"
 LABEL security.user="non-root"
 LABEL security.distroless="true"
 
-# Copy the binary
+# Copy the binaries
 COPY --from=builder /workspace/manager /manager
+COPY --from=builder /workspace/healthcheck /healthcheck
 
 # Use non-root user (distroless nonroot user: 65532)
 USER 65532:65532
@@ -62,10 +90,10 @@ USER 65532:65532
 # Expose ports
 EXPOSE 8080 8081 9443
 
-# Health check - distroless images lack curl/wget, so we use a TCP connection check
-# This checks if the health port (8080) is accepting connections
+# Health check - using custom healthcheck binary for distroless compatibility
+# Checks the /healthz endpoint typically provided by controller-runtime
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD [ "sh", "-c", "timeout 3 bash -c '</dev/tcp/localhost/8080' 2>/dev/null || exit 1" ] || exit 1
+  CMD ["/healthcheck"]
 
 # Security: Run with minimal distroless environment
 ENTRYPOINT ["/manager"]
