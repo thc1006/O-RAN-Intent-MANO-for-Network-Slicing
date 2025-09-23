@@ -1,6 +1,6 @@
 # Orchestrator Multi-stage Dockerfile
 # Stage 1: Build
-FROM golang:1.23.6-alpine AS builder
+FROM golang:1.24.0-alpine AS builder
 
 # Security labels and metadata
 LABEL maintainer="O-RAN MANO Team"
@@ -57,7 +57,7 @@ LABEL org.opencontainers.image.title="Orchestrator Runtime"
 LABEL security.scan="trivy,grype,snyk"
 LABEL security.user="non-root"
 LABEL security.base.image="alpine:3.22.1"
-LABEL security.go.version="1.23.6"
+LABEL security.go.version="1.24.0"
 LABEL security.scan.date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 # Install runtime dependencies and security updates, clean cache
