@@ -320,6 +320,162 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
 automountServiceAccountToken: true
 ---
+# OVN Network Service Account and RBAC
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ovn
+  namespace: kube-ovn
+  labels:
+    app.kubernetes.io/name: ovn
+    app.kubernetes.io/component: network
+    app.kubernetes.io/part-of: oran-intent-mano
+    app.kubernetes.io/managed-by: kustomize
+automountServiceAccountToken: true
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ovn-monitor
+  namespace: kube-ovn
+  labels:
+    app.kubernetes.io/name: ovn-monitor
+    app.kubernetes.io/component: network-monitoring
+    app.kubernetes.io/part-of: oran-intent-mano
+    app.kubernetes.io/managed-by: kustomize
+automountServiceAccountToken: true
+---
+# Third-party Service Accounts
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/component: monitoring
+automountServiceAccountToken: true
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: grafana
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: grafana
+    app.kubernetes.io/component: monitoring
+automountServiceAccountToken: true
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: loki
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: loki
+    app.kubernetes.io/component: logging
+automountServiceAccountToken: true
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: promtail
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: promtail
+    app.kubernetes.io/component: logging
+automountServiceAccountToken: true
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: alertmanager
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: alertmanager
+    app.kubernetes.io/component: monitoring
+automountServiceAccountToken: true
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: jaeger
+  namespace: observability
+  labels:
+    app.kubernetes.io/name: jaeger
+    app.kubernetes.io/component: tracing
+automountServiceAccountToken: true
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: falco
+  namespace: security
+  labels:
+    app.kubernetes.io/name: falco
+    app.kubernetes.io/component: security
+automountServiceAccountToken: true
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: trivy-operator
+  namespace: security
+  labels:
+    app.kubernetes.io/name: trivy-operator
+    app.kubernetes.io/component: security
+automountServiceAccountToken: true
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sealed-secrets-controller
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: sealed-secrets-controller
+    app.kubernetes.io/component: security
+automountServiceAccountToken: true
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: gatekeeper-admin
+  namespace: gatekeeper-system
+  labels:
+    app.kubernetes.io/name: gatekeeper-admin
+    app.kubernetes.io/component: security
+automountServiceAccountToken: true
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: opentelemetry-operator-controller-manager
+  namespace: opentelemetry-operator-system
+  labels:
+    app.kubernetes.io/name: opentelemetry-operator
+    app.kubernetes.io/component: monitoring
+automountServiceAccountToken: true
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sla-monitor
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: sla-monitor
+    app.kubernetes.io/component: monitoring
+automountServiceAccountToken: true
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: deployment-manager
+  namespace: oran-deploy
+  labels:
+    app.kubernetes.io/name: deployment-manager
+    app.kubernetes.io/component: deployment
+automountServiceAccountToken: true
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -361,3 +517,318 @@ subjects:
 - kind: ServiceAccount
   name: oran-monitoring-service
   namespace: oran-monitoring
+---
+# OVN Network ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: oran-ovn-role
+rules:
+# Node management for networking
+- apiGroups: [""]
+  resources: ["nodes", "nodes/status"]
+  verbs: ["get", "list", "watch", "update", "patch"]
+# Network resources
+- apiGroups: [""]
+  resources: ["pods", "services", "endpoints", "namespaces"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "daemonsets", "replicasets"]
+  verbs: ["get", "list", "watch"]
+# OVN specific resources
+- apiGroups: ["kubeovn.io"]
+  resources: ["*"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+# Networking
+- apiGroups: ["networking.k8s.io"]
+  resources: ["networkpolicies"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+# Events
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["create", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: oran-ovn-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: oran-ovn-role
+subjects:
+- kind: ServiceAccount
+  name: ovn
+  namespace: kube-ovn
+---
+# OVN Monitor Role
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: oran-ovn-monitor-role
+rules:
+# Monitoring access
+- apiGroups: [""]
+  resources: ["nodes", "pods", "services", "endpoints"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["kubeovn.io"]
+  resources: ["*"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["metrics.k8s.io"]
+  resources: ["nodes", "pods"]
+  verbs: ["get", "list"]
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["create", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: oran-ovn-monitor-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: oran-ovn-monitor-role
+subjects:
+- kind: ServiceAccount
+  name: ovn-monitor
+  namespace: kube-ovn
+---
+# Security ClusterRoles
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: oran-falco-role
+rules:
+- apiGroups: [""]
+  resources: ["nodes", "pods", "events"]
+  verbs: ["get", "list", "watch", "create", "patch"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "daemonsets", "replicasets"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: oran-falco-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: oran-falco-role
+subjects:
+- kind: ServiceAccount
+  name: falco
+  namespace: security
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: oran-trivy-operator-role
+rules:
+- apiGroups: [""]
+  resources: ["pods", "configmaps", "secrets", "events"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets", "statefulsets", "daemonsets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["aquasecurity.github.io"]
+  resources: ["*"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: oran-trivy-operator-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: oran-trivy-operator-role
+subjects:
+- kind: ServiceAccount
+  name: trivy-operator
+  namespace: security
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: oran-sealed-secrets-role
+rules:
+- apiGroups: [""]
+  resources: ["secrets", "events"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["bitnami.com"]
+  resources: ["sealedsecrets"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: oran-sealed-secrets-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: oran-sealed-secrets-role
+subjects:
+- kind: ServiceAccount
+  name: sealed-secrets-controller
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: oran-gatekeeper-role
+rules:
+- apiGroups: ["*"]
+  resources: ["*"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["templates.gatekeeper.sh", "constraints.gatekeeper.sh", "config.gatekeeper.sh"]
+  resources: ["*"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["admissionregistration.k8s.io"]
+  resources: ["validatingadmissionwebhooks", "mutatingadmissionwebhooks"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: oran-gatekeeper-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: oran-gatekeeper-role
+subjects:
+- kind: ServiceAccount
+  name: gatekeeper-admin
+  namespace: gatekeeper-system
+---
+# Additional monitoring service accounts RBAC
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: oran-prometheus-role
+rules:
+- apiGroups: [""]
+  resources: ["nodes", "nodes/proxy", "services", "endpoints", "pods", "ingresses", "configmaps"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["extensions", "apps"]
+  resources: ["deployments", "replicasets", "daemonsets", "statefulsets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["nodes/metrics"]
+  verbs: ["get"]
+- apiGroups: ["networking.k8s.io"]
+  resources: ["ingresses"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: oran-prometheus-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: oran-prometheus-role
+subjects:
+- kind: ServiceAccount
+  name: prometheus
+  namespace: monitoring
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: oran-grafana-role
+rules:
+- apiGroups: [""]
+  resources: ["configmaps", "secrets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["pods", "nodes", "services"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: oran-grafana-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: oran-grafana-role
+subjects:
+- kind: ServiceAccount
+  name: grafana
+  namespace: monitoring
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: oran-loki-role
+rules:
+- apiGroups: [""]
+  resources: ["pods", "nodes", "services", "configmaps"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: oran-loki-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: oran-loki-role
+subjects:
+- kind: ServiceAccount
+  name: loki
+  namespace: monitoring
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: oran-promtail-role
+rules:
+- apiGroups: [""]
+  resources: ["pods", "nodes"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["pods/log"]
+  verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: oran-promtail-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: oran-promtail-role
+subjects:
+- kind: ServiceAccount
+  name: promtail
+  namespace: monitoring
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: oran-alertmanager-role
+rules:
+- apiGroups: [""]
+  resources: ["configmaps", "secrets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["pods", "services"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: oran-alertmanager-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: oran-alertmanager-role
+subjects:
+- kind: ServiceAccount
+  name: alertmanager
+  namespace: monitoring
