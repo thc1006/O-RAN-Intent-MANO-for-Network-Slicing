@@ -1,4 +1,4 @@
-module github.com/o-ran/intent-mano
+module github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing
 
 go 1.23
 

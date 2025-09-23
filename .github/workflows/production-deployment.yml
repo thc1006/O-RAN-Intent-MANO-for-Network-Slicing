@@ -29,6 +29,13 @@ on:
         default: false
         type: boolean
 
+permissions:
+  contents: read
+  security-events: write
+  packages: write
+  actions: read
+  id-token: write
+
 env:
   REGISTRY: docker.io/thc1006
   NAMESPACE: o-ran-mano

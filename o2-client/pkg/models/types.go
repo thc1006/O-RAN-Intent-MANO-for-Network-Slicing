@@ -26,8 +26,8 @@ type ResourceDefinition struct {
 	Quantity int    `json:"quantity"`
 }
 
-// ResourcePool represents a pool of resources in O2IMS
-type ResourcePool struct {
+// O2ResourcePool represents a pool of resources in O2IMS
+type O2ResourcePool struct {
 	ID          string           `json:"id"`
 	Spec        ResourcePoolSpec `json:"spec"`
 	Status      string           `json:"status"`

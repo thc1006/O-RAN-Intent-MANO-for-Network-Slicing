@@ -14,7 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"sigs.k8s.io/kustomize/api/kustomize/v1beta1"
 
-	manov1alpha1 "github.com/oran-mano/adapters/vnf-operator/api/v1alpha1"
+	manov1alpha1 "github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/adapters/vnf-operator/api/v1alpha1"
 )
 
 // DefaultPackageGenerator implements PackageGenerator interface
@@ -610,7 +610,7 @@ func (g *DefaultPackageGenerator) getTargetCluster(placement PlacementSpec) stri
 }
 
 func (g *DefaultPackageGenerator) getGitRepository(clusterName string) string {
-	return fmt.Sprintf("https://github.com/oran-mano/nephio-deployments-%s", clusterName)
+	return fmt.Sprintf("https://github.com/thc1006/nephio-deployments-%s", clusterName)
 }
 
 func (g *DefaultPackageGenerator) getClusterCloudType(clusterName string) string {
