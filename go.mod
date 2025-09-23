@@ -25,7 +25,6 @@ require (
 	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/adapters/vnf-operator/api/v1alpha1 v0.0.0-00010101000000-000000000000
 	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/orchestrator v0.0.0-00010101000000-000000000000
 	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security v0.0.0-00010101000000-000000000000
-	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tn/manager/api/v1alpha1 v0.0.0-00010101000000-000000000000
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.34.1
 	k8s.io/apimachinery v0.34.1
