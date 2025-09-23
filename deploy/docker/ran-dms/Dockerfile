@@ -1,6 +1,6 @@
 # RAN DMS Multi-stage Dockerfile
 # Stage 1: Build
-FROM golang:1.23-alpine3.19 AS builder
+FROM golang:1.23-alpine AS builder
 
 # Security labels and metadata
 LABEL maintainer="O-RAN MANO Team"
@@ -45,7 +45,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -o ran-dms cmd/main.go
 
 # Stage 2: Runtime
-FROM alpine:3.19
+FROM alpine:3.20
 
 # Security labels
 LABEL org.opencontainers.image.title="RAN DMS Runtime"

@@ -1,6 +1,6 @@
 # VNF Operator Multi-stage Dockerfile
 # Stage 1: Build
-FROM golang:1.23-alpine3.19 AS builder
+FROM golang:1.23-alpine AS builder
 
 # Security labels and metadata
 LABEL maintainer="O-RAN MANO Team"
