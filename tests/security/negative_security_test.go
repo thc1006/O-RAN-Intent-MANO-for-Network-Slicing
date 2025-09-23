@@ -1000,7 +1000,7 @@ func (suite *NegativeSecurityTestSuite) testStateConfusionAttacks(t *testing.T) 
 			"test$((1+1))",
 			"test${HOME}",
 			"test$[1+1]",
-			"test\$(echo safe)", // Escaped
+			"test\\$(echo safe)", // Escaped
 			"test\\`echo safe\\`", // Escaped
 		}
 
