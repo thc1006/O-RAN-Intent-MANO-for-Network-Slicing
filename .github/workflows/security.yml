@@ -21,6 +21,8 @@ permissions:
   packages: read
   pull-requests: write  # Needed for PR comments
   issues: write  # Needed for creating security issues
+  id-token: write  # For OIDC token usage
+  attestations: write  # For build attestations
 
 jobs:
   # Code security analysis
@@ -51,7 +53,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.23.4'
+        go-version: '1.24.5'
         cache: true
         cache-dependency-path: |
           go.sum
@@ -122,7 +124,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.23.4'
+        go-version: '1.24.5'
 
     - name: Configure Git for Go modules
       run: |
@@ -709,7 +711,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.23.4'
+        go-version: '1.24.5'
 
     - name: Configure Git for Go modules
       run: |
