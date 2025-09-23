@@ -31,6 +31,7 @@ type DriftDetector struct {
 	ClusterClient *ClusterClient
 	GitRepo       *GitRepository
 	BasePath      string
+	validator     *security.FilePathValidator
 	mutex         sync.RWMutex
 	lastScan      time.Time
 	driftCache    map[string]*DriftResult
@@ -107,11 +108,15 @@ type DriftSummary struct {
 
 // NewDriftDetector creates a new drift detector
 func NewDriftDetector(config DriftDetectionConfig, client *ClusterClient, gitRepo *GitRepository, basePath string) *DriftDetector {
+	// Create secure file path validator for Kubernetes files
+	validator := security.CreateValidatorForKubernetes(basePath)
+
 	return &DriftDetector{
 		Config:        config,
 		ClusterClient: client,
 		GitRepo:       gitRepo,
 		BasePath:      basePath,
+		validator:     validator,
 		driftCache:    make(map[string]*DriftResult),
 	}
 }
@@ -887,7 +892,12 @@ func (dd *DriftDetector) isKubernetesResourceFile(filename string) bool {
 
 // parseResourceFile parses Kubernetes resources from a file
 func (dd *DriftDetector) parseResourceFile(filename string) ([]*unstructured.Unstructured, error) {
-	data, err := os.ReadFile(filename)
+	// Validate file path for security
+	if err := dd.validator.ValidateFilePathAndExtension(filename, []string{".yaml", ".yml"}); err != nil {
+		return nil, fmt.Errorf("file path validation failed: %w", err)
+	}
+
+	data, err := dd.validator.SafeReadFile(filename)
 	if err != nil {
 		return nil, err
 	}

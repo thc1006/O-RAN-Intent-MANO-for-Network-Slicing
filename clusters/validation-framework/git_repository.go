@@ -13,6 +13,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/o-ran-intent-mano/pkg/security"
 )
 
 // GitRepository provides Git operations for validation
@@ -137,13 +139,21 @@ func (gr *GitRepository) configureTokenAuth() error {
 
 // configureSSHAuth configures Git to use SSH key authentication
 func (gr *GitRepository) configureSSHAuth() error {
-	// Verify SSH key exists
-	if _, err := os.Stat(gr.Auth.SSHKey); os.IsNotExist(err) {
-		return fmt.Errorf("SSH key not found: %s", gr.Auth.SSHKey)
+	// Validate SSH key path for security
+	if err := security.ValidateFilePath(gr.Auth.SSHKey); err != nil {
+		return fmt.Errorf("invalid SSH key path: %w", err)
 	}
 
-	// Set GIT_SSH_COMMAND environment variable
+	// Verify SSH key exists
+	if err := security.ValidateFileExists(gr.Auth.SSHKey); err != nil {
+		return fmt.Errorf("SSH key validation failed: %w", err)
+	}
+
+	// Set GIT_SSH_COMMAND environment variable with validated path
 	sshCmd := fmt.Sprintf("ssh -i %s -o StrictHostKeyChecking=no", gr.Auth.SSHKey)
+	if err := security.ValidateEnvironmentValue(sshCmd); err != nil {
+		return fmt.Errorf("invalid SSH command: %w", err)
+	}
 	os.Setenv("GIT_SSH_COMMAND", sshCmd)
 
 	return nil
@@ -151,6 +161,11 @@ func (gr *GitRepository) configureSSHAuth() error {
 
 // validateRepository validates that the directory is a Git repository
 func (gr *GitRepository) validateRepository() error {
+	// Validate local path for security
+	if err := security.ValidateDirectoryExists(gr.LocalPath); err != nil {
+		return fmt.Errorf("invalid repository path: %w", err)
+	}
+
 	gitDir := filepath.Join(gr.LocalPath, ".git")
 	if _, err := os.Stat(gitDir); os.IsNotExist(err) {
 		return fmt.Errorf("not a git repository: %s", gr.LocalPath)
@@ -459,6 +474,11 @@ func (gr *GitRepository) fetchRemote() error {
 
 // Pull pulls latest changes from remote
 func (gr *GitRepository) Pull(ctx context.Context) error {
+	// Validate branch name for security
+	if err := security.ValidateGitRef(gr.Config.Branch); err != nil {
+		return fmt.Errorf("invalid branch name: %w", err)
+	}
+
 	cmd := exec.CommandContext(ctx, "git", "pull", "origin", gr.Config.Branch)
 	cmd.Dir = gr.LocalPath
 
@@ -472,6 +492,11 @@ func (gr *GitRepository) Pull(ctx context.Context) error {
 
 // Push pushes local changes to remote
 func (gr *GitRepository) Push(ctx context.Context) error {
+	// Validate branch name for security
+	if err := security.ValidateGitRef(gr.Config.Branch); err != nil {
+		return fmt.Errorf("invalid branch name: %w", err)
+	}
+
 	cmd := exec.CommandContext(ctx, "git", "push", "origin", gr.Config.Branch)
 	cmd.Dir = gr.LocalPath
 
@@ -485,6 +510,11 @@ func (gr *GitRepository) Push(ctx context.Context) error {
 
 // CreateBranch creates a new branch
 func (gr *GitRepository) CreateBranch(branchName string) error {
+	// Validate branch name for security
+	if err := security.ValidateGitRef(branchName); err != nil {
+		return fmt.Errorf("invalid branch name: %w", err)
+	}
+
 	cmd := exec.Command("git", "checkout", "-b", branchName)
 	cmd.Dir = gr.LocalPath
 
@@ -497,6 +527,11 @@ func (gr *GitRepository) CreateBranch(branchName string) error {
 
 // SwitchBranch switches to an existing branch
 func (gr *GitRepository) SwitchBranch(branchName string) error {
+	// Validate branch name for security
+	if err := security.ValidateGitRef(branchName); err != nil {
+		return fmt.Errorf("invalid branch name: %w", err)
+	}
+
 	cmd := exec.Command("git", "checkout", branchName)
 	cmd.Dir = gr.LocalPath
 
@@ -509,6 +544,14 @@ func (gr *GitRepository) SwitchBranch(branchName string) error {
 
 // GetDiff returns the diff between two commits
 func (gr *GitRepository) GetDiff(fromCommit, toCommit string) (string, error) {
+	// Validate commit references for security
+	if err := security.ValidateGitRef(fromCommit); err != nil {
+		return "", fmt.Errorf("invalid from commit: %w", err)
+	}
+	if err := security.ValidateGitRef(toCommit); err != nil {
+		return "", fmt.Errorf("invalid to commit: %w", err)
+	}
+
 	cmd := exec.Command("git", "diff", fromCommit, toCommit)
 	cmd.Dir = gr.LocalPath
 
@@ -522,6 +565,14 @@ func (gr *GitRepository) GetDiff(fromCommit, toCommit string) (string, error) {
 
 // GetChangedFiles returns files changed between two commits
 func (gr *GitRepository) GetChangedFiles(fromCommit, toCommit string) ([]string, error) {
+	// Validate commit references for security
+	if err := security.ValidateGitRef(fromCommit); err != nil {
+		return nil, fmt.Errorf("invalid from commit: %w", err)
+	}
+	if err := security.ValidateGitRef(toCommit); err != nil {
+		return nil, fmt.Errorf("invalid to commit: %w", err)
+	}
+
 	cmd := exec.Command("git", "diff", "--name-only", fromCommit, toCommit)
 	cmd.Dir = gr.LocalPath
 
@@ -539,6 +590,11 @@ func (gr *GitRepository) GetChangedFiles(fromCommit, toCommit string) ([]string,
 
 // Reset resets the repository to a specific commit
 func (gr *GitRepository) Reset(commit string, hard bool) error {
+	// Validate commit reference for security
+	if err := security.ValidateGitRef(commit); err != nil {
+		return fmt.Errorf("invalid commit: %w", err)
+	}
+
 	args := []string{"reset"}
 	if hard {
 		args = append(args, "--hard")

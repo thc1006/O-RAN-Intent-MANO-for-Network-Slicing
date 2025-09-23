@@ -19,6 +19,8 @@ import (
 	"sigs.k8s.io/kustomize/api/krusty"
 	"sigs.k8s.io/kustomize/kyaml/filesys"
 	"sigs.k8s.io/yaml"
+
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security"
 )
 
 // NephioValidator provides validation for Nephio/Porch packages
@@ -27,6 +29,7 @@ type NephioValidator struct {
 	httpClient  *http.Client
 	kptPath     string
 	porchClient *PorchClient
+	validator   *security.FilePathValidator
 }
 
 // PorchClient represents a client for Porch API
@@ -125,8 +128,12 @@ type RenderedResource struct {
 
 // NewNephioValidator creates a new Nephio validator
 func NewNephioValidator(config NephioConfig) (*NephioValidator, error) {
+	// Create secure file path validator for Kubernetes/Nephio packages
+	fileValidator := security.CreateValidatorForKubernetes(".")
+
 	validator := &NephioValidator{
-		Config: config,
+		Config:    config,
+		validator: fileValidator,
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
@@ -265,7 +272,12 @@ func (nv *NephioValidator) validatePackageStructure(packagePath string) error {
 func (nv *NephioValidator) validateKptfile(packagePath string) error {
 	kptfilePath := filepath.Join(packagePath, "Kptfile")
 
-	data, err := os.ReadFile(kptfilePath)
+	// Validate file path for security
+	if err := nv.validator.ValidateFilePath(kptfilePath); err != nil {
+		return fmt.Errorf("Kptfile path validation failed: %w", err)
+	}
+
+	data, err := nv.validator.SafeReadFile(kptfilePath)
 	if err != nil {
 		return fmt.Errorf("failed to read Kptfile: %w", err)
 	}
