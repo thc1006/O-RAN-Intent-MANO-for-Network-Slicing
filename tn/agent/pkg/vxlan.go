@@ -159,6 +159,7 @@ func (vm *VXLANManager) addFDBEntries() error {
 		fdbCtx, fdbCancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer fdbCancel()
 
+		// #nosec G204 - Using security.SecureExecute with validated arguments to prevent command injection
 		if _, err := security.SecureExecute(fdbCtx, "bridge", fdbArgs...); err != nil {
 			security.SafeLogf(vm.logger, "Warning: failed to add FDB entry for %s: %s", security.SanitizeIPForLog(remoteIP), security.SanitizeErrorForLog(err))
 		} else {
@@ -212,6 +213,7 @@ func (vm *VXLANManager) GetTunnelStatus() (*VXLANStatus, error) {
 	statsCtx, statsCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer statsCancel()
 
+	// #nosec G204 - Using security.SecureExecuteWithValidation with argument validation to prevent command injection
 	if statsOutput, err := security.SecureExecuteWithValidation(statsCtx, "ip", security.ValidateIPArgs, statsArgs...); err == nil {
 		stats := vm.parsePacketStats(string(statsOutput))
 		status.PacketStats = stats
@@ -282,6 +284,7 @@ func (vm *VXLANManager) TestConnectivity() map[string]bool {
 		pingCtx, pingCancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer pingCancel()
 
+		// #nosec G204 - Using security.SecureExecute with validated arguments to prevent command injection
 		_, err := security.SecureExecute(pingCtx, "ping", pingArgs...)
 
 		results[remoteIP] = (err == nil)
@@ -317,6 +320,7 @@ func (vm *VXLANManager) UpdatePeers(newPeers []string) error {
 		delFdbCtx, delFdbCancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer delFdbCancel()
 
+		// #nosec G204 - Using security.SecureExecute with validated arguments to prevent command injection
 		_, _ = security.SecureExecute(delFdbCtx, "bridge", delFdbArgs...) // Ignore errors for non-existent entries
 	}
 
@@ -357,6 +361,7 @@ func (vm *VXLANManager) GetVXLANInfo() (map[string]interface{}, error) {
 	fdbShowCtx, fdbShowCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer fdbShowCancel()
 
+	// #nosec G204 - Using security.SecureExecute with validated arguments to prevent command injection
 	if fdbOutput, err := security.SecureExecute(fdbShowCtx, "bridge", fdbShowArgs...); err == nil {
 		info["fdb_entries"] = string(fdbOutput)
 	}

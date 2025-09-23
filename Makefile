@@ -239,9 +239,9 @@ clean:
 	@find . -type f -name "*.log" -delete 2>/dev/null || true
 	@echo -e "$(GREEN)Clean complete$(NC)"
 
-## ci-local: Run local CI validation using act
+## ci-local: Run local CI validation using act (CI Guardian v2025-09)
 ci-local: verify-env
-	@echo -e "$(YELLOW)Running local CI validation with act...$(NC)"
+	@echo -e "$(YELLOW)[CI-GUARD] Running local CI validation with act...$(NC)"
 	@if ! command -v act &> /dev/null; then \
 		echo -e "$(RED)Error: 'act' is not installed$(NC)"; \
 		echo -e "$(YELLOW)Install with: gh extension install https://github.com/nektos/act$(NC)"; \
@@ -249,20 +249,56 @@ ci-local: verify-env
 		exit 1; \
 	fi
 	@CI_JOB="$${CI_JOB:-all}" && \
-	echo -e "$(BLUE)Running CI job: $$CI_JOB$(NC)" && \
-	act -j "$$CI_JOB" --container-architecture linux/amd64
-	@echo -e "$(GREEN)Local CI validation completed$(NC)"
+	echo -e "$(BLUE)[CI-GUARD] Running CI job: $$CI_JOB$(NC)" && \
+	act -j "$$CI_JOB" --container-architecture linux/amd64 --env CI=true
+	@echo -e "$(GREEN)[CI-GUARD] Local CI validation completed$(NC)"
 
-## ci-watch: Watch GitHub Actions run status
+## ci-watch: Watch GitHub Actions run status (CI Guardian v2025-09)
 ci-watch: verify-env
-	@echo -e "$(YELLOW)Watching GitHub Actions run...$(NC)"
+	@echo -e "$(YELLOW)[CI-GUARD] Watching GitHub Actions run...$(NC)"
 	@if ! command -v gh &> /dev/null; then \
 		echo -e "$(RED)Error: 'gh' CLI is not installed$(NC)"; \
 		echo -e "$(YELLOW)Install from: https://cli.github.com/$(NC)"; \
 		exit 1; \
 	fi
 	@gh run watch --exit-status --interval 10 --compact
-	@echo -e "$(GREEN)GitHub Actions watch completed$(NC)"
+	@echo -e "$(GREEN)[CI-GUARD] GitHub Actions watch completed$(NC)"
+
+## install-hooks: Install CI Guardian git hooks
+install-hooks: verify-env
+	@echo -e "$(YELLOW)[CI-GUARD] Installing git hooks...$(NC)"
+	@mkdir -p .githooks
+	@chmod +x .githooks/pre-push
+	@git config --local core.hooksPath .githooks
+	@echo -e "$(GREEN)[CI-GUARD] Git hooks installed$(NC)"
+
+## security-scan: Run comprehensive security scan (CI Guardian v2025-09)
+security-scan: verify-env
+	@echo -e "$(YELLOW)[CI-GUARD] Running security scan...$(NC)"
+	@if command -v gitleaks &> /dev/null; then \
+		echo -e "$(BLUE)[CI-GUARD] Scanning for secrets...$(NC)"; \
+		gitleaks detect --verbose --no-git; \
+	else \
+		echo -e "$(YELLOW)[CI-GUARD] gitleaks not found - skipping secret scan$(NC)"; \
+	fi
+	@if command -v osv-scanner &> /dev/null; then \
+		echo -e "$(BLUE)[CI-GUARD] Scanning dependencies...$(NC)"; \
+		osv-scanner --recursive .; \
+	else \
+		echo -e "$(YELLOW)[CI-GUARD] osv-scanner not found - skipping dependency scan$(NC)"; \
+	fi
+	@echo -e "$(GREEN)[CI-GUARD] Security scan completed$(NC)"
+
+## ci-rerun: Rerun failed GitHub Actions workflows
+ci-rerun: verify-env
+	@echo -e "$(YELLOW)[CI-GUARD] Rerunning failed workflows...$(NC)"
+	@gh run rerun --failed
+	@echo -e "$(GREEN)[CI-GUARD] Workflow rerun triggered$(NC)"
+
+## ci-status: Show recent GitHub Actions runs
+ci-status: verify-env
+	@echo -e "$(BLUE)[CI-GUARD] Recent workflow runs:$(NC)"
+	@gh run list --limit 5
 
 ## info: Display environment information
 info:

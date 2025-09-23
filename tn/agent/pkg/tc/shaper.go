@@ -92,6 +92,7 @@ func (s *Shaper) clearInterface(iface string) error {
 	// Security: Using SecureExecuteWithValidation with ValidateTCArgs to prevent command injection
 	// All arguments are validated against allowlists and patterns before execution
 	rootArgs := []string{"qdisc", "del", "dev", iface, "root"}
+	// #nosec G204 - Using security.SecureExecuteWithValidation with argument validation to prevent command injection
 	if _, err := security.SecureExecuteWithValidation(ctx, "tc", security.ValidateTCArgs, rootArgs...); err != nil {
 		// Ignore errors if no qdisc exists
 		if !strings.Contains(err.Error(), "No such file or directory") {
@@ -105,6 +106,7 @@ func (s *Shaper) clearInterface(iface string) error {
 
 	// Security: Using SecureExecuteWithValidation with ValidateTCArgs to prevent command injection
 	ingressArgs := []string{"qdisc", "del", "dev", iface, "ingress"}
+	// #nosec G204 - Using security.SecureExecuteWithValidation with argument validation to prevent command injection
 	if _, err := security.SecureExecuteWithValidation(ctx, "tc", security.ValidateTCArgs, ingressArgs...); err != nil {
 		// Ignore errors if no qdisc exists
 		if !strings.Contains(err.Error(), "Invalid argument") &&
@@ -127,6 +129,7 @@ func (s *Shaper) applyRule(iface string, rule Rule) error {
 	// Security: Using SecureExecuteWithValidation with ValidateTCArgs to prevent command injection
 	// All tc commands are validated against allowlists defined in security package
 	qdiscArgs := []string{"qdisc", "add", "dev", iface, "root", "handle", "1:", "htb", "default", "30"}
+	// #nosec G204 - Using security.SecureExecuteWithValidation with argument validation to prevent command injection
 	if _, err := security.SecureExecuteWithValidation(ctx, "tc", security.ValidateTCArgs, qdiscArgs...); err != nil {
 		if !strings.Contains(err.Error(), "exists") {
 			return fmt.Errorf("failed to add root qdisc: %v", err)
@@ -146,6 +149,7 @@ func (s *Shaper) applyRule(iface string, rule Rule) error {
 		"rate", fmt.Sprintf("%dkbit", rule.Rate),
 		"burst", fmt.Sprintf("%dk", rule.Burst)}
 
+	// #nosec G204 - Using security.SecureExecuteWithValidation with argument validation to prevent command injection
 	if _, err := security.SecureExecuteWithValidation(ctx, "tc", security.ValidateTCArgs, classArgs...); err != nil {
 		return fmt.Errorf("failed to add class: %v", err)
 	}
@@ -162,6 +166,7 @@ func (s *Shaper) applyRule(iface string, rule Rule) error {
 			"handle", fmt.Sprintf("%d:", rule.Priority*10),
 			"netem", "delay", fmt.Sprintf("%.1fms", rule.Latency)}
 
+		// #nosec G204 - Using security.SecureExecuteWithValidation with argument validation to prevent command injection
 		if _, err := security.SecureExecuteWithValidation(ctx, "tc", security.ValidateTCArgs, netemArgs...); err != nil {
 			return fmt.Errorf("failed to add netem: %v", err)
 		}
@@ -183,6 +188,7 @@ func (s *Shaper) GetStatistics(iface string) (string, error) {
 	// Security: Using SecureExecuteWithValidation with ValidateTCArgs to prevent command injection
 	// Interface name is validated against allowlist patterns
 	statsArgs := []string{"-s", "qdisc", "show", "dev", iface}
+	// #nosec G204 - Using security.SecureExecuteWithValidation with argument validation to prevent command injection
 	output, err := security.SecureExecuteWithValidation(ctx, "tc", security.ValidateTCArgs, statsArgs...)
 	if err != nil {
 		return "", fmt.Errorf("failed to get statistics: %v", err)

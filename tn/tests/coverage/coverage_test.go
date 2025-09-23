@@ -231,7 +231,7 @@ func (analyzer *CoverageAnalyzer) GenerateCoverageReport(coverageFile string) (*
 
 func (analyzer *CoverageAnalyzer) GenerateHTMLCoverageReport(coverageFile string) error {
 	// Use go tool cover to generate HTML report
-	cmd := fmt.Sprintf("go tool cover -html=%s -o coverage.html", coverageFile)
+	// cmd := fmt.Sprintf("go tool cover -html=%s -o coverage.html", coverageFile)
 
 	// For testing purposes, we'll simulate this
 	htmlContent := fmt.Sprintf(`<!DOCTYPE html>
@@ -354,7 +354,6 @@ func TestCoverage_SecurityTestCoverage(t *testing.T) {
 
 func TestCoverage_TestQuality(t *testing.T) {
 	// Test quality metrics
-	analyzer := NewCoverageAnalyzer()
 
 	t.Run("test_file_naming_convention", func(t *testing.T) {
 		testFiles, err := filepath.Glob("../../**/*_test.go")
