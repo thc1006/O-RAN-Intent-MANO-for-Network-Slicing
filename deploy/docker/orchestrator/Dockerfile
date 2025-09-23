@@ -16,6 +16,9 @@ WORKDIR /workspace
 COPY orchestrator/go.mod go.mod
 COPY orchestrator/go.sum go.sum
 
+# Copy pkg/security dependency (required by orchestrator)
+COPY pkg/security/ ../pkg/security/
+
 # Download dependencies
 RUN go mod download
 
