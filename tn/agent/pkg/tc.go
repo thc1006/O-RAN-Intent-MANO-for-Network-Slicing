@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/o-ran-intent-mano/pkg/security"
 )
 
 // TCManager manages Traffic Control (TC) operations for bandwidth shaping
@@ -27,6 +29,11 @@ func NewTCManager(config *BandwidthPolicy, interfaceName string, logger *log.Log
 
 // CleanRules removes all existing TC rules from the interface
 func (tc *TCManager) CleanRules() error {
+	// Validate interface name for security
+	if err := security.ValidateNetworkInterface(tc.iface); err != nil {
+		return fmt.Errorf("invalid interface name: %w", err)
+	}
+
 	tc.logger.Printf("Cleaning existing TC rules from interface %s", tc.iface)
 	cmd := exec.Command("tc", "qdisc", "del", "dev", tc.iface, "root")
 	if _, err := cmd.CombinedOutput(); err != nil {
@@ -38,6 +45,16 @@ func (tc *TCManager) CleanRules() error {
 
 // ApplyShaping applies traffic shaping rules to the interface
 func (tc *TCManager) ApplyShaping() error {
+	// Validate interface name for security
+	if err := security.ValidateNetworkInterface(tc.iface); err != nil {
+		return fmt.Errorf("invalid interface name: %w", err)
+	}
+
+	// Validate bandwidth configuration
+	if tc.config.DownlinkMbps <= 0 || tc.config.DownlinkMbps > 100000 {
+		return fmt.Errorf("invalid downlink bandwidth: %.2f Mbps", tc.config.DownlinkMbps)
+	}
+
 	tc.logger.Printf("Applying traffic shaping to interface %s", tc.iface)
 	if err := tc.CleanRules(); err != nil {
 		tc.logger.Printf("Warning: failed to clean existing rules: %v", err)
@@ -114,6 +131,11 @@ func (tc *TCManager) GetBandwidthUsage() (map[string]float64, error) {
 
 // GetTCStatus returns the current TC configuration and statistics
 func (tc *TCManager) GetTCStatus() (*TCStatus, error) {
+	// Validate interface name for security
+	if err := security.ValidateNetworkInterface(tc.iface); err != nil {
+		return nil, fmt.Errorf("invalid interface name: %w", err)
+	}
+
 	status := &TCStatus{
 		RulesActive:   false,
 		QueueStats:    make(map[string]int64),

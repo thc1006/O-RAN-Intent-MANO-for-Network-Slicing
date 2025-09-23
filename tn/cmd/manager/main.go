@@ -214,7 +214,7 @@ func setupLogging(config LoggingConfig) (*log.Logger, error) {
 	if config.File != "" {
 		// Create log directory if it doesn't exist
 		logDir := filepath.Dir(config.File)
-		if err := os.MkdirAll(logDir, 0755); err != nil {
+		if err := os.MkdirAll(logDir, 0750); err != nil {
 			return nil, fmt.Errorf("failed to create log directory: %w", err)
 		}
 
@@ -252,7 +252,7 @@ func startContinuousMetricsExport(ctx context.Context, manager *pkg.TNManager, c
 // exportMetrics exports metrics to file
 func exportMetrics(manager *pkg.TNManager, config MonitoringConfig, logger *log.Logger) error {
 	// Create export directory if it doesn't exist
-	if err := os.MkdirAll(config.ExportDirectory, 0755); err != nil {
+	if err := os.MkdirAll(config.ExportDirectory, 0750); err != nil {
 		return fmt.Errorf("failed to create export directory: %w", err)
 	}
 
@@ -272,7 +272,7 @@ func exportMetrics(manager *pkg.TNManager, config MonitoringConfig, logger *log.
 // exportFinalMetrics exports final metrics on shutdown
 func exportFinalMetrics(manager *pkg.TNManager, config MonitoringConfig, logger *log.Logger) error {
 	// Create export directory if it doesn't exist
-	if err := os.MkdirAll(config.ExportDirectory, 0755); err != nil {
+	if err := os.MkdirAll(config.ExportDirectory, 0750); err != nil {
 		return fmt.Errorf("failed to create export directory: %w", err)
 	}
 

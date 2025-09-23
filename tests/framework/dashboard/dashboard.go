@@ -405,8 +405,16 @@ func (d *Dashboard) ServeHTTP() error {
 	http.HandleFunc("/api/refresh", d.handleRefresh)
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static/"))))
 
+	server := &http.Server{
+		Addr:              fmt.Sprintf(":%d", d.config.Port),
+		ReadHeaderTimeout: 10 * time.Second,  // Prevent Slowloris attacks
+		ReadTimeout:       30 * time.Second,  // Total time to read request
+		WriteTimeout:      30 * time.Second,  // Time to write response
+		IdleTimeout:       120 * time.Second, // Keep-alive timeout
+	}
+
 	fmt.Printf("Dashboard server starting on port %d\n", d.config.Port)
-	return http.ListenAndServe(fmt.Sprintf(":%d", d.config.Port), nil)
+	return server.ListenAndServe()
 }
 
 // handleDashboard handles the main dashboard page

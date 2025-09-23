@@ -2,10 +2,11 @@ package errors
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"math"
-	"math/rand"
+	"math/big"
 	"runtime"
 	"strings"
 	"time"
@@ -674,9 +675,16 @@ func calculateDelay(config *RetryConfig, attempt int) time.Duration {
 	}
 
 	if config.Jitter {
-		// Add up to 25% jitter
-		jitter := time.Duration(rand.Float64() * float64(delay) * 0.25)
-		delay += jitter
+		// Add up to 25% jitter using crypto/rand
+		maxJitter := int64(float64(delay) * 0.25)
+		if maxJitter > 0 {
+			n, err := rand.Int(rand.Reader, big.NewInt(maxJitter))
+			if err == nil {
+				jitter := time.Duration(n.Int64())
+				delay += jitter
+			}
+			// If crypto/rand fails, continue without jitter for security
+		}
 	}
 
 	return delay

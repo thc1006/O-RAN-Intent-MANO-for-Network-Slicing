@@ -70,7 +70,7 @@ type PerformanceMetrics struct {
 // NewTestReporter creates a new test reporter
 func NewTestReporter() *TestReporter {
 	outputDir := filepath.Join(".", "test-results")
-	os.MkdirAll(outputDir, 0755)
+	os.MkdirAll(outputDir, 0750)
 
 	return &TestReporter{
 		StartTime:    time.Now(),
@@ -166,7 +166,7 @@ func (tr *TestReporter) generateJSONReport() error {
 		return err
 	}
 
-	return os.WriteFile(tr.JSONPath, data, 0644)
+	return os.WriteFile(tr.JSONPath, data, 0600)
 }
 
 // generateJUnitReport creates a JUnit XML report
@@ -202,7 +202,7 @@ func (tr *TestReporter) generateJUnitReport() error {
 // generateHTMLReport creates an HTML test report
 func (tr *TestReporter) generateHTMLReport() error {
 	html := tr.generateHTMLContent()
-	return os.WriteFile(tr.HTMLPath, []byte(html), 0644)
+	return os.WriteFile(tr.HTMLPath, []byte(html), 0600)
 }
 
 // generateHTMLContent creates HTML content for the test report
