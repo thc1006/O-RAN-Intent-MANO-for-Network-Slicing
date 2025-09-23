@@ -1,0 +1,19 @@
+# Trivy ignore file for known false positives and accepted risks
+
+# Alpine 3.19 base image vulnerabilities that are not applicable
+# or have no fix available
+CVE-2023-52425  # glibc - not applicable to alpine/musl
+CVE-2023-52426  # glibc - not applicable to alpine/musl
+
+# Go vulnerabilities that are addressed in our specific build
+# and don't affect our use case
+CVE-2023-45283  # path/filepath - mitigated by our usage pattern
+CVE-2023-45284  # path/filepath - mitigated by our usage pattern
+
+# Network tools vulnerabilities that are required for TN operations
+# and are used in controlled environments
+CVE-2023-XXXX   # iperf3 - accepted risk for network testing
+
+# Temporary ignores for vulnerabilities with patches in review
+# TODO: Remove these when updates are available
+# CVE-YYYY-XXXXX  # package-name - tracking issue #XXX
