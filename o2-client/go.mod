@@ -1,6 +1,6 @@
 module github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/o2-client
 
-go 1.21
+go 1.23
 
 require (
 	github.com/gorilla/mux v1.8.0
