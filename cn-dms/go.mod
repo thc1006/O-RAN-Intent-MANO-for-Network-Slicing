@@ -2,8 +2,6 @@ module github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/cn-dms
 
 go 1.23
 
-toolchain go1.24.5
-
 require (
 	github.com/gin-gonic/gin v1.11.0
 	github.com/prometheus/client_golang v1.23.2
