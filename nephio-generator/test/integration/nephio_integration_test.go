@@ -807,24 +807,26 @@ func (r *MockFunctionRegistry) GetFunction(name string) (*generator.KptFunction,
 	}, nil
 }
 
-func (r *MockFunctionRegistry) ListFunctions() ([]*renderer.KptFunction, error) {
-	return []*renderer.KptFunction{
+func (r *MockFunctionRegistry) ListFunctions() ([]*generator.KptFunction, error) {
+	return []*generator.KptFunction{
 		{
 			Name:        "set-labels",
 			Image:       "gcr.io/kpt-fn/set-labels:v0.2.0",
-			Type:        renderer.FunctionTypeMutator,
+			Version:     "v0.2.0",
 			Description: "Set labels on resources",
+			ExecTimeout: 30 * time.Second,
 		},
 		{
 			Name:        "kubeval",
 			Image:       "gcr.io/kpt-fn/kubeval:v0.3",
-			Type:        renderer.FunctionTypeValidator,
+			Version:     "v0.3",
 			Description: "Validate Kubernetes resources",
+			ExecTimeout: 30 * time.Second,
 		},
 	}, nil
 }
 
-func (r *MockFunctionRegistry) ValidateFunction(fn *renderer.KptFunction) error {
+func (r *MockFunctionRegistry) ValidateFunction(fn *generator.KptFunction) error {
 	return nil
 }
 

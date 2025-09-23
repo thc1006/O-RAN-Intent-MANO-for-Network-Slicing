@@ -289,7 +289,7 @@ jobs:
         fetch-depth: 0
 
     - name: Set up Go
-      if: matrix.analysis-type == 'go-analysis'
+      if: matrix.analysis-type == 'go-analysis' || matrix.analysis-type == 'security-scan' || matrix.analysis-type == 'license-check'
       uses: actions/setup-go@v4
       with:
         go-version: ${{ env.GO_VERSION }}
@@ -338,6 +338,8 @@ jobs:
             echo "🔧 Installing license checking tools..."
             # Install go-licenses for Go dependency license checking
             go install github.com/google/go-licenses@latest
+            # Add Go bin to PATH for go-licenses
+            echo "$HOME/go/bin" >> $GITHUB_PATH
             # Install Python license checker
             pip install licensecheck pip-licenses
             ;;
