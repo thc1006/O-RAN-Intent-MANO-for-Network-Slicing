@@ -418,11 +418,13 @@ func (suite *ThesisValidationSuite) buildTNConfig(sliceConfig struct {
 			LossPercent:  sliceConfig.LossPercent,
 			Priority:     sliceConfig.Priority,
 			QueueClass:   "htb",
-			Filters: []agentpkg.Filter{
+			Filters: []managerpkg.Filter{
 				{
 					Protocol: "tcp",
-					Priority: sliceConfig.Priority,
-					ClassID:  fmt.Sprintf("1:%d0", sliceConfig.Priority),
+					SrcIP:    "",
+					DstIP:    "",
+					SrcPort:  0,
+					DstPort:  0,
 				},
 			},
 		},

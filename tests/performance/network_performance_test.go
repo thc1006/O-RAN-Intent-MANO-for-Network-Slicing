@@ -36,6 +36,7 @@ type PerformanceMeasurement struct {
 	SliceType          string    `json:"slice_type"`
 	SourceNode         string    `json:"source_node"`
 	TargetNode         string    `json:"target_node"`
+	AvgLatencyMs       float64   `json:"avg_latency_ms"`
 	MeasuredLatencyMs  float64   `json:"measured_latency_ms"`
 	MeasuredBandwidthMbps float64 `json:"measured_bandwidth_mbps"`
 	JitterMs           float64   `json:"jitter_ms"`
