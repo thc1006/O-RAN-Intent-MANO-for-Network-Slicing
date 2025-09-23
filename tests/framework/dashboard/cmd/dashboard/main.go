@@ -11,6 +11,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -183,9 +184,16 @@ func setupRoutes(dashboardInstance *dashboard.Dashboard, aggregator *dashboard.M
 	// WebSocket route for real-time updates
 	http.HandleFunc("/ws", handleWebSocket(aggregator))
 
-	// Static file serving
-	fs := http.FileServer(http.Dir("tests/framework/dashboard/static/"))
-	http.Handle("/static/", http.StripPrefix("/static/", fs))
+	// Secure static file serving with path validation
+	staticDir := "tests/framework/dashboard/static/"
+
+	// Validate static directory exists and is safe
+	if err := security.ValidateDirectoryExists(staticDir); err != nil {
+		log.Printf("Warning: Static directory validation failed: %v", err)
+	} else {
+		fs := http.FileServer(http.Dir(staticDir))
+		http.Handle("/static/", http.StripPrefix("/static/", secureFileHandler(fs, staticDir)))
+	}
 
 	// Export routes
 	http.HandleFunc("/export/json", handleExportJSON(aggregator))
@@ -495,7 +503,7 @@ func generateStaticDashboard() {
 	}
 
 	// Ensure output directory exists
-	if err := os.MkdirAll(filepath.Dir(outputFile), 0750); err != nil {
+	if err := os.MkdirAll(filepath.Dir(outputFile), security.SecureDirMode); err != nil {
 		log.Fatalf("Failed to create output directory: %v", err)
 	}
 
@@ -504,4 +512,53 @@ func generateStaticDashboard() {
 	}
 
 	log.Printf("Static dashboard generated: %s", outputFile)
+}
+
+// secureFileHandler wraps a file handler with path validation to prevent directory traversal
+func secureFileHandler(handler http.Handler, baseDir string) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Get the requested path
+		requestPath := r.URL.Path
+
+		// Validate the requested path doesn't contain dangerous patterns
+		if strings.Contains(requestPath, "..") || strings.Contains(requestPath, "\\") {
+			http.Error(w, "Invalid file path", http.StatusBadRequest)
+			return
+		}
+
+		// Clean the path
+		cleanPath := filepath.Clean(requestPath)
+
+		// Ensure the clean path doesn't escape the base directory
+		if strings.Contains(cleanPath, "..") {
+			http.Error(w, "Path traversal attempt detected", http.StatusForbidden)
+			return
+		}
+
+		// Validate file extensions - only allow safe static file types
+		ext := strings.ToLower(filepath.Ext(cleanPath))
+		allowedExtensions := []string{".html", ".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".svg", ".ico", ".woff", ".woff2", ".ttf", ".eot"}
+
+		if ext != "" {
+			allowed := false
+			for _, allowedExt := range allowedExtensions {
+				if ext == allowedExt {
+					allowed = true
+					break
+				}
+			}
+			if !allowed {
+				http.Error(w, "File type not allowed", http.StatusForbidden)
+				return
+			}
+		}
+
+		// Set security headers
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("X-XSS-Protection", "1; mode=block")
+
+		// Call the original handler
+		handler.ServeHTTP(w, r)
+	})
 }

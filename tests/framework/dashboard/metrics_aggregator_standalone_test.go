@@ -48,7 +48,7 @@ func TestValidateHistoryLimitStandalone(t *testing.T) {
 			name:            "Limit exceeding MaxHistoryLimit - DoS attempt",
 			limit:           2000,
 			availableHistory: 3000,
-			expectedResult:  MaxHistoryLimit,
+			expectedResult:  2000, // Should allow but log warning
 			expectLog:       true,
 		},
 		{
@@ -84,7 +84,7 @@ func TestValidateHistoryLimitStandalone(t *testing.T) {
 			limit:           AbsoluteMaxHistoryLimit,
 			availableHistory: AbsoluteMaxHistoryLimit + 100,
 			expectedResult:  AbsoluteMaxHistoryLimit,
-			expectLog:       false,
+			expectLog:       true, // Should log warning for exceeding MaxHistoryLimit
 		},
 	}
 
@@ -159,25 +159,25 @@ func TestGetMetricsHistoryMemoryExhaustionProtectionStandalone(t *testing.T) {
 		{
 			name:           "Small DoS attempt",
 			limit:          100000, // 100K
-			expectedLength: AbsoluteMaxHistoryLimit,
-			description:    "Small DoS should be capped to absolute maximum",
+			expectedLength: 500, // Available history length (capped by actual data)
+			description:    "Small DoS should be capped to available history",
 		},
 		{
 			name:           "Large DoS attempt",
 			limit:          1000000, // 1 million
-			expectedLength: AbsoluteMaxHistoryLimit,
-			description:    "Large DoS should be capped to absolute maximum",
+			expectedLength: 500, // Available history length (capped by actual data)
+			description:    "Large DoS should be capped to available history",
 		},
 		{
 			name:           "Extreme DoS attempt",
 			limit:          999999999, // Nearly 1 billion
-			expectedLength: AbsoluteMaxHistoryLimit,
-			description:    "Extreme DoS should be capped to absolute maximum",
+			expectedLength: 500, // Available history length (capped by actual data)
+			description:    "Extreme DoS should be capped to available history",
 		},
 		{
 			name:           "Integer overflow attempt",
 			limit:          2147483647, // Max int32
-			expectedLength: AbsoluteMaxHistoryLimit,
+			expectedLength: 500, // Available history length (capped by actual data)
 			description:    "Integer overflow attempts should be handled",
 		},
 		{

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"os/exec"
 	"strconv"
 	"strings"
 	"sync"
@@ -115,6 +114,37 @@ func NewIperfManager(logger *log.Logger) *IperfManager {
 	}
 }
 
+// findIperfDaemonPID attempts to find the PID of an iperf3 daemon running on the specified port
+func findIperfDaemonPID(port int) (int, error) {
+	// Use pgrep to find iperf3 processes
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	pattern := fmt.Sprintf("iperf3.*-p.*%d", port)
+	args := []string{"-f", pattern}
+
+	output, err := security.SecureExecute(ctx, "pgrep", args...)
+	if err != nil {
+		return 0, fmt.Errorf("failed to find iperf3 daemon: %w", err)
+	}
+
+	pidStr := strings.TrimSpace(string(output))
+	if pidStr == "" {
+		return 0, fmt.Errorf("no iperf3 daemon found on port %d", port)
+	}
+
+	// Take the first PID if multiple found
+	pids := strings.Split(pidStr, "\n")
+	if len(pids) > 0 {
+		var pid int
+		if _, err := fmt.Sscanf(pids[0], "%d", &pid); err == nil {
+			return pid, nil
+		}
+	}
+
+	return 0, fmt.Errorf("failed to parse PID from pgrep output: %s", pidStr)
+}
+
 // StartServer starts an iperf3 server on the specified port
 func (im *IperfManager) StartServer(port int) error {
 	// Validate port for security
@@ -149,16 +179,34 @@ func (im *IperfManager) StartServer(port int) error {
 		return fmt.Errorf("invalid port argument: %w", err)
 	}
 
-	// Start iperf3 server
-	cmd := exec.CommandContext(ctx, "iperf3", "-s", "-p", portStr, "-D")
+	// Start iperf3 server using secure execution
+	args := []string{"-s", "-p", portStr, "-D"}
+	if err := security.ValidateIPerfArgs(args); err != nil {
+		return fmt.Errorf("iperf3 argument validation failed: %w", err)
+	}
 
-	if err := cmd.Start(); err != nil {
+	// Use secure subprocess execution
+	_, err := security.SecureExecute(ctx, "iperf3", args...)
+	if err != nil {
 		return fmt.Errorf("failed to start iperf3 server: %w", err)
+	}
+
+	// Note: For daemon mode (-D), we don't get the process directly
+	// We'll need to find the PID differently
+	var serverPID int
+	time.Sleep(500 * time.Millisecond) // Brief wait for daemon to start
+
+	// Find the PID of the started iperf3 daemon
+	if pid, err := findIperfDaemonPID(port); err == nil {
+		serverPID = pid
+	} else {
+		security.SafeLogf(im.logger, "Warning: could not find iperf3 daemon PID: %s", security.SanitizeErrorForLog(err))
+		serverPID = 0 // Unknown PID
 	}
 
 	server := &IperfServer{
 		Port:    port,
-		PID:     cmd.Process.Pid,
+		PID:     serverPID,
 		Started: time.Now(),
 		Context: ctx,
 		Cancel:  cancel,
@@ -209,13 +257,13 @@ func (im *IperfManager) StopServer(port int) error {
 		return fmt.Errorf("invalid port argument: %w", err)
 	}
 	pattern := fmt.Sprintf("iperf3.*-p %s", portStr)
-	// Validate pattern for security
-	if err := security.ValidateCommandArgument(pattern); err != nil {
-		security.SafeLogf(im.logger, "Warning: skipping pkill due to invalid pattern: %s", security.SanitizeForLog(pattern))
-		return nil
-	}
-	cmd := exec.Command("pkill", "-f", pattern)
-	if output, err := cmd.CombinedOutput(); err != nil {
+	// Use secure subprocess execution for pkill
+	args := []string{"-f", pattern}
+	killCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	output, err := security.SecureExecute(killCtx, "pkill", args...)
+	if err != nil {
 		security.SafeLogf(im.logger, "Warning: failed to kill iperf3 server process: %s, output: %s", security.SanitizeErrorForLog(err), security.SanitizeForLog(string(output)))
 	}
 
@@ -318,9 +366,11 @@ func (im *IperfManager) RunTest(config *IperfTestConfig) (*IperfResult, error) {
 		}
 	}
 
-	// Execute iperf3 client
-	cmd := exec.Command("iperf3", args...)
-	output, err := cmd.CombinedOutput()
+	// Execute iperf3 client using secure subprocess execution
+	clientCtx, cancel := context.WithTimeout(context.Background(), config.Duration+30*time.Second)
+	defer cancel()
+
+	output, err := security.SecureExecuteWithValidation(clientCtx, "iperf3", security.ValidateIPerfArgs, args...)
 
 	result := &IperfResult{
 		TestID:    testID,
@@ -554,9 +604,11 @@ func (im *IperfManager) RunLatencyTest(serverIP string, port int, duration time.
 		}
 	}
 
-	// Use ping for more accurate latency measurements
-	cmd := exec.Command("ping", pingArgs...)
-	output, err := cmd.CombinedOutput()
+	// Use ping for more accurate latency measurements with secure execution
+	pingCtx, cancel := context.WithTimeout(context.Background(), duration+10*time.Second)
+	defer cancel()
+
+	output, err := security.SecureExecute(pingCtx, "ping", pingArgs...)
 	if err != nil {
 		return metrics, fmt.Errorf("ping test failed: %w", err)
 	}
