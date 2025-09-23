@@ -86,15 +86,13 @@ func (vm *VXLANManager) CreateTunnel() error {
 
 	// Bring interface up
 	upArgs := []string{"link", "set", "dev", vm.config.DeviceName, "up"}
-	// Validate all up arguments
-	for _, arg := range upArgs {
-		if err := security.ValidateCommandArgument(arg); err != nil {
-			return fmt.Errorf("invalid up command argument %s: %w", arg, err)
-		}
-	}
-	cmd = exec.Command("ip", upArgs...)
-	if _, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to configure interface: %v", err)
+
+	// Use secure ip command execution to bring interface up
+	upCtx, upCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer upCancel()
+
+	if _, err := security.SecureExecuteWithValidation(upCtx, "ip", security.ValidateIPArgs, upArgs...); err != nil {
+		return fmt.Errorf("failed to bring interface up: %v", err)
 	}
 
 	security.SafeLogf(vm.logger, "VXLAN tunnel %s created successfully", security.SanitizeForLog(vm.config.DeviceName))
@@ -117,17 +115,15 @@ func (vm *VXLANManager) DeleteTunnel() error {
 	security.SafeLogf(vm.logger, "Deleting VXLAN tunnel %s", security.SanitizeForLog(vm.config.DeviceName))
 
 	delArgs := []string{"link", "delete", vm.config.DeviceName}
-	// Validate all delete arguments
-	for _, arg := range delArgs {
-		if err := security.ValidateCommandArgument(arg); err != nil {
-			return fmt.Errorf("invalid delete command argument %s: %w", arg, err)
-		}
-	}
-	cmd := exec.Command("ip", delArgs...)
-	if _, err := cmd.CombinedOutput(); err != nil {
+
+	// Use secure ip command execution for interface deletion
+	delCtx, delCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer delCancel()
+
+	if _, err := security.SecureExecuteWithValidation(delCtx, "ip", security.ValidateIPArgs, delArgs...); err != nil {
 		// Don't return error if interface doesn't exist
 		if !strings.Contains(err.Error(), "Cannot find device") {
-			return fmt.Errorf("failed to configure interface: %v", err)
+			return fmt.Errorf("failed to delete interface: %v", err)
 		}
 	}
 
@@ -146,16 +142,12 @@ func (vm *VXLANManager) addFDBEntries() error {
 
 		// Add default FDB entry (all-zeros MAC) for each remote IP
 		fdbArgs := []string{"fdb", "append", "00:00:00:00:00:00", "dev", vm.config.DeviceName, "dst", remoteIP}
-		// Validate all fdb arguments
-		for _, arg := range fdbArgs {
-			if err := security.ValidateCommandArgument(arg); err != nil {
-				security.SafeLogf(vm.logger, "Warning: skipping FDB entry due to invalid argument %s: %s", security.SanitizeForLog(arg), security.SanitizeErrorForLog(err))
-				continue
-			}
-		}
-		cmd := exec.Command("bridge", fdbArgs...)
 
-		if _, err := cmd.CombinedOutput(); err != nil {
+		// Use secure bridge command execution for FDB entries
+		fdbCtx, fdbCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer fdbCancel()
+
+		if _, err := security.SecureExecute(fdbCtx, "bridge", fdbArgs...); err != nil {
 			security.SafeLogf(vm.logger, "Warning: failed to add FDB entry for %s: %s", security.SanitizeIPForLog(remoteIP), security.SanitizeErrorForLog(err))
 		} else {
 			security.SafeLogf(vm.logger, "Added FDB entry for remote peer %s", security.SanitizeIPForLog(remoteIP))
@@ -176,33 +168,30 @@ func (vm *VXLANManager) GetTunnelStatus() (*VXLANStatus, error) {
 
 	// Check if interface exists and is up
 	showArgs := []string{"link", "show", vm.config.DeviceName}
-	// Validate all show arguments
-	for _, arg := range showArgs {
-		if err := security.ValidateCommandArgument(arg); err != nil {
-			return status, fmt.Errorf("invalid show command argument %s: %w", arg, err)
-		}
-	}
-	cmd := exec.Command("ip", showArgs...)
-	if _, err := cmd.CombinedOutput(); err != nil {
-		return status, fmt.Errorf("failed to configure interface: %v", err)
+
+	// Use secure ip command execution to check interface status
+	showCtx, showCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer showCancel()
+
+	output, err := security.SecureExecuteWithValidation(showCtx, "ip", security.ValidateIPArgs, showArgs...)
+	if err != nil {
+		return status, fmt.Errorf("failed to get interface status: %v", err)
 	}
 
-	outputStr := ""
+	outputStr := string(output)
 	if strings.Contains(outputStr, "state UP") {
 		status.TunnelUp = true
 	}
 
 	// Get packet statistics
 	statsArgs := []string{"-s", "link", "show", vm.config.DeviceName}
-	// Validate all stats arguments
-	for _, arg := range statsArgs {
-		if err := security.ValidateCommandArgument(arg); err != nil {
-			return status, fmt.Errorf("invalid stats command argument %s: %w", arg, err)
-		}
-	}
-	cmd = exec.Command("ip", statsArgs...)
-	if _, err := cmd.CombinedOutput(); err == nil {
-		stats := vm.parsePacketStats("")
+
+	// Use secure ip command execution for statistics
+	statsCtx, statsCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer statsCancel()
+
+	if statsOutput, err := security.SecureExecuteWithValidation(statsCtx, "ip", security.ValidateIPArgs, statsArgs...); err == nil {
+		stats := vm.parsePacketStats(string(statsOutput))
 		status.PacketStats = stats
 	}
 
@@ -258,16 +247,12 @@ func (vm *VXLANManager) TestConnectivity() map[string]bool {
 
 		// Use ping to test connectivity
 		pingArgs := []string{"-c", "3", "-W", "2", remoteIP}
-		// Validate all ping arguments
-		for _, arg := range pingArgs {
-			if err := security.ValidateCommandArgument(arg); err != nil {
-				security.SafeLogf(vm.logger, "Warning: skipping ping due to invalid argument %s: %s", security.SanitizeForLog(arg), security.SanitizeErrorForLog(err))
-				results[remoteIP] = false
-				continue
-			}
-		}
-		cmd := exec.Command("ping", pingArgs...)
-		err := cmd.Run()
+
+		// Use secure ping command execution
+		pingCtx, pingCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer pingCancel()
+
+		_, err := security.SecureExecute(pingCtx, "ping", pingArgs...)
 
 		results[remoteIP] = (err == nil)
 		if err == nil {
@@ -297,14 +282,12 @@ func (vm *VXLANManager) UpdatePeers(newPeers []string) error {
 			continue // Skip invalid IPs
 		}
 		delFdbArgs := []string{"fdb", "del", "00:00:00:00:00:00", "dev", vm.config.DeviceName, "dst", oldIP}
-		// Validate all delete fdb arguments
-		for _, arg := range delFdbArgs {
-			if err := security.ValidateCommandArgument(arg); err != nil {
-				continue // Skip invalid arguments
-			}
-		}
-		cmd := exec.Command("bridge", delFdbArgs...)
-		_ = cmd.Run() // Ignore errors for non-existent entries
+
+		// Use secure bridge command execution for FDB deletion
+		delFdbCtx, delFdbCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer delFdbCancel()
+
+		_, _ = security.SecureExecute(delFdbCtx, "bridge", delFdbArgs...) // Ignore errors for non-existent entries
 	}
 
 	// Update config
@@ -320,19 +303,17 @@ func (vm *VXLANManager) GetVXLANInfo() (map[string]interface{}, error) {
 
 	// Get interface details
 	detailArgs := []string{"-d", "link", "show", vm.config.DeviceName}
-	// Validate all detail arguments
-	for _, arg := range detailArgs {
-		if err := security.ValidateCommandArgument(arg); err != nil {
-			return nil, fmt.Errorf("invalid detail command argument %s: %w", arg, err)
-		}
-	}
-	cmd := exec.Command("ip", detailArgs...)
-	_, err := cmd.CombinedOutput()
+
+	// Use secure ip command execution for interface details
+	detailCtx, detailCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer detailCancel()
+
+	detailOutput, err := security.SecureExecuteWithValidation(detailCtx, "ip", security.ValidateIPArgs, detailArgs...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to configure interface: %v", err)
+		return nil, fmt.Errorf("failed to get interface details: %v", err)
 	}
 
-	info["interface_details"] = ""
+	info["interface_details"] = string(detailOutput)
 	info["vni"] = vm.config.VNI
 	info["local_ip"] = vm.config.LocalIP
 	info["remote_ips"] = vm.config.RemoteIPs
@@ -341,15 +322,13 @@ func (vm *VXLANManager) GetVXLANInfo() (map[string]interface{}, error) {
 
 	// Get FDB entries
 	fdbShowArgs := []string{"fdb", "show", "dev", vm.config.DeviceName}
-	// Validate all fdb show arguments
-	for _, arg := range fdbShowArgs {
-		if err := security.ValidateCommandArgument(arg); err != nil {
-			return info, fmt.Errorf("invalid fdb show command argument %s: %w", arg, err)
-		}
-	}
-	cmd = exec.Command("bridge", fdbShowArgs...)
-	if _, err := cmd.CombinedOutput(); err == nil {
-		info["fdb_entries"] = ""
+
+	// Use secure bridge command execution for FDB show
+	fdbShowCtx, fdbShowCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer fdbShowCancel()
+
+	if fdbOutput, err := security.SecureExecute(fdbShowCtx, "bridge", fdbShowArgs...); err == nil {
+		info["fdb_entries"] = string(fdbOutput)
 	}
 
 	return info, nil
