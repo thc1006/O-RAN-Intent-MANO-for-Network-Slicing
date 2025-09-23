@@ -481,11 +481,12 @@ jobs:
 
     - name: Validate RBAC policies
       run: |
-        # Basic RBAC validation
-        if ! grep -q "apiGroups.*verbs" deploy/k8s/base/rbac.yaml; then
-          echo "::error::RBAC policies appear incomplete"
+        # Basic RBAC validation - check for presence of both apiGroups and verbs
+        if ! grep -q "apiGroups" deploy/k8s/base/rbac.yaml || ! grep -q "verbs" deploy/k8s/base/rbac.yaml; then
+          echo "::error::RBAC policies appear incomplete - missing apiGroups or verbs"
           exit 1
         fi
+        echo "RBAC validation passed - found both apiGroups and verbs"
 
     - name: Check Dockerfile security practices
       run: |

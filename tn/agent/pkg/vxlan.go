@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/o-ran-intent-mano/pkg/security"
 )
 
 // VXLANManager manages VXLAN tunnel operations
@@ -25,6 +27,20 @@ func NewVXLANManager(config *VXLANConfig, logger *log.Logger) *VXLANManager {
 
 // CreateTunnel creates a VXLAN tunnel
 func (vm *VXLANManager) CreateTunnel() error {
+	// Validate inputs for security
+	if err := security.ValidateNetworkInterface(vm.config.DeviceName); err != nil {
+		return fmt.Errorf("invalid device name: %w", err)
+	}
+	if err := security.ValidateVNI(vm.config.VNI); err != nil {
+		return fmt.Errorf("invalid VNI: %w", err)
+	}
+	if err := security.ValidatePort(vm.config.Port); err != nil {
+		return fmt.Errorf("invalid port: %w", err)
+	}
+	if err := security.ValidateIPAddress(vm.config.LocalIP); err != nil {
+		return fmt.Errorf("invalid local IP: %w", err)
+	}
+
 	vm.logger.Printf("Creating VXLAN tunnel %s with VNI %d", vm.config.DeviceName, vm.config.VNI)
 
 	// Delete existing tunnel if it exists
@@ -48,6 +64,10 @@ func (vm *VXLANManager) CreateTunnel() error {
 
 	// Set MTU
 	if vm.config.MTU > 0 {
+		// Validate MTU range
+		if vm.config.MTU < 576 || vm.config.MTU > 9000 {
+			return fmt.Errorf("invalid MTU: %d (must be 576-9000)", vm.config.MTU)
+		}
 		cmd = exec.Command("ip", "link", "set", "dev", vm.config.DeviceName, "mtu", strconv.Itoa(vm.config.MTU))
 		if _, err := cmd.CombinedOutput(); err != nil {
 			vm.logger.Printf("Warning: failed to configure interface: %v", err)
@@ -72,6 +92,11 @@ func (vm *VXLANManager) CreateTunnel() error {
 
 // DeleteTunnel removes the VXLAN tunnel
 func (vm *VXLANManager) DeleteTunnel() error {
+	// Validate device name for security
+	if err := security.ValidateNetworkInterface(vm.config.DeviceName); err != nil {
+		return fmt.Errorf("invalid device name: %w", err)
+	}
+
 	vm.logger.Printf("Deleting VXLAN tunnel %s", vm.config.DeviceName)
 
 	cmd := exec.Command("ip", "link", "delete", vm.config.DeviceName)
@@ -89,6 +114,12 @@ func (vm *VXLANManager) DeleteTunnel() error {
 // addFDBEntries adds forwarding database entries for remote peers
 func (vm *VXLANManager) addFDBEntries() error {
 	for _, remoteIP := range vm.config.RemoteIPs {
+		// Validate remote IP for security
+		if err := security.ValidateIPAddress(remoteIP); err != nil {
+			vm.logger.Printf("Warning: skipping invalid remote IP %s: %v", remoteIP, err)
+			continue
+		}
+
 		// Add default FDB entry (all-zeros MAC) for each remote IP
 		cmd := exec.Command("bridge", "fdb", "append", "00:00:00:00:00:00",
 			"dev", vm.config.DeviceName, "dst", remoteIP)
@@ -171,6 +202,13 @@ func (vm *VXLANManager) TestConnectivity() map[string]bool {
 	results := make(map[string]bool)
 
 	for _, remoteIP := range vm.config.RemoteIPs {
+		// Validate remote IP for security
+		if err := security.ValidateIPAddress(remoteIP); err != nil {
+			vm.logger.Printf("Warning: skipping invalid remote IP %s: %v", remoteIP, err)
+			results[remoteIP] = false
+			continue
+		}
+
 		vm.logger.Printf("Testing connectivity to %s", remoteIP)
 
 		// Use ping to test connectivity
@@ -190,10 +228,20 @@ func (vm *VXLANManager) TestConnectivity() map[string]bool {
 
 // UpdatePeers updates the list of remote peers
 func (vm *VXLANManager) UpdatePeers(newPeers []string) error {
+	// Validate all new peers first
+	for _, peer := range newPeers {
+		if err := security.ValidateIPAddress(peer); err != nil {
+			return fmt.Errorf("invalid peer IP %s: %w", peer, err)
+		}
+	}
+
 	vm.logger.Printf("Updating VXLAN peers from %v to %v", vm.config.RemoteIPs, newPeers)
 
 	// Remove old FDB entries
 	for _, oldIP := range vm.config.RemoteIPs {
+		if err := security.ValidateIPAddress(oldIP); err != nil {
+			continue // Skip invalid IPs
+		}
 		cmd := exec.Command("bridge", "fdb", "del", "00:00:00:00:00:00",
 			"dev", vm.config.DeviceName, "dst", oldIP)
 		_ = cmd.Run() // Ignore errors for non-existent entries

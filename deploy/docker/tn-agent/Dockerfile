@@ -1,6 +1,6 @@
 # TN Agent Multi-stage Dockerfile
 # Stage 1: Build
-FROM golang:1.21-alpine AS builder
+FROM golang:1.24-alpine AS builder
 
 # Security: Use non-root user for build
 RUN adduser -D -s /bin/sh appuser
@@ -36,7 +36,6 @@ RUN apk update && apk add --no-cache \
     ca-certificates \
     iproute2 \
     iptables \
-    tc \
     bridge-utils \
     ethtool \
     iperf3 \

@@ -1,7 +1,8 @@
 package placement
 
 import (
-	"math/rand"
+	"crypto/rand"
+	"math/big"
 	"sync"
 	"time"
 )
@@ -123,10 +124,11 @@ func (m *MockMetricsProvider) generateMetrics(siteID string) *SiteMetrics {
 		variability = 0.1 // Default 10% variability
 	}
 
-	cpu := scenario.BaseCPU + (rand.Float64()-0.5)*2*variability*scenario.BaseCPU
-	memory := scenario.BaseMemory + (rand.Float64()-0.5)*2*variability*scenario.BaseMemory
-	bandwidth := scenario.BaseBandwidth + (rand.Float64()-0.5)*2*variability*scenario.BaseBandwidth
-	latency := scenario.BaseLatency + (rand.Float64()-0.5)*2*variability*scenario.BaseLatency
+	// Use crypto/rand for secure random number generation
+	cpu := scenario.BaseCPU + secureRandomFloat64(-0.5, 0.5)*2*variability*scenario.BaseCPU
+	memory := scenario.BaseMemory + secureRandomFloat64(-0.5, 0.5)*2*variability*scenario.BaseMemory
+	bandwidth := scenario.BaseBandwidth + secureRandomFloat64(-0.5, 0.5)*2*variability*scenario.BaseBandwidth
+	latency := scenario.BaseLatency + secureRandomFloat64(-0.5, 0.5)*2*variability*scenario.BaseLatency
 
 	// Apply trends
 	if scenario.TrendUp {
@@ -236,6 +238,30 @@ func (m *MockMetricsProvider) ResetMetrics() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.metrics = make(map[string]*SiteMetrics)
+}
+
+// secureRandomFloat64 generates a cryptographically secure random float64 between min and max
+func secureRandomFloat64(min, max float64) float64 {
+	if min >= max {
+		return min
+	}
+
+	// Generate random int64 for precision
+	const precision = 1000000 // 6 decimal places
+	rangeInt := int64((max - min) * precision)
+
+	if rangeInt <= 0 {
+		return min
+	}
+
+	randomInt, err := rand.Int(rand.Reader, big.NewInt(rangeInt))
+	if err != nil {
+		// Fallback to zero if crypto/rand fails
+		return 0.0
+	}
+
+	randomFloat := float64(randomInt.Int64()) / precision
+	return min + randomFloat
 }
 
 // containsAny checks if string contains any of the substrings

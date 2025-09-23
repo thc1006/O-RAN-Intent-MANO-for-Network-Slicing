@@ -274,8 +274,12 @@ func startMetricsServer(port int) {
 	mux.Handle("/metrics", promhttp.Handler())
 
 	server := &http.Server{
-		Addr:    fmt.Sprintf(":%d", port),
-		Handler: mux,
+		Addr:              fmt.Sprintf(":%d", port),
+		Handler:           mux,
+		ReadHeaderTimeout: 10 * time.Second,  // Prevent Slowloris attacks
+		ReadTimeout:       30 * time.Second,  // Total time to read request
+		WriteTimeout:      30 * time.Second,  // Time to write response
+		IdleTimeout:       120 * time.Second, // Keep-alive timeout
 	}
 
 	log.Infof("Starting metrics server on port %d", port)

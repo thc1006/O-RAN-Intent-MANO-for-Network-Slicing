@@ -147,7 +147,7 @@ func (ma *MetricsAggregator) Start(ctx context.Context) error {
 	log.Println("Starting metrics aggregator...")
 
 	// Create output directory
-	if err := os.MkdirAll(ma.config.OutputDirectory, 0755); err != nil {
+	if err := os.MkdirAll(ma.config.OutputDirectory, 0750); err != nil {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
 
@@ -538,21 +538,21 @@ func (ma *MetricsAggregator) saveAggregatedMetrics(metrics *TestMetrics) error {
 	if err != nil {
 		return err
 	}
-	if err := ioutil.WriteFile(jsonPath, jsonData, 0644); err != nil {
+	if err := ioutil.WriteFile(jsonPath, jsonData, 0600); err != nil {
 		return err
 	}
 
 	// Save timestamped version
 	timestampedPath := filepath.Join(ma.config.OutputDirectory, fmt.Sprintf("metrics_%s.json",
 		metrics.Timestamp.Format("20060102_150405")))
-	if err := ioutil.WriteFile(timestampedPath, jsonData, 0644); err != nil {
+	if err := ioutil.WriteFile(timestampedPath, jsonData, 0600); err != nil {
 		return err
 	}
 
 	// Save summary report
 	summaryPath := filepath.Join(ma.config.OutputDirectory, "summary.txt")
 	summary := ma.generateSummaryReport(metrics)
-	if err := ioutil.WriteFile(summaryPath, []byte(summary), 0644); err != nil {
+	if err := ioutil.WriteFile(summaryPath, []byte(summary), 0600); err != nil {
 		return err
 	}
 
