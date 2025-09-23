@@ -131,53 +131,50 @@ func containsLogInjectionPatterns(input string) bool {
 	// Convert to lowercase for case-insensitive matching
 	lower := strings.ToLower(input)
 
-	// Log injection patterns
-	dangerousPatterns := []string{
-		// ANSI escape sequences
-		"\x1b[",
-		"\033[",
-		"\u001b[",
-		// Log level injection attempts
+	// Critical log injection patterns that indicate clear attacks
+	criticalPatterns := []string{
+		// Log level injection attempts with newlines (actual injection)
 		"\n[error]",
 		"\n[warn]",
 		"\n[info]",
 		"\n[debug]",
-		"\nERROR",
-		"\nWARN",
-		"\nINFO",
-		"\nDEBUG",
-		"\nFATAL",
-		// Timestamp injection
-		"\n2", // Common timestamp prefix
-		// Log forging attempts
-		"\n20", // Year in timestamp
-		"\r\n", // CRLF injection
-		// Terminal control sequences
-		"\x0c", // Form feed
-		"\x08", // Backspace
-		// URL encoding attempts
-		"%0a", // Encoded newline
-		"%0d", // Encoded carriage return
-		"%1b", // Encoded escape
-		// Unicode newlines
-		"\u2028", // Line separator
-		"\u2029", // Paragraph separator
+		"\n[fatal]",
+		"\nerror:",
+		"\nwarn:",
+		"\ninfo:",
+		"\ndebug:",
+		"\nfatal:",
+		// Timestamp injection attempts
+		"\n2024-", "\n2023-", "\n2025-", // Common log timestamp patterns
+		// CRLF injection with log levels
+		"\r\n[error]", "\r\n[warn]", "\r\n[info]", "\r\n[debug]",
+		// URL encoded injection
+		"%0a[", // Encoded newline + log level
+		"%0d%0a", // Encoded CRLF
+		"%1b[", // Encoded escape sequence
+		// Unicode line separators used for injection
+		"\u2028[", "\u2029[", // Unicode newlines + log level
 	}
 
-	for _, pattern := range dangerousPatterns {
+	for _, pattern := range criticalPatterns {
 		if strings.Contains(lower, pattern) {
 			return true
 		}
 	}
 
-	// Check for repeated newlines (potential log flooding)
-	if strings.Count(input, "\n") > 3 {
+	// Check for excessive repeated newlines (log flooding attempt)
+	if strings.Count(input, "\n") > 5 {
 		return true
 	}
 
-	// Check for null bytes
+	// Check for literal null bytes (not escaped)
 	if strings.Contains(input, "\x00") {
 		return true
+	}
+
+	// Check for potential log file manipulation
+	if strings.Contains(input, "\x0c") && strings.Contains(input, "\n") {
+		return true // Form feed + newline can clear terminal/logs
 	}
 
 	return false

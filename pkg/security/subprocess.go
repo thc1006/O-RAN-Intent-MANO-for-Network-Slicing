@@ -493,3 +493,7 @@ func QuickSecureExecute(command string, args ...string) ([]byte, error) {
 func RegisterSecureCommand(cmd *AllowedCommand) error {
 	return DefaultSecureExecutor.RegisterCommand(cmd)
 }
+
+func SecureExecuteWithValidation(ctx context.Context, command string, customValidator func([]string) error, args ...string) ([]byte, error) {
+	return DefaultSecureExecutor.SecureExecuteWithValidation(ctx, command, customValidator, args...)
+}

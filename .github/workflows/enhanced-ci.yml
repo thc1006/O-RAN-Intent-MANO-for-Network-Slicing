@@ -508,38 +508,66 @@ jobs:
         high_vulns=0
         security_issues=0
 
+        # Install jq for SARIF processing if not available
+        if ! command -v jq &> /dev/null; then
+          echo "Installing jq for SARIF processing..."
+          sudo apt-get update && sudo apt-get install -y jq
+        fi
+
         # Go security scanning
         echo "  Scanning Go code for security issues..."
+
+        # Initialize SARIF output array
+        echo '{"version":"2.1.0","runs":[]}' > gosec.sarif
+
         for module in $(find . -name "go.mod" -not -path "./vendor/*" | xargs dirname); do
+          echo "    Scanning module: $module"
           cd "$module"
 
           # GoSec security scanner with improved SARIF generation
-          gosec -fmt sarif -out gosec-${module//\//-}.sarif -no-fail -quiet ./... || true
+          module_safe_name=$(echo "${module//\//-}" | sed 's/^-*//' | sed 's/-*$//')
+          gosec -fmt sarif -out "gosec-${module_safe_name}.sarif" -no-fail -quiet ./... || true
 
-          # Validate and fix SARIF if needed
-          if [ -f "gosec-${module//\//-}.sarif" ]; then
-            # Remove problematic 'fixes' section that causes SARIF validation errors
-            jq 'del(.runs[]?.results[]?.fixes)' gosec-${module//\//-}.sarif > gosec-${module//\//-}-clean.sarif
-            mv gosec-${module//\//-}-clean.sarif gosec-${module//\//-}.sarif
-          fi
+          # Process SARIF if generated
+          if [ -f "gosec-${module_safe_name}.sarif" ]; then
+            echo "    Processing SARIF for module: $module"
 
-          # Count critical issues from SARIF
-          if [ -f "gosec-${module//\//-}.sarif" ]; then
-            critical_count=$(jq '[.runs[].results[] | select(.level == "error")] | length' gosec-${module//\//-}.sarif 2>/dev/null || echo "0")
-            high_count=$(jq '[.runs[].results[] | select(.level == "warning")] | length' gosec-${module//\//-}.sarif 2>/dev/null || echo "0")
-            critical_vulns=$((critical_vulns + critical_count))
-            high_vulns=$((high_vulns + high_count))
-            # Copy to root for upload
-            cp gosec-${module//\//-}.sarif ../gosec.sarif 2>/dev/null || true
+            # Validate SARIF structure and fix common issues
+            if jq empty "gosec-${module_safe_name}.sarif" 2>/dev/null; then
+              # Remove problematic 'fixes' section that causes SARIF validation errors
+              jq 'del(.runs[]?.results[]?.fixes)' "gosec-${module_safe_name}.sarif" > "gosec-${module_safe_name}-clean.sarif" 2>/dev/null || cp "gosec-${module_safe_name}.sarif" "gosec-${module_safe_name}-clean.sarif"
+
+              # Count issues from SARIF
+              critical_count=$(jq '[.runs[]?.results[]? | select(.level == "error")] | length' "gosec-${module_safe_name}-clean.sarif" 2>/dev/null || echo "0")
+              high_count=$(jq '[.runs[]?.results[]? | select(.level == "warning")] | length' "gosec-${module_safe_name}-clean.sarif" 2>/dev/null || echo "0")
+
+              critical_vulns=$((critical_vulns + critical_count))
+              high_vulns=$((high_vulns + high_count))
+
+              # Copy to root for upload (use absolute path)
+              cp "gosec-${module_safe_name}-clean.sarif" "$(pwd)/../gosec.sarif" 2>/dev/null || true
+
+              echo "    Found $critical_count critical and $high_count high issues in $module"
+            else
+              echo "    Warning: Invalid SARIF file generated for $module"
+            fi
+          else
+            echo "    No SARIF file generated for $module"
           fi
 
           cd - > /dev/null
         done
 
-        # Ensure at least one SARIF file exists for upload
-        if [ ! -f gosec.sarif ]; then
-          echo '{"version":"2.1.0","runs":[]}' > gosec.sarif
+        # Ensure final SARIF file exists and is valid
+        if [ ! -f gosec.sarif ] || ! jq empty gosec.sarif 2>/dev/null; then
+          echo "Creating fallback SARIF file..."
+          echo '{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"gosec"}},"results":[]}]}' > gosec.sarif
         fi
+
+        echo "SARIF file generated: gosec.sarif"
+        ls -la gosec.sarif
+        echo "SARIF content preview:"
+        head -5 gosec.sarif
 
         # Dependency vulnerability scanning
         echo "  Scanning dependencies for vulnerabilities..."

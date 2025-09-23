@@ -758,7 +758,7 @@ func (s *NetworkPerformanceSuite) generatePerformanceReport() {
 	}
 
 	data, _ := json.MarshalIndent(reportData, "", "  ")
-	os.WriteFile("testdata/performance_report.json", data, 0600)
+	os.WriteFile("testdata/performance_report.json", data, security.SecureFileMode)
 }
 
 type NetworkStressJob struct {

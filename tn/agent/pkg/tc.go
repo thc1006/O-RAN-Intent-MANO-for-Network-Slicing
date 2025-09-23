@@ -1,9 +1,9 @@
 package pkg
 
 import (
+	"context"
 	"fmt"
 	"log"
-	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -35,15 +35,13 @@ func (tc *TCManager) CleanRules() error {
 	}
 
 	security.SafeLogf(tc.logger, "Cleaning existing TC rules from interface %s", security.SanitizeForLog(tc.iface))
-	// Validate tc command arguments
+
+	// Use secure tc command execution
 	tcArgs := []string{"qdisc", "del", "dev", tc.iface, "root"}
-	for _, arg := range tcArgs {
-		if err := security.ValidateCommandArgument(arg); err != nil {
-			return fmt.Errorf("invalid tc command argument %s: %w", arg, err)
-		}
-	}
-	cmd := exec.Command("tc", tcArgs...)
-	if _, err := cmd.CombinedOutput(); err != nil {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if _, err := security.SecureExecuteWithValidation(ctx, "tc", security.ValidateTCArgs, tcArgs...); err != nil {
 		security.SafeLogError(tc.logger, "Note", err)
 	}
 	security.SafeLogf(tc.logger, "Cleaned TC rules from interface %s", security.SanitizeForLog(tc.iface))
@@ -67,15 +65,13 @@ func (tc *TCManager) ApplyShaping() error {
 		security.SafeLogError(tc.logger, "Warning: failed to clean existing rules", err)
 	}
 	totalKbps := int(tc.config.DownlinkMbps * 1024)
-	// Validate tc command arguments
+
+	// Use secure tc command execution
 	tcArgs := []string{"qdisc", "add", "dev", tc.iface, "root", "handle", "1:", "htb", "default", "30"}
-	for _, arg := range tcArgs {
-		if err := security.ValidateCommandArgument(arg); err != nil {
-			return fmt.Errorf("invalid tc command argument %s: %w", arg, err)
-		}
-	}
-	cmd := exec.Command("tc", tcArgs...)
-	if _, err := cmd.CombinedOutput(); err != nil {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if _, err := security.SecureExecuteWithValidation(ctx, "tc", security.ValidateTCArgs, tcArgs...); err != nil {
 		return fmt.Errorf("failed to create root qdisc: %v", err)
 	}
 	security.SafeLogf(tc.logger, "Traffic shaping applied successfully to %s (rate: %d kbps)", security.SanitizeForLog(tc.iface), totalKbps)
