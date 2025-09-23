@@ -222,17 +222,13 @@ func (a *Agent) executeCommand(cmdStr string) error {
 		return fmt.Errorf("command not allowed: %s", parts[0])
 	}
 
-	// Validate each argument
-	for _, arg := range parts[1:] {
-		if err := security.ValidateCommandArgument(arg); err != nil {
-			return fmt.Errorf("invalid command argument %s: %w", arg, err)
-		}
-	}
+	// Use secure execution framework
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
-	cmd := exec.Command(parts[0], parts[1:]...)
-	output, err := cmd.CombinedOutput()
+	_, err := security.SecureExecute(ctx, parts[0], parts[1:]...)
 	if err != nil {
-		return fmt.Errorf("command failed: %v, output: %s", err, string(output))
+		return fmt.Errorf("command failed: %w", err)
 	}
 
 	return nil
@@ -257,17 +253,13 @@ func (a *Agent) executeCommandOutput(cmdStr string) (string, error) {
 		return "", fmt.Errorf("command not allowed: %s", parts[0])
 	}
 
-	// Validate each argument
-	for _, arg := range parts[1:] {
-		if err := security.ValidateCommandArgument(arg); err != nil {
-			return "", fmt.Errorf("invalid command argument %s: %w", arg, err)
-		}
-	}
+	// Use secure execution framework
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
-	cmd := exec.Command(parts[0], parts[1:]...)
-	output, err := cmd.CombinedOutput()
+	output, err := security.SecureExecute(ctx, parts[0], parts[1:]...)
 	if err != nil {
-		return "", fmt.Errorf("command failed: %v, output: %s", err, string(output))
+		return "", fmt.Errorf("command failed: %w", err)
 	}
 
 	return string(output), nil

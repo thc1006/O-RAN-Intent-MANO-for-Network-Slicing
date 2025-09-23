@@ -60,11 +60,14 @@ spec:
     ports:
     - protocol: TCP
       port: 8080
-  # Allow communication to Porch
+  # Allow communication to Porch with specific pod selector
   - to:
     - namespaceSelector:
         matchLabels:
           name: porch-system
+      podSelector:
+        matchLabels:
+          app: porch-server
     ports:
     - protocol: TCP
       port: 7007
@@ -76,6 +79,11 @@ spec:
     ports:
     - protocol: TCP
       port: 5005
+  # Allow HTTPS egress for external API calls (limited)
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
 
 ---
 # Network Policy for VNF Operator
@@ -133,10 +141,23 @@ spec:
     ports:
     - protocol: UDP
       port: 53
-  # Allow Kubernetes API access
+    - protocol: TCP
+      port: 53
+  # Allow DNS to CoreDNS
   - to:
-    - namespaceSelector: {}
-      podSelector: {}
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+      podSelector:
+        matchLabels:
+          k8s-app: coredns
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+  # Allow Kubernetes API access (specific to API server)
+  - to: []
     ports:
     - protocol: TCP
       port: 443
@@ -150,11 +171,14 @@ spec:
     ports:
     - protocol: TCP
       port: 8080
-  # Allow communication to Porch
+  # Allow communication to Porch with specific pod selector
   - to:
     - namespaceSelector:
         matchLabels:
           name: porch-system
+      podSelector:
+        matchLabels:
+          app: porch-server
     ports:
     - protocol: TCP
       port: 7007

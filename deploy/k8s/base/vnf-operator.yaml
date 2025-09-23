@@ -7,6 +7,12 @@ metadata:
     app.kubernetes.io/name: oran-vnf-operator
     app.kubernetes.io/component: vnf-operator
     app.kubernetes.io/version: "v1.0.0"
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+  annotations:
+    seccomp.security.alpha.kubernetes.io/pod: runtime/default
+    container.apparmor.security.beta.kubernetes.io/vnf-operator: runtime/default
 spec:
   replicas: 1
   selector:
@@ -22,6 +28,8 @@ spec:
         prometheus.io/scrape: "true"
         prometheus.io/port: "8080"
         prometheus.io/path: "/metrics"
+        seccomp.security.alpha.kubernetes.io/pod: runtime/default
+        container.apparmor.security.beta.kubernetes.io/vnf-operator: runtime/default
     spec:
       serviceAccountName: oran-vnf-operator
       automountServiceAccountToken: false
@@ -33,7 +41,7 @@ spec:
           type: RuntimeDefault
       containers:
       - name: vnf-operator
-        image: ghcr.io/oran-mano/vnf-operator:v1.0.0@sha256:5g64deb29d3cbb1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u2
+        image: ghcr.io/oran-mano/vnf-operator:v1.0.1@sha256:9f84ced39e4daa1b3c5e7f8a2b4d6e9c3f7a5d8e1b6c9f2a5d7e0b3c8f4a1d9e
         imagePullPolicy: Always
         args:
         - --metrics-bind-address=0.0.0.0:8080
@@ -80,19 +88,23 @@ spec:
           limits:
             cpu: 500m
             memory: 512Mi
+            ephemeral-storage: 1Gi
           requests:
             cpu: 100m
             memory: 128Mi
+            ephemeral-storage: 512Mi
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: 65532
+          runAsGroup: 65532
           capabilities:
             drop:
             - ALL
           seccompProfile:
             type: RuntimeDefault
+          procMount: Default
         volumeMounts:
         - name: webhook-certs
           mountPath: /tmp/k8s-webhook-server/serving-certs

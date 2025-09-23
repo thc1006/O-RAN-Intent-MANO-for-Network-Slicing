@@ -183,6 +183,65 @@ func (se *SecureSubprocessExecutor) registerDefaultCommands() {
 		Timeout:     5 * time.Second,
 		Description: "Process finding utility (restricted patterns)",
 	})
+
+	// git command allowlist
+	se.RegisterCommand(&AllowedCommand{
+		Command: "git",
+		AllowedArgs: map[string]bool{
+			"config": true, "rev-parse": true, "log": true, "status": true, "diff": true,
+			"fetch": true, "pull": true, "push": true, "checkout": true, "branch": true,
+			"reset": true, "show": true, "remote": true, "tag": true, "rev-list": true,
+			"diff-tree": true, "--git-dir": true, "--abbrev-ref": true, "--porcelain": true,
+			"--pretty=format:%H|%an|%ae|%ct|%s": true, "--no-commit-id": true, "--name-only": true,
+			"-r": true, "-1": true, "--left-right": true, "--count": true, "get-url": true,
+			"--sort=-version:refname": true, "-v": true, "-b": true, "--hard": true,
+			"--local": true, "credential.helper": true, "store": true, "origin": true,
+			"HEAD": true, "HEAD...@{upstream}": true,
+		},
+		ArgPatterns: []string{
+			`^[a-fA-F0-9]{7,40}$`,                    // Git commit hashes
+			`^[a-zA-Z0-9\-_\./]+$`,                   // Branch names, tag names, file paths
+			`^origin$`,                               // Remote name
+			`^HEAD(\.\.\.\@\{upstream\})?$`,          // HEAD references
+			`^--pretty=format:%[HanectmsSd\|]+$`,     // Pretty format strings
+			`^\d{1,3}$`,                              // Numeric limits
+			`^backup-\d+$`,                           // Backup branch names
+		},
+		MaxArgs:     15,
+		Timeout:     60 * time.Second,
+		Description: "Git version control system (restricted operations)",
+	})
+
+	// kpt command allowlist (for Nephio package management)
+	se.RegisterCommand(&AllowedCommand{
+		Command: "kpt",
+		AllowedArgs: map[string]bool{
+			"fn": true, "render": true, "pkg": true, "get": true, "live": true,
+			"init": true, "apply": true, "status": true, "destroy": true,
+		},
+		ArgPatterns: []string{
+			`^[a-zA-Z0-9\-_\./]+$`,       // Package paths and names
+			`^https?://[a-zA-Z0-9\-\._~/]+$`, // Git URLs
+		},
+		MaxArgs:     10,
+		Timeout:     120 * time.Second,
+		Description: "Kubernetes package tool (restricted operations)",
+	})
+
+	// cp command allowlist (for file copying in validators)
+	se.RegisterCommand(&AllowedCommand{
+		Command: "cp",
+		AllowedArgs: map[string]bool{
+			"-r": true, "-R": true, "-p": true, "-a": true,
+		},
+		ArgPatterns: []string{
+			`^[a-zA-Z0-9\-_\./]+$`,       // File and directory paths
+			`^.*\/\.$`,                   // Copy to directory patterns
+		},
+		MaxArgs:     5,
+		Timeout:     30 * time.Second,
+		Description: "File copy utility (restricted paths)",
+	})
 }
 
 // RegisterCommand registers a new allowed command
@@ -496,4 +555,175 @@ func RegisterSecureCommand(cmd *AllowedCommand) error {
 
 func SecureExecuteWithValidation(ctx context.Context, command string, customValidator func([]string) error, args ...string) ([]byte, error) {
 	return DefaultSecureExecutor.SecureExecuteWithValidation(ctx, command, customValidator, args...)
+}
+
+// ValidateGitArgs provides specialized validation for git arguments
+func ValidateGitArgs(args []string) error {
+	if len(args) == 0 {
+		return fmt.Errorf("git command requires arguments")
+	}
+
+	subcommand := args[0]
+
+	// Validate based on subcommand
+	switch subcommand {
+	case "config":
+		return validateGitConfigArgs(args[1:])
+	case "show":
+		return validateGitShowArgs(args[1:])
+	case "checkout":
+		return validateGitCheckoutArgs(args[1:])
+	case "reset":
+		return validateGitResetArgs(args[1:])
+	case "pull", "push":
+		return validateGitRemoteArgs(args[1:])
+	case "diff", "diff-tree":
+		return validateGitDiffArgs(args[1:])
+	default:
+		// For other commands, use basic validation
+		for _, arg := range args {
+			if err := ValidateCommandArgument(arg); err != nil {
+				return fmt.Errorf("invalid git argument: %w", err)
+			}
+		}
+	}
+
+	return nil
+}
+
+// validateGitConfigArgs validates git config arguments
+func validateGitConfigArgs(args []string) error {
+	allowedConfigs := []string{
+		"--local", "--global", "--system",
+		"credential.helper", "user.name", "user.email",
+		"core.autocrlf", "core.filemode",
+	}
+
+	for _, arg := range args {
+		if arg == "" {
+			continue
+		}
+
+		// Check if it's an allowed config option
+		allowed := false
+		for _, config := range allowedConfigs {
+			if arg == config || strings.HasPrefix(arg, config+"=") {
+				allowed = true
+				break
+			}
+		}
+
+		if !allowed {
+			// Check if it's a safe value
+			if err := ValidateCommandArgument(arg); err != nil {
+				return fmt.Errorf("unsafe git config argument: %s", arg)
+			}
+		}
+	}
+
+	return nil
+}
+
+// validateGitShowArgs validates git show arguments
+func validateGitShowArgs(args []string) error {
+	for _, arg := range args {
+		if strings.Contains(arg, ":") {
+			// Format: commit:filename
+			parts := strings.SplitN(arg, ":", 2)
+			if len(parts) == 2 {
+				if err := ValidateGitRef(parts[0]); err != nil {
+					return fmt.Errorf("invalid commit in git show: %w", err)
+				}
+				if err := ValidateFilePath(parts[1]); err != nil {
+					return fmt.Errorf("invalid filename in git show: %w", err)
+				}
+			}
+		} else {
+			if err := ValidateGitRef(arg); err != nil {
+				return fmt.Errorf("invalid git ref in show: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+// validateGitCheckoutArgs validates git checkout arguments
+func validateGitCheckoutArgs(args []string) error {
+	for _, arg := range args {
+		if arg == "-b" {
+			continue // Flag is allowed
+		}
+		if err := ValidateGitRef(arg); err != nil {
+			return fmt.Errorf("invalid branch/ref in checkout: %w", err)
+		}
+	}
+	return nil
+}
+
+// validateGitResetArgs validates git reset arguments
+func validateGitResetArgs(args []string) error {
+	for _, arg := range args {
+		if arg == "--hard" || arg == "--soft" || arg == "--mixed" {
+			continue // Flags are allowed
+		}
+		if err := ValidateGitRef(arg); err != nil {
+			return fmt.Errorf("invalid commit in reset: %w", err)
+		}
+	}
+	return nil
+}
+
+// validateGitRemoteArgs validates git remote operation arguments
+func validateGitRemoteArgs(args []string) error {
+	for _, arg := range args {
+		if arg == "origin" || arg == "upstream" {
+			continue // Common remote names
+		}
+		if err := ValidateGitRef(arg); err != nil {
+			return fmt.Errorf("invalid ref in remote operation: %w", err)
+		}
+	}
+	return nil
+}
+
+// validateGitDiffArgs validates git diff arguments
+func validateGitDiffArgs(args []string) error {
+	for _, arg := range args {
+		if strings.HasPrefix(arg, "--") {
+			continue // Flags are generally safe
+		}
+		if err := ValidateGitRef(arg); err != nil {
+			return fmt.Errorf("invalid ref in diff: %w", err)
+		}
+	}
+	return nil
+}
+
+// ValidateKptArgs provides specialized validation for kpt arguments
+func ValidateKptArgs(args []string) error {
+	if len(args) == 0 {
+		return fmt.Errorf("kpt command requires arguments")
+	}
+
+	subcommand := args[0]
+	switch subcommand {
+	case "fn":
+		if len(args) > 1 && args[1] == "render" {
+			// kpt fn render - validate package path
+			for i := 2; i < len(args); i++ {
+				if err := ValidateFilePath(args[i]); err != nil {
+					return fmt.Errorf("invalid package path: %w", err)
+				}
+			}
+		}
+	default:
+		// Basic validation for other kpt commands
+		for _, arg := range args[1:] {
+			if err := ValidateCommandArgument(arg); err != nil {
+				return fmt.Errorf("invalid kpt argument: %w", err)
+			}
+		}
+	}
+
+	return nil
 }

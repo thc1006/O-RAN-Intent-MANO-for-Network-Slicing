@@ -220,7 +220,10 @@ func (im *IperfManager) StartServer(port int) error {
 
 	// Verify server is listening
 	if !im.isServerListening(port) {
-		im.StopServer(port)
+		if err := im.StopServer(port); err != nil {
+			security.SafeLogError(im.logger, "Failed to stop failed iperf3 server", err)
+			// Continue with the original error
+		}
 		return fmt.Errorf("iperf3 server failed to start listening on port %d", port)
 	}
 
@@ -279,7 +282,10 @@ func (im *IperfManager) isServerListening(port int) bool {
 	if err != nil {
 		return false
 	}
-	conn.Close()
+	if err := conn.Close(); err != nil {
+		security.SafeLogError(im.logger, "Failed to close connection during server listening check", err)
+		// Continue since this is just a check, don't fail
+	}
 	return true
 }
 

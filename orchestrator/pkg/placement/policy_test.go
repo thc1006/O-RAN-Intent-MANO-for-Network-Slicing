@@ -483,7 +483,7 @@ func TestSnapshotPlacement(t *testing.T) {
 
 	// Create snapshots directory if it doesn't exist
 	snapshotDir := "testdata/snapshots"
-	os.MkdirAll(snapshotDir, 0750)
+	os.MkdirAll(snapshotDir, security.SecureDirMode)
 
 	for _, scenario := range scenarios {
 		t.Run(scenario.Name, func(t *testing.T) {
@@ -743,7 +743,7 @@ func saveSnapshot(t *testing.T, filename string, snapshot PlacementSnapshot) {
 		t.Fatalf("Failed to create snapshot directory: %v", err)
 	}
 
-	err = os.WriteFile(cleanPath, data, 0600)
+	err = os.WriteFile(cleanPath, data, security.SecureFileMode)
 	if err != nil {
 		t.Fatalf("Failed to write snapshot: %v", err)
 	}

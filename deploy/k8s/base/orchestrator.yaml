@@ -7,6 +7,12 @@ metadata:
     app.kubernetes.io/name: oran-orchestrator
     app.kubernetes.io/component: orchestrator
     app.kubernetes.io/version: "v1.0.0"
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+  annotations:
+    seccomp.security.alpha.kubernetes.io/pod: runtime/default
+    container.apparmor.security.beta.kubernetes.io/orchestrator: runtime/default
 spec:
   replicas: 1
   selector:
@@ -22,6 +28,8 @@ spec:
         prometheus.io/scrape: "true"
         prometheus.io/port: "9090"
         prometheus.io/path: "/metrics"
+        seccomp.security.alpha.kubernetes.io/pod: runtime/default
+        container.apparmor.security.beta.kubernetes.io/orchestrator: runtime/default
     spec:
       serviceAccountName: oran-orchestrator
       automountServiceAccountToken: false
@@ -33,7 +41,7 @@ spec:
           type: RuntimeDefault
       containers:
       - name: orchestrator
-        image: ghcr.io/oran-mano/orchestrator:v1.0.0@sha256:4f53cda18c2baa0c0d1e2e4c9b8f0e7d3e8a4b0f7c2a3b4c5d6e7f8g9h0i1j2k3
+        image: ghcr.io/oran-mano/orchestrator:v1.0.1@sha256:7e92b8c4f3a2d1e9b5c6f4a8d2e7b9c1f5a3d8e2b9c7f1a4d6e3b8c5f2a9d1e4
         imagePullPolicy: Always
         ports:
         - name: http
@@ -71,19 +79,23 @@ spec:
           limits:
             cpu: 500m
             memory: 512Mi
+            ephemeral-storage: 1Gi
           requests:
             cpu: 100m
             memory: 128Mi
+            ephemeral-storage: 512Mi
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: 65532
+          runAsGroup: 65532
           capabilities:
             drop:
             - ALL
           seccompProfile:
             type: RuntimeDefault
+          procMount: Default
         volumeMounts:
         - name: config
           mountPath: /config
