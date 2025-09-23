@@ -330,7 +330,8 @@ jobs:
             echo "🔧 Installing security tools..."
             curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
             curl -sSfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
-            go install github.com/securecodewarrior/scs-community-edition@latest
+            # Install gosec for Go security analysis
+            go install github.com/securego/gosec/v2/cmd/gosec@latest
             ;;
           "license-check")
             echo "🔧 Installing license checking tools..."
@@ -571,12 +572,11 @@ jobs:
         # Check Go module licenses
         echo "  Checking Go module licenses..."
         for module in $(find . -name "go.mod" -not -path "./vendor/*" | xargs dirname); do
+          echo "  Checking licenses in $module..."
           cd "$module"
 
           # Use go-licenses to check dependencies
-          go list -m all | grep -v "$(head -1 go.mod | cut -d' ' -f2)" | while read dep; do
-            echo "Checking license for: $dep"
-          done || true
+          go-licenses check ./... --disallowed_types=forbidden,unknown || ((license_issues++))
 
           cd - > /dev/null
         done

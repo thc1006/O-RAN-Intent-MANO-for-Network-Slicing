@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/o-ran-intent-mano/tests/framework/dashboard"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tests/framework/dashboard"
 )
 
 var (
