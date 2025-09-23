@@ -1041,13 +1041,13 @@ func (s *DeploymentTimingSuite) generateDeploymentTimingReport() {
 
 	// Save to file
 	reportDir := "testdata/timing_reports"
-	os.MkdirAll(reportDir, 0750)
+	os.MkdirAll(reportDir, security.SecureDirMode)
 
 	timestamp := time.Now().Format("20060102-150405")
 	filename := filepath.Join(reportDir, fmt.Sprintf("deployment_timing_report_%s.json", timestamp))
 
 	data, _ := json.MarshalIndent(reportData, "", "  ")
-	os.WriteFile(filename, data, 0600)
+	os.WriteFile(filename, data, security.SecureFileMode)
 
 	fmt.Printf("Deployment timing report saved to: %s\n", filename)
 }

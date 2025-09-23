@@ -452,6 +452,9 @@ func ValidateAndCleanPath(path string, allowedExtensions []string) (string, erro
 // SecureDirMode provides secure directory permissions (750)
 const SecureDirMode = 0750
 
+// PrivateDirMode provides private directory permissions (700)
+const PrivateDirMode = 0700
+
 // SecureFileMode provides secure file permissions (640)
 const SecureFileMode = 0640
 
