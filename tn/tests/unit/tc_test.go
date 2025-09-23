@@ -329,7 +329,7 @@ func TestIperfManager(t *testing.T) {
 				if tc.valid {
 					assert.NotEmpty(t, tc.config.ServerIP)
 					assert.Greater(t, tc.config.Port, 0)
-					assert.Greater(t, tc.config.Duration, 0)
+					assert.Greater(t, tc.config.Duration, int64(0))
 					assert.Contains(t, []string{"tcp", "udp"}, tc.config.Protocol)
 				}
 			})
