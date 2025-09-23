@@ -181,8 +181,8 @@ jobs:
         run: |
           cd $COMPONENT_PATH
           if [ -f go.mod ]; then
-            go mod download
-            go test -v -race -coverprofile=coverage.out ./...
+            GOWORK=off go mod download
+            GOWORK=off go test -v -race -coverprofile=coverage.out ./...
             go tool cover -html=coverage.out -o coverage.html
           else
             echo "No go.mod found, skipping tests for ${{ matrix.component }}"
