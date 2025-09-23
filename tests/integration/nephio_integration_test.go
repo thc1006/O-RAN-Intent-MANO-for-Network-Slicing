@@ -9,7 +9,6 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 
@@ -18,41 +17,41 @@ import (
 
 // NephioIntegrationSuite manages Nephio package generation and deployment testing
 type NephioIntegrationSuite struct {
-	dynClient       dynamic.Interface
-	testContext     context.Context
-	testCancel      context.CancelFunc
-	packageResults  []NephioPackageResult
+	dynClient         dynamic.Interface
+	testContext       context.Context
+	testCancel        context.CancelFunc
+	packageResults    []NephioPackageResult
 	deploymentResults []NephioDeploymentResult
-	testResults     *NephioTestResults
+	testResults       *NephioTestResults
 }
 
 // NephioTestResults aggregates all Nephio integration test results
 type NephioTestResults struct {
-	TestStartTime     time.Time                   `json:"test_start_time"`
-	TestEndTime       time.Time                   `json:"test_end_time"`
-	PackageGeneration []NephioPackageResult       `json:"package_generation"`
-	PackageDeployment []NephioDeploymentResult    `json:"package_deployment"`
-	GitOpsValidation  []GitOpsValidationResult    `json:"gitops_validation"`
-	ConfigSyncResults []ConfigSyncResult          `json:"config_sync_results"`
-	PerformanceMetrics NephioPerformanceMetrics   `json:"performance_metrics"`
-	OverallSuccess    bool                        `json:"overall_success"`
-	Errors            []string                    `json:"errors"`
+	TestStartTime      time.Time                `json:"test_start_time"`
+	TestEndTime        time.Time                `json:"test_end_time"`
+	PackageGeneration  []NephioPackageResult    `json:"package_generation"`
+	PackageDeployment  []NephioDeploymentResult `json:"package_deployment"`
+	GitOpsValidation   []GitOpsValidationResult `json:"gitops_validation"`
+	ConfigSyncResults  []ConfigSyncResult       `json:"config_sync_results"`
+	PerformanceMetrics NephioPerformanceMetrics `json:"performance_metrics"`
+	OverallSuccess     bool                     `json:"overall_success"`
+	Errors             []string                 `json:"errors"`
 }
 
 // NephioPackageResult represents package generation test results
 type NephioPackageResult struct {
-	TestName           string                 `json:"test_name"`
-	VNFSpec           manov1alpha1.VNFSpec   `json:"vnf_spec"`
-	PackageName       string                 `json:"package_name"`
-	PackageNamespace  string                 `json:"package_namespace"`
-	GenerationTime    time.Duration          `json:"generation_time_ms"`
-	PackageSize       int64                  `json:"package_size_bytes"`
-	ResourcesGenerated int                   `json:"resources_generated"`
-	ValidationResults []PackageValidation    `json:"validation_results"`
-	PorchRevision     string                 `json:"porch_revision"`
-	GitCommit         string                 `json:"git_commit"`
-	Success           bool                   `json:"success"`
-	ErrorMessage      string                 `json:"error_message,omitempty"`
+	TestName           string               `json:"test_name"`
+	VNFSpec            manov1alpha1.VNFSpec `json:"vnf_spec"`
+	PackageName        string               `json:"package_name"`
+	PackageNamespace   string               `json:"package_namespace"`
+	GenerationTime     time.Duration        `json:"generation_time_ms"`
+	PackageSize        int64                `json:"package_size_bytes"`
+	ResourcesGenerated int                  `json:"resources_generated"`
+	ValidationResults  []PackageValidation  `json:"validation_results"`
+	PorchRevision      string               `json:"porch_revision"`
+	GitCommit          string               `json:"git_commit"`
+	Success            bool                 `json:"success"`
+	ErrorMessage       string               `json:"error_message,omitempty"`
 }
 
 // NephioDeploymentResult represents package deployment test results
@@ -85,13 +84,13 @@ type GitOpsValidationResult struct {
 
 // ConfigSyncResult represents Config Sync status and results
 type ConfigSyncResult struct {
-	ClusterName      string                `json:"cluster_name"`
-	SyncRevision     string                `json:"sync_revision"`
-	SyncStatus       string                `json:"sync_status"`
-	LastSyncTime     time.Time             `json:"last_sync_time"`
-	ResourceStatuses []ResourceSyncStatus  `json:"resource_statuses"`
-	SyncErrors       []string              `json:"sync_errors"`
-	Success          bool                  `json:"success"`
+	ClusterName      string               `json:"cluster_name"`
+	SyncRevision     string               `json:"sync_revision"`
+	SyncStatus       string               `json:"sync_status"`
+	LastSyncTime     time.Time            `json:"last_sync_time"`
+	ResourceStatuses []ResourceSyncStatus `json:"resource_statuses"`
+	SyncErrors       []string             `json:"sync_errors"`
+	Success          bool                 `json:"success"`
 }
 
 // NephioPerformanceMetrics captures Nephio performance characteristics
@@ -100,8 +99,8 @@ type NephioPerformanceMetrics struct {
 	AverageDeploymentTimeMs    float64 `json:"average_deployment_time_ms"`
 	PackageSuccessRate         float64 `json:"package_success_rate"`
 	DeploymentSuccessRate      float64 `json:"deployment_success_rate"`
-	GitOpsThroughput          float64 `json:"gitops_throughput_packages_per_min"`
-	ResourceActuationRate     float64 `json:"resource_actuation_rate"`
+	GitOpsThroughput           float64 `json:"gitops_throughput_packages_per_min"`
+	ResourceActuationRate      float64 `json:"resource_actuation_rate"`
 }
 
 // Supporting types
@@ -115,11 +114,11 @@ type PackageValidation struct {
 }
 
 type DeployedResource struct {
-	Kind       string `json:"kind"`
-	Name       string `json:"name"`
-	Namespace  string `json:"namespace"`
-	Status     string `json:"status"`
-	Ready      bool   `json:"ready"`
+	Kind      string `json:"kind"`
+	Name      string `json:"name"`
+	Namespace string `json:"namespace"`
+	Status    string `json:"status"`
+	Ready     bool   `json:"ready"`
 }
 
 type DeploymentValidation struct {
@@ -146,9 +145,9 @@ type ResourceSyncStatus struct {
 
 // VNF test scenarios for Nephio package generation
 var nephioVNFScenarios = []struct {
-	name        string
-	vnfSpec     manov1alpha1.VNFSpec
-	targetSites []string
+	name              string
+	vnfSpec           manov1alpha1.VNFSpec
+	targetSites       []string
 	expectedResources []string
 }{
 	{
@@ -157,9 +156,9 @@ var nephioVNFScenarios = []struct {
 			Name: "edge-upf-001",
 			Type: manov1alpha1.VNFTypeUPF,
 			QoS: manov1alpha1.QoSRequirements{
-				Bandwidth:   100,
-				Latency:     6.3,
-				SliceType:   "uRLLC",
+				Bandwidth: 100,
+				Latency:   6.3,
+				SliceType: "uRLLC",
 			},
 			Placement: manov1alpha1.PlacementRequirements{
 				CloudType: "edge",
@@ -175,7 +174,7 @@ var nephioVNFScenarios = []struct {
 				Tag:        "v1.0.0",
 			},
 		},
-		targetSites: []string{"edge-cluster-01"},
+		targetSites:       []string{"edge-cluster-01"},
 		expectedResources: []string{"Deployment", "Service", "ConfigMap", "Secret"},
 	},
 	{
@@ -202,7 +201,7 @@ var nephioVNFScenarios = []struct {
 				Tag:        "v2.0.0",
 			},
 		},
-		targetSites: []string{"regional-cluster-01"},
+		targetSites:       []string{"regional-cluster-01"},
 		expectedResources: []string{"Deployment", "Service", "ConfigMap", "StatefulSet"},
 	},
 	{
@@ -229,7 +228,7 @@ var nephioVNFScenarios = []struct {
 				Tag:        "v3.0.0",
 			},
 		},
-		targetSites: []string{"central-cluster-01"},
+		targetSites:       []string{"central-cluster-01"},
 		expectedResources: []string{"Deployment", "Service", "ConfigMap", "PersistentVolumeClaim"},
 	},
 }
@@ -294,8 +293,8 @@ var _ = Describe("Nephio Package Generation and Deployment Tests", func() {
 			By("Generating packages for multi-site UPF deployment")
 
 			multiSiteVNF := manov1alpha1.VNFSpec{
-				Name: "multi-site-upf",
-				Type: manov1alpha1.VNFTypeUPF,
+				Name:           "multi-site-upf",
+				Type:           manov1alpha1.VNFTypeUPF,
 				TargetClusters: []string{"edge-cluster-01", "edge-cluster-02", "regional-cluster-01"},
 				QoS: manov1alpha1.QoSRequirements{
 					Bandwidth: 200,

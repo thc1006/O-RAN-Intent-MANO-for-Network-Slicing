@@ -1,11 +1,8 @@
 package integration
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
 	"testing"
@@ -13,74 +10,73 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"k8s.io/client-go/rest"
 
 	o2types "github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/o2-client/pkg/models"
 )
 
 // O2InterfaceTestSuite manages O2 interface integration testing
 type O2InterfaceTestSuite struct {
-	o2imsClient    *O2IMSClient
-	o2dmsClient    *O2DMSClient
-	testContext    context.Context
-	testCancel     context.CancelFunc
-	testResults    *O2TestResults
+	o2imsClient *O2IMSClient
+	o2dmsClient *O2DMSClient
+	testContext context.Context
+	testCancel  context.CancelFunc
+	testResults *O2TestResults
 }
 
 // O2TestResults aggregates O2 interface test results
 type O2TestResults struct {
-	TestStartTime     time.Time                    `json:"test_start_time"`
-	TestEndTime       time.Time                    `json:"test_end_time"`
-	O2IMSTests        []O2IMSTestResult           `json:"o2ims_tests"`
-	O2DMSTests        []O2DMSTestResult           `json:"o2dms_tests"`
-	IntegrationTests  []O2IntegrationTestResult   `json:"integration_tests"`
-	PerformanceMetrics O2PerformanceMetrics       `json:"performance_metrics"`
-	OverallSuccess    bool                        `json:"overall_success"`
-	Errors            []string                    `json:"errors"`
+	TestStartTime      time.Time                 `json:"test_start_time"`
+	TestEndTime        time.Time                 `json:"test_end_time"`
+	O2IMSTests         []O2IMSTestResult         `json:"o2ims_tests"`
+	O2DMSTests         []O2DMSTestResult         `json:"o2dms_tests"`
+	IntegrationTests   []O2IntegrationTestResult `json:"integration_tests"`
+	PerformanceMetrics O2PerformanceMetrics      `json:"performance_metrics"`
+	OverallSuccess     bool                      `json:"overall_success"`
+	Errors             []string                  `json:"errors"`
 }
 
 // O2IMSTestResult represents O2 Infrastructure Management Service test results
 type O2IMSTestResult struct {
-	TestName        string                  `json:"test_name"`
-	Endpoint        string                  `json:"endpoint"`
-	Method          string                  `json:"method"`
-	RequestPayload  interface{}            `json:"request_payload,omitempty"`
-	ResponseStatus  int                    `json:"response_status"`
-	ResponseTime    time.Duration          `json:"response_time_ms"`
-	ResponsePayload interface{}            `json:"response_payload,omitempty"`
-	ValidationResults []ValidationResult   `json:"validation_results"`
-	Success         bool                   `json:"success"`
-	ErrorMessage    string                 `json:"error_message,omitempty"`
+	TestName          string             `json:"test_name"`
+	Endpoint          string             `json:"endpoint"`
+	Method            string             `json:"method"`
+	RequestPayload    interface{}        `json:"request_payload,omitempty"`
+	ResponseStatus    int                `json:"response_status"`
+	ResponseTime      time.Duration      `json:"response_time_ms"`
+	ResponsePayload   interface{}        `json:"response_payload,omitempty"`
+	ValidationResults []ValidationResult `json:"validation_results"`
+	Success           bool               `json:"success"`
+	ErrorMessage      string             `json:"error_message,omitempty"`
 }
 
 // O2DMSTestResult represents O2 Deployment Management Service test results
 type O2DMSTestResult struct {
-	TestName         string                  `json:"test_name"`
-	DeploymentID     string                 `json:"deployment_id,omitempty"`
-	ResourceType     string                 `json:"resource_type"`
-	Operation        string                 `json:"operation"`
-	RequestPayload   interface{}            `json:"request_payload,omitempty"`
-	ResponsePayload  interface{}            `json:"response_payload,omitempty"`
-	ResponseStatus   int                    `json:"response_status"`
-	ResponseTime     time.Duration          `json:"response_time_ms"`
-	DeploymentStatus string                 `json:"deployment_status"`
-	ValidationResults []ValidationResult    `json:"validation_results"`
-	Success          bool                   `json:"success"`
-	ErrorMessage     string                 `json:"error_message,omitempty"`
+	TestName          string             `json:"test_name"`
+	DeploymentID      string             `json:"deployment_id,omitempty"`
+	ResourceType      string             `json:"resource_type"`
+	Operation         string             `json:"operation"`
+	RequestPayload    interface{}        `json:"request_payload,omitempty"`
+	ResponsePayload   interface{}        `json:"response_payload,omitempty"`
+	ResponseStatus    int                `json:"response_status"`
+	ResponseTime      time.Duration      `json:"response_time_ms"`
+	DeploymentStatus  string             `json:"deployment_status"`
+	ValidationResults []ValidationResult `json:"validation_results"`
+	Success           bool               `json:"success"`
+	ErrorMessage      string             `json:"error_message,omitempty"`
 }
 
 // O2IntegrationTestResult represents end-to-end O2 integration test results
 type O2IntegrationTestResult struct {
-	TestName           string        `json:"test_name"`
-	Scenario           string        `json:"scenario"`
-	TotalDuration      time.Duration `json:"total_duration_ms"`
-	StepsCompleted     int           `json:"steps_completed"`
-	StepsTotal         int           `json:"steps_total"`
-	ResourcesCreated   []string      `json:"resources_created"`
-	ResourcesDeployed  []string      `json:"resources_deployed"`
-	ValidationResults  []ValidationResult `json:"validation_results"`
-	Success            bool          `json:"success"`
-	FailureReason      string        `json:"failure_reason,omitempty"`
+	TestName          string             `json:"test_name"`
+	Scenario          string             `json:"scenario"`
+	TotalDuration     time.Duration      `json:"total_duration_ms"`
+	StepsCompleted    int                `json:"steps_completed"`
+	StepsTotal        int                `json:"steps_total"`
+	ResourcesCreated  []string           `json:"resources_created"`
+	ResourcesDeployed []string           `json:"resources_deployed"`
+	ValidationResults []ValidationResult `json:"validation_results"`
+	Success           bool               `json:"success"`
+	FailureReason     string             `json:"failure_reason,omitempty"`
 }
 
 // O2PerformanceMetrics captures O2 interface performance characteristics
@@ -95,20 +91,20 @@ type O2PerformanceMetrics struct {
 
 // ValidationResult represents individual validation check results
 type ValidationResult struct {
-	Check       string `json:"check"`
-	Expected    string `json:"expected"`
-	Actual      string `json:"actual"`
-	Passed      bool   `json:"passed"`
-	Message     string `json:"message,omitempty"`
+	Check    string `json:"check"`
+	Expected string `json:"expected"`
+	Actual   string `json:"actual"`
+	Passed   bool   `json:"passed"`
+	Message  string `json:"message,omitempty"`
 }
 
 // O2 test scenarios covering various interface operations
 var o2TestScenarios = []struct {
-	name          string
-	description   string
-	testType      string // "o2ims", "o2dms", "integration"
-	resourceType  string
-	operations    []string
+	name         string
+	description  string
+	testType     string // "o2ims", "o2dms", "integration"
+	resourceType string
+	operations   []string
 }{
 	{
 		name:         "Infrastructure_Discovery",
@@ -191,10 +187,10 @@ var _ = Describe("O2 Interface Integration Tests", func() {
 				Location:    "edge-cluster-01",
 				Resources: []o2types.ResourceRequirement{
 					{
-						Type:     "compute",
-						CPU:      "16",
-						Memory:   "32Gi",
-						Storage:  "500Gi",
+						Type:    "compute",
+						CPU:     "16",
+						Memory:  "32Gi",
+						Storage: "500Gi",
 					},
 					{
 						Type:      "network",
@@ -282,11 +278,11 @@ var _ = Describe("O2 Interface Integration Tests", func() {
 			By("Creating VNF deployment request")
 
 			vnfSpec := o2types.VNFDeploymentSpec{
-				Name:        "test-upf-vnf",
-				Type:        "UPF",
-				Version:     "1.0.0",
-				PackageURI:  "oci://registry.local/vnf/upf:1.0.0",
-				TargetSite:  "edge-cluster-01",
+				Name:       "test-upf-vnf",
+				Type:       "UPF",
+				Version:    "1.0.0",
+				PackageURI: "oci://registry.local/vnf/upf:1.0.0",
+				TargetSite: "edge-cluster-01",
 				Parameters: map[string]interface{}{
 					"cpu":       "4",
 					"memory":    "8Gi",
@@ -342,12 +338,12 @@ var _ = Describe("O2 Interface Integration Tests", func() {
 			By("Creating CNF deployment with Helm charts")
 
 			cnfSpec := o2types.CNFDeploymentSpec{
-				Name:        "test-amf-cnf",
-				Type:        "AMF",
-				Version:     "2.0.0",
-				HelmChart:   "oci://registry.local/cnf/amf:2.0.0",
-				TargetSite:  "regional-cluster-01",
-				Namespace:   "cnf-amf",
+				Name:       "test-amf-cnf",
+				Type:       "AMF",
+				Version:    "2.0.0",
+				HelmChart:  "oci://registry.local/cnf/amf:2.0.0",
+				TargetSite: "regional-cluster-01",
+				Namespace:  "cnf-amf",
 				Values: map[string]interface{}{
 					"replicas": 3,
 					"resources": map[string]interface{}{
@@ -562,8 +558,8 @@ var _ = Describe("O2 Interface Integration Tests", func() {
 			p95ResponseTime := suite.calculateP95ResponseTime(responseTimes)
 
 			suite.testResults.PerformanceMetrics = O2PerformanceMetrics{
-				AverageResponseTimeMs: float64(avgResponseTime.Milliseconds()),
-				P95ResponseTimeMs:     float64(p95ResponseTime.Milliseconds()),
+				AverageResponseTimeMs:    float64(avgResponseTime.Milliseconds()),
+				P95ResponseTimeMs:        float64(p95ResponseTime.Milliseconds()),
 				ThroughputRequestsPerSec: 50.0 / time.Since(performanceStart).Seconds(),
 			}
 
@@ -690,10 +686,10 @@ func (s *O2InterfaceTestSuite) testInfrastructureDiscovery() O2IMSTestResult {
 func (s *O2InterfaceTestSuite) testResourcePoolCreate(spec o2types.ResourcePoolSpec) O2IMSTestResult {
 	start := time.Now()
 	result := O2IMSTestResult{
-		TestName:        "resource_pool_create",
-		Endpoint:        "/o2ims/v1/resource-pools",
-		Method:          "POST",
-		RequestPayload:  spec,
+		TestName:          "resource_pool_create",
+		Endpoint:          "/o2ims/v1/resource-pools",
+		Method:            "POST",
+		RequestPayload:    spec,
 		ValidationResults: make([]ValidationResult, 0),
 	}
 
@@ -716,10 +712,10 @@ func (s *O2InterfaceTestSuite) testResourcePoolCreate(spec o2types.ResourcePoolS
 func (s *O2InterfaceTestSuite) testResourcePoolUpdate(poolID string, spec o2types.ResourcePoolSpec) O2IMSTestResult {
 	start := time.Now()
 	result := O2IMSTestResult{
-		TestName:        "resource_pool_update",
-		Endpoint:        fmt.Sprintf("/o2ims/v1/resource-pools/%s", poolID),
-		Method:          "PUT",
-		RequestPayload:  spec,
+		TestName:          "resource_pool_update",
+		Endpoint:          fmt.Sprintf("/o2ims/v1/resource-pools/%s", poolID),
+		Method:            "PUT",
+		RequestPayload:    spec,
 		ValidationResults: make([]ValidationResult, 0),
 	}
 
@@ -833,10 +829,10 @@ func (s *O2InterfaceTestSuite) testEventUnsubscription(subscriptionID string) O2
 func (s *O2InterfaceTestSuite) testVNFDeploymentCreate(spec o2types.VNFDeploymentSpec) O2DMSTestResult {
 	start := time.Now()
 	result := O2DMSTestResult{
-		TestName:         "vnf_deployment_create",
-		ResourceType:     "vnf",
-		Operation:        "create",
-		RequestPayload:   spec,
+		TestName:          "vnf_deployment_create",
+		ResourceType:      "vnf",
+		Operation:         "create",
+		RequestPayload:    spec,
 		ValidationResults: make([]ValidationResult, 0),
 	}
 
@@ -860,10 +856,10 @@ func (s *O2InterfaceTestSuite) testVNFDeploymentCreate(spec o2types.VNFDeploymen
 func (s *O2InterfaceTestSuite) testVNFDeploy(deploymentID string) O2DMSTestResult {
 	start := time.Now()
 	result := O2DMSTestResult{
-		TestName:      "vnf_deploy",
-		DeploymentID:  deploymentID,
-		ResourceType:  "vnf",
-		Operation:     "deploy",
+		TestName:     "vnf_deploy",
+		DeploymentID: deploymentID,
+		ResourceType: "vnf",
+		Operation:    "deploy",
 	}
 
 	// TODO: Implement actual O2DMS VNF deployment
@@ -884,10 +880,10 @@ func (s *O2InterfaceTestSuite) waitForDeploymentComplete(deploymentID string, ti
 func (s *O2InterfaceTestSuite) testVNFOperationalValidation(deploymentID string) O2DMSTestResult {
 	start := time.Now()
 	result := O2DMSTestResult{
-		TestName:      "vnf_operational_validation",
-		DeploymentID:  deploymentID,
-		ResourceType:  "vnf",
-		Operation:     "validate",
+		TestName:     "vnf_operational_validation",
+		DeploymentID: deploymentID,
+		ResourceType: "vnf",
+		Operation:    "validate",
 	}
 
 	// TODO: Implement actual VNF operational validation
@@ -902,10 +898,10 @@ func (s *O2InterfaceTestSuite) testVNFOperationalValidation(deploymentID string)
 func (s *O2InterfaceTestSuite) testVNFDeploymentUpdate(deploymentID string, spec o2types.VNFDeploymentSpec) O2DMSTestResult {
 	start := time.Now()
 	result := O2DMSTestResult{
-		TestName:      "vnf_deployment_update",
-		DeploymentID:  deploymentID,
-		ResourceType:  "vnf",
-		Operation:     "update",
+		TestName:       "vnf_deployment_update",
+		DeploymentID:   deploymentID,
+		ResourceType:   "vnf",
+		Operation:      "update",
 		RequestPayload: spec,
 	}
 
@@ -921,10 +917,10 @@ func (s *O2InterfaceTestSuite) testVNFDeploymentUpdate(deploymentID string, spec
 func (s *O2InterfaceTestSuite) testVNFUndeploy(deploymentID string) O2DMSTestResult {
 	start := time.Now()
 	result := O2DMSTestResult{
-		TestName:      "vnf_undeploy",
-		DeploymentID:  deploymentID,
-		ResourceType:  "vnf",
-		Operation:     "undeploy",
+		TestName:     "vnf_undeploy",
+		DeploymentID: deploymentID,
+		ResourceType: "vnf",
+		Operation:    "undeploy",
 	}
 
 	// TODO: Implement actual O2DMS VNF undeployment
@@ -939,10 +935,10 @@ func (s *O2InterfaceTestSuite) testVNFUndeploy(deploymentID string) O2DMSTestRes
 func (s *O2InterfaceTestSuite) testVNFDeploymentDelete(deploymentID string) O2DMSTestResult {
 	start := time.Time{}
 	result := O2DMSTestResult{
-		TestName:      "vnf_deployment_delete",
-		DeploymentID:  deploymentID,
-		ResourceType:  "vnf",
-		Operation:     "delete",
+		TestName:     "vnf_deployment_delete",
+		DeploymentID: deploymentID,
+		ResourceType: "vnf",
+		Operation:    "delete",
 	}
 
 	// TODO: Implement actual O2DMS VNF deployment deletion
@@ -956,10 +952,10 @@ func (s *O2InterfaceTestSuite) testVNFDeploymentDelete(deploymentID string) O2DM
 func (s *O2InterfaceTestSuite) testVNFDeploymentGet(deploymentID string) O2DMSTestResult {
 	start := time.Now()
 	result := O2DMSTestResult{
-		TestName:      "vnf_deployment_get",
-		DeploymentID:  deploymentID,
-		ResourceType:  "vnf",
-		Operation:     "get",
+		TestName:     "vnf_deployment_get",
+		DeploymentID: deploymentID,
+		ResourceType: "vnf",
+		Operation:    "get",
 	}
 
 	// TODO: Implement actual O2DMS VNF deployment get
@@ -975,9 +971,9 @@ func (s *O2InterfaceTestSuite) testVNFDeploymentGet(deploymentID string) O2DMSTe
 func (s *O2InterfaceTestSuite) testCNFDeploymentCreate(spec o2types.CNFDeploymentSpec) O2DMSTestResult {
 	start := time.Now()
 	result := O2DMSTestResult{
-		TestName:      "cnf_deployment_create",
-		ResourceType:  "cnf",
-		Operation:     "create",
+		TestName:       "cnf_deployment_create",
+		ResourceType:   "cnf",
+		Operation:      "create",
 		RequestPayload: spec,
 	}
 
@@ -999,10 +995,10 @@ func (s *O2InterfaceTestSuite) testCNFDeploymentCreate(spec o2types.CNFDeploymen
 func (s *O2InterfaceTestSuite) testCNFDeploy(deploymentID string) O2DMSTestResult {
 	start := time.Now()
 	result := O2DMSTestResult{
-		TestName:      "cnf_deploy",
-		DeploymentID:  deploymentID,
-		ResourceType:  "cnf",
-		Operation:     "deploy",
+		TestName:     "cnf_deploy",
+		DeploymentID: deploymentID,
+		ResourceType: "cnf",
+		Operation:    "deploy",
 	}
 
 	// TODO: Implement actual O2DMS CNF deployment
@@ -1016,10 +1012,10 @@ func (s *O2InterfaceTestSuite) testCNFDeploy(deploymentID string) O2DMSTestResul
 func (s *O2InterfaceTestSuite) testCNFScale(deploymentID string, replicas int) O2DMSTestResult {
 	start := time.Now()
 	result := O2DMSTestResult{
-		TestName:      "cnf_scale",
-		DeploymentID:  deploymentID,
-		ResourceType:  "cnf",
-		Operation:     "scale",
+		TestName:       "cnf_scale",
+		DeploymentID:   deploymentID,
+		ResourceType:   "cnf",
+		Operation:      "scale",
 		RequestPayload: map[string]interface{}{"replicas": replicas},
 	}
 
@@ -1039,10 +1035,10 @@ func (s *O2InterfaceTestSuite) validateCNFScale(deploymentID string, expectedRep
 func (s *O2InterfaceTestSuite) testCNFDeploymentDelete(deploymentID string) O2DMSTestResult {
 	start := time.Now()
 	result := O2DMSTestResult{
-		TestName:      "cnf_deployment_delete",
-		DeploymentID:  deploymentID,
-		ResourceType:  "cnf",
-		Operation:     "delete",
+		TestName:     "cnf_deployment_delete",
+		DeploymentID: deploymentID,
+		ResourceType: "cnf",
+		Operation:    "delete",
 	}
 
 	// TODO: Implement actual O2DMS CNF deployment deletion

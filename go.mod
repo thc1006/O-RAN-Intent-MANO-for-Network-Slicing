@@ -19,8 +19,6 @@ require (
 	github.com/onsi/ginkgo/v2 v2.25.3
 	github.com/onsi/gomega v1.38.2
 	github.com/prometheus/client_golang v1.23.2
-	github.com/prometheus/common v0.66.1
-	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/adapters/vnf-operator v0.0.0-00010101000000-000000000000
 	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/adapters/vnf-operator/api/v1alpha1 v0.0.0-00010101000000-000000000000
 	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/o2-client v0.0.0-00010101000000-000000000000
 	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/orchestrator v0.0.0-00010101000000-000000000000
@@ -70,6 +68,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
+	github.com/prometheus/common v0.66.1 // indirect
 	github.com/prometheus/procfs v0.16.1 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/x448/float16 v0.8.4 // indirect

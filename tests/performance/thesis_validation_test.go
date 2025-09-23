@@ -5,9 +5,7 @@ import (
 	"fmt"
 	"log"
 	"math"
-	"net"
 	"os/exec"
-	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -17,7 +15,6 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/prometheus/client_golang/api"
 	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
-	"github.com/prometheus/common/model"
 
 	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tests/framework/testutils"
 )
