@@ -3,6 +3,7 @@ package placement
 import (
 	"context"
 	"fmt"
+	"sort"
 	"testing"
 	"time"
 
@@ -56,6 +57,11 @@ func (p *IntelligentPlacementPolicy) Place(nf *NetworkFunction, sites []*Site) (
 			Message: "No suitable site found for placement",
 		}
 	}
+
+	// Sort alternatives by score in descending order
+	sort.Slice(alternatives, func(i, j int) bool {
+		return alternatives[i].Score > alternatives[j].Score
+	})
 
 	return &PlacementDecision{
 		NetworkFunction: nf,
@@ -136,13 +142,13 @@ func (p *IntelligentPlacementPolicy) calculateQoSScore(nf *NetworkFunction, site
 	// Latency score
 	if site.NetworkProfile.BaseLatencyMs <= nf.QoSRequirements.MaxLatencyMs {
 		latencyRatio := site.NetworkProfile.BaseLatencyMs / nf.QoSRequirements.MaxLatencyMs
-		score += (1.0 - latencyRatio) * 40.0 // Better latency = higher score
+		score += (2.0 - latencyRatio) * 20.0 // Better latency = higher score, max 40 points
 	}
 
 	// Throughput score
 	if site.NetworkProfile.MaxThroughputMbps >= nf.QoSRequirements.MinThroughputMbps {
 		throughputRatio := nf.QoSRequirements.MinThroughputMbps / site.NetworkProfile.MaxThroughputMbps
-		score += (1.0 - throughputRatio) * 30.0
+		score += (1.5 - throughputRatio) * 20.0 // Better throughput = higher score, max 30 points
 	}
 
 	// Packet loss score

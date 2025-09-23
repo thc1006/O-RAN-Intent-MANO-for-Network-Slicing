@@ -191,7 +191,7 @@ jobs:
       - name: Build and push container image
         uses: docker/build-push-action@v5
         with:
-          context: ${{ env.COMPONENT_PATH }}
+          context: .
           file: ${{ env.COMPONENT_PATH }}/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}

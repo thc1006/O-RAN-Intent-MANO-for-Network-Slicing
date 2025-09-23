@@ -2,8 +2,8 @@ package models
 
 import "time"
 
-// ResourcePoolSpec defines the specification for a resource pool
-type ResourcePoolSpec struct {
+// ResourcePoolSpecV1 defines the specification for a resource pool (v1 format)
+type ResourcePoolSpecV1 struct {
 	Name        string                 `json:"name"`
 	Description string                 `json:"description,omitempty"`
 	ClusterID   string                 `json:"clusterId"`
@@ -28,9 +28,9 @@ type ResourceDefinition struct {
 
 // O2ResourcePool represents a pool of resources in O2IMS
 type O2ResourcePool struct {
-	ID          string           `json:"id"`
-	Spec        ResourcePoolSpec `json:"spec"`
-	Status      string           `json:"status"`
-	CreatedAt   time.Time        `json:"createdAt"`
-	UpdatedAt   time.Time        `json:"updatedAt"`
+	ID          string             `json:"id"`
+	Spec        ResourcePoolSpecV1 `json:"spec"`
+	Status      string             `json:"status"`
+	CreatedAt   time.Time          `json:"createdAt"`
+	UpdatedAt   time.Time          `json:"updatedAt"`
 }

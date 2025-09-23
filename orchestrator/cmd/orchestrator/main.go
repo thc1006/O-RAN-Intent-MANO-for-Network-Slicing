@@ -407,11 +407,11 @@ func saveOrchestrationPlan(allocations []SliceAllocation, filename string, verbo
 
 	// Ensure output directory exists
 	dir := filepath.Dir(filename)
-	if err := os.MkdirAll(dir, 0750); err != nil {
+	if err := os.MkdirAll(dir, security.SecureDirMode); err != nil {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
 
-	file, err := os.Create(filename)
+	file, err := security.SecureCreateFile(filename)
 	if err != nil {
 		return fmt.Errorf("failed to create output file: %w", err)
 	}

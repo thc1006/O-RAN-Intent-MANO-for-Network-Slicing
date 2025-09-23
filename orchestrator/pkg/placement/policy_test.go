@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security"
 )
 
 // TestPolicyPlacementScenarios tests various placement scenarios from the thesis
@@ -515,8 +518,13 @@ func TestSnapshotPlacement(t *testing.T) {
 				snapshot.SiteMetrics[site.ID] = metrics
 			}
 
-			// Save or compare snapshot
-			snapshotFile := filepath.Join(snapshotDir, fmt.Sprintf("%s.json", scenario.Name))
+			// Save or compare snapshot with secure path construction
+			snapshotFileName := fmt.Sprintf("%s.json", scenario.Name)
+			snapshotFile, err := security.SecureJoinPath(snapshotDir, snapshotFileName)
+			if err != nil {
+				t.Fatalf("Failed to construct secure snapshot path: %v", err)
+			}
+
 			if _, err := os.Stat(snapshotFile); os.IsNotExist(err) {
 				// Save new snapshot
 				saveSnapshot(t, snapshotFile, snapshot)
@@ -713,19 +721,49 @@ func createThesisScenarios() []TestScenario {
 }
 
 func saveSnapshot(t *testing.T, filename string, snapshot PlacementSnapshot) {
+	// Validate and clean the file path for security
+	cleanPath, err := security.ValidateAndCleanPath(filename, []string{".json"})
+	if err != nil {
+		t.Fatalf("Invalid snapshot file path: %v", err)
+	}
+
+	// Ensure the path is within testdata directory
+	if !strings.HasPrefix(cleanPath, "testdata") && !strings.Contains(cleanPath, "testdata") {
+		t.Fatalf("Snapshot files must be within testdata directory: %s", cleanPath)
+	}
+
 	data, err := json.MarshalIndent(snapshot, "", "  ")
 	if err != nil {
 		t.Fatalf("Failed to marshal snapshot: %v", err)
 	}
 
-	err = os.WriteFile(filename, data, 0600)
+	// Ensure directory exists
+	dir := filepath.Dir(cleanPath)
+	if err := os.MkdirAll(dir, 0750); err != nil {
+		t.Fatalf("Failed to create snapshot directory: %v", err)
+	}
+
+	err = os.WriteFile(cleanPath, data, 0600)
 	if err != nil {
 		t.Fatalf("Failed to write snapshot: %v", err)
 	}
 }
 
 func compareSnapshot(t *testing.T, filename string, snapshot PlacementSnapshot) {
-	data, err := os.ReadFile(filename)
+	// Validate and clean the file path for security
+	cleanPath, err := security.ValidateAndCleanPath(filename, []string{".json"})
+	if err != nil {
+		t.Fatalf("Invalid snapshot file path: %v", err)
+	}
+
+	// Ensure the path is within testdata directory
+	if !strings.HasPrefix(cleanPath, "testdata") && !strings.Contains(cleanPath, "testdata") {
+		t.Fatalf("Snapshot files must be within testdata directory: %s", cleanPath)
+	}
+
+	// Create validator for test data
+	validator := security.CreateValidatorForTestData(".")
+	data, err := validator.SafeReadFile(cleanPath)
 	if err != nil {
 		t.Fatalf("Failed to read snapshot: %v", err)
 	}
