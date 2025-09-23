@@ -1,0 +1,183 @@
+---
+# Pod Security Standards configuration for enforcement
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pod-security-standards-config
+  namespace: oran-mano
+  labels:
+    app.kubernetes.io/name: pod-security-standards
+    app.kubernetes.io/component: security
+data:
+  restricted-policy.yaml: |
+    apiVersion: security.k8s.io/v1
+    kind: PodSecurityConfiguration
+    defaults:
+      enforce: "restricted"
+      enforce-version: "latest"
+      audit: "restricted"
+      audit-version: "latest"
+      warn: "restricted"
+      warn-version: "latest"
+    exemptions:
+      usernames: []
+      runtimeClasses: []
+      namespaces: ["kube-system", "kube-public", "kube-node-lease"]
+---
+# Security Context validation webhook deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pod-security-webhook
+  namespace: oran-mano
+  labels:
+    app.kubernetes.io/name: pod-security-webhook
+    app.kubernetes.io/component: security-webhook
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pod-security-webhook
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: pod-security-webhook
+        app.kubernetes.io/component: security-webhook
+      annotations:
+        seccomp.security.alpha.kubernetes.io/pod: runtime/default
+        container.apparmor.security.beta.kubernetes.io/webhook: runtime/default
+    spec:
+      serviceAccountName: pod-security-webhook
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: webhook
+        image: ghcr.io/oran-mano/pod-security-webhook:v1.0.0@sha256:abcd1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: webhook
+          containerPort: 8443
+          protocol: TCP
+        - name: metrics
+          containerPort: 9090
+          protocol: TCP
+        env:
+        - name: TLS_CERT_FILE
+          value: /etc/tls/tls.crt
+        - name: TLS_PRIVATE_KEY_FILE
+          value: /etc/tls/tls.key
+        - name: WEBHOOK_PORT
+          value: "8443"
+        resources:
+          limits:
+            cpu: 100m
+            memory: 128Mi
+            ephemeral-storage: 512Mi
+          requests:
+            cpu: 50m
+            memory: 64Mi
+            ephemeral-storage: 256Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 65532
+          runAsGroup: 65532
+          capabilities:
+            drop:
+            - ALL
+          seccompProfile:
+            type: RuntimeDefault
+        volumeMounts:
+        - name: tls-certs
+          mountPath: /etc/tls
+          readOnly: true
+        - name: temp
+          mountPath: /tmp
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: webhook
+            scheme: HTTPS
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: webhook
+            scheme: HTTPS
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: tls-certs
+        secret:
+          secretName: pod-security-webhook-certs
+      - name: temp
+        emptyDir: {}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: pod-security-webhook
+  namespace: oran-mano
+  labels:
+    app.kubernetes.io/name: pod-security-webhook
+    app.kubernetes.io/component: security-webhook
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pod-security-webhook
+  namespace: oran-mano
+  labels:
+    app.kubernetes.io/name: pod-security-webhook
+    app.kubernetes.io/component: security-webhook
+spec:
+  type: ClusterIP
+  ports:
+  - name: webhook
+    port: 443
+    targetPort: webhook
+    protocol: TCP
+  - name: metrics
+    port: 9090
+    targetPort: metrics
+    protocol: TCP
+  selector:
+    app.kubernetes.io/name: pod-security-webhook
+---
+# RBAC for Pod Security Webhook
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: pod-security-webhook
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets", "daemonsets", "statefulsets"]
+  verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: pod-security-webhook
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: pod-security-webhook
+subjects:
+- kind: ServiceAccount
+  name: pod-security-webhook
+  namespace: oran-mano

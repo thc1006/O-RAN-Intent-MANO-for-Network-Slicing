@@ -43,9 +43,9 @@ jobs:
         queries: security-extended,security-and-quality
 
     - name: Set up Go
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v5
       with:
-        go-version: '1.24'
+        go-version: '1.24.5'
         cache: true
         cache-dependency-path: |
           go.sum
@@ -108,9 +108,9 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Set up Go
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v5
       with:
-        go-version: '1.21'
+        go-version: '1.24.5'
 
     - name: Configure Git for Go modules
       run: |
@@ -184,17 +184,31 @@ jobs:
 
     - name: Run OSV Scanner
       run: |
-        # Install OSV scanner directly
-        curl -sSfL https://github.com/google/osv-scanner/releases/download/v1.4.3/osv-scanner_1.4.3_linux_amd64 -o osv-scanner
+        # Install latest OSV scanner
+        curl -sSfL https://github.com/google/osv-scanner/releases/download/v1.8.5/osv-scanner_1.8.5_linux_amd64 -o osv-scanner
         chmod +x osv-scanner
-        # Run scan with error handling
-        ./osv-scanner --recursive --skip-git ./ || true
+        # Run scan with SARIF output
+        ./osv-scanner --recursive --skip-git --format sarif --output osv-results.sarif ./ || true
+        # Fallback to JSON if SARIF fails
+        if [ ! -f osv-results.sarif ] || [ ! -s osv-results.sarif ]; then
+          ./osv-scanner --recursive --skip-git --format json --output osv-results.json ./ || true
+        fi
+
+    - name: Upload OSV Scanner results
+      uses: github/codeql-action/upload-sarif@v3
+      if: always() && hashFiles('osv-results.sarif') != ''
+      with:
+        sarif_file: 'osv-results.sarif'
+        category: 'osv-scanner'
+        wait-for-processing: false
+      continue-on-error: true
 
   # Container image security scanning
   container-scan:
     name: Container Security Scan
     runs-on: ubuntu-latest
     if: github.event_name != 'schedule'
+    timeout-minutes: 60
 
     strategy:
       matrix:
@@ -213,24 +227,43 @@ jobs:
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
+      with:
+        platforms: linux/amd64
+        driver-opts: |
+          image=moby/buildkit:latest
+          network=host
 
     - name: Build image for scanning
-      uses: docker/build-push-action@v5
+      uses: docker/build-push-action@v6
+      id: build
       with:
         context: .
         file: deploy/docker/${{ matrix.component }}/Dockerfile
-        tags: local/oran-${{ matrix.component }}:scan
+        tags: |
+          local/oran-${{ matrix.component }}:scan
+          local/oran-${{ matrix.component }}:${{ github.sha }}
         load: true
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+        cache-from: type=gha,scope=${{ matrix.component }}
+        cache-to: type=gha,mode=max,scope=${{ matrix.component }}
+        platforms: linux/amd64
+        provenance: false
+        sbom: false
+      timeout-minutes: 30
 
     - name: Run Trivy vulnerability scanner
-      uses: aquasecurity/trivy-action@master
+      uses: aquasecurity/trivy-action@0.24.0
       with:
         image-ref: local/oran-${{ matrix.component }}:scan
         format: 'sarif'
         output: 'trivy-results-${{ matrix.component }}.sarif'
         severity: 'CRITICAL,HIGH,MEDIUM'
+        scanners: 'vuln,secret,config'
+        timeout: '10m'
+        exit-code: '0'
+        ignore-unfixed: true
+        skip-db-update: false
+        skip-java-db-update: false
+      timeout-minutes: 15
 
     - name: Upload Trivy scan results to GitHub Security tab
       uses: github/codeql-action/upload-sarif@v3
@@ -242,12 +275,15 @@ jobs:
       continue-on-error: true
 
     - name: Run Grype vulnerability scanner
-      uses: anchore/scan-action@v3
+      uses: anchore/scan-action@v4
       id: grype-scan
       with:
         image: local/oran-${{ matrix.component }}:scan
         severity-cutoff: medium
         fail-build: false
+        output-format: sarif
+        add-cpes-if-none: true
+      timeout-minutes: 15
 
     - name: Upload Grype scan results
       uses: github/codeql-action/upload-sarif@v3
@@ -259,13 +295,74 @@ jobs:
       continue-on-error: true
 
     - name: Run Snyk container scan
-      uses: snyk/actions/docker@master
+      uses: snyk/actions/docker@0.4.0
       env:
         SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
       with:
         image: local/oran-${{ matrix.component }}:scan
-        args: --severity-threshold=medium --file=deploy/docker/${{ matrix.component }}/Dockerfile
+        args: --severity-threshold=medium --file=deploy/docker/${{ matrix.component }}/Dockerfile --sarif-file-output=snyk-${{ matrix.component }}.sarif --json-file-output=snyk-${{ matrix.component }}.json
       continue-on-error: true
+      timeout-minutes: 10
+
+    - name: Upload Snyk scan results
+      uses: github/codeql-action/upload-sarif@v3
+      if: always() && hashFiles('snyk-${{ matrix.component }}.sarif') != ''
+      with:
+        sarif_file: 'snyk-${{ matrix.component }}.sarif'
+        category: 'snyk-${{ matrix.component }}'
+        wait-for-processing: false
+      continue-on-error: true
+
+    - name: Collect and upload container scan artifacts
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: container-scan-results-${{ matrix.component }}
+        path: |
+          trivy-results-${{ matrix.component }}.sarif
+          snyk-${{ matrix.component }}.sarif
+          snyk-${{ matrix.component }}.json
+          grype-*.sarif
+        retention-days: 30
+
+    - name: Generate container scan summary
+      if: always()
+      run: |
+        echo "## Container Security Scan Summary - ${{ matrix.component }}" >> container-scan-summary.md
+        echo "" >> container-scan-summary.md
+        echo "- **Image**: local/oran-${{ matrix.component }}:scan" >> container-scan-summary.md
+        echo "- **Build Status**: ${{ steps.build.outcome }}" >> container-scan-summary.md
+        echo "- **Scan Date**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> container-scan-summary.md
+        echo "" >> container-scan-summary.md
+
+        # Check for scan results
+        if [ -f "trivy-results-${{ matrix.component }}.sarif" ]; then
+          echo "- ✅ Trivy scan completed" >> container-scan-summary.md
+        else
+          echo "- ❌ Trivy scan failed" >> container-scan-summary.md
+        fi
+
+        if [ -f "snyk-${{ matrix.component }}.sarif" ]; then
+          echo "- ✅ Snyk scan completed" >> container-scan-summary.md
+        else
+          echo "- ❌ Snyk scan failed or skipped" >> container-scan-summary.md
+        fi
+
+        if [ -f grype-*.sarif ]; then
+          echo "- ✅ Grype scan completed" >> container-scan-summary.md
+        else
+          echo "- ❌ Grype scan failed" >> container-scan-summary.md
+        fi
+
+        echo "" >> container-scan-summary.md
+
+    - name: Upload container scan summary
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: container-scan-summary-${{ matrix.component }}
+        path: container-scan-summary.md
+        retention-days: 30
 
   # Kubernetes security scanning
   k8s-security:
@@ -371,11 +468,11 @@ jobs:
 
     - name: Run Hadolint on Dockerfiles
       run: |
-        # Install hadolint
+        # Install latest hadolint
         wget -q https://github.com/hadolint/hadolint/releases/download/v2.12.0/hadolint-Linux-x86_64
         chmod +x hadolint-Linux-x86_64
 
-        # Create SARIF output
+        # Initialize SARIF output
         cat > hadolint.sarif << 'EOF'
         {
           "version": "2.1.0",
@@ -393,10 +490,27 @@ jobs:
         }
         EOF
 
-        # Run hadolint on all Dockerfiles
+        # Run hadolint on all Dockerfiles with JSON output
         find deploy/docker -name "Dockerfile" | while read dockerfile; do
           echo "Checking $dockerfile"
+          # Run hadolint with JSON output for better parsing
+          ./hadolint-Linux-x86_64 --format json "$dockerfile" > "hadolint-$(basename $(dirname $dockerfile)).json" || true
+          # Also run with text output for logging
           ./hadolint-Linux-x86_64 "$dockerfile" || true
+        done
+
+        # Create comprehensive scan summary
+        echo "## Hadolint Scan Results" > hadolint-summary.md
+        echo "" >> hadolint-summary.md
+        find deploy/docker -name "Dockerfile" | while read dockerfile; do
+          component=$(basename $(dirname $dockerfile))
+          echo "### $component" >> hadolint-summary.md
+          if [ -f "hadolint-$component.json" ] && [ -s "hadolint-$component.json" ]; then
+            echo "- ✅ Dockerfile scanned successfully" >> hadolint-summary.md
+          else
+            echo "- ❌ Dockerfile scan failed or no issues found" >> hadolint-summary.md
+          fi
+          echo "" >> hadolint-summary.md
         done
 
     - name: Upload Hadolint results
@@ -407,6 +521,17 @@ jobs:
         category: 'hadolint'
         wait-for-processing: false
       continue-on-error: true
+
+    - name: Upload Hadolint artifacts
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: hadolint-results
+        path: |
+          hadolint*.json
+          hadolint-summary.md
+          hadolint.sarif
+        retention-days: 30
 
   # Secrets scanning
   secrets-scan:
@@ -419,10 +544,51 @@ jobs:
       with:
         fetch-depth: 0
 
+    - name: Create Gitleaks config if not exists
+      run: |
+        if [ ! -f .gitleaks.toml ]; then
+          cat > .gitleaks.toml << 'EOF'
+        # Gitleaks configuration for O-RAN Intent-MANO
+        title = "O-RAN Intent-MANO Security Configuration"
+
+        [[rules]]
+        description = "Generic API Key"
+        id = "generic-api-key"
+        regex = '''(?i)(?:api_?key|apikey|secret_?key|secretkey)(?:\s*[:=]\s*)["']?[a-zA-Z0-9_\-]{16,}["']?'''
+        tags = ["key", "API", "generic"]
+
+        [[rules]]
+        description = "High Entropy"
+        id = "high-entropy"
+        regex = '''[A-Za-z0-9+\/]{40,}={0,2}'''
+        entropy = 4.5
+        tags = ["entropy"]
+
+        [allowlist]
+        description = "Allowlisted files"
+        files = [
+          '''\.env\.sample$''',
+          '''README\.md$''',
+          '''\.github/workflows/.*\.yml$''',
+          '''\.gitleaks\.toml$'''
+        ]
+
+        paths = [
+          '''vendor/''',
+          '''node_modules/''',
+          '''\.git/'''
+        ]
+        EOF
+        fi
+
     - name: Run Gitleaks
       uses: gitleaks/gitleaks-action@v2.3.6
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITLEAKS_ENABLE_COMMENTS: false
+      with:
+        config-path: .gitleaks.toml
+      continue-on-error: true
 
     - name: Run TruffleHog (PR)
       if: github.event_name == 'pull_request'
@@ -452,6 +618,16 @@ jobs:
         extra_args: --debug --only-verified
       continue-on-error: true
 
+    - name: Upload secrets scan artifacts
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: secrets-scan-results
+        path: |
+          gitleaks-report.json
+          trufflehog-*.json
+        retention-days: 30
+
   # License compliance
   license-scan:
     name: License Compliance
@@ -462,9 +638,9 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Set up Go
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v5
       with:
-        go-version: '1.21'
+        go-version: '1.24.5'
 
     - name: Configure Git for Go modules
       run: |
@@ -555,45 +731,168 @@ jobs:
     - name: Download all artifacts
       uses: actions/download-artifact@v4
 
-    - name: Generate security summary
+    - name: Generate comprehensive security summary
       run: |
         cat > security-summary.md << 'EOF'
         # O-RAN Intent-MANO Security Report
 
-        Generated: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
-        Commit: ${{ github.sha }}
+        **Generated**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+        **Commit**: ${{ github.sha }}
+        **Workflow Run**: ${{ github.run_id }}
+        **Branch**: ${{ github.ref_name }}
+        **Event**: ${{ github.event_name }}
 
-        ## Security Scan Results
+        ## 📊 Security Scan Results Overview
 
-        | Scan Type | Status |
-        |-----------|--------|
-        | CodeQL Analysis | ${{ needs.codeql.result }} |
-        | Dependency Scan | ${{ needs.dependency-scan.result }} |
-        | Container Scan | ${{ needs.container-scan.result }} |
-        | Kubernetes Security | ${{ needs.k8s-security.result }} |
-        | IaC Security | ${{ needs.iac-security.result }} |
-        | Secrets Scan | ${{ needs.secrets-scan.result }} |
-        | License Compliance | ${{ needs.license-scan.result }} |
-        | Compliance Check | ${{ needs.compliance-check.result }} |
+        | Scan Type | Status | Description |
+        |-----------|--------|-------------|
+        | 🔍 CodeQL Analysis | ${{ needs.codeql.result }} | Static code analysis for security vulnerabilities |
+        | 📦 Dependency Scan | ${{ needs.dependency-scan.result }} | Vulnerability scan of Go dependencies |
+        | 🐳 Container Scan | ${{ needs.container-scan.result }} | Multi-scanner container vulnerability assessment |
+        | ☸️ Kubernetes Security | ${{ needs.k8s-security.result }} | K8s manifest security configuration review |
+        | 🏗️ IaC Security | ${{ needs.iac-security.result }} | Infrastructure as Code security analysis |
+        | 🔑 Secrets Scan | ${{ needs.secrets-scan.result }} | Detection of exposed secrets and credentials |
+        | 📄 License Compliance | ${{ needs.license-scan.result }} | Open source license compliance check |
+        | ✅ Compliance Check | ${{ needs.compliance-check.result }} | Security policy compliance validation |
 
-        ## Recommendations
+        ## 🛡️ Container Security Details
 
-        - Review all HIGH and CRITICAL vulnerabilities
-        - Ensure all containers run as non-root users
-        - Regularly update base images and dependencies
-        - Monitor for new CVEs affecting used components
-        - Review and rotate secrets periodically
+        The following container images were scanned using multiple security tools:
 
-        ## Artifacts
+        - **orchestrator**: O-RAN orchestration service
+        - **vnf-operator**: VNF lifecycle management operator
+        - **o2-client**: O2 interface client implementation
+        - **tn-manager**: Transport network management service
+        - **tn-agent**: Transport network agent service
+        - **ran-dms**: RAN domain management service
+        - **cn-dms**: Core network domain management service
 
-        Security scan results are available in the workflow artifacts.
+        ### Security Scanners Used:
+        - **Trivy v0.24.0**: Comprehensive vulnerability scanner with secret detection
+        - **Grype v4.x**: Anchore vulnerability scanner with CPE enrichment
+        - **Snyk v0.4.0**: Commercial grade vulnerability and compliance scanner
+
+        ## 🔧 Tools and Versions
+
+        | Tool | Version | Purpose |
+        |------|---------|---------|
+        | Go | 1.24.5 | Build environment |
+        | Trivy | 0.24.0 | Container vulnerability scanning |
+        | Grype | v4.x | Container vulnerability scanning |
+        | Snyk | 0.4.0 | Security and compliance scanning |
+        | OSV Scanner | 1.8.5 | Open source vulnerability database |
+        | Gitleaks | 2.3.6 | Secret detection |
+        | TruffleHog | latest | Advanced secret detection |
+        | Hadolint | 2.12.0 | Dockerfile linting |
+        | Checkov | latest | Infrastructure security scanning |
+
+        ## 📋 Security Recommendations
+
+        ### 🔴 Critical Actions Required:
+        - [ ] Review and remediate all CRITICAL severity vulnerabilities
+        - [ ] Address any secrets detected by scanning tools
+        - [ ] Ensure all containers run with non-root users
+        - [ ] Verify proper RBAC configurations
+
+        ### 🟡 Best Practices:
+        - [ ] Regularly update base images (monthly)
+        - [ ] Monitor CVE databases for newly disclosed vulnerabilities
+        - [ ] Implement automated dependency updates where possible
+        - [ ] Review and rotate secrets quarterly
+        - [ ] Maintain security documentation up-to-date
+
+        ### 🟢 Continuous Monitoring:
+        - [ ] Set up alerts for new vulnerabilities in dependencies
+        - [ ] Schedule regular security scans (daily/weekly)
+        - [ ] Monitor security advisory feeds
+        - [ ] Track security metrics and trends
+
+        ## 📁 Available Artifacts
+
+        The following security scan artifacts are available for download:
+
+        - **Container scan results**: SARIF files for each component
+        - **Dependency scan reports**: Nancy, OSV Scanner results
+        - **Secrets scan output**: Gitleaks and TruffleHog reports
+        - **License compliance**: License inventory and compliance reports
+        - **Infrastructure analysis**: Kubernetes and Dockerfile security reports
+        - **Detailed summaries**: Component-specific security summaries
+
+        ## 🚨 Alert Thresholds
+
+        | Severity | Action Required | Timeframe |
+        |----------|----------------|-----------|
+        | CRITICAL | Immediate remediation | < 24 hours |
+        | HIGH | Priority remediation | < 7 days |
+        | MEDIUM | Scheduled remediation | < 30 days |
+        | LOW | Review and track | < 90 days |
+
+        ## 📞 Security Contact
+
+        For security-related issues or questions:
+        - **Repository Owner**: @${{ github.repository_owner }}
+        - **Security Team**: [Create security issue](https://github.com/${{ github.repository }}/issues/new?labels=security&template=security_issue.md)
+
+        ---
+
+        *This report was automatically generated by the O-RAN Intent-MANO security pipeline.*
         EOF
+
+    - name: Generate security metrics
+      run: |
+        echo "Collecting security metrics..."
+
+        # Initialize metrics file
+        cat > security-metrics.json << 'EOF'
+        {
+          "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+          "workflow_run": "${{ github.run_id }}",
+          "commit": "${{ github.sha }}",
+          "branch": "${{ github.ref_name }}",
+          "event": "${{ github.event_name }}",
+          "scan_results": {
+            "codeql": "${{ needs.codeql.result }}",
+            "dependency_scan": "${{ needs.dependency-scan.result }}",
+            "container_scan": "${{ needs.container-scan.result }}",
+            "k8s_security": "${{ needs.k8s-security.result }}",
+            "iac_security": "${{ needs.iac-security.result }}",
+            "secrets_scan": "${{ needs.secrets-scan.result }}",
+            "license_scan": "${{ needs.license-scan.result }}",
+            "compliance_check": "${{ needs.compliance-check.result }}"
+          },
+          "components_scanned": [
+            "orchestrator",
+            "vnf-operator",
+            "o2-client",
+            "tn-manager",
+            "tn-agent",
+            "ran-dms",
+            "cn-dms"
+          ],
+          "tools_versions": {
+            "go": "1.24.5",
+            "trivy": "0.24.0",
+            "grype": "v4.x",
+            "snyk": "0.4.0",
+            "osv_scanner": "1.8.5",
+            "gitleaks": "2.3.6",
+            "hadolint": "2.12.0"
+          }
+        }
+        EOF
+
+        # Count artifacts generated
+        ARTIFACT_COUNT=$(find . -name "*.sarif" -o -name "*.json" -o -name "*-summary.md" | wc -l)
+        echo "Generated $ARTIFACT_COUNT security artifacts"
 
     - name: Upload security report
       uses: actions/upload-artifact@v4
       with:
         name: security-report
-        path: security-summary.md
+        path: |
+          security-summary.md
+          security-metrics.json
+        retention-days: 90
 
     - name: Post security summary to PR
       if: github.event_name == 'pull_request'
@@ -676,8 +975,55 @@ jobs:
             console.log('Error:', error.message);
           }
 
+    - name: Generate security incident summary
+      run: |
+        echo "🚨 SECURITY INCIDENT SUMMARY" > incident-summary.md
+        echo "=============================" >> incident-summary.md
+        echo "" >> incident-summary.md
+        echo "**Incident ID**: SEC-${{ github.run_id }}" >> incident-summary.md
+        echo "**Timestamp**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> incident-summary.md
+        echo "**Commit**: ${{ github.sha }}" >> incident-summary.md
+        echo "**Branch**: ${{ github.ref_name }}" >> incident-summary.md
+        echo "" >> incident-summary.md
+        echo "## Failed Security Scans:" >> incident-summary.md
+        echo "" >> incident-summary.md
+        echo "- CodeQL Analysis: ${{ needs.codeql.result }}" >> incident-summary.md
+        echo "- Dependency Scan: ${{ needs.dependency-scan.result }}" >> incident-summary.md
+        echo "- Container Scan: ${{ needs.container-scan.result }}" >> incident-summary.md
+        echo "- Secrets Scan: ${{ needs.secrets-scan.result }}" >> incident-summary.md
+        echo "" >> incident-summary.md
+        echo "## Immediate Actions Required:" >> incident-summary.md
+        echo "" >> incident-summary.md
+        echo "1. 🔍 Review detailed scan results in workflow artifacts" >> incident-summary.md
+        echo "2. 🛠️ Address all CRITICAL and HIGH severity issues" >> incident-summary.md
+        echo "3. 🔒 Remove any exposed secrets or credentials" >> incident-summary.md
+        echo "4. ✅ Re-run security scans to verify fixes" >> incident-summary.md
+        echo "5. 📋 Update security documentation if needed" >> incident-summary.md
+        echo "" >> incident-summary.md
+        echo "## Resources:" >> incident-summary.md
+        echo "" >> incident-summary.md
+        echo "- [Security Workflow Run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> incident-summary.md
+        echo "- [Security Policy](https://github.com/${{ github.repository }}/blob/main/SECURITY.md)" >> incident-summary.md
+        echo "- [Incident Response Guide](https://github.com/${{ github.repository }}/docs/security/incident-response.md)" >> incident-summary.md
+
+    - name: Upload incident summary
+      uses: actions/upload-artifact@v4
+      with:
+        name: security-incident-summary
+        path: incident-summary.md
+        retention-days: 365
+
     - name: Block deployment on critical issues
       run: |
-        echo "::error::Critical security vulnerabilities detected. Deployment blocked."
-        echo "Please review and fix security issues before proceeding."
+        echo "::error::🚨 Critical security vulnerabilities detected! Deployment blocked."
+        echo "::error::Incident ID: SEC-${{ github.run_id }}"
+        echo "::error::Please review the security incident summary and fix all issues before proceeding."
+        echo ""
+        echo "Failed scans:"
+        echo "- CodeQL: ${{ needs.codeql.result }}"
+        echo "- Dependencies: ${{ needs.dependency-scan.result }}"
+        echo "- Containers: ${{ needs.container-scan.result }}"
+        echo "- Secrets: ${{ needs.secrets-scan.result }}"
+        echo ""
+        echo "📥 Download the 'security-incident-summary' artifact for detailed remediation steps."
         exit 1

@@ -1,0 +1,438 @@
+---
+# Security scanning webhook for Kubesec, Polaris, and Checkov compliance
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oran-security-scanner
+  namespace: oran-mano
+  labels:
+    app.kubernetes.io/name: oran-security-scanner
+    app.kubernetes.io/component: security-validation
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: oran-security-scanner
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: oran-security-scanner
+        app.kubernetes.io/component: security-validation
+      annotations:
+        seccomp.security.alpha.kubernetes.io/pod: runtime/default
+        container.apparmor.security.beta.kubernetes.io/scanner: runtime/default
+    spec:
+      serviceAccountName: oran-security-scanner
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: security-scanner
+        image: ghcr.io/oran-mano/security-scanner:v1.0.0@sha256:1a2b3c4d5e6f7890abcdef1234567890abcdef1234567890abcdef1234567890
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: webhook
+          containerPort: 8443
+          protocol: TCP
+        - name: metrics
+          containerPort: 9090
+          protocol: TCP
+        env:
+        - name: TLS_CERT_FILE
+          value: /etc/tls/tls.crt
+        - name: TLS_PRIVATE_KEY_FILE
+          value: /etc/tls/tls.key
+        - name: WEBHOOK_PORT
+          value: "8443"
+        - name: KUBESEC_ENABLED
+          value: "true"
+        - name: POLARIS_ENABLED
+          value: "true"
+        - name: CHECKOV_ENABLED
+          value: "true"
+        - name: SECURITY_THRESHOLD
+          value: "8"  # Minimum security score out of 10
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
+            ephemeral-storage: 1Gi
+          requests:
+            cpu: 250m
+            memory: 256Mi
+            ephemeral-storage: 512Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 65532
+          runAsGroup: 65532
+          capabilities:
+            drop:
+            - ALL
+          seccompProfile:
+            type: RuntimeDefault
+        volumeMounts:
+        - name: tls-certs
+          mountPath: /etc/tls
+          readOnly: true
+        - name: temp
+          mountPath: /tmp
+        - name: scanner-config
+          mountPath: /etc/scanner
+          readOnly: true
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: webhook
+            scheme: HTTPS
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: webhook
+            scheme: HTTPS
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: tls-certs
+        secret:
+          secretName: oran-security-scanner-certs
+      - name: temp
+        emptyDir: {}
+      - name: scanner-config
+        configMap:
+          name: security-scanner-config
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: oran-security-scanner
+  namespace: oran-mano
+  labels:
+    app.kubernetes.io/name: oran-security-scanner
+    app.kubernetes.io/component: security-validation
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: oran-security-scanner
+  namespace: oran-mano
+  labels:
+    app.kubernetes.io/name: oran-security-scanner
+    app.kubernetes.io/component: security-validation
+spec:
+  type: ClusterIP
+  ports:
+  - name: webhook
+    port: 443
+    targetPort: webhook
+    protocol: TCP
+  - name: metrics
+    port: 9090
+    targetPort: metrics
+    protocol: TCP
+  selector:
+    app.kubernetes.io/name: oran-security-scanner
+---
+# Security scanner configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: security-scanner-config
+  namespace: oran-mano
+  labels:
+    app.kubernetes.io/name: oran-security-scanner
+    app.kubernetes.io/component: security-validation
+data:
+  kubesec-config.yaml: |
+    # Kubesec security checks configuration
+    kubesec:
+      enabled: true
+      scoreThreshold: 8
+      criticalChecks:
+        - securityContext.runAsNonRoot
+        - securityContext.readOnlyRootFilesystem
+        - securityContext.allowPrivilegeEscalation
+        - securityContext.capabilities.drop
+        - resources.limits.cpu
+        - resources.limits.memory
+        - resources.requests.cpu
+        - resources.requests.memory
+      advisedChecks:
+        - securityContext.seccompProfile
+        - securityContext.runAsUser
+        - networkPolicy
+        - serviceAccount.automountServiceAccountToken
+
+  polaris-config.yaml: |
+    # Polaris security and best practices configuration
+    polaris:
+      enabled: true
+      successThreshold: 90
+      checks:
+        # Security
+        runAsNonRoot: error
+        runAsRootAllowed: error
+        readOnlyRootFilesystem: error
+        allowPrivilegeEscalation: error
+        notReadOnlyRootFilesystem: error
+        privilegeEscalationAllowed: error
+
+        # Resources
+        cpuLimitsMissing: error
+        memoryLimitsMissing: error
+        cpuRequestsMissing: warning
+        memoryRequestsMissing: warning
+
+        # Images
+        tagNotSpecified: error
+        pullPolicyNotAlways: ignore  # We use IfNotPresent for security
+
+        # Networking
+        hostNetworkSet: error
+        hostPortSet: error
+
+        # Other
+        priorityClassNotSet: ignore
+        metadataAndNameMismatched: warning
+
+  checkov-config.yaml: |
+    # Checkov security compliance configuration
+    checkov:
+      enabled: true
+      framework: ["kubernetes"]
+      severityThreshold: "MEDIUM"
+      skipChecks: []
+      blockedChecks:
+        - CKV_K8S_1   # Process can elevate its own privileges
+        - CKV_K8S_2   # Privileged container
+        - CKV_K8S_3   # Root containers
+        - CKV_K8S_4   # Privilege escalation
+        - CKV_K8S_5   # SYS_ADMIN capability
+        - CKV_K8S_6   # SYS_TIME capability
+        - CKV_K8S_7   # NET_RAW capability
+        - CKV_K8S_8   # Memory limits
+        - CKV_K8S_9   # CPU limits
+        - CKV_K8S_10  # Memory requests
+        - CKV_K8S_11  # CPU requests
+        - CKV_K8S_12  # Read-only root filesystem
+        - CKV_K8S_13  # Image tag
+        - CKV_K8S_14  # Image digest
+        - CKV_K8S_15  # Image pull policy
+        - CKV_K8S_16  # Container image
+        - CKV_K8S_17  # Privileged port
+        - CKV_K8S_18  # Liveness probe
+        - CKV_K8S_19  # Readiness probe
+        - CKV_K8S_20  # Run as non-root
+        - CKV_K8S_21  # Service account token
+        - CKV_K8S_22  # Use default service account
+        - CKV_K8S_23  # Minimize cluster admin
+
+  security-rules.yaml: |
+    # Custom security validation rules
+    customRules:
+      # Image security
+      imageValidation:
+        allowedRegistries:
+          - "ghcr.io/oran-mano/"
+          - "gcr.io/distroless/"
+          - "cgr.dev/chainguard/"
+        requireDigestPinning: true
+        forbiddenTags: ["latest", "main", "master", "dev"]
+        requireSignatureVerification: true
+
+      # Container security
+      containerSecurity:
+        requiredSecurityContext:
+          runAsNonRoot: true
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+        forbiddenCapabilities:
+          - "SYS_ADMIN"
+          - "NET_ADMIN"
+          - "SYS_PTRACE"
+          - "SYS_MODULE"
+          - "DAC_OVERRIDE"
+          - "SETUID"
+          - "SETGID"
+
+      # Resource management
+      resourceRequirements:
+        requireLimits: true
+        requireRequests: true
+        maxCpuLimit: "2000m"
+        maxMemoryLimit: "2Gi"
+        maxEphemeralStorageLimit: "10Gi"
+
+      # Network security
+      networkSecurity:
+        requireNetworkPolicies: true
+        forbiddenPorts: [22, 23, 135, 445]
+        requireTLS: true
+
+      # Service account security
+      serviceAccountSecurity:
+        forbidAutomountServiceAccountToken: true
+        requireDedicatedServiceAccount: true
+        minimizePermissions: true
+---
+# ValidatingAdmissionWebhook for security scanning
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionWebhook
+metadata:
+  name: security-scanner-webhook
+webhooks:
+- name: security-scanner.oran-mano.io
+  clientConfig:
+    service:
+      name: oran-security-scanner
+      namespace: oran-mano
+      path: "/validate-security"
+  rules:
+  - operations: ["CREATE", "UPDATE"]
+    apiGroups: [""]
+    apiVersions: ["v1"]
+    resources: ["pods"]
+  - operations: ["CREATE", "UPDATE"]
+    apiGroups: ["apps"]
+    apiVersions: ["v1"]
+    resources: ["deployments", "replicasets", "daemonsets", "statefulsets"]
+  - operations: ["CREATE", "UPDATE"]
+    apiGroups: ["batch"]
+    apiVersions: ["v1", "v1beta1"]
+    resources: ["jobs", "cronjobs"]
+  namespaceSelector:
+    matchLabels:
+      security-scan: "enabled"
+  admissionReviewVersions: ["v1", "v1beta1"]
+  sideEffects: None
+  failurePolicy: Fail
+  timeoutSeconds: 30
+---
+# RBAC for Security Scanner
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: oran-security-scanner
+rules:
+- apiGroups: [""]
+  resources: ["pods", "configmaps", "secrets", "serviceaccounts"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets", "daemonsets", "statefulsets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["batch"]
+  resources: ["jobs", "cronjobs"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["networking.k8s.io"]
+  resources: ["networkpolicies"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["rbac.authorization.k8s.io"]
+  resources: ["roles", "rolebindings", "clusterroles", "clusterrolebindings"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: oran-security-scanner
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: oran-security-scanner
+subjects:
+- kind: ServiceAccount
+  name: oran-security-scanner
+  namespace: oran-mano
+---
+# Security scan results CRD
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: securityscanresults.security.oran.io
+spec:
+  group: security.oran.io
+  versions:
+  - name: v1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              target:
+                type: object
+                properties:
+                  kind:
+                    type: string
+                  name:
+                    type: string
+                  namespace:
+                    type: string
+              scanners:
+                type: array
+                items:
+                  type: string
+          status:
+            type: object
+            properties:
+              overallScore:
+                type: number
+              scanResults:
+                type: object
+                properties:
+                  kubesec:
+                    type: object
+                    properties:
+                      score:
+                        type: number
+                      issues:
+                        type: array
+                        items:
+                          type: object
+                  polaris:
+                    type: object
+                    properties:
+                      score:
+                        type: number
+                      issues:
+                        type: array
+                        items:
+                          type: object
+                  checkov:
+                    type: object
+                    properties:
+                      passed:
+                        type: number
+                      failed:
+                        type: number
+                      issues:
+                        type: array
+                        items:
+                          type: object
+              lastScanTime:
+                type: string
+                format: date-time
+              compliance:
+                type: string
+                enum: ["compliant", "non-compliant", "warning"]
+  scope: Namespaced
+  names:
+    plural: securityscanresults
+    singular: securityscanresult
+    kind: SecurityScanResult

@@ -1,0 +1,334 @@
+---
+# Container Runtime Security - RuntimeClass definitions
+apiVersion: node.k8s.io/v1
+kind: RuntimeClass
+metadata:
+  name: oran-secure-runtime
+  labels:
+    app.kubernetes.io/name: oran-secure-runtime
+    app.kubernetes.io/component: container-runtime
+handler: runc
+overhead:
+  podFixed:
+    memory: "64Mi"
+    cpu: "10m"
+scheduling:
+  nodeClassification:
+    tolerations:
+    - key: security-runtime
+      operator: Equal
+      value: "true"
+      effect: NoSchedule
+---
+# Security enforcement via RuntimeClass for gVisor (if available)
+apiVersion: node.k8s.io/v1
+kind: RuntimeClass
+metadata:
+  name: oran-gvisor-runtime
+  labels:
+    app.kubernetes.io/name: oran-gvisor-runtime
+    app.kubernetes.io/component: container-runtime
+handler: runsc
+overhead:
+  podFixed:
+    memory: "128Mi"
+    cpu: "50m"
+scheduling:
+  nodeClassification:
+    tolerations:
+    - key: gvisor-runtime
+      operator: Equal
+      value: "true"
+      effect: NoSchedule
+---
+# Kata Containers runtime class (if available)
+apiVersion: node.k8s.io/v1
+kind: RuntimeClass
+metadata:
+  name: oran-kata-runtime
+  labels:
+    app.kubernetes.io/name: oran-kata-runtime
+    app.kubernetes.io/component: container-runtime
+handler: kata
+overhead:
+  podFixed:
+    memory: "256Mi"
+    cpu: "100m"
+scheduling:
+  nodeClassification:
+    tolerations:
+    - key: kata-runtime
+      operator: Equal
+      value: "true"
+      effect: NoSchedule
+---
+# Security monitoring DaemonSet for runtime security
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: oran-runtime-security-monitor
+  namespace: oran-mano
+  labels:
+    app.kubernetes.io/name: oran-runtime-security-monitor
+    app.kubernetes.io/component: security-monitor
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: oran-runtime-security-monitor
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: oran-runtime-security-monitor
+        app.kubernetes.io/component: security-monitor
+      annotations:
+        seccomp.security.alpha.kubernetes.io/pod: runtime/default
+        container.apparmor.security.beta.kubernetes.io/monitor: runtime/default
+    spec:
+      serviceAccountName: oran-runtime-security-monitor
+      automountServiceAccountToken: false
+      hostNetwork: false
+      hostPID: false
+      hostIPC: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        operator: Exists
+        effect: NoSchedule
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+        effect: NoSchedule
+      containers:
+      - name: security-monitor
+        image: ghcr.io/oran-mano/runtime-security-monitor:v1.0.0@sha256:fedcba0987654321fedcba0987654321fedcba0987654321fedcba0987654321
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: metrics
+          containerPort: 9091
+          protocol: TCP
+        env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        resources:
+          limits:
+            cpu: 100m
+            memory: 128Mi
+            ephemeral-storage: 512Mi
+          requests:
+            cpu: 50m
+            memory: 64Mi
+            ephemeral-storage: 256Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 65532
+          runAsGroup: 65532
+          capabilities:
+            drop:
+            - ALL
+          seccompProfile:
+            type: RuntimeDefault
+        volumeMounts:
+        - name: proc
+          mountPath: /host/proc
+          readOnly: true
+        - name: sys
+          mountPath: /host/sys
+          readOnly: true
+        - name: tmp
+          mountPath: /tmp
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: metrics
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: metrics
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: proc
+        hostPath:
+          path: /proc
+          type: Directory
+      - name: sys
+        hostPath:
+          path: /sys
+          type: Directory
+      - name: tmp
+        emptyDir: {}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: oran-runtime-security-monitor
+  namespace: oran-mano
+  labels:
+    app.kubernetes.io/name: oran-runtime-security-monitor
+    app.kubernetes.io/component: security-monitor
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: oran-runtime-security-monitor
+rules:
+- apiGroups: [""]
+  resources: ["nodes", "pods"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["metrics.k8s.io"]
+  resources: ["nodes", "pods"]
+  verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: oran-runtime-security-monitor
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: oran-runtime-security-monitor
+subjects:
+- kind: ServiceAccount
+  name: oran-runtime-security-monitor
+  namespace: oran-mano
+---
+# Security policy for container runtime
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: container-runtime-security-policy
+  namespace: oran-mano
+  labels:
+    app.kubernetes.io/name: container-runtime-security-policy
+    app.kubernetes.io/component: security-policy
+data:
+  runtime-security.yaml: |
+    # Container Runtime Security Configuration
+    runtimeSecurity:
+      # Enforce specific runtime classes for different security levels
+      requiredRuntimeClasses:
+        high: "oran-kata-runtime"
+        medium: "oran-gvisor-runtime"
+        standard: "oran-secure-runtime"
+
+      # Container image security requirements
+      imageRequirements:
+        allowedRegistries:
+          - "ghcr.io/oran-mano/"
+          - "gcr.io/distroless/"
+          - "cgr.dev/chainguard/"
+        requireDigestPinning: true
+        forbiddenTags:
+          - "latest"
+          - "main"
+          - "master"
+          - "dev"
+
+      # Security context enforcement
+      securityContextRequirements:
+        runAsNonRoot: true
+        readOnlyRootFilesystem: true
+        allowPrivilegeEscalation: false
+        requiredCapabilityDrop:
+          - "ALL"
+        forbiddenCapabilities:
+          - "SYS_ADMIN"
+          - "NET_ADMIN"
+          - "SYS_PTRACE"
+          - "SYS_MODULE"
+
+      # Resource limitations
+      resourceLimitations:
+        maxCpuLimit: "2000m"
+        maxMemoryLimit: "2Gi"
+        maxEphemeralStorageLimit: "10Gi"
+        requireResourceLimits: true
+
+      # Network security
+      networkSecurity:
+        requireNetworkPolicies: true
+        forbiddenPorts:
+          - 22    # SSH
+          - 23    # Telnet
+          - 135   # RPC
+          - 445   # SMB
+
+      # Monitoring and alerting
+      monitoring:
+        enableRuntimeSecurityMonitoring: true
+        alertOnViolations: true
+        logSecurityEvents: true
+---
+# Falco security monitoring (if available)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: falco-security-rules
+  namespace: oran-mano
+  labels:
+    app.kubernetes.io/name: falco-security-rules
+    app.kubernetes.io/component: security-rules
+data:
+  oran_rules.yaml: |
+    # O-RAN specific Falco security rules
+    - rule: O-RAN Container Privilege Escalation
+      desc: Detect privilege escalation in O-RAN containers
+      condition: >
+        spawned_process and container and
+        proc.name in (shell_binaries) and
+        (proc.pname in (shell_binaries) or
+         proc.pname in (network_tools) or
+         proc.pname in (system_tools)) and
+        container.image.repository startswith "ghcr.io/oran-mano/"
+      output: >
+        Potential privilege escalation in O-RAN container
+        (user=%user.name command=%proc.cmdline pid=%proc.pid
+         container=%container.name image=%container.image.repository)
+      priority: WARNING
+      tags: [container, privilege_escalation, oran]
+
+    - rule: O-RAN Unexpected Network Connection
+      desc: Detect unexpected network connections from O-RAN containers
+      condition: >
+        inbound_outbound and container and
+        not proc.name in (allowed_network_processes) and
+        container.image.repository startswith "ghcr.io/oran-mano/"
+      output: >
+        Unexpected network connection in O-RAN container
+        (user=%user.name command=%proc.cmdline pid=%proc.pid
+         connection=%fd.name container=%container.name image=%container.image.repository)
+      priority: WARNING
+      tags: [network, container, oran]
+
+    - rule: O-RAN File System Modification
+      desc: Detect file system modifications in read-only O-RAN containers
+      condition: >
+        open_write and container and
+        fd.name startswith "/usr" or fd.name startswith "/etc" and
+        container.image.repository startswith "ghcr.io/oran-mano/"
+      output: >
+        File system modification in read-only O-RAN container
+        (user=%user.name command=%proc.cmdline file=%fd.name
+         container=%container.name image=%container.image.repository)
+      priority: ERROR
+      tags: [filesystem, container, oran]

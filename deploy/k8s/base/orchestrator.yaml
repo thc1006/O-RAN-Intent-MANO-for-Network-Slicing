@@ -42,7 +42,7 @@ spec:
       containers:
       - name: orchestrator
         image: ghcr.io/oran-mano/orchestrator:v1.0.1@sha256:7e92b8c4f3a2d1e9b5c6f4a8d2e7b9c1f5a3d8e2b9c7f1a4d6e3b8c5f2a9d1e4
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         ports:
         - name: http
           containerPort: 8080
