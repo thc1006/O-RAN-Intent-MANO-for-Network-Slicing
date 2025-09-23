@@ -341,7 +341,7 @@ func setupLogging(config LoggingConfig) (*log.Logger, error) {
 			return nil, fmt.Errorf("failed to create log directory: %w", err)
 		}
 
-		file, err := os.OpenFile(config.File, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+		file, err := os.OpenFile(config.File, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0640)
 		if err != nil {
 			return nil, fmt.Errorf("failed to open log file: %w", err)
 		}

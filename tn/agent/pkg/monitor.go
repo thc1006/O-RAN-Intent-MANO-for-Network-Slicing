@@ -10,6 +10,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/o-ran-intent-mano/pkg/security"
 )
 
 // BandwidthMonitor provides real-time bandwidth monitoring capabilities
@@ -164,6 +166,11 @@ func (bm *BandwidthMonitor) discoverInterfaces() ([]string, error) {
 				ifaceName := strings.Split(parts[1], "@")[0] // Handle VLAN interfaces
 				ifaceName = strings.Split(ifaceName, ":")[0]  // Handle additional formatting
 				if ifaceName != "" && ifaceName != "lo" {
+					// Validate interface name for security
+					if err := security.ValidateNetworkInterface(ifaceName); err != nil {
+						bm.logger.Printf("Warning: skipping invalid interface %s: %v", ifaceName, err)
+						continue
+					}
 					interfaces = append(interfaces, ifaceName)
 				}
 			}
@@ -306,6 +313,12 @@ func (mc *MetricCollector) calculateRates(metrics *InterfaceMetrics) {
 
 // getQueueStats gets queue statistics using tc
 func (mc *MetricCollector) getQueueStats(metrics *InterfaceMetrics) {
+	// Validate interface name for security
+	if err := security.ValidateNetworkInterface(mc.interfaceName); err != nil {
+		mc.logger.Printf("Warning: invalid interface name for queue stats: %v", err)
+		return
+	}
+
 	cmd := exec.Command("tc", "-s", "qdisc", "show", "dev", mc.interfaceName)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -380,6 +393,11 @@ func (bm *BandwidthMonitor) GetCurrentMetrics() map[string]*InterfaceMetrics {
 
 // GetInterfaceMetrics returns metrics for a specific interface
 func (bm *BandwidthMonitor) GetInterfaceMetrics(interfaceName string) (*InterfaceMetrics, error) {
+	// Validate interface name for security
+	if err := security.ValidateNetworkInterface(interfaceName); err != nil {
+		return nil, fmt.Errorf("invalid interface name: %w", err)
+	}
+
 	bm.mu.RLock()
 	defer bm.mu.RUnlock()
 
@@ -433,6 +451,11 @@ func (bm *BandwidthMonitor) GetNetworkStats() *NetworkStats {
 
 // GetBandwidthSample returns a bandwidth sample for a specific interface
 func (bm *BandwidthMonitor) GetBandwidthSample(interfaceName string) (*BandwidthSample, error) {
+	// Validate interface name for security
+	if err := security.ValidateNetworkInterface(interfaceName); err != nil {
+		return nil, fmt.Errorf("invalid interface name: %w", err)
+	}
+
 	metrics, err := bm.GetInterfaceMetrics(interfaceName)
 	if err != nil {
 		return nil, err

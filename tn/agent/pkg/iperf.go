@@ -11,6 +11,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/o-ran-intent-mano/pkg/security"
 )
 
 // IperfManager manages iperf3 testing operations
@@ -115,6 +117,11 @@ func NewIperfManager(logger *log.Logger) *IperfManager {
 
 // StartServer starts an iperf3 server on the specified port
 func (im *IperfManager) StartServer(port int) error {
+	// Validate port for security
+	if err := security.ValidatePort(port); err != nil {
+		return fmt.Errorf("invalid port: %w", err)
+	}
+
 	im.mu.Lock()
 	defer im.mu.Unlock()
 
@@ -163,6 +170,11 @@ func (im *IperfManager) StartServer(port int) error {
 
 // StopServer stops the iperf3 server on the specified port
 func (im *IperfManager) StopServer(port int) error {
+	// Validate port for security
+	if err := security.ValidatePort(port); err != nil {
+		return fmt.Errorf("invalid port: %w", err)
+	}
+
 	im.mu.Lock()
 	defer im.mu.Unlock()
 
@@ -202,6 +214,25 @@ func (im *IperfManager) isServerListening(port int) bool {
 
 // RunTest executes an iperf3 client test
 func (im *IperfManager) RunTest(config *IperfTestConfig) (*IperfResult, error) {
+	// Validate inputs for security
+	if err := security.ValidateIPAddress(config.ServerIP); err != nil {
+		return nil, fmt.Errorf("invalid server IP: %w", err)
+	}
+	if err := security.ValidatePort(config.Port); err != nil {
+		return nil, fmt.Errorf("invalid port: %w", err)
+	}
+	if config.Duration > 3600*time.Second {
+		return nil, fmt.Errorf("duration too long: %v (max: 1 hour)", config.Duration)
+	}
+	if config.Parallel < 1 || config.Parallel > 128 {
+		return nil, fmt.Errorf("invalid parallel streams: %d (must be 1-128)", config.Parallel)
+	}
+	if config.Bandwidth != "" {
+		if err := security.ValidateBandwidth(config.Bandwidth); err != nil {
+			return nil, fmt.Errorf("invalid bandwidth: %w", err)
+		}
+	}
+
 	im.logger.Printf("Running iperf3 test to %s:%d", config.ServerIP, config.Port)
 
 	testID := fmt.Sprintf("test_%d", time.Now().Unix())
@@ -230,6 +261,10 @@ func (im *IperfManager) RunTest(config *IperfTestConfig) (*IperfResult, error) {
 
 	// Window size
 	if config.WindowSize != "" {
+		// Validate window size format (e.g., "64K", "1M")
+		if err := security.ValidateCommandArgument(config.WindowSize); err != nil {
+			return nil, fmt.Errorf("invalid window size: %w", err)
+		}
 		args = append(args, "-w", config.WindowSize)
 	}
 
@@ -396,6 +431,17 @@ func (im *IperfManager) parseTextOutput(output string, result *IperfResult) erro
 
 // RunThroughputTest runs a comprehensive throughput test
 func (im *IperfManager) RunThroughputTest(serverIP string, port int, duration time.Duration) (*ThroughputMetrics, error) {
+	// Validate inputs for security
+	if err := security.ValidateIPAddress(serverIP); err != nil {
+		return nil, fmt.Errorf("invalid server IP: %w", err)
+	}
+	if err := security.ValidatePort(port); err != nil {
+		return nil, fmt.Errorf("invalid port: %w", err)
+	}
+	if duration > 3600*time.Second {
+		return nil, fmt.Errorf("duration too long: %v (max: 1 hour)", duration)
+	}
+
 	im.logger.Printf("Running throughput test to %s:%d for %v", serverIP, port, duration)
 
 	metrics := &ThroughputMetrics{}
@@ -455,6 +501,17 @@ func (im *IperfManager) RunThroughputTest(serverIP string, port int, duration ti
 
 // RunLatencyTest runs a latency test using iperf3 with small packets
 func (im *IperfManager) RunLatencyTest(serverIP string, port int, duration time.Duration) (*LatencyMetrics, error) {
+	// Validate inputs for security
+	if err := security.ValidateIPAddress(serverIP); err != nil {
+		return nil, fmt.Errorf("invalid server IP: %w", err)
+	}
+	if err := security.ValidatePort(port); err != nil {
+		return nil, fmt.Errorf("invalid port: %w", err)
+	}
+	if duration > 600*time.Second {
+		return nil, fmt.Errorf("duration too long: %v (max: 10 minutes)", duration)
+	}
+
 	im.logger.Printf("Running latency test to %s:%d", serverIP, port)
 
 	metrics := &LatencyMetrics{}

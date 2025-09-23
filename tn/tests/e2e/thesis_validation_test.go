@@ -97,7 +97,7 @@ func (suite *ThesisValidationSuite) SetupSuite() {
 
 	// Create report directory
 	suite.reportDir = filepath.Join("reports", fmt.Sprintf("thesis_validation_%d", time.Now().Unix()))
-	err := os.MkdirAll(suite.reportDir, 0755)
+	err := os.MkdirAll(suite.reportDir, 0750)
 	require.NoError(suite.T(), err)
 
 	suite.logger.Printf("Starting thesis validation suite - Report dir: %s", suite.reportDir)
@@ -594,7 +594,7 @@ func (suite *ThesisValidationSuite) generateComplianceReport(results []*managerp
 	reportData, err := json.MarshalIndent(report, "", "  ")
 	require.NoError(suite.T(), err)
 
-	err = os.WriteFile(reportFile, reportData, 0644)
+	err = os.WriteFile(reportFile, reportData, 0600)
 	require.NoError(suite.T(), err)
 
 	suite.logger.Printf("Compliance report saved to: %s", reportFile)
@@ -637,7 +637,7 @@ func (suite *ThesisValidationSuite) generateFinalReport(totalDuration time.Durat
 	reportData, err := json.MarshalIndent(finalReport, "", "  ")
 	require.NoError(suite.T(), err)
 
-	err = os.WriteFile(finalReportFile, reportData, 0644)
+	err = os.WriteFile(finalReportFile, reportData, 0600)
 	require.NoError(suite.T(), err)
 
 	suite.logger.Printf("Final thesis validation report saved to: %s", finalReportFile)
