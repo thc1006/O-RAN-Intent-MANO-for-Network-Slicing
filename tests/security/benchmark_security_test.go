@@ -11,6 +11,7 @@ import (
 	"math"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"runtime"
 	"strings"
 	"sync"
@@ -214,15 +215,13 @@ func BenchmarkCommandExecutionSecurity(b *testing.B) {
 
 	b.Run("ArgumentValidation_Batch", func(b *testing.B) {
 		args := []string{"-c", "1", "-W", "5", "127.0.0.1"}
-		cmd := &security.AllowedCommand{
-			Command:     "ping",
-			AllowedArgs: map[string]bool{"-c": true, "-W": true},
-			MaxArgs:     10,
-		}
 
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			suite.executor.validateArguments(cmd, args)
+			// Test argument validation through SecureExecute (which internally calls validateArguments)
+			_, err := suite.executor.SecureExecute(context.Background(), "ping", args...)
+			// We don't care about the result, just the validation performance
+			_ = err
 		}
 	})
 
@@ -552,8 +551,6 @@ func BenchmarkSecurityVsFunctionality(b *testing.B) {
 
 // BenchmarkRegexPerformance benchmarks regex-heavy validation performance
 func BenchmarkRegexPerformance(b *testing.B) {
-	suite := NewSecurityBenchmarkSuite()
-
 	// Test performance of regex-based validations
 	testPatterns := []struct {
 		name    string

@@ -758,7 +758,7 @@ func (suite *IntegrationSecurityTestSuite) testPerformanceMetricsUnderAttack(t *
 	attackLoad := suite.simulateAttackLoad(t)
 
 	// Compare performance
-	degradation := (attackLoad - baseline) / baseline
+	degradation := float64(attackLoad-baseline) / float64(baseline)
 	t.Logf("Performance degradation under attack: %.2f%% (baseline: %v, under attack: %v)",
 		degradation*100, baseline, attackLoad)
 
