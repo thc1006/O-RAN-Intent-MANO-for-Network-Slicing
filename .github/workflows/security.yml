@@ -154,15 +154,32 @@ jobs:
           echo "Installing Nancy version: $NANCY_VERSION"
         fi
 
-        # Download the binary for Linux amd64
-        curl -L "https://github.com/sonatype-nexus-community/nancy/releases/download/${NANCY_VERSION}/nancy-${NANCY_VERSION}-linux-amd64" -o nancy
+        # Construct download URL
+        NANCY_URL="https://github.com/sonatype-nexus-community/nancy/releases/download/${NANCY_VERSION}/nancy-${NANCY_VERSION}-linux-amd64"
+        echo "Downloading Nancy from: $NANCY_URL"
+
+        # Download the binary for Linux amd64 with better error handling
+        if ! curl -L "$NANCY_URL" -o nancy; then
+          echo "Failed to download Nancy from primary URL, trying fallback..."
+          # Try fallback version
+          NANCY_VERSION="v1.0.52"
+          NANCY_URL="https://github.com/sonatype-nexus-community/nancy/releases/download/${NANCY_VERSION}/nancy-${NANCY_VERSION}-linux-amd64"
+          echo "Trying fallback URL: $NANCY_URL"
+          curl -L "$NANCY_URL" -o nancy
+        fi
+
         chmod +x nancy
 
         # Verify Nancy was downloaded successfully
-        if [ ! -f nancy ]; then
-          echo "Failed to download Nancy"
+        if [ ! -f nancy ] || [ ! -s nancy ]; then
+          echo "Failed to download Nancy or file is empty"
+          ls -la nancy || echo "Nancy file does not exist"
           exit 1
         fi
+
+        echo "Successfully downloaded Nancy:"
+        ls -la nancy
+        ./nancy --version || echo "Nancy version check failed"
 
         # Check if go.sum has content before running Nancy
         if [ -s go.sum ]; then

@@ -62,5 +62,10 @@ USER 65532:65532
 # Expose ports
 EXPOSE 8080 8081 9443
 
+# Health check - distroless images lack curl/wget, so we use a TCP connection check
+# This checks if the health port (8080) is accepting connections
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD [ "sh", "-c", "timeout 3 bash -c '</dev/tcp/localhost/8080' 2>/dev/null || exit 1" ] || exit 1
+
 # Security: Run with minimal distroless environment
 ENTRYPOINT ["/manager"]
