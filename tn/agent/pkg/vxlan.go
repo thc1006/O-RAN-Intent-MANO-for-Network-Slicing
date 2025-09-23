@@ -51,31 +51,19 @@ func (vm *VXLANManager) CreateTunnel() error {
 	portStr := strconv.Itoa(vm.config.Port)
 	ipArgs := []string{"link", "add", vm.config.DeviceName, "type", "vxlan", "id", vniStr, "dstport", portStr, "local", vm.config.LocalIP}
 
-	// Validate all arguments
-	for _, arg := range ipArgs {
-		if err := security.ValidateCommandArgument(arg); err != nil {
-			return fmt.Errorf("invalid ip command argument %s: %w", arg, err)
-		}
-	}
-
-	cmd := exec.Command("ip", ipArgs...)
-
+	// Add learning/nolearning parameter
 	if vm.config.Learning {
-		learningArg := "learning"
-		if err := security.ValidateCommandArgument(learningArg); err != nil {
-			return fmt.Errorf("invalid learning argument: %w", err)
-		}
-		cmd.Args = append(cmd.Args, learningArg)
+		ipArgs = append(ipArgs, "learning")
 	} else {
-		nolearningArg := "nolearning"
-		if err := security.ValidateCommandArgument(nolearningArg); err != nil {
-			return fmt.Errorf("invalid nolearning argument: %w", err)
-		}
-		cmd.Args = append(cmd.Args, nolearningArg)
+		ipArgs = append(ipArgs, "nolearning")
 	}
 
-	if _, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to configure interface: %v", err)
+	// Use secure ip command execution
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if _, err := security.SecureExecuteWithValidation(ctx, "ip", security.ValidateIPArgs, ipArgs...); err != nil {
+		return fmt.Errorf("failed to create VXLAN interface: %v", err)
 	}
 
 	// Set MTU

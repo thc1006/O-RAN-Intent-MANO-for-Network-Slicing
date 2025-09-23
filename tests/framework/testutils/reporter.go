@@ -10,6 +10,7 @@ import (
 
 	"github.com/onsi/ginkgo/v2/reporters"
 	"github.com/onsi/ginkgo/v2/types"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security"
 )
 
 // TestReporter provides comprehensive test reporting capabilities
