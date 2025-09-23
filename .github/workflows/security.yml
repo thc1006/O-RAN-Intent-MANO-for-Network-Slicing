@@ -452,37 +452,63 @@ jobs:
     if: failure() && (needs.codeql.result == 'failure' || needs.dependency-scan.result == 'failure' || needs.container-scan.result == 'failure' || needs.secrets-scan.result == 'failure')
 
     steps:
-    - name: Create security issue
+    - name: Log security alert
+      run: |
+        echo "🚨 SECURITY ALERT: Critical vulnerabilities detected"
+        echo "================================================="
+        echo "Commit: ${{ github.sha }}"
+        echo ""
+        echo "Affected Scans:"
+        echo "- CodeQL: ${{ needs.codeql.result }}"
+        echo "- Dependency Scan: ${{ needs.dependency-scan.result }}"
+        echo "- Container Scan: ${{ needs.container-scan.result }}"
+        echo "- Secrets Scan: ${{ needs.secrets-scan.result }}"
+        echo ""
+        echo "Action Required:"
+        echo "1. Review scan results in the workflow run"
+        echo "2. Address critical and high severity issues"
+        echo "3. Re-run security scans to verify fixes"
+        echo ""
+        echo "Security Contact: @${{ github.repository_owner }}"
+
+    - name: Create security issue (if permissions available)
       uses: actions/github-script@v6
+      continue-on-error: true
       with:
         script: |
-          const title = `🚨 Security Alert: Critical vulnerabilities detected in ${context.sha.substring(0, 7)}`;
-          const body = `
-          ## Security Alert
+          try {
+            const title = `🚨 Security Alert: Critical vulnerabilities detected in ${context.sha.substring(0, 7)}`;
+            const body = `
+            ## Security Alert
 
-          Critical security vulnerabilities have been detected in commit ${context.sha}.
+            Critical security vulnerabilities have been detected in commit ${context.sha}.
 
-          **Affected Scans:**
-          - CodeQL: ${{ needs.codeql.result }}
-          - Dependency Scan: ${{ needs.dependency-scan.result }}
-          - Container Scan: ${{ needs.container-scan.result }}
-          - Secrets Scan: ${{ needs.secrets-scan.result }}
+            **Affected Scans:**
+            - CodeQL: ${{ needs.codeql.result }}
+            - Dependency Scan: ${{ needs.dependency-scan.result }}
+            - Container Scan: ${{ needs.container-scan.result }}
+            - Secrets Scan: ${{ needs.secrets-scan.result }}
 
-          **Action Required:**
-          1. Review scan results in the [workflow run](${context.payload.repository.html_url}/actions/runs/${context.runId})
-          2. Address critical and high severity issues
-          3. Re-run security scans to verify fixes
+            **Action Required:**
+            1. Review scan results in the [workflow run](${context.payload.repository.html_url}/actions/runs/${context.runId})
+            2. Address critical and high severity issues
+            3. Re-run security scans to verify fixes
 
-          **Security Contact:** @${context.repo.owner}
-          `;
+            **Security Contact:** @${context.repo.owner}
+            `;
 
-          github.rest.issues.create({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            title: title,
-            body: body,
-            labels: ['security', 'critical', 'incident']
-          });
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['security', 'critical', 'incident']
+            });
+            console.log('Security issue created successfully');
+          } catch (error) {
+            console.log('Unable to create issue (likely due to permissions). Security alert logged to workflow output.');
+            console.log('Error:', error.message);
+          }
 
     - name: Block deployment on critical issues
       run: |
