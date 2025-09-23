@@ -18,9 +18,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	manov1alpha1 "github.com/oran-mano/api/mano/v1alpha1"
-	"github.com/oran-mano/orchestrator/pkg/placement"
-	"github.com/oran-mano/pkg/o2client"
+	manov1alpha1 "github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/api/mano/v1alpha1"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/orchestrator/pkg/placement"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/o2client"
 )
 
 // NephioAdapterReconciler reconciles NetworkSliceIntent objects

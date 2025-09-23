@@ -2,89 +2,93 @@
 
 ## Supported Versions
 
-This project is currently under active development. Security updates will be applied to:
+Currently supported versions for security updates:
 
 | Version | Supported          |
 | ------- | ------------------ |
-| main    | :white_check_mark: |
+| 1.0.x   | :white_check_mark: |
 | < 1.0   | :x:                |
 
 ## Reporting a Vulnerability
 
-We take security seriously in the O-RAN Intent-Based MANO project. If you believe you have found a security vulnerability, please report it to us as described below.
+We take security vulnerabilities seriously. If you discover a security vulnerability within this project, please follow these steps:
 
-### How to Report
-
-Please report security vulnerabilities by creating a private security advisory on GitHub:
-
-1. Go to the Security tab of this repository
-2. Click on "Report a vulnerability"
-3. Fill out the security advisory form with:
-   - A description of the vulnerability
-   - Steps to reproduce the issue
+1. **DO NOT** create a public GitHub issue
+2. Report the vulnerability by emailing the maintainers at [security@oran-mano.org](mailto:security@oran-mano.org)
+3. Include detailed information about the vulnerability:
+   - Description of the vulnerability
+   - Steps to reproduce
    - Potential impact
-   - Any suggested fixes (if applicable)
+   - Suggested fix (if available)
 
-### What to Expect
+### Response Timeline
 
-- **Initial Response**: We will acknowledge receipt of your vulnerability report within 48 hours
-- **Assessment**: We will investigate and validate the reported vulnerability within 7 days
-- **Resolution**: We aim to provide a fix or mitigation within 30 days, depending on complexity
-- **Disclosure**: We will coordinate disclosure timing with you
+- **Initial Response**: Within 48 hours
+- **Status Update**: Within 7 days
+- **Resolution Target**: Critical: 7 days, High: 14 days, Medium: 30 days, Low: 90 days
 
-## Security Best Practices
-
-This project implements several security measures:
+## Security Measures
 
 ### Container Security
+
 - All containers run as non-root users
-- Health checks are configured for all services
-- Minimal base images are used (Alpine/distroless where possible)
-- Regular dependency updates and vulnerability scanning
-
-### Network Security
-- Network segmentation using O-RAN O2 interfaces
-- TLS/mTLS for inter-service communication
-- Network policies for pod-to-pod communication
-- No hardcoded credentials or secrets
-
-### Code Security
-- Static code analysis with gosec and Trivy
-- Secret scanning with TruffleHog
-- Dependency vulnerability scanning
-- Regular security audits
+- Read-only root filesystems where applicable
+- Security contexts with minimal capabilities
+- Regular vulnerability scanning with OSV-Scanner and Trivy
 
 ### Kubernetes Security
-- RBAC policies for service accounts
-- Pod Security Standards enforcement
-- Resource quotas and limits
-- Network policies
 
-## Security Tools in CI/CD
+- NetworkPolicies for pod-to-pod communication control
+- RBAC with least privilege principles
+- Secrets management using Kubernetes native secrets
+- Pod security standards enforcement
+- Seccomp profiles enabled
 
-Our CI/CD pipeline includes:
-- **Trivy**: Container and dependency vulnerability scanning
-- **gosec**: Go security checker
-- **Checkov**: Infrastructure as Code security scanning
-- **TruffleHog**: Secret detection
-- **Hadolint**: Dockerfile linting
+### Code Security
 
-## Responsible Disclosure
+- Static code analysis with CodeQL
+- Dependency scanning for known vulnerabilities
+- Regular security audits
+- Input validation and sanitization
+- Secure communication using TLS/mTLS
 
-We believe in responsible disclosure and will:
-- Work with security researchers to understand and fix vulnerabilities
-- Credit researchers who report valid vulnerabilities (unless they prefer to remain anonymous)
-- Maintain transparency about security issues once fixed
+### CI/CD Security
 
-## Contact
-
-For urgent security issues that cannot be reported via GitHub, please contact the maintainers directly through the contact information in the repository.
+- Signed container images
+- SBOM (Software Bill of Materials) generation
+- Security scanning in CI/CD pipeline
+- Protected branches and code review requirements
 
 ## Security Updates
 
-Security updates will be announced through:
+Security updates will be released as patches to supported versions. Users will be notified through:
 - GitHub Security Advisories
 - Release notes
-- Project documentation
+- Project mailing list
 
-Thank you for helping keep the O-RAN Intent-Based MANO project secure!
+## Best Practices for Deployment
+
+1. **Network Isolation**: Deploy in isolated network segments
+2. **Access Control**: Implement strict RBAC policies
+3. **Monitoring**: Enable audit logging and monitoring
+4. **Updates**: Keep all components updated to latest stable versions
+5. **Secrets**: Use proper secret management solutions
+6. **TLS**: Enable TLS for all external communications
+
+## Compliance
+
+This project aims to comply with:
+- CIS Kubernetes Benchmark
+- NIST Cybersecurity Framework
+- O-RAN Security Specifications
+- Cloud Native Security best practices
+
+## Contact
+
+For security-related inquiries that don't need to be private:
+- Open a discussion in the Security category
+- Contact maintainers through GitHub
+
+For sensitive security reports:
+- Email: security@oran-mano.org
+- GPG Key: [Available upon request]
