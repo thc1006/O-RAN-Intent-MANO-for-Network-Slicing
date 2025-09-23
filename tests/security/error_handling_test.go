@@ -7,14 +7,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
-	"os"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security"
 )
@@ -682,7 +679,7 @@ func TestErrorMetrics(t *testing.T) {
 
 	t.Run("error_frequency_tracking", func(t *testing.T) {
 		// Generate different types of errors
-		errors := []string{
+		errorMessages := []string{
 			"database connection failed",
 			"authentication failed",
 			"validation error",
@@ -690,7 +687,7 @@ func TestErrorMetrics(t *testing.T) {
 			"authentication failed",     // Repeat
 		}
 
-		for _, errMsg := range errors {
+		for _, errMsg := range errorMessages {
 			err := fmt.Errorf(errMsg)
 			handler.HandleError(err, nil)
 		}

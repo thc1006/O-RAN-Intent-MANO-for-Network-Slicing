@@ -5,21 +5,16 @@ package security
 
 import (
 	"context"
-	"crypto/rand"
 	"encoding/hex"
 	"fmt"
-	"math"
-	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"regexp"
 	"strings"
 	"testing"
 	"time"
 	"unicode"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security"
 )

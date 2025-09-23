@@ -6,20 +6,11 @@ package security
 import (
 	"context"
 	"fmt"
-	"go/ast"
-	"go/parser"
-	"go/token"
-	"os"
-	"path/filepath"
-	"reflect"
-	"regexp"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security"
 )
@@ -537,7 +528,7 @@ func (a *SecurityCoverageAnalyzer) validateSecurityBoundaryTests(t *testing.T) {
 		if coverage, exists := a.coverageData[functionName]; exists {
 			t.Run(fmt.Sprintf("boundary_tests_%s", functionName), func(t *testing.T) {
 				boundaryTestCount := 0
-				for _, boundary := range boundaries {
+				for _, _ = range boundaries {
 					for _, testCase := range coverage.TestCases {
 						if strings.Contains(testCase, "boundary") ||
 						   strings.Contains(testCase, "limit") ||
@@ -874,7 +865,7 @@ func TestSecurityCodeQuality(t *testing.T) {
 
 func testSecurityFunctionComplexity(t *testing.T) {
 	// Analyze cyclomatic complexity of security functions
-	securityPackagePath := "github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security"
+	// For package: github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security
 
 	// In a real implementation, this would use static analysis tools
 	// For this test, we'll simulate complexity analysis

@@ -6,7 +6,6 @@ package security
 import (
 	"context"
 	"fmt"
-	"os"
 	"os/exec"
 	"strings"
 	"testing"
@@ -487,8 +486,8 @@ func TestConcurrentExecutionSafety(t *testing.T) {
 	})
 }
 
-// TestSecurityBypassAttempts tests various sophisticated attack vectors
-func TestSecurityBypassAttempts(t *testing.T) {
+// TestCommandInjectionBypassAttempts tests various sophisticated attack vectors
+func TestCommandInjectionBypassAttempts(t *testing.T) {
 	executor := security.NewSecureSubprocessExecutor()
 	ctx := context.Background()
 
@@ -542,13 +541,15 @@ func TestSecurityBypassAttempts(t *testing.T) {
 // BenchmarkCommandValidation benchmarks the performance of command validation
 func BenchmarkCommandValidation(b *testing.B) {
 	executor := security.NewSecureSubprocessExecutor()
+	ctx := context.Background()
 
 	b.Run("legitimate_command", func(b *testing.B) {
 		args := []string{"-c", "1", "127.0.0.1"}
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			cmd := executor.allowedCommands["ping"]
-			executor.validateArguments(cmd, args)
+			// Test legitimate command execution including validation
+			_, err := executor.SecureExecute(ctx, "ping", args...)
+			_ = err // Don't care about result, just performance
 		}
 	})
 
@@ -556,8 +557,9 @@ func BenchmarkCommandValidation(b *testing.B) {
 		args := []string{"-c", "1", "127.0.0.1; rm -rf /"}
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			cmd := executor.allowedCommands["ping"]
-			executor.validateArguments(cmd, args)
+			// Test malicious command detection including validation
+			_, err := executor.SecureExecute(ctx, "ping", args...)
+			_ = err // Should return error, just testing performance
 		}
 	})
 }
