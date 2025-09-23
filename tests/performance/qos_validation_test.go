@@ -89,6 +89,15 @@ type QoSPerformanceMetrics struct {
 	NetworkEfficiency     float64 `json:"network_efficiency"`
 }
 
+// NetworkSlice represents a network slice with QoS parameters
+type NetworkSlice struct {
+	ID         string        `json:"id"`
+	QoSProfile QoSTestProfile `json:"qos_profile"`
+	Priority   int           `json:"priority"`
+	CreatedAt  time.Time     `json:"created_at"`
+	Status     string        `json:"status"`
+}
+
 // QoS test profiles based on thesis performance targets
 var qosTestProfiles = []QoSTestProfile{
 	{
@@ -550,15 +559,15 @@ func (s *QoSValidationSuite) measureSlicePerformance(slice NetworkSlice) QoSMeas
 	return s.measureLatency(slice.QoSProfile)
 }
 
-func (s *QoSValidationSuite) induceNetworkStress() NetworkStressJob {
+func (s *QoSValidationSuite) induceNetworkStress() QoSNetworkStressJob {
 	// TODO: Implement network stress induction
-	return NetworkStressJob{
+	return QoSNetworkStressJob{
 		ID:        "stress-001",
 		StartTime: time.Now(),
 	}
 }
 
-func (s *QoSValidationSuite) stopNetworkStress(job NetworkStressJob) {
+func (s *QoSValidationSuite) stopNetworkStress(job QoSNetworkStressJob) {
 	// TODO: Implement stress job cleanup
 }
 
@@ -696,7 +705,7 @@ type QoSNetworkSlice struct {
 	CreatedAt  time.Time
 }
 
-type NetworkStressJob struct {
+type QoSNetworkStressJob struct {
 	ID        string
 	StartTime time.Time
 }

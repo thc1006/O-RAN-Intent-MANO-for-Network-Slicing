@@ -797,12 +797,11 @@ func NewMockFunctionRegistry() *MockFunctionRegistry {
 	return &MockFunctionRegistry{}
 }
 
-func (r *MockFunctionRegistry) GetFunction(name string) (*renderer.KptFunction, error) {
-	return &renderer.KptFunction{
+func (r *MockFunctionRegistry) GetFunction(name string) (*generator.KptFunction, error) {
+	return &generator.KptFunction{
 		Name:        name,
 		Image:       fmt.Sprintf("gcr.io/kpt-fn/%s:v0.2.0", name),
 		Version:     "v0.2.0",
-		Type:        renderer.FunctionTypeMutator,
 		Description: fmt.Sprintf("Mock function: %s", name),
 		ExecTimeout: 30 * time.Second,
 	}, nil
