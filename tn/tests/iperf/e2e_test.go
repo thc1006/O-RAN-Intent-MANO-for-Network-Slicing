@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -65,9 +66,21 @@ type IPerf3Result struct {
 }
 
 func TestTNSlicePerformance(t *testing.T) {
+	// Skip test if running in CI without kubeconfig
+	if os.Getenv("CI") == "true" || os.Getenv("GITHUB_ACTIONS") == "true" {
+		kubeconfigPath := clientcmd.RecommendedHomeFile
+		if _, err := os.Stat(kubeconfigPath); os.IsNotExist(err) {
+			t.Skip("Skipping test in CI: kubeconfig not available")
+		}
+	}
+
 	// Setup Kubernetes client
 	config, err := clientcmd.BuildConfigFromFlags("", clientcmd.RecommendedHomeFile)
 	if err != nil {
+		// In CI environment, skip test instead of failing
+		if os.Getenv("CI") == "true" || os.Getenv("GITHUB_ACTIONS") == "true" {
+			t.Skipf("Skipping test in CI: Failed to build config: %v", err)
+		}
 		t.Fatalf("Failed to build config: %v", err)
 	}
 

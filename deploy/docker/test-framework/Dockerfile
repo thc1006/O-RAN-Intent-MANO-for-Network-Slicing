@@ -1,5 +1,5 @@
 # Test Framework Multi-stage Dockerfile
-FROM golang:1.23-alpine AS go-builder
+FROM golang:1.24-alpine AS go-builder
 
 # Security labels and metadata
 LABEL maintainer="O-RAN MANO Team"

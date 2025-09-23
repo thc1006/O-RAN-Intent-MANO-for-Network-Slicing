@@ -125,14 +125,14 @@ func (suite *NephioIntegrationTestSuite) initializeComponents() {
 
 	// Initialize package generator
 	templateRegistry := NewMockTemplateRegistry()
-	functionRegistry := NewMockFunctionRegistry()
+	generatorFunctionRegistry := NewMockGeneratorFunctionRegistry()
 	packageValidator := NewMockPackageValidator()
 
 	suite.packageGenerator = generator.NewEnhancedPackageGenerator(
 		templateRegistry,
 		suite.testDir,
 		"nephio-test",
-		functionRegistry,
+		generatorFunctionRegistry,
 		packageValidator,
 	)
 
@@ -145,10 +145,11 @@ func (suite *NephioIntegrationTestSuite) initializeComponents() {
 	require.NoError(suite.T(), err)
 
 	// Initialize package renderer
+	rendererFunctionRegistry := NewMockRendererFunctionRegistry()
 	suite.packageRenderer = renderer.NewPackageRenderer(
 		suite.testDir,
 		"/usr/local/bin/kpt", // Assume kpt is installed
-		functionRegistry,
+		rendererFunctionRegistry,
 		NewMockRenderValidator(),
 	)
 
@@ -791,14 +792,57 @@ func (r *MockTemplateRegistry) ListTemplates() ([]generator.TemplateInfo, error)
 	}, nil
 }
 
-// MockFunctionRegistry provides a mock function registry
-type MockFunctionRegistry struct{}
+// MockGeneratorFunctionRegistry provides a mock function registry for generator
+type MockGeneratorFunctionRegistry struct{}
 
-func NewMockFunctionRegistry() *MockFunctionRegistry {
-	return &MockFunctionRegistry{}
+func NewMockGeneratorFunctionRegistry() *MockGeneratorFunctionRegistry {
+	return &MockGeneratorFunctionRegistry{}
 }
 
-func (r *MockFunctionRegistry) GetFunction(name string) (*renderer.KptFunction, error) {
+func (r *MockGeneratorFunctionRegistry) GetFunction(name string) (*generator.KptFunction, error) {
+	return &generator.KptFunction{
+		Name:        name,
+		Image:       fmt.Sprintf("gcr.io/kpt-fn/%s:v0.2.0", name),
+		Version:     "v0.2.0",
+		Description: fmt.Sprintf("Mock function: %s", name),
+		ExecTimeout: 30 * time.Second,
+		Required:    false,
+	}, nil
+}
+
+func (r *MockGeneratorFunctionRegistry) ListFunctions() ([]*generator.KptFunction, error) {
+	return []*generator.KptFunction{
+		{
+			Name:        "set-labels",
+			Image:       "gcr.io/kpt-fn/set-labels:v0.2.0",
+			Version:     "v0.2.0",
+			Description: "Set labels on resources",
+			ExecTimeout: 30 * time.Second,
+			Required:    false,
+		},
+		{
+			Name:        "kubeval",
+			Image:       "gcr.io/kpt-fn/kubeval:v0.3",
+			Version:     "v0.3",
+			Description: "Validate Kubernetes resources",
+			ExecTimeout: 30 * time.Second,
+			Required:    false,
+		},
+	}, nil
+}
+
+func (r *MockGeneratorFunctionRegistry) ValidateFunction(fn *generator.KptFunction) error {
+	return nil
+}
+
+// MockRendererFunctionRegistry provides a mock function registry for renderer
+type MockRendererFunctionRegistry struct{}
+
+func NewMockRendererFunctionRegistry() *MockRendererFunctionRegistry {
+	return &MockRendererFunctionRegistry{}
+}
+
+func (r *MockRendererFunctionRegistry) GetFunction(name string) (*renderer.KptFunction, error) {
 	return &renderer.KptFunction{
 		Name:        name,
 		Image:       fmt.Sprintf("gcr.io/kpt-fn/%s:v0.2.0", name),
@@ -809,7 +853,7 @@ func (r *MockFunctionRegistry) GetFunction(name string) (*renderer.KptFunction, 
 	}, nil
 }
 
-func (r *MockFunctionRegistry) ListFunctions() ([]*renderer.KptFunction, error) {
+func (r *MockRendererFunctionRegistry) ListFunctions() ([]*renderer.KptFunction, error) {
 	return []*renderer.KptFunction{
 		{
 			Name:        "set-labels",
@@ -830,11 +874,11 @@ func (r *MockFunctionRegistry) ListFunctions() ([]*renderer.KptFunction, error) 
 	}, nil
 }
 
-func (r *MockFunctionRegistry) ValidateFunction(fn *renderer.KptFunction) error {
+func (r *MockRendererFunctionRegistry) ValidateFunction(fn *renderer.KptFunction) error {
 	return nil
 }
 
-func (r *MockFunctionRegistry) ExecuteFunction(ctx context.Context, fn *renderer.KptFunction, packagePath string) error {
+func (r *MockRendererFunctionRegistry) ExecuteFunction(ctx context.Context, fn *renderer.KptFunction, packagePath string) error {
 	// Mock successful execution
 	return nil
 }
