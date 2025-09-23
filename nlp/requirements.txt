@@ -5,8 +5,8 @@ pytest==7.4.4
 pytest-cov==4.0.0
 redis==5.0.8
 # Security-focused dependencies - updated for CVE fixes
-cryptography==43.0.3  # Fixes CVE-2025-4674 and OpenSSL issues
-urllib3==2.3.0  # Fixes redirect control and retry issues
+cryptography==44.0.1  # Fixes CVE-2024-12797 (RFC7250 handshakes vulnerability)
+urllib3==2.5.0  # Fixes CVE-2025-50182 and CVE-2025-50181 (redirect control and retry issues)
 requests==2.32.5  # Fixes .netrc credentials leak vulnerability
 certifi==2024.8.30  # Updated certificate bundle
 idna==3.10  # Updated for compatibility
