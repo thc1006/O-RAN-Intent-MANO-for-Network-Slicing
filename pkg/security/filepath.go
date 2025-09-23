@@ -455,8 +455,8 @@ const SecureDirMode = 0750
 // PrivateDirMode provides private directory permissions (700)
 const PrivateDirMode = 0700
 
-// SecureFileMode provides secure file permissions (640)
-const SecureFileMode = 0640
+// SecureFileMode provides secure file permissions (600)
+const SecureFileMode = 0600
 
 // SecureCreateFile creates a file with secure permissions
 func SecureCreateFile(filename string) (*os.File, error) {

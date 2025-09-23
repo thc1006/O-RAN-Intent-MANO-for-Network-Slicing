@@ -1,9 +1,12 @@
 package tc
 
 import (
+	"context"
 	"fmt"
-	"os/exec"
 	"strings"
+	"time"
+
+	"github.com/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security"
 )
 
 // Shaper manages TC (Traffic Control) configurations
@@ -58,21 +61,27 @@ func (s *Shaper) ApplyRules(iface string, rules []Rule) error {
 
 func (s *Shaper) clearInterface(iface string) error {
 	// Clear root qdisc (this removes all child qdiscs)
-	cmd := exec.Command("tc", "qdisc", "del", "dev", iface, "root")
-	if output, err := cmd.CombinedOutput(); err != nil {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	rootArgs := []string{"qdisc", "del", "dev", iface, "root"}
+	if _, err := security.SecureExecuteWithValidation(ctx, "tc", security.ValidateTCArgs, rootArgs...); err != nil {
 		// Ignore errors if no qdisc exists
-		if !strings.Contains(string(output), "RTNETLINK answers: No such file or directory") {
-			return fmt.Errorf("failed to clear root qdisc: %v, output: %s", err, output)
+		if !strings.Contains(err.Error(), "No such file or directory") {
+			return fmt.Errorf("failed to clear root qdisc: %v", err)
 		}
 	}
 
 	// Clear ingress qdisc
-	cmd = exec.Command("tc", "qdisc", "del", "dev", iface, "ingress")
-	if output, err := cmd.CombinedOutput(); err != nil {
+	ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	ingressArgs := []string{"qdisc", "del", "dev", iface, "ingress"}
+	if _, err := security.SecureExecuteWithValidation(ctx, "tc", security.ValidateTCArgs, ingressArgs...); err != nil {
 		// Ignore errors if no qdisc exists
-		if !strings.Contains(string(output), "RTNETLINK answers: Invalid argument") &&
-			!strings.Contains(string(output), "RTNETLINK answers: No such file or directory") {
-			return fmt.Errorf("failed to clear ingress qdisc: %v, output: %s", err, output)
+		if !strings.Contains(err.Error(), "Invalid argument") &&
+			!strings.Contains(err.Error(), "No such file or directory") {
+			return fmt.Errorf("failed to clear ingress qdisc: %v", err)
 		}
 	}
 
@@ -84,33 +93,42 @@ func (s *Shaper) applyRule(iface string, rule Rule) error {
 	// In production, you would use netlink library for more control
 
 	// Add root HTB qdisc if not exists
-	cmd := exec.Command("tc", "qdisc", "add", "dev", iface, "root", "handle", "1:", "htb", "default", "30")
-	if output, err := cmd.CombinedOutput(); err != nil {
-		if !strings.Contains(string(output), "File exists") {
-			return fmt.Errorf("failed to add root qdisc: %v, output: %s", err, output)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	qdiscArgs := []string{"qdisc", "add", "dev", iface, "root", "handle", "1:", "htb", "default", "30"}
+	if _, err := security.SecureExecuteWithValidation(ctx, "tc", security.ValidateTCArgs, qdiscArgs...); err != nil {
+		if !strings.Contains(err.Error(), "exists") {
+			return fmt.Errorf("failed to add root qdisc: %v", err)
 		}
 	}
 
 	// Add class with rate limit
 	classID := fmt.Sprintf("1:%d", rule.Priority)
-	cmd = exec.Command("tc", "class", "add", "dev", iface, "parent", "1:",
+	ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	classArgs := []string{"class", "add", "dev", iface, "parent", "1:",
 		"classid", classID, "htb",
 		"rate", fmt.Sprintf("%dkbit", rule.Rate),
-		"burst", fmt.Sprintf("%dk", rule.Burst))
+		"burst", fmt.Sprintf("%dk", rule.Burst)}
 
-	if output, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to add class: %v, output: %s", err, output)
+	if _, err := security.SecureExecuteWithValidation(ctx, "tc", security.ValidateTCArgs, classArgs...); err != nil {
+		return fmt.Errorf("failed to add class: %v", err)
 	}
 
 	// Add netem for latency if specified
 	if rule.Latency > 0 {
-		cmd = exec.Command("tc", "qdisc", "add", "dev", iface,
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		netemArgs := []string{"qdisc", "add", "dev", iface,
 			"parent", classID,
 			"handle", fmt.Sprintf("%d:", rule.Priority*10),
-			"netem", "delay", fmt.Sprintf("%.1fms", rule.Latency))
+			"netem", "delay", fmt.Sprintf("%.1fms", rule.Latency)}
 
-		if output, err := cmd.CombinedOutput(); err != nil {
-			return fmt.Errorf("failed to add netem: %v, output: %s", err, output)
+		if _, err := security.SecureExecuteWithValidation(ctx, "tc", security.ValidateTCArgs, netemArgs...); err != nil {
+			return fmt.Errorf("failed to add netem: %v", err)
 		}
 	}
 
@@ -119,8 +137,11 @@ func (s *Shaper) applyRule(iface string, rule Rule) error {
 
 // GetStatistics retrieves TC statistics for an interface
 func (s *Shaper) GetStatistics(iface string) (string, error) {
-	cmd := exec.Command("tc", "-s", "qdisc", "show", "dev", iface)
-	output, err := cmd.CombinedOutput()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	statsArgs := []string{"-s", "qdisc", "show", "dev", iface}
+	output, err := security.SecureExecuteWithValidation(ctx, "tc", security.ValidateTCArgs, statsArgs...)
 	if err != nil {
 		return "", fmt.Errorf("failed to get statistics: %v", err)
 	}

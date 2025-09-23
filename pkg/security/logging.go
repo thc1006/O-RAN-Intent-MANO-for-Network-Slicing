@@ -323,7 +323,7 @@ func (sl *SecureLogger) SafeLogf(format string, args ...interface{}) {
 	finalMessage := sl.finalSanitize(message)
 
 	// Log with timestamp and logger ID for audit trail
-	sl.logger.Printf("[%s][%s] %s", time.Now().Format("2006-01-02T15:04:05.000Z07:00"), sl.logID, finalMessage)
+	sl.logger.Printf("[%s][%s] %s", time.Now().Format("2006-01-02T15:04:05.000Z07:00"), SanitizeForLog(sl.logID), finalMessage)
 }
 
 // SafeLogError safely logs error messages

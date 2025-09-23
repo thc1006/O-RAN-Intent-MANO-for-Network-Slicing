@@ -1,11 +1,14 @@
 package vxlan
 
 import (
+	"context"
 	"fmt"
-	"os/exec"
+	"io/ioutil"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security"
 )
 
 // OptimizedManager provides high-performance VXLAN tunnel management
@@ -458,16 +461,18 @@ func (m *OptimizedManager) GetTunnelStatusOptimized(vxlanID int32) (*EnhancedTun
 func (m *OptimizedManager) updateTunnelStats(vxlanID int32) {
 	ifaceName := fmt.Sprintf("vxlan%d", vxlanID)
 
-	// Get interface statistics
-	cmd := exec.Command("cat", fmt.Sprintf("/sys/class/net/%s/statistics/tx_bytes", ifaceName))
-	if _, err := cmd.Output(); err == nil {
-		// Parse and update stats (simplified)
-		m.tunnelMutex.Lock()
-		if tunnel, exists := m.tunnels[vxlanID]; exists {
-			tunnel.Stats.LastUpdated = time.Now()
-			// Would parse actual stats here
+	// Get interface statistics using secure file read
+	statsPath := fmt.Sprintf("/sys/class/net/%s/statistics/tx_bytes", security.SanitizeForLog(ifaceName))
+	if err := security.ValidateFilePath(statsPath); err == nil {
+		if _, err := ioutil.ReadFile(statsPath); err == nil {
+			// Parse and update stats (simplified)
+			m.tunnelMutex.Lock()
+			if tunnel, exists := m.tunnels[vxlanID]; exists {
+				tunnel.Stats.LastUpdated = time.Now()
+				// Would parse actual stats here
+			}
+			m.tunnelMutex.Unlock()
 		}
-		m.tunnelMutex.Unlock()
 	}
 }
 
