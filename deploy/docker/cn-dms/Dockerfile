@@ -1,6 +1,6 @@
 # CN DMS Multi-stage Dockerfile
 # Stage 1: Build
-FROM golang:1.23-alpine AS builder
+FROM golang:1.24.5-alpine AS builder
 
 # Security: Use non-root user for build
 RUN adduser -D -s /bin/sh appuser

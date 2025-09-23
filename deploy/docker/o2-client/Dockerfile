@@ -1,6 +1,6 @@
 # O2 Client Multi-stage Dockerfile
 # Stage 1: Build
-FROM golang:1.24-alpine AS builder
+FROM golang:1.24.5-alpine AS builder
 
 # Security: Use non-root user for build
 RUN adduser -D -s /bin/sh appuser
@@ -19,6 +19,11 @@ COPY go.sum go.sum
 # Copy necessary source code including pkg directory and o2-client
 COPY pkg/ pkg/
 COPY o2-client/ o2-client/
+COPY adapters/ adapters/
+COPY orchestrator/ orchestrator/
+COPY cn-dms/ cn-dms/
+COPY ran-dms/ ran-dms/
+COPY tn/ tn/
 
 # Download dependencies (after copying local packages)
 RUN go mod download
