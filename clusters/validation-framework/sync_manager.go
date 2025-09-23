@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
@@ -23,7 +24,7 @@ type SyncManager struct {
 	PackageValidator *NephioValidator
 	GitRepo          *GitRepository
 	mutex            sync.RWMutex
-	syncStatus       map[string]*SyncStatus
+	syncStatus       map[string]*PackageSyncStatus
 }
 
 // SyncConfig holds synchronization configuration
@@ -76,8 +77,8 @@ type HealthCheck struct {
 	Retries     int           `yaml:"retries"`
 }
 
-// SyncStatus represents the synchronization status of a package/cluster
-type SyncStatus struct {
+// PackageSyncStatus represents the synchronization status of a package/cluster
+type PackageSyncStatus struct {
 	Package       string                `json:"package"`
 	Cluster       string                `json:"cluster"`
 	Status        SyncState             `json:"status"`
@@ -121,7 +122,7 @@ type DependencyStatus struct {
 }
 
 // HealthStatus represents health check status
-type HealthStatus struct {
+type PackageHealthStatus struct {
 	Status      string    `json:"status"`
 	LastCheck   time.Time `json:"lastCheck"`
 	CheckCount  int       `json:"checkCount"`
@@ -129,8 +130,8 @@ type HealthStatus struct {
 	Message     string    `json:"message,omitempty"`
 }
 
-// SyncResult represents the result of a synchronization operation
-type SyncResult struct {
+// SyncOperationResult represents the result of a synchronization operation
+type SyncOperationResult struct {
 	SyncID       string                `json:"syncId"`
 	Timestamp    time.Time             `json:"timestamp"`
 	Duration     time.Duration         `json:"duration"`
@@ -178,12 +179,12 @@ func NewSyncManager(config SyncConfig, clusterClients map[string]*ClusterClient,
 		ClusterClients:   clusterClients,
 		PackageValidator: packageValidator,
 		GitRepo:          gitRepo,
-		syncStatus:       make(map[string]*SyncStatus),
+		syncStatus:       make(map[string]*PackageSyncStatus),
 	}
 }
 
 // SynchronizeAll synchronizes all packages across all clusters
-func (sm *SyncManager) SynchronizeAll(ctx context.Context) (*SyncResult, error) {
+func (sm *SyncManager) SynchronizeAll(ctx context.Context) (*SyncOperationResult, error) {
 	if !sm.Config.Enabled {
 		return nil, fmt.Errorf("synchronization is disabled")
 	}
@@ -193,7 +194,7 @@ func (sm *SyncManager) SynchronizeAll(ctx context.Context) (*SyncResult, error) 
 
 	log.Printf("Starting package synchronization %s", syncID)
 
-	result := &SyncResult{
+	result := &SyncOperationResult{
 		SyncID:    syncID,
 		Timestamp: startTime,
 		Results:   make([]PackageSyncResult, 0),
@@ -537,7 +538,7 @@ func (sm *SyncManager) updateSyncStatus(packageName, clusterName string, state S
 	key := fmt.Sprintf("%s/%s", packageName, clusterName)
 	status := sm.syncStatus[key]
 	if status == nil {
-		status = &SyncStatus{
+		status = &PackageSyncStatus{
 			Package: packageName,
 			Cluster: clusterName,
 		}
@@ -673,11 +674,11 @@ func (sm *SyncManager) isPackageSynced(packageName string) bool {
 }
 
 // GetSyncStatus returns the current synchronization status
-func (sm *SyncManager) GetSyncStatus() map[string]*SyncStatus {
+func (sm *SyncManager) GetSyncStatus() map[string]*PackageSyncStatus {
 	sm.mutex.RLock()
 	defer sm.mutex.RUnlock()
 
-	result := make(map[string]*SyncStatus)
+	result := make(map[string]*PackageSyncStatus)
 	for key, status := range sm.syncStatus {
 		result[key] = status
 	}

@@ -11,9 +11,9 @@ import (
 
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -165,7 +165,8 @@ func (tf *TestFramework) SetupKubernetesTestEnvironment() error {
 	tf.Config.KubeConfig = cfg
 
 	// Create Kubernetes clients
-	k8sClient, err := client.New(cfg, client.Options{Scheme: ctrl.GetConfigOrDie().Scheme})
+	scheme := runtime.NewScheme()
+	k8sClient, err := client.New(cfg, client.Options{Scheme: scheme})
 	if err != nil {
 		return fmt.Errorf("failed to create Kubernetes client: %w", err)
 	}

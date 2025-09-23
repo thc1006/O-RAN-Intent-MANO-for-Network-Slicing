@@ -571,8 +571,8 @@ func (mc *MetricsCollector) collectMetricsServerData(ctx context.Context, metric
 	var totalCPU, usedCPU, totalMemory, usedMemory resource.Quantity
 
 	for _, nodeMetric := range nodeMetrics.Items {
-		cpu := nodeMetric.Usage[metav1.ResourceCPU]
-		memory := nodeMetric.Usage[metav1.ResourceMemory]
+		cpu := nodeMetric.Usage["cpu"]
+		memory := nodeMetric.Usage["memory"]
 
 		usedCPU.Add(cpu)
 		usedMemory.Add(memory)

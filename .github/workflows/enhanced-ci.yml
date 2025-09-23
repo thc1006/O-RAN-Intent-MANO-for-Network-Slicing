@@ -260,7 +260,7 @@ jobs:
         echo "Test execution plan generated"
 
     - name: Upload execution plan
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: test-execution-plan
         path: test-execution-plan.json
@@ -594,7 +594,7 @@ jobs:
         echo "License compliance check completed"
 
     - name: Upload analysis artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: code-quality-${{ matrix.analysis-type }}
         path: |
@@ -609,7 +609,7 @@ jobs:
 
     - name: Upload SARIF files to GitHub Security
       if: always() && matrix.analysis-type == 'security-scan'
-      uses: github/codeql-action/upload-sarif@v2
+      uses: github/codeql-action/upload-sarif@v3
       with:
         sarif_file: gosec.sarif
 
@@ -893,7 +893,7 @@ jobs:
         fi
 
     - name: Upload comprehensive test artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: test-results-${{ matrix.component }}
         path: |
@@ -932,7 +932,7 @@ jobs:
 
     steps:
     - name: Download all artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
 
     - name: Aggregate quality metrics
       run: |
@@ -1018,7 +1018,7 @@ jobs:
         fi
 
     - name: Upload aggregate quality report
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: aggregate-quality-report
         path: aggregate-quality-report.json
@@ -1041,7 +1041,7 @@ jobs:
         go-version: ${{ env.GO_VERSION }}
 
     - name: Download all artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         path: reports/
 
@@ -1158,14 +1158,14 @@ jobs:
 
     - name: Upload dashboard to Pages
       if: github.ref == 'refs/heads/main'
-      uses: actions/upload-pages-artifact@v2
+      uses: actions/upload-pages-artifact@v3
       with:
         path: reports/dashboard/
 
     - name: Deploy to GitHub Pages
       if: github.ref == 'refs/heads/main'
       id: deployment
-      uses: actions/deploy-pages@v2
+      uses: actions/deploy-pages@v4
 
     - name: Create dashboard archive
       run: |
@@ -1179,7 +1179,7 @@ jobs:
         cp "dashboard_${timestamp}.tar.gz" dashboard_latest.tar.gz
 
     - name: Upload dashboard artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: test-dashboard
         path: |

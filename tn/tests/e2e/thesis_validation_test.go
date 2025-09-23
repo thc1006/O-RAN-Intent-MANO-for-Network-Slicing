@@ -14,8 +14,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/o-ran/intent-mano/tn/agent/pkg"
-	"github.com/o-ran/intent-mano/tn/manager/pkg"
+	agentpkg "github.com/o-ran/intent-mano/tn/agent/pkg"
+	managerpkg "github.com/o-ran/intent-mano/tn/manager/pkg"
 )
 
 // ThesisValidationSuite provides end-to-end thesis validation testing
@@ -24,9 +24,9 @@ type ThesisValidationSuite struct {
 	ctx             context.Context
 	cancel          context.CancelFunc
 	logger          *log.Logger
-	manager         *pkg.TNManager
-	agents          map[string]*pkg.TNAgent
-	testResults     []*pkg.NetworkSliceMetrics
+	manager         *managerpkg.TNManager
+	agents          map[string]*agentpkg.TNAgent
+	testResults     []*managerpkg.NetworkSliceMetrics
 	reportDir       string
 	startTime       time.Time
 }
@@ -92,8 +92,8 @@ func (suite *ThesisValidationSuite) SetupSuite() {
 	suite.startTime = time.Now()
 	suite.ctx, suite.cancel = context.WithCancel(context.Background())
 	suite.logger = log.New(os.Stdout, "[Thesis-Validation] ", log.LstdFlags|log.Lshortfile)
-	suite.agents = make(map[string]*pkg.TNAgent)
-	suite.testResults = make([]*pkg.NetworkSliceMetrics, 0)
+	suite.agents = make(map[string]*agentpkg.TNAgent)
+	suite.testResults = make([]*managerpkg.NetworkSliceMetrics, 0)
 
 	// Create report directory
 	suite.reportDir = filepath.Join("reports", fmt.Sprintf("thesis_validation_%d", time.Now().Unix()))
@@ -124,12 +124,12 @@ func (suite *ThesisValidationSuite) initializeTestEnvironment() {
 	suite.logger.Println("Initializing thesis validation test environment...")
 
 	// Initialize TN Manager
-	managerConfig := &pkg.TNConfig{
+	managerConfig := &managerpkg.TNConfig{
 		ClusterName:    "thesis-validation-manager",
 		MonitoringPort: 9000,
 	}
 
-	suite.manager = pkg.NewTNManager(managerConfig, suite.logger)
+	suite.manager = managerpkg.NewTNManager(managerConfig, suite.logger)
 	require.NoError(suite.T(), suite.manager.Start())
 
 	// Initialize test clusters
@@ -165,7 +165,7 @@ func (suite *ThesisValidationSuite) createTestAgent(name, ip string, port int, v
 	IP   string
 	Port int
 	VNI  uint32
-}) *pkg.TNAgent {
+}) *agentpkg.TNAgent {
 	// Build remote IPs (all other clusters)
 	var remoteIPs []string
 	for _, cluster := range allClusters {
@@ -174,12 +174,12 @@ func (suite *ThesisValidationSuite) createTestAgent(name, ip string, port int, v
 		}
 	}
 
-	config := &pkg.TNConfig{
+	config := &agentpkg.TNConfig{
 		ClusterName:    name,
 		NetworkCIDR:    fmt.Sprintf("%s/24", ip),
 		MonitoringPort: port,
 		QoSClass:       "thesis_validation",
-		VXLANConfig: pkg.VXLANConfig{
+		VXLANConfig: agentpkg.VXLANConfig{
 			VNI:        vni,
 			RemoteIPs:  remoteIPs,
 			LocalIP:    ip,
@@ -188,7 +188,7 @@ func (suite *ThesisValidationSuite) createTestAgent(name, ip string, port int, v
 			DeviceName: fmt.Sprintf("vxlan%d", vni),
 			Learning:   false,
 		},
-		BWPolicy: pkg.BandwidthPolicy{
+		BWPolicy: agentpkg.BandwidthPolicy{
 			DownlinkMbps: 10.0, // Will be updated per slice
 			UplinkMbps:   10.0,
 			LatencyMs:    15.0,
@@ -197,7 +197,7 @@ func (suite *ThesisValidationSuite) createTestAgent(name, ip string, port int, v
 			Priority:     2,
 			QueueClass:   "htb",
 		},
-		Interfaces: []pkg.NetworkInterface{
+		Interfaces: []agentpkg.NetworkInterface{
 			{
 				Name:    "eth0",
 				Type:    "physical",
@@ -209,7 +209,7 @@ func (suite *ThesisValidationSuite) createTestAgent(name, ip string, port int, v
 		},
 	}
 
-	agent := pkg.NewTNAgent(config, suite.logger)
+	agent := agentpkg.NewTNAgent(config, suite.logger)
 	require.NoError(suite.T(), agent.Start())
 
 	return agent
@@ -325,7 +325,7 @@ func (suite *ThesisValidationSuite) TestComprehensiveThesisValidation() {
 	suite.logger.Println("=== Comprehensive Thesis Validation ===")
 
 	// Run comprehensive tests for all slices
-	comprehensiveResults := make([]*pkg.NetworkSliceMetrics, 0)
+	comprehensiveResults := make([]*managerpkg.NetworkSliceMetrics, 0)
 
 	for i, sliceConfig := range SliceConfigurations {
 		suite.logger.Printf("Running comprehensive test for slice %d: %s", i+1, sliceConfig.Name)
@@ -351,7 +351,7 @@ func (suite *ThesisValidationSuite) runSliceTest(sliceConfig struct {
 	LossPercent   float64
 	Priority      int
 	ExpectedIndex int
-}, testType string) *pkg.NetworkSliceMetrics {
+}, testType string) *managerpkg.NetworkSliceMetrics {
 
 	// Configure the slice
 	tnConfig := suite.buildTNConfig(sliceConfig)
@@ -375,7 +375,7 @@ func (suite *ThesisValidationSuite) runSliceTest(sliceConfig struct {
 	}
 
 	// Create test configuration
-	testConfig := &pkg.PerformanceTestConfig{
+	testConfig := &managerpkg.PerformanceTestConfig{
 		TestID:    fmt.Sprintf("thesis_%s_%s_%d", sliceConfig.Type, testType, time.Now().Unix()),
 		SliceID:   sliceConfig.Name,
 		SliceType: sliceConfig.Type,
@@ -406,19 +406,19 @@ func (suite *ThesisValidationSuite) buildTNConfig(sliceConfig struct {
 	LossPercent   float64
 	Priority      int
 	ExpectedIndex int
-}) *pkg.TNConfig {
+}) *agentpkg.TNConfig {
 
-	return &pkg.TNConfig{
+	return &agentpkg.TNConfig{
 		ClusterName: sliceConfig.Name,
 		QoSClass:    sliceConfig.QoSClass,
-		BWPolicy: pkg.BandwidthPolicy{
+		BWPolicy: agentpkg.BandwidthPolicy{
 			DownlinkMbps: sliceConfig.BWLimitMbps,
 			UplinkMbps:   sliceConfig.BWLimitMbps,
 			LatencyMs:    sliceConfig.LatencyMs,
 			LossPercent:  sliceConfig.LossPercent,
 			Priority:     sliceConfig.Priority,
 			QueueClass:   "htb",
-			Filters: []pkg.Filter{
+			Filters: []agentpkg.Filter{
 				{
 					Protocol: "tcp",
 					Priority: sliceConfig.Priority,
@@ -439,7 +439,7 @@ func (suite *ThesisValidationSuite) logDetailedThroughputResults(sliceConfig str
 	LossPercent   float64
 	Priority      int
 	ExpectedIndex int
-}, result *pkg.NetworkSliceMetrics, expectedMbps float64) {
+}, result *managerpkg.NetworkSliceMetrics, expectedMbps float64) {
 
 	throughput := result.Performance.Throughput
 
@@ -471,7 +471,7 @@ func (suite *ThesisValidationSuite) logDetailedRTTResults(sliceConfig struct {
 	LossPercent   float64
 	Priority      int
 	ExpectedIndex int
-}, result *pkg.NetworkSliceMetrics, expectedRTT float64) {
+}, result *managerpkg.NetworkSliceMetrics, expectedRTT float64) {
 
 	latency := result.Performance.Latency
 
@@ -492,7 +492,7 @@ func (suite *ThesisValidationSuite) logDetailedRTTResults(sliceConfig struct {
 }
 
 // updateTestResult updates an existing test result or adds a new one
-func (suite *ThesisValidationSuite) updateTestResult(newResult *pkg.NetworkSliceMetrics) {
+func (suite *ThesisValidationSuite) updateTestResult(newResult *managerpkg.NetworkSliceMetrics) {
 	// Find existing result with same slice ID
 	for i, existing := range suite.testResults {
 		if existing.SliceID == newResult.SliceID {
@@ -507,7 +507,7 @@ func (suite *ThesisValidationSuite) updateTestResult(newResult *pkg.NetworkSlice
 }
 
 // analyzeOverallCompliance analyzes overall thesis compliance
-func (suite *ThesisValidationSuite) analyzeOverallCompliance(results []*pkg.NetworkSliceMetrics) {
+func (suite *ThesisValidationSuite) analyzeOverallCompliance(results []*managerpkg.NetworkSliceMetrics) {
 	suite.logger.Println("=== Overall Thesis Compliance Analysis ===")
 
 	var totalCompliancePercent float64
@@ -548,7 +548,7 @@ func (suite *ThesisValidationSuite) analyzeOverallCompliance(results []*pkg.Netw
 }
 
 // generateComplianceReport generates a detailed compliance report
-func (suite *ThesisValidationSuite) generateComplianceReport(results []*pkg.NetworkSliceMetrics) {
+func (suite *ThesisValidationSuite) generateComplianceReport(results []*managerpkg.NetworkSliceMetrics) {
 	reportFile := filepath.Join(suite.reportDir, "thesis_compliance_report.json")
 
 	report := map[string]interface{}{

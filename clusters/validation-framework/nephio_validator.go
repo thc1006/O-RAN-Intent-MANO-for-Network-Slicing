@@ -537,7 +537,7 @@ func (nv *NephioValidator) RenderPackageWithKustomize(packagePath string) ([]run
 
 	for _, resource := range resources {
 		obj := &unstructured.Unstructured{}
-		if err := obj.UnmarshalJSON(resource.MustYaml()); err != nil {
+		if err := obj.UnmarshalJSON([]byte(resource.MustYaml())); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal resource: %w", err)
 		}
 		objects = append(objects, obj)

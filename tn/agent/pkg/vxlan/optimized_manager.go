@@ -1,14 +1,12 @@
 package vxlan
 
 import (
-	"context"
 	"fmt"
 	"os/exec"
 	"strings"
 	"sync"
 	"time"
 	"syscall"
-	"unsafe"
 )
 
 // OptimizedManager provides high-performance VXLAN tunnel management
@@ -357,9 +355,10 @@ func (m *OptimizedManager) executeOptimizedCommand(args []string) error {
 	cmd.Path = args[0]
 	cmd.Args = args
 
-	// Set optimized process attributes
+	// Set optimized process attributes (Windows-compatible)
 	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Setpgid: true, // Create new process group for better management
+		// Windows doesn't support Setpgid, use HideWindow instead
+		HideWindow: true,
 	}
 
 	output, err := cmd.CombinedOutput()
@@ -456,7 +455,7 @@ func (m *OptimizedManager) updateTunnelStats(vxlanID int32) {
 
 	// Get interface statistics
 	cmd := exec.Command("cat", fmt.Sprintf("/sys/class/net/%s/statistics/tx_bytes", ifaceName))
-	if output, err := cmd.Output(); err == nil {
+	if _, err := cmd.Output(); err == nil {
 		// Parse and update stats (simplified)
 		m.tunnelMutex.Lock()
 		if tunnel, exists := m.tunnels[vxlanID]; exists {

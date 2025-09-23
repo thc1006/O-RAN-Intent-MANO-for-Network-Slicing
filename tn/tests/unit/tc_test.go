@@ -8,14 +8,15 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/o-ran/intent-mano/tn/agent/pkg"
+	agentpkg "github.com/o-ran/intent-mano/tn/agent/pkg"
+	managerpkg "github.com/o-ran/intent-mano/tn/manager/pkg"
 )
 
 func TestTCManager(t *testing.T) {
 	logger := log.New(os.Stdout, "[TEST] ", log.LstdFlags)
 
 	t.Run("NewTCManager", func(t *testing.T) {
-		policy := &pkg.BandwidthPolicy{
+		policy := &agentpkg.BandwidthPolicy{
 			DownlinkMbps: 100.0,
 			UplinkMbps:   50.0,
 			LatencyMs:    10.0,
@@ -24,25 +25,25 @@ func TestTCManager(t *testing.T) {
 			Priority:     1,
 		}
 
-		tcManager := pkg.NewTCManager(policy, "eth0", logger)
+		tcManager := agentpkg.NewTCManager(policy, "eth0", logger)
 		require.NotNil(t, tcManager)
 	})
 
 	t.Run("CalculateTCOverhead", func(t *testing.T) {
-		policy := &pkg.BandwidthPolicy{
+		policy := &agentpkg.BandwidthPolicy{
 			DownlinkMbps: 100.0,
 			UplinkMbps:   50.0,
 			LatencyMs:    10.0,
 			JitterMs:     2.0,
 			LossPercent:  0.1,
 			Priority:     1,
-			Filters: []pkg.Filter{
+			Filters: []agentpkg.Filter{
 				{Protocol: "tcp", Priority: 10},
 				{Protocol: "udp", Priority: 20},
 			},
 		}
 
-		tcManager := pkg.NewTCManager(policy, "eth0", logger)
+		tcManager := agentpkg.NewTCManager(policy, "eth0", logger)
 		overhead := tcManager.CalculateTCOverhead()
 
 		assert.Greater(t, overhead, 0.0, "TC overhead should be positive")
@@ -52,12 +53,12 @@ func TestTCManager(t *testing.T) {
 	t.Run("BandwidthPolicyValidation", func(t *testing.T) {
 		testCases := []struct {
 			name     string
-			policy   *pkg.BandwidthPolicy
+			policy   *agentpkg.BandwidthPolicy
 			valid    bool
 		}{
 			{
 				name: "Valid eMBB Policy",
-				policy: &pkg.BandwidthPolicy{
+				policy: &agentpkg.BandwidthPolicy{
 					DownlinkMbps: 4.57,
 					UplinkMbps:   2.0,
 					LatencyMs:    16.1,
@@ -69,7 +70,7 @@ func TestTCManager(t *testing.T) {
 			},
 			{
 				name: "Valid URLLC Policy",
-				policy: &pkg.BandwidthPolicy{
+				policy: &agentpkg.BandwidthPolicy{
 					DownlinkMbps: 0.93,
 					UplinkMbps:   0.5,
 					LatencyMs:    6.3,
@@ -81,7 +82,7 @@ func TestTCManager(t *testing.T) {
 			},
 			{
 				name: "Valid mIoT Policy",
-				policy: &pkg.BandwidthPolicy{
+				policy: &agentpkg.BandwidthPolicy{
 					DownlinkMbps: 2.77,
 					UplinkMbps:   1.0,
 					LatencyMs:    15.7,
@@ -93,7 +94,7 @@ func TestTCManager(t *testing.T) {
 			},
 			{
 				name: "Invalid - Zero Bandwidth",
-				policy: &pkg.BandwidthPolicy{
+				policy: &agentpkg.BandwidthPolicy{
 					DownlinkMbps: 0.0,
 					UplinkMbps:   0.0,
 					LatencyMs:    10.0,
@@ -103,7 +104,7 @@ func TestTCManager(t *testing.T) {
 			},
 			{
 				name: "Invalid - Negative Latency",
-				policy: &pkg.BandwidthPolicy{
+				policy: &agentpkg.BandwidthPolicy{
 					DownlinkMbps: 10.0,
 					UplinkMbps:   5.0,
 					LatencyMs:    -1.0,
@@ -115,7 +116,7 @@ func TestTCManager(t *testing.T) {
 
 		for _, tc := range testCases {
 			t.Run(tc.name, func(t *testing.T) {
-				tcManager := pkg.NewTCManager(tc.policy, "eth0", logger)
+				tcManager := agentpkg.NewTCManager(tc.policy, "eth0", logger)
 				require.NotNil(t, tcManager)
 
 				if tc.valid {
@@ -128,7 +129,7 @@ func TestTCManager(t *testing.T) {
 	})
 
 	t.Run("FilterConfiguration", func(t *testing.T) {
-		filters := []pkg.Filter{
+		filters := []agentpkg.Filter{
 			{
 				Protocol: "tcp",
 				SrcIP:    "192.168.1.0/24",
@@ -150,13 +151,13 @@ func TestTCManager(t *testing.T) {
 			},
 		}
 
-		policy := &pkg.BandwidthPolicy{
+		policy := &agentpkg.BandwidthPolicy{
 			DownlinkMbps: 100.0,
 			UplinkMbps:   50.0,
 			Filters:      filters,
 		}
 
-		tcManager := pkg.NewTCManager(policy, "eth0", logger)
+		tcManager := agentpkg.NewTCManager(policy, "eth0", logger)
 		require.NotNil(t, tcManager)
 
 		// Verify filter configuration
@@ -171,7 +172,7 @@ func TestVXLANManager(t *testing.T) {
 	logger := log.New(os.Stdout, "[TEST] ", log.LstdFlags)
 
 	t.Run("NewVXLANManager", func(t *testing.T) {
-		config := &pkg.VXLANConfig{
+		config := &agentpkg.VXLANConfig{
 			VNI:        100,
 			RemoteIPs:  []string{"192.168.1.100", "192.168.1.101"},
 			LocalIP:    "192.168.1.102",
@@ -181,18 +182,18 @@ func TestVXLANManager(t *testing.T) {
 			Learning:   false,
 		}
 
-		vxlanManager := pkg.NewVXLANManager(config, logger)
+		vxlanManager := agentpkg.NewVXLANManager(config, logger)
 		require.NotNil(t, vxlanManager)
 	})
 
 	t.Run("CalculateVXLANOverhead", func(t *testing.T) {
-		config := &pkg.VXLANConfig{
+		config := &agentpkg.VXLANConfig{
 			VNI:        100,
 			MTU:        1450,
 			DeviceName: "vxlan100",
 		}
 
-		vxlanManager := pkg.NewVXLANManager(config, logger)
+		vxlanManager := agentpkg.NewVXLANManager(config, logger)
 
 		testCases := []struct {
 			name        string
@@ -215,12 +216,12 @@ func TestVXLANManager(t *testing.T) {
 	t.Run("VXLANConfigValidation", func(t *testing.T) {
 		testCases := []struct {
 			name   string
-			config *pkg.VXLANConfig
+			config *agentpkg.VXLANConfig
 			valid  bool
 		}{
 			{
 				name: "Valid Configuration",
-				config: &pkg.VXLANConfig{
+				config: &agentpkg.VXLANConfig{
 					VNI:        100,
 					RemoteIPs:  []string{"192.168.1.100"},
 					LocalIP:    "192.168.1.102",
@@ -232,7 +233,7 @@ func TestVXLANManager(t *testing.T) {
 			},
 			{
 				name: "Invalid VNI",
-				config: &pkg.VXLANConfig{
+				config: &agentpkg.VXLANConfig{
 					VNI:        16777216, // > 24-bit max
 					RemoteIPs:  []string{"192.168.1.100"},
 					LocalIP:    "192.168.1.102",
@@ -243,7 +244,7 @@ func TestVXLANManager(t *testing.T) {
 			},
 			{
 				name: "Invalid Local IP",
-				config: &pkg.VXLANConfig{
+				config: &agentpkg.VXLANConfig{
 					VNI:        100,
 					RemoteIPs:  []string{"192.168.1.100"},
 					LocalIP:    "invalid-ip",
@@ -256,7 +257,7 @@ func TestVXLANManager(t *testing.T) {
 
 		for _, tc := range testCases {
 			t.Run(tc.name, func(t *testing.T) {
-				vxlanManager := pkg.NewVXLANManager(tc.config, logger)
+				vxlanManager := agentpkg.NewVXLANManager(tc.config, logger)
 				require.NotNil(t, vxlanManager)
 
 				if tc.valid {
@@ -274,7 +275,7 @@ func TestIperfManager(t *testing.T) {
 	logger := log.New(os.Stdout, "[TEST] ", log.LstdFlags)
 
 	t.Run("NewIperfManager", func(t *testing.T) {
-		iperfManager := pkg.NewIperfManager(logger)
+		iperfManager := agentpkg.NewIperfManager(logger)
 		require.NotNil(t, iperfManager)
 
 		servers := iperfManager.GetActiveServers()
@@ -284,12 +285,12 @@ func TestIperfManager(t *testing.T) {
 	t.Run("IperfTestConfig", func(t *testing.T) {
 		testCases := []struct {
 			name   string
-			config *pkg.IperfTestConfig
+			config *agentpkg.IperfTestConfig
 			valid  bool
 		}{
 			{
 				name: "Valid TCP Test",
-				config: &pkg.IperfTestConfig{
+				config: &agentpkg.IperfTestConfig{
 					ServerIP: "192.168.1.100",
 					Port:     5201,
 					Duration: 10,
@@ -301,7 +302,7 @@ func TestIperfManager(t *testing.T) {
 			},
 			{
 				name: "Valid UDP Test",
-				config: &pkg.IperfTestConfig{
+				config: &agentpkg.IperfTestConfig{
 					ServerIP:  "192.168.1.100",
 					Port:      5201,
 					Duration:  10,
@@ -314,7 +315,7 @@ func TestIperfManager(t *testing.T) {
 			},
 			{
 				name: "Invalid - No Server IP",
-				config: &pkg.IperfTestConfig{
+				config: &agentpkg.IperfTestConfig{
 					Port:     5201,
 					Duration: 10,
 					Protocol: "tcp",
@@ -338,7 +339,7 @@ func TestIperfManager(t *testing.T) {
 
 func TestPerformanceMetrics(t *testing.T) {
 	t.Run("ThroughputMetricsValidation", func(t *testing.T) {
-		metrics := &pkg.ThroughputMetrics{
+		metrics := &agentpkg.ThroughputMetrics{
 			DownlinkMbps: 4.57,
 			UplinkMbps:   2.0,
 			AvgMbps:      3.285,
@@ -360,7 +361,7 @@ func TestPerformanceMetrics(t *testing.T) {
 	})
 
 	t.Run("LatencyMetricsValidation", func(t *testing.T) {
-		metrics := &pkg.LatencyMetrics{
+		metrics := &agentpkg.LatencyMetrics{
 			RTTMs:    16.1,
 			MinRTTMs: 15.0,
 			MaxRTTMs: 18.0,
@@ -387,7 +388,7 @@ func TestPerformanceMetrics(t *testing.T) {
 
 func TestThesisValidation(t *testing.T) {
 	t.Run("ThesisTargetCompliance", func(t *testing.T) {
-		validation := &pkg.ThesisValidation{
+		validation := &managerpkg.ThesisValidation{
 			ThroughputTargets: []float64{0.93, 2.77, 4.57},
 			RTTTargets:        []float64{6.3, 15.7, 16.1},
 			ThroughputResults: []float64{0.95, 2.80, 4.60},

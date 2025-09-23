@@ -111,7 +111,7 @@ func (c *Calculator) generateTCCommands(rule Rule) []string {
 		// Root class
 		commands = append(commands,
 			fmt.Sprintf("tc class add dev %s parent %s classid 1:1 htb rate %dkbit ceil %dkbit",
-				iface, rule.Handle, rateKbit*10, rateKbit*10)) // Total bandwidth
+				iface, rule.Handle, rule.RateKbit*10, rule.RateKbit*10)) // Total bandwidth
 
 		// Slice-specific class with rate limiting
 		commands = append(commands,

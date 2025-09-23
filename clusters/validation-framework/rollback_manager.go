@@ -7,10 +7,13 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -246,7 +249,8 @@ func (rm *RollbackManager) planRollbackActions(ctx context.Context, resourceFile
 
 	for _, file := range resourceFiles {
 		// Parse current version of the file
-		currentResources, err := rm.parseResourceFile(ctx, file, rm.GitRepo.GetCurrentBranch())
+		currentBranch, _ := rm.GitRepo.GetCurrentBranch()
+		currentResources, err := rm.parseResourceFile(ctx, file, currentBranch)
 		if err != nil {
 			log.Printf("Warning: failed to parse current version of %s: %v", file, err)
 			continue
@@ -323,7 +327,8 @@ func (rm *RollbackManager) parseResourceFile(ctx context.Context, filename, comm
 	var content string
 	var err error
 
-	if commit == rm.GitRepo.GetCurrentBranch() {
+	currentBranch, _ := rm.GitRepo.GetCurrentBranch()
+	if commit == currentBranch {
 		// Read current file
 		fullPath := filepath.Join(rm.GitRepo.LocalPath, filename)
 		data, err := os.ReadFile(fullPath)

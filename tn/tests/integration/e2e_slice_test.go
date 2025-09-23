@@ -2,8 +2,10 @@ package integration
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -359,7 +361,7 @@ func (suite *E2ESliceTestSuite) TestThesisValidationE2E() {
 			require.NoError(t, err, "Performance test should succeed for %s", sliceType.name)
 			require.NotNil(t, metrics)
 
-			allResults = append(allResults, *metrics)
+			allResults = append(allResults, metrics.Performance)
 
 			// Validate against thesis targets with 10% tolerance
 			assert.LessOrEqual(t, metrics.Performance.Latency.AvgRTTMs, sliceType.latencyMs*1.1,
@@ -375,11 +377,18 @@ func (suite *E2ESliceTestSuite) TestThesisValidationE2E() {
 
 	// Overall thesis compliance validation
 	if len(allResults) == 3 {
-		overallCompliance := 0.0
-		for _, result := range allResults {
-			overallCompliance += result.ThesisValidation.CompliancePercent
+		// Calculate compliance based on actual performance vs targets
+		complianceCount := 0
+		for i, result := range allResults {
+			targetThroughput := []float64{0.93, 2.77, 4.57}[i]
+			targetLatency := []float64{6.3, 15.7, 16.1}[i]
+
+			if result.Throughput.AvgMbps >= targetThroughput*0.9 &&
+			   result.Latency.AvgRTTMs <= targetLatency*1.1 {
+				complianceCount++
+			}
 		}
-		overallCompliance /= float64(len(allResults))
+		overallCompliance := float64(complianceCount) / float64(len(allResults)) * 100.0
 
 		assert.Greater(suite.T(), overallCompliance, 80.0,
 			"Overall thesis compliance should be above 80%")

@@ -34,7 +34,7 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Initialize CodeQL
-      uses: github/codeql-action/init@v2
+      uses: github/codeql-action/init@v3
       with:
         languages: ${{ matrix.language }}
         queries: security-extended,security-and-quality
@@ -49,7 +49,7 @@ jobs:
         find . -name "go.mod" -execdir go build -v ./... \;
 
     - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v2
+      uses: github/codeql-action/analyze@v3
       with:
         category: "/language:${{matrix.language}}"
 
@@ -73,7 +73,7 @@ jobs:
         go list -json -m all | nancy sleuth
 
     - name: Run OSV Scanner
-      uses: google/osv-scanner-action@v1
+      uses: google/osv-scanner-action@v1.8.5
       with:
         scan-args: |-
           --recursive
@@ -123,7 +123,7 @@ jobs:
         severity: 'CRITICAL,HIGH,MEDIUM'
 
     - name: Upload Trivy scan results to GitHub Security tab
-      uses: github/codeql-action/upload-sarif@v2
+      uses: github/codeql-action/upload-sarif@v3
       if: always()
       with:
         sarif_file: 'trivy-results-${{ matrix.component }}.sarif'
@@ -137,7 +137,7 @@ jobs:
         fail-build: false
 
     - name: Upload Grype scan results
-      uses: github/codeql-action/upload-sarif@v2
+      uses: github/codeql-action/upload-sarif@v3
       if: always()
       with:
         sarif_file: ${{ steps.grype-scan.outputs.sarif }}
@@ -169,7 +169,7 @@ jobs:
         output_file_path: checkov-k8s.sarif
 
     - name: Upload Checkov scan results
-      uses: github/codeql-action/upload-sarif@v2
+      uses: github/codeql-action/upload-sarif@v3
       if: always()
       with:
         sarif_file: checkov-k8s.sarif
@@ -183,7 +183,7 @@ jobs:
           https://v2.kubesec.io/scan > kubesec-vnf-operator.json
 
     - name: Upload Kubesec results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: kubesec-results
         path: kubesec-*.json
@@ -194,7 +194,7 @@ jobs:
         ./polaris audit --config deploy/k8s --format=json > polaris-audit.json
 
     - name: Upload Polaris results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: polaris-audit
         path: polaris-audit.json
@@ -217,7 +217,7 @@ jobs:
         output_file_path: checkov-docker.sarif
 
     - name: Upload Checkov Docker results
-      uses: github/codeql-action/upload-sarif@v2
+      uses: github/codeql-action/upload-sarif@v3
       if: always()
       with:
         sarif_file: checkov-docker.sarif
@@ -231,7 +231,7 @@ jobs:
         output_file_path: checkov-helm.sarif
 
     - name: Upload Checkov Helm results
-      uses: github/codeql-action/upload-sarif@v2
+      uses: github/codeql-action/upload-sarif@v3
       if: always()
       with:
         sarif_file: checkov-helm.sarif
@@ -245,7 +245,7 @@ jobs:
         no-fail: true
 
     - name: Upload Hadolint results
-      uses: github/codeql-action/upload-sarif@v2
+      uses: github/codeql-action/upload-sarif@v3
       if: always()
       with:
         sarif_file: hadolint.sarif
@@ -262,7 +262,7 @@ jobs:
         fetch-depth: 0
 
     - name: Run Gitleaks
-      uses: gitleaks/gitleaks-action@v2
+      uses: gitleaks/gitleaks-action@v2.3.6
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -304,7 +304,7 @@ jobs:
         done
 
     - name: Upload license reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: license-reports
         path: license-reports/
@@ -367,7 +367,7 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Download all artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
 
     - name: Generate security summary
       run: |
@@ -404,7 +404,7 @@ jobs:
         EOF
 
     - name: Upload security report
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: security-report
         path: security-summary.md
