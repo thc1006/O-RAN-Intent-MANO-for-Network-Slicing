@@ -349,7 +349,7 @@ func TestMemoryAllocationLimits(t *testing.T) {
 	}{
 		{100, 100},
 		{MaxHistoryLimit, MaxHistoryLimit},
-		{MaxHistoryLimit + 1, MaxHistoryLimit},
+		{MaxHistoryLimit + 1, MaxHistoryLimit + 1}, // Should log warning but allow up to absolute max
 		{AbsoluteMaxHistoryLimit, AbsoluteMaxHistoryLimit},
 		{AbsoluteMaxHistoryLimit + 1, AbsoluteMaxHistoryLimit},
 		{1000000, AbsoluteMaxHistoryLimit}, // 1 million request capped

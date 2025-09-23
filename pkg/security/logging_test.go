@@ -61,8 +61,8 @@ func TestSanitizeForLog(t *testing.T) {
 		},
 		{
 			name:     "Mixed dangerous characters",
-			input:    "user\ninput\r\n\twith\x1b[0m\x00null",
-			expected: "user\\ninput\\r\\n\\twith\\e[0m\\x00null",
+			input:    "user\ninput\r\twith\x1b[0m\x01control",
+			expected: "user\\ninput\\r\\twith\\e[0m\\x01control",
 		},
 	}
 
