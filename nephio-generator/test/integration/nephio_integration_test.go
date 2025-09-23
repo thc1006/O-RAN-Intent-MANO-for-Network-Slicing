@@ -55,7 +55,7 @@ type NephioIntegrationTestSuite struct {
 func (suite *NephioIntegrationTestSuite) SetupSuite() {
 	// Create test directory
 	suite.testDir = filepath.Join(os.TempDir(), "nephio-integration-test")
-	err := os.MkdirAll(suite.testDir, 0755)
+	err := os.MkdirAll(suite.testDir, 0750)
 	require.NoError(suite.T(), err)
 
 	// Setup test environment
@@ -307,7 +307,7 @@ func (suite *NephioIntegrationTestSuite) TestPackageRendering() {
 
 	// Create test package directory
 	packageDir := filepath.Join(suite.testDir, "test-render-package")
-	err := os.MkdirAll(packageDir, 0755)
+	err := os.MkdirAll(packageDir, 0750)
 	require.NoError(suite.T(), err)
 
 	// Create basic Kptfile
@@ -328,7 +328,7 @@ pipeline:
     - image: gcr.io/kpt-fn/kubeval:v0.3
 `
 
-	err = os.WriteFile(filepath.Join(packageDir, "Kptfile"), []byte(kptfileContent), 0644)
+	err = os.WriteFile(filepath.Join(packageDir, "Kptfile"), []byte(kptfileContent), 0600)
 	require.NoError(suite.T(), err)
 
 	// Create test resource
@@ -359,7 +359,7 @@ spec:
             memory: 512Mi
 `
 
-	err = os.WriteFile(filepath.Join(packageDir, "deployment.yaml"), []byte(resourceContent), 0644)
+	err = os.WriteFile(filepath.Join(packageDir, "deployment.yaml"), []byte(resourceContent), 0600)
 	require.NoError(suite.T(), err)
 
 	// Render package

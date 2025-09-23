@@ -20,7 +20,7 @@ import (
 	"sigs.k8s.io/kustomize/kyaml/filesys"
 	"sigs.k8s.io/yaml"
 
-	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security"
+	"github.com/o-ran-intent-mano/pkg/security"
 )
 
 // NephioValidator provides validation for Nephio/Porch packages
@@ -364,7 +364,13 @@ func (nv *NephioValidator) parseRenderedResources(packagePath string) ([]Rendere
 			return nil
 		}
 
-		data, err := os.ReadFile(path)
+		// Validate file path for security
+		if err := nv.validator.ValidateFilePathAndExtension(path, []string{".yaml", ".yml"}); err != nil {
+			log.Printf("Skipping file due to path validation failure: %s: %v", path, err)
+			return nil
+		}
+
+		data, err := nv.validator.SafeReadFile(path)
 		if err != nil {
 			return err
 		}

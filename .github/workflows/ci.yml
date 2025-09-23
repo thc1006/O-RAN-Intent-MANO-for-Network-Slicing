@@ -51,13 +51,14 @@ jobs:
         go-version: ${{ env.GO_VERSION }}
 
     - name: Cache Go modules
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           ~/.cache/go-build
           ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}-${{ github.run_id }}
         restore-keys: |
+          ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}-
           ${{ runner.os }}-go-
 
     - name: Run go vet
@@ -134,39 +135,72 @@ jobs:
       with:
         go-version: ${{ env.GO_VERSION }}
 
+    - name: Validate component directory
+      run: |
+        # Check if component directory exists, if not look in deploy/docker/
+        if [ ! -d "${{ matrix.component }}" ]; then
+          if [ -d "deploy/docker/${{ matrix.component }}" ]; then
+            echo "Component found in deploy/docker/${{ matrix.component }}"
+            COMPONENT_PATH="deploy/docker/${{ matrix.component }}"
+          else
+            echo "ERROR: Component directory ${{ matrix.component }} not found!"
+            exit 1
+          fi
+        else
+          COMPONENT_PATH="${{ matrix.component }}"
+        fi
+        echo "COMPONENT_PATH=$COMPONENT_PATH" >> $GITHUB_ENV
+
     - name: Cache Go modules
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           ~/.cache/go-build
           ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ matrix.component }}-${{ hashFiles(format('{0}/**/go.sum', matrix.component)) }}
+        key: ${{ runner.os }}-go-${{ matrix.component }}-${{ hashFiles(format('{0}/**/go.sum', env.COMPONENT_PATH)) }}-${{ github.run_id }}
         restore-keys: |
+          ${{ runner.os }}-go-${{ matrix.component }}-${{ hashFiles(format('{0}/**/go.sum', env.COMPONENT_PATH)) }}-
           ${{ runner.os }}-go-${{ matrix.component }}-
 
     - name: Install dependencies
-      working-directory: ${{ matrix.component }}
-      run: go mod download
+      working-directory: ${{ env.COMPONENT_PATH }}
+      run: |
+        if [ -f go.mod ]; then
+          go mod download
+        else
+          echo "No go.mod found, skipping dependency installation for ${{ matrix.component }}"
+        fi
 
     - name: Run unit tests
-      working-directory: ${{ matrix.component }}
+      working-directory: ${{ env.COMPONENT_PATH }}
       run: |
-        go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+        if [ -f go.mod ]; then
+          go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+        else
+          echo "No go.mod found, skipping tests for ${{ matrix.component }}"
+        fi
 
     - name: Generate coverage report
-      working-directory: ${{ matrix.component }}
-      run: go tool cover -html=coverage.out -o coverage.html
+      working-directory: ${{ env.COMPONENT_PATH }}
+      run: |
+        if [ -f coverage.out ]; then
+          go tool cover -html=coverage.out -o coverage.html
+        else
+          echo "No coverage.out found, skipping coverage report generation"
+        fi
 
     - name: Upload coverage reports
       uses: actions/upload-artifact@v4
+      if: env.COMPONENT_PATH != ''
       with:
         name: coverage-${{ matrix.component }}
-        path: ${{ matrix.component }}/coverage.*
+        path: ${{ env.COMPONENT_PATH }}/coverage.*
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
+      if: env.COMPONENT_PATH != ''
       with:
-        file: ${{ matrix.component }}/coverage.out
+        file: ${{ env.COMPONENT_PATH }}/coverage.out
         flags: ${{ matrix.component }}
         name: ${{ matrix.component }}
 

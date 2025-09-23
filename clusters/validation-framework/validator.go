@@ -9,7 +9,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
 	"strings"
 	"sync"
 	"time"
@@ -24,6 +23,8 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/yaml"
+
+	"github.com/o-ran-intent-mano/pkg/security"
 )
 
 // ValidationFramework provides comprehensive GitOps validation
@@ -251,7 +252,15 @@ func NewValidationFramework(configPath string) (*ValidationFramework, error) {
 
 // LoadValidationConfig loads validation configuration from file
 func LoadValidationConfig(configPath string) (*ValidationConfig, error) {
-	data, err := os.ReadFile(configPath)
+	// Create validator for configuration files
+	validator := security.CreateValidatorForConfig(".")
+
+	// Validate file path for security
+	if err := validator.ValidateFilePathAndExtension(configPath, []string{".yaml", ".yml", ".json", ".toml", ".conf", ".cfg"}); err != nil {
+		return nil, fmt.Errorf("config file path validation failed: %w", err)
+	}
+
+	data, err := validator.SafeReadFile(configPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}

@@ -15,6 +15,8 @@ import (
 
 	"github.com/gorilla/websocket"
 	"gopkg.in/yaml.v2"
+
+	"github.com/o-ran-intent-mano/pkg/security"
 )
 
 // MetricsAggregator collects and aggregates test metrics in real-time
@@ -129,7 +131,15 @@ func loadAggregatorConfig(configPath string) (*AggregatorConfig, error) {
 	}
 
 	if configPath != "" {
-		data, err := ioutil.ReadFile(configPath)
+		// Create validator for configuration files
+		validator := security.CreateValidatorForConfig(".")
+
+		// Validate file path for security
+		if err := validator.ValidateFilePathAndExtension(configPath, []string{".yaml", ".yml", ".json", ".toml", ".conf", ".cfg"}); err != nil {
+			return nil, fmt.Errorf("config file path validation failed: %w", err)
+		}
+
+		data, err := validator.SafeReadFile(configPath)
 		if err != nil {
 			return config, nil // Use defaults if config file doesn't exist
 		}

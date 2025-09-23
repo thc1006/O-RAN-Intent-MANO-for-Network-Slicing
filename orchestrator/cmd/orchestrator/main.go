@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 
 	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/orchestrator/pkg/placement"
+	"github.com/o-ran-intent-mano/pkg/security"
 )
 
 const (
@@ -155,7 +156,15 @@ func parseFlags() Config {
 }
 
 func loadQoSIntents(filename string) ([]QoSIntent, error) {
-	file, err := os.Open(filename)
+	// Create validator for input files
+	validator := security.CreateValidatorForConfig(".")
+
+	// Validate file path for security
+	if err := validator.ValidateFilePathAndExtension(filename, []string{".jsonl", ".json", ".txt"}); err != nil {
+		return nil, fmt.Errorf("input file path validation failed: %w", err)
+	}
+
+	file, err := validator.SafeOpenFile(filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file %s: %w", filename, err)
 	}
@@ -388,6 +397,14 @@ func deploySlice(allocation *SliceAllocation, config Config) error {
 }
 
 func saveOrchestrationPlan(allocations []SliceAllocation, filename string, verbose bool) error {
+	// Create validator for output files
+	validator := security.CreateValidatorForConfig(".")
+
+	// Validate file path for security
+	if err := validator.ValidateFilePathAndExtension(filename, []string{".json"}); err != nil {
+		return fmt.Errorf("output file path validation failed: %w", err)
+	}
+
 	// Ensure output directory exists
 	dir := filepath.Dir(filename)
 	if err := os.MkdirAll(dir, 0750); err != nil {
@@ -421,7 +438,15 @@ func saveOrchestrationPlan(allocations []SliceAllocation, filename string, verbo
 }
 
 func loadOrchestrationPlan(filename string) ([]SliceAllocation, error) {
-	file, err := os.Open(filename)
+	// Create validator for plan files
+	validator := security.CreateValidatorForConfig(".")
+
+	// Validate file path for security
+	if err := validator.ValidateFilePathAndExtension(filename, []string{".json"}); err != nil {
+		return nil, fmt.Errorf("plan file path validation failed: %w", err)
+	}
+
+	file, err := validator.SafeOpenFile(filename)
 	if err != nil {
 		return nil, err
 	}
