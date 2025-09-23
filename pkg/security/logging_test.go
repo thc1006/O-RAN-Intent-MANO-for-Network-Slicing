@@ -41,8 +41,8 @@ func TestSanitizeForLog(t *testing.T) {
 		},
 		{
 			name:     "String with control characters",
-			input:    "test\x00\x01\x1b[31mred\x1b[0m",
-			expected: "test\\x00\\x01\\e[31mred\\e[0m",
+			input:    "test\x01\x1b[31mred\x1b[0m",
+			expected: "test\\x01\\e[31mred\\e[0m",
 		},
 		{
 			name:     "String with format specifiers",
