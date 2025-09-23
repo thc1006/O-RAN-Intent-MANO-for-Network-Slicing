@@ -2,7 +2,7 @@
 # Reproducible development environment setup
 
 SHELL := /bin/bash
-.PHONY: help setup check kind k3s clean test lint format license spell install-tools verify-env
+.PHONY: help setup check kind k3s clean test lint format license spell install-tools verify-env ci:local ci:watch
 
 # Colors for output
 RED := \033[0;31m
@@ -190,6 +190,31 @@ clean:
 	@find . -type d -name "bin" -exec rm -rf {} + 2>/dev/null || true
 	@find . -type f -name "*.log" -delete 2>/dev/null || true
 	@echo -e "$(GREEN)Clean complete$(NC)"
+
+## ci:local: Run local CI validation using act
+ci:local: verify-env
+	@echo -e "$(YELLOW)Running local CI validation with act...$(NC)"
+	@if ! command -v act &> /dev/null; then \
+		echo -e "$(RED)Error: 'act' is not installed$(NC)"; \
+		echo -e "$(YELLOW)Install with: gh extension install https://github.com/nektos/act$(NC)"; \
+		echo -e "$(YELLOW)Or download from: https://github.com/nektos/act/releases$(NC)"; \
+		exit 1; \
+	fi
+	@CI_JOB="$${CI_JOB:-all}" && \
+	echo -e "$(BLUE)Running CI job: $$CI_JOB$(NC)" && \
+	act -j "$$CI_JOB" --container-architecture linux/amd64
+	@echo -e "$(GREEN)Local CI validation completed$(NC)"
+
+## ci:watch: Watch GitHub Actions run status
+ci:watch: verify-env
+	@echo -e "$(YELLOW)Watching GitHub Actions run...$(NC)"
+	@if ! command -v gh &> /dev/null; then \
+		echo -e "$(RED)Error: 'gh' CLI is not installed$(NC)"; \
+		echo -e "$(YELLOW)Install from: https://cli.github.com/$(NC)"; \
+		exit 1; \
+	fi
+	@gh run watch --exit-status --interval 10 --compact
+	@echo -e "$(GREEN)GitHub Actions watch completed$(NC)"
 
 ## info: Display environment information
 info:
