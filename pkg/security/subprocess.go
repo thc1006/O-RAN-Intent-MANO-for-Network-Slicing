@@ -605,6 +605,15 @@ func parseUint32Safe(s string) uint32 {
 	return result
 }
 
+// CommandExecutor interface for testable command execution
+type CommandExecutor interface {
+	SecureExecute(ctx context.Context, command string, args ...string) ([]byte, error)
+	SecureExecuteWithValidation(ctx context.Context, command string, customValidator func([]string) error, args ...string) ([]byte, error)
+}
+
+// Ensure SecureSubprocessExecutor implements CommandExecutor
+var _ CommandExecutor = (*SecureSubprocessExecutor)(nil)
+
 // Global secure executor instance
 var DefaultSecureExecutor = NewSecureSubprocessExecutor()
 

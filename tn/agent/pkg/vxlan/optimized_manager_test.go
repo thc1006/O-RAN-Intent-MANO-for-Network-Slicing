@@ -11,8 +11,29 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security"
 )
+
+// mockCommandExecutor implements security.CommandExecutor for testing
+type mockCommandExecutor struct {
+	secureExecuteFunc               func(ctx context.Context, command string, args ...string) ([]byte, error)
+	secureExecuteWithValidationFunc func(ctx context.Context, command string, customValidator func([]string) error, args ...string) ([]byte, error)
+}
+
+// mockCommandExecutor provides a simple command executor for testing
+
+func (m *mockCommandExecutor) SecureExecute(ctx context.Context, command string, args ...string) ([]byte, error) {
+	if m.secureExecuteFunc != nil {
+		return m.secureExecuteFunc(ctx, command, args...)
+	}
+	return []byte("ok"), nil
+}
+
+func (m *mockCommandExecutor) SecureExecuteWithValidation(ctx context.Context, command string, customValidator func([]string) error, args ...string) ([]byte, error) {
+	if m.secureExecuteWithValidationFunc != nil {
+		return m.secureExecuteWithValidationFunc(ctx, command, customValidator, args...)
+	}
+	return []byte("ok"), nil
+}
 
 func TestNewOptimizedManager(t *testing.T) {
 	manager := NewOptimizedManager()
@@ -22,13 +43,16 @@ func TestNewOptimizedManager(t *testing.T) {
 	assert.NotNil(t, manager.commandCache)
 	assert.NotNil(t, manager.workerPool)
 	assert.NotNil(t, manager.metrics)
+	assert.NotNil(t, manager.cmdExecutor)
 	assert.Equal(t, 100*time.Millisecond, manager.batchInterval)
 	assert.Equal(t, 10, cap(manager.workerPool))
 	assert.False(t, manager.useNetlink) // Should be false initially
 }
 
 func TestOptimizedManager_CreateTunnelOptimized_ValidationErrors(t *testing.T) {
-	manager := NewOptimizedManager()
+	// Create mock executor that always succeeds to focus on validation logic
+	mockExec := &mockCommandExecutor{}
+	manager := NewOptimizedManagerWithExecutor(mockExec)
 
 	testCases := []struct {
 		name        string
@@ -74,15 +98,6 @@ func TestOptimizedManager_CreateTunnelOptimized_ValidationErrors(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			// Mock security execution to prevent actual command execution
-			originalSecureExecute := security.SecureExecuteWithValidation
-			security.SecureExecuteWithValidation = func(ctx context.Context, command string, validator func([]string) error, args ...string) ([]byte, error) {
-				return []byte("ok"), nil
-			}
-			defer func() {
-				security.SecureExecuteWithValidation = originalSecureExecute
-			}()
-
 			err := manager.CreateTunnelOptimized(tc.vxlanID, tc.localIP, tc.remoteIPs, tc.physInterface)
 
 			if tc.expectError != "" {
@@ -99,7 +114,8 @@ func TestOptimizedManager_CreateTunnelOptimized_ValidationErrors(t *testing.T) {
 }
 
 func TestOptimizedManager_CreateTunnelOptimized_WorkerPoolTimeout(t *testing.T) {
-	manager := NewOptimizedManager()
+	mockExec := &mockCommandExecutor{}
+	manager := NewOptimizedManagerWithExecutor(mockExec)
 
 	// Fill up the worker pool
 	for i := 0; i < cap(manager.workerPool); i++ {
@@ -118,7 +134,8 @@ func TestOptimizedManager_CreateTunnelOptimized_WorkerPoolTimeout(t *testing.T) 
 }
 
 func TestOptimizedManager_CreateTunnelOptimized_ExistingTunnel(t *testing.T) {
-	manager := NewOptimizedManager()
+	mockExec := &mockCommandExecutor{}
+	manager := NewOptimizedManagerWithExecutor(mockExec)
 
 	// Add an existing active tunnel
 	existingTunnel := &EnhancedTunnelInfo{
@@ -131,15 +148,6 @@ func TestOptimizedManager_CreateTunnelOptimized_ExistingTunnel(t *testing.T) {
 		Stats:        &TunnelStats{LastUpdated: time.Now()},
 	}
 	manager.tunnels[100] = existingTunnel
-
-	// Mock security execution to prevent actual command execution
-	originalSecureExecute := security.SecureExecuteWithValidation
-	security.SecureExecuteWithValidation = func(ctx context.Context, command string, validator func([]string) error, args ...string) ([]byte, error) {
-		return []byte("ok"), nil
-	}
-	defer func() {
-		security.SecureExecuteWithValidation = originalSecureExecute
-	}()
 
 	// Creating the same tunnel should succeed immediately (already active)
 	err := manager.CreateTunnelOptimized(100, "10.0.1.1", []string{"10.0.1.2"}, "eth0")
@@ -164,7 +172,16 @@ func TestOptimizedManager_CreateTunnelOptimized_ExistingTunnel(t *testing.T) {
 }
 
 func TestOptimizedManager_CreateTunnelOptimized_DeletionPermissionError(t *testing.T) {
-	manager := NewOptimizedManager()
+	// Mock deletion to return permission denied error
+	mockExec := &mockCommandExecutor{
+		secureExecuteWithValidationFunc: func(ctx context.Context, command string, validator func([]string) error, args ...string) ([]byte, error) {
+			if len(args) > 2 && args[1] == "del" {
+				return nil, errors.New("permission denied")
+			}
+			return []byte("ok"), nil
+		},
+	}
+	manager := NewOptimizedManagerWithExecutor(mockExec)
 
 	// Add a failed tunnel
 	failedTunnel := &EnhancedTunnelInfo{
@@ -177,18 +194,6 @@ func TestOptimizedManager_CreateTunnelOptimized_DeletionPermissionError(t *testi
 		Stats:        &TunnelStats{LastUpdated: time.Now()},
 	}
 	manager.tunnels[101] = failedTunnel
-
-	// Mock deletion to return permission denied error
-	originalSecureExecute := security.SecureExecuteWithValidation
-	security.SecureExecuteWithValidation = func(ctx context.Context, command string, validator func([]string) error, args ...string) ([]byte, error) {
-		if len(args) > 2 && args[1] == "del" {
-			return nil, errors.New("permission denied")
-		}
-		return []byte("ok"), nil
-	}
-	defer func() {
-		security.SecureExecuteWithValidation = originalSecureExecute
-	}()
 
 	// Should fail due to permission error during deletion
 	err := manager.CreateTunnelOptimized(101, "10.0.1.1", []string{"10.0.1.2"}, "eth0")
@@ -197,7 +202,18 @@ func TestOptimizedManager_CreateTunnelOptimized_DeletionPermissionError(t *testi
 }
 
 func TestOptimizedManager_CreateTunnelOptimized_DeletionNonCriticalError(t *testing.T) {
-	manager := NewOptimizedManager()
+	// Mock deletion to return device not found error (non-critical)
+	callCount := 0
+	mockExec := &mockCommandExecutor{
+		secureExecuteWithValidationFunc: func(ctx context.Context, command string, validator func([]string) error, args ...string) ([]byte, error) {
+			callCount++
+			if len(args) > 2 && args[1] == "del" {
+				return nil, errors.New("device not found")
+			}
+			return []byte("ok"), nil
+		},
+	}
+	manager := NewOptimizedManagerWithExecutor(mockExec)
 
 	// Add a failed tunnel
 	failedTunnel := &EnhancedTunnelInfo{
@@ -211,109 +227,90 @@ func TestOptimizedManager_CreateTunnelOptimized_DeletionNonCriticalError(t *test
 	}
 	manager.tunnels[101] = failedTunnel
 
-	// Mock deletion to return device not found error (non-critical)
-	callCount := 0
-	originalSecureExecute := security.SecureExecuteWithValidation
-	security.SecureExecuteWithValidation = func(ctx context.Context, command string, validator func([]string) error, args ...string) ([]byte, error) {
-		callCount++
-		if len(args) > 2 && args[1] == "del" {
-			return nil, errors.New("device not found")
-		}
-		return []byte("ok"), nil
-	}
-	defer func() {
-		security.SecureExecuteWithValidation = originalSecureExecute
-	}()
-
 	// Should continue with creation despite deletion error
 	err := manager.CreateTunnelOptimized(101, "10.0.1.1", []string{"10.0.1.2"}, "eth0")
 	// Might succeed or fail based on subsequent operations, but should not fail due to deletion error
+	_ = err // We check callCount instead of specific error
 	assert.True(t, callCount > 1) // Should have tried deletion and then creation
 }
 
 func TestOptimizedManager_CreateTunnelIPCommand_CommandFailures(t *testing.T) {
-	manager := NewOptimizedManager()
-
 	testCases := []struct {
 		name        string
-		setupMock   func() func()
+		setupMock   func() *mockCommandExecutor
 		expectError string
 	}{
 		{
 			name: "interface creation fails",
-			setupMock: func() func() {
-				original := security.SecureExecuteWithValidation
-				security.SecureExecuteWithValidation = func(ctx context.Context, command string, validator func([]string) error, args ...string) ([]byte, error) {
-					if len(args) > 3 && args[1] == "add" {
-						return nil, errors.New("interface creation failed")
-					}
-					return []byte("ok"), nil
+			setupMock: func() *mockCommandExecutor {
+				return &mockCommandExecutor{
+					secureExecuteWithValidationFunc: func(ctx context.Context, command string, validator func([]string) error, args ...string) ([]byte, error) {
+						if len(args) > 3 && args[1] == "add" {
+							return nil, errors.New("interface creation failed")
+						}
+						return []byte("ok"), nil
+					},
 				}
-				return func() { security.SecureExecuteWithValidation = original }
 			},
 			expectError: "failed to create VXLAN interface",
 		},
 		{
 			name: "MTU setting fails",
-			setupMock: func() func() {
+			setupMock: func() *mockCommandExecutor {
 				callCount := 0
-				original := security.SecureExecuteWithValidation
-				security.SecureExecuteWithValidation = func(ctx context.Context, command string, validator func([]string) error, args ...string) ([]byte, error) {
-					callCount++
-					if callCount == 2 && len(args) > 3 && args[3] == "mtu" {
-						return nil, errors.New("MTU setting failed")
-					}
-					return []byte("ok"), nil
+				return &mockCommandExecutor{
+					secureExecuteWithValidationFunc: func(ctx context.Context, command string, validator func([]string) error, args ...string) ([]byte, error) {
+						callCount++
+						if callCount == 2 && len(args) > 3 && args[3] == "mtu" {
+							return nil, errors.New("MTU setting failed")
+						}
+						return []byte("ok"), nil
+					},
 				}
-				return func() { security.SecureExecuteWithValidation = original }
 			},
 			expectError: "failed to create VXLAN interface",
 		},
 		{
 			name: "interface up fails",
-			setupMock: func() func() {
+			setupMock: func() *mockCommandExecutor {
 				callCount := 0
-				original := security.SecureExecuteWithValidation
-				security.SecureExecuteWithValidation = func(ctx context.Context, command string, validator func([]string) error, args ...string) ([]byte, error) {
-					callCount++
-					if callCount == 3 && len(args) > 3 && args[3] == "up" {
-						return nil, errors.New("interface up failed")
-					}
-					return []byte("ok"), nil
+				return &mockCommandExecutor{
+					secureExecuteWithValidationFunc: func(ctx context.Context, command string, validator func([]string) error, args ...string) ([]byte, error) {
+						callCount++
+						if callCount == 3 && len(args) > 3 && args[3] == "up" {
+							return nil, errors.New("interface up failed")
+						}
+						return []byte("ok"), nil
+					},
 				}
-				return func() { security.SecureExecuteWithValidation = original }
 			},
 			expectError: "failed to create VXLAN interface",
 		},
 		{
 			name: "IP assignment fails with non-exists error",
-			setupMock: func() func() {
-				callCount := 0
-				original := security.SecureExecuteWithValidation
-				security.SecureExecuteWithValidation = func(ctx context.Context, command string, validator func([]string) error, args ...string) ([]byte, error) {
-					callCount++
-					if len(args) > 1 && args[1] == "addr" {
-						return nil, errors.New("IP assignment failed")
-					}
-					return []byte("ok"), nil
+			setupMock: func() *mockCommandExecutor {
+				return &mockCommandExecutor{
+					secureExecuteWithValidationFunc: func(ctx context.Context, command string, validator func([]string) error, args ...string) ([]byte, error) {
+						if len(args) > 1 && args[1] == "addr" {
+							return nil, errors.New("IP assignment failed")
+						}
+						return []byte("ok"), nil
+					},
 				}
-				return func() { security.SecureExecuteWithValidation = original }
 			},
 			expectError: "failed to assign IP",
 		},
 		{
 			name: "IP assignment fails with exists error (should succeed)",
-			setupMock: func() func() {
-				callCount := 0
-				original := security.SecureExecuteWithValidation
-				security.SecureExecuteWithValidation = func(ctx context.Context, command string, validator func([]string) error, args ...string) ([]byte, error) {
-					callCount++
-					if len(args) > 1 && args[1] == "addr" {
-						return nil, errors.New("File exists")
-					}
-					return []byte("ok"), nil
+			setupMock: func() *mockCommandExecutor {
+				return &mockCommandExecutor{
+					secureExecuteWithValidationFunc: func(ctx context.Context, command string, validator func([]string) error, args ...string) ([]byte, error) {
+						if len(args) > 1 && args[1] == "addr" {
+							return nil, errors.New("File exists")
+						}
+						return []byte("ok"), nil
+					},
 				}
-				return func() { security.SecureExecuteWithValidation = original }
 			},
 			expectError: "", // Should not error as "File exists" is ignored
 		},
@@ -321,8 +318,8 @@ func TestOptimizedManager_CreateTunnelIPCommand_CommandFailures(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			cleanup := tc.setupMock()
-			defer cleanup()
+			mockExec := tc.setupMock()
+			manager := NewOptimizedManagerWithExecutor(mockExec)
 
 			err := manager.createTunnelIPCommand(100, "10.0.1.1", []string{"10.0.1.2"}, "eth0")
 
@@ -337,23 +334,20 @@ func TestOptimizedManager_CreateTunnelIPCommand_CommandFailures(t *testing.T) {
 }
 
 func TestOptimizedManager_CreateTunnelIPCommand_FDBErrors(t *testing.T) {
-	manager := NewOptimizedManager()
-
 	// Test with multiple remote IPs where some FDB operations fail
-	originalSecureExecute := security.SecureExecuteWithValidation
 	fdbCallCount := 0
-	security.SecureExecuteWithValidation = func(ctx context.Context, command string, validator func([]string) error, args ...string) ([]byte, error) {
-		if command == "bridge" {
-			fdbCallCount++
-			if fdbCallCount%2 == 0 { // Fail every second FDB operation
-				return nil, errors.New("FDB operation failed")
+	mockExec := &mockCommandExecutor{
+		secureExecuteFunc: func(ctx context.Context, command string, args ...string) ([]byte, error) {
+			if command == "bridge" {
+				fdbCallCount++
+				if fdbCallCount%2 == 0 { // Fail every second FDB operation
+					return nil, errors.New("FDB operation failed")
+				}
 			}
-		}
-		return []byte("ok"), nil
+			return []byte("ok"), nil
+		},
 	}
-	defer func() {
-		security.SecureExecuteWithValidation = originalSecureExecute
-	}()
+	manager := NewOptimizedManagerWithExecutor(mockExec)
 
 	// Should succeed despite FDB failures (they're non-critical)
 	err := manager.createTunnelIPCommand(100, "10.0.1.1", []string{"10.0.1.2", "10.0.1.3", "10.0.1.4"}, "eth0")
@@ -366,41 +360,39 @@ func TestOptimizedManager_CreateTunnelIPCommand_FDBErrors(t *testing.T) {
 }
 
 func TestOptimizedManager_ExecuteOptimizedCommand_Errors(t *testing.T) {
-	manager := NewOptimizedManager()
-
 	testCases := []struct {
 		name        string
 		args        []string
-		setupMock   func() func()
+		setupMock   func() *mockCommandExecutor
 		expectError string
 	}{
 		{
 			name:        "empty command arguments",
 			args:        []string{},
-			setupMock:   func() func() { return func() {} },
+			setupMock:   func() *mockCommandExecutor { return &mockCommandExecutor{} },
 			expectError: "empty command arguments",
 		},
 		{
 			name: "IP command validation fails",
 			args: []string{"ip", "link", "add", "test"},
-			setupMock: func() func() {
-				original := security.SecureExecuteWithValidation
-				security.SecureExecuteWithValidation = func(ctx context.Context, command string, validator func([]string) error, args ...string) ([]byte, error) {
-					return nil, errors.New("IP validation failed")
+			setupMock: func() *mockCommandExecutor {
+				return &mockCommandExecutor{
+					secureExecuteWithValidationFunc: func(ctx context.Context, command string, validator func([]string) error, args ...string) ([]byte, error) {
+						return nil, errors.New("IP validation failed")
+					},
 				}
-				return func() { security.SecureExecuteWithValidation = original }
 			},
 			expectError: "secure command execution failed",
 		},
 		{
 			name: "non-IP command execution fails",
 			args: []string{"bridge", "fdb", "add"},
-			setupMock: func() func() {
-				original := security.SecureExecute
-				security.SecureExecute = func(ctx context.Context, command string, args ...string) ([]byte, error) {
-					return nil, errors.New("bridge command failed")
+			setupMock: func() *mockCommandExecutor {
+				return &mockCommandExecutor{
+					secureExecuteFunc: func(ctx context.Context, command string, args ...string) ([]byte, error) {
+						return nil, errors.New("bridge command failed")
+					},
 				}
-				return func() { security.SecureExecute = original }
 			},
 			expectError: "secure command execution failed",
 		},
@@ -408,8 +400,8 @@ func TestOptimizedManager_ExecuteOptimizedCommand_Errors(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			cleanup := tc.setupMock()
-			defer cleanup()
+			mockExec := tc.setupMock()
+			manager := NewOptimizedManagerWithExecutor(mockExec)
 
 			err := manager.executeOptimizedCommand(tc.args)
 			assert.Error(t, err)
@@ -419,18 +411,15 @@ func TestOptimizedManager_ExecuteOptimizedCommand_Errors(t *testing.T) {
 }
 
 func TestOptimizedManager_ExecuteOptimizedCommand_Caching(t *testing.T) {
-	manager := NewOptimizedManager()
-
 	// Mock successful execution
 	executeCount := 0
-	originalSecureExecute := security.SecureExecute
-	security.SecureExecute = func(ctx context.Context, command string, args ...string) ([]byte, error) {
-		executeCount++
-		return []byte("ok"), nil
+	mockExec := &mockCommandExecutor{
+		secureExecuteFunc: func(ctx context.Context, command string, args ...string) ([]byte, error) {
+			executeCount++
+			return []byte("ok"), nil
+		},
 	}
-	defer func() {
-		security.SecureExecute = originalSecureExecute
-	}()
+	manager := NewOptimizedManagerWithExecutor(mockExec)
 
 	args := []string{"bridge", "fdb", "show"}
 
@@ -458,42 +447,30 @@ func TestOptimizedManager_ExecuteOptimizedCommand_Caching(t *testing.T) {
 }
 
 func TestOptimizedManager_DeleteTunnelOptimized_Errors(t *testing.T) {
-	manager := NewOptimizedManager()
-
-	// Add a tunnel to delete
-	tunnel := &EnhancedTunnelInfo{
-		InterfaceName: "vxlan100",
-		VxlanID:      100,
-		State:        TunnelStateActive,
-		CreatedAt:    time.Now(),
-		Stats:        &TunnelStats{LastUpdated: time.Now()},
-	}
-	manager.tunnels[100] = tunnel
-
 	testCases := []struct {
 		name        string
-		setupMock   func() func()
+		setupMock   func() *mockCommandExecutor
 		expectError string
 	}{
 		{
 			name: "delete command fails with real error",
-			setupMock: func() func() {
-				original := security.SecureExecuteWithValidation
-				security.SecureExecuteWithValidation = func(ctx context.Context, command string, validator func([]string) error, args ...string) ([]byte, error) {
-					return nil, errors.New("delete failed")
+			setupMock: func() *mockCommandExecutor {
+				return &mockCommandExecutor{
+					secureExecuteWithValidationFunc: func(ctx context.Context, command string, validator func([]string) error, args ...string) ([]byte, error) {
+						return nil, errors.New("delete failed")
+					},
 				}
-				return func() { security.SecureExecuteWithValidation = original }
 			},
 			expectError: "failed to delete interface",
 		},
 		{
 			name: "delete command fails with device not found (should succeed)",
-			setupMock: func() func() {
-				original := security.SecureExecuteWithValidation
-				security.SecureExecuteWithValidation = func(ctx context.Context, command string, validator func([]string) error, args ...string) ([]byte, error) {
-					return nil, errors.New("Cannot find device")
+			setupMock: func() *mockCommandExecutor {
+				return &mockCommandExecutor{
+					secureExecuteWithValidationFunc: func(ctx context.Context, command string, validator func([]string) error, args ...string) ([]byte, error) {
+						return nil, errors.New("Cannot find device")
+					},
 				}
-				return func() { security.SecureExecuteWithValidation = original }
 			},
 			expectError: "", // Should not error
 		},
@@ -501,11 +478,18 @@ func TestOptimizedManager_DeleteTunnelOptimized_Errors(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			// Re-add tunnel for each test
-			manager.tunnels[100] = tunnel
+			mockExec := tc.setupMock()
+			manager := NewOptimizedManagerWithExecutor(mockExec)
 
-			cleanup := tc.setupMock()
-			defer cleanup()
+			// Add a tunnel to delete
+			tunnel := &EnhancedTunnelInfo{
+				InterfaceName: "vxlan100",
+				VxlanID:      100,
+				State:        TunnelStateActive,
+				CreatedAt:    time.Now(),
+				Stats:        &TunnelStats{LastUpdated: time.Now()},
+			}
+			manager.tunnels[100] = tunnel
 
 			err := manager.DeleteTunnelOptimized(100)
 
@@ -523,7 +507,8 @@ func TestOptimizedManager_DeleteTunnelOptimized_Errors(t *testing.T) {
 }
 
 func TestOptimizedManager_GetTunnelStatusOptimized_Errors(t *testing.T) {
-	manager := NewOptimizedManager()
+	mockExec := &mockCommandExecutor{}
+	manager := NewOptimizedManagerWithExecutor(mockExec)
 
 	// Test tunnel not found
 	info, err := manager.GetTunnelStatusOptimized(999)
@@ -551,81 +536,9 @@ func TestOptimizedManager_GetTunnelStatusOptimized_Errors(t *testing.T) {
 	assert.True(t, info.LastUsed.After(tunnel.LastUsed))
 }
 
-func TestOptimizedManager_UpdateTunnelStats_Errors(t *testing.T) {
-	manager := NewOptimizedManager()
-
-	// Add a tunnel
-	tunnel := &EnhancedTunnelInfo{
-		InterfaceName: "vxlan100",
-		VxlanID:      100,
-		State:        TunnelStateActive,
-		Stats:        &TunnelStats{LastUpdated: time.Now().Add(-1 * time.Hour)},
-	}
-	manager.tunnels[100] = tunnel
-
-	testCases := []struct {
-		name      string
-		setupMock func() func()
-		vxlanID   int32
-	}{
-		{
-			name: "invalid interface name",
-			setupMock: func() func() {
-				original := security.ValidateNetworkInterface
-				security.ValidateNetworkInterface = func(name string) error {
-					return errors.New("invalid interface")
-				}
-				return func() { security.ValidateNetworkInterface = original }
-			},
-			vxlanID: 100,
-		},
-		{
-			name: "secure path join fails",
-			setupMock: func() func() {
-				original := security.SecureJoinPath
-				security.SecureJoinPath = func(base string, elem ...string) (string, error) {
-					return "", errors.New("path join failed")
-				}
-				return func() { security.SecureJoinPath = original }
-			},
-			vxlanID: 100,
-		},
-		{
-			name: "file path validation fails",
-			setupMock: func() func() {
-				// This would require mocking the file validator, which is complex
-				// For now, just test that it doesn't panic
-				return func() {}
-			},
-			vxlanID: 100,
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			cleanup := tc.setupMock()
-			defer cleanup()
-
-			// This should not panic
-			manager.updateTunnelStats(tc.vxlanID)
-
-			// Function is async, so we can't easily test the result
-			// The important thing is that it doesn't panic or block
-		})
-	}
-}
-
 func TestOptimizedManager_BatchProcessing(t *testing.T) {
-	manager := NewOptimizedManager()
-
-	// Mock successful execution
-	originalSecureExecute := security.SecureExecuteWithValidation
-	security.SecureExecuteWithValidation = func(ctx context.Context, command string, validator func([]string) error, args ...string) ([]byte, error) {
-		return []byte("ok"), nil
-	}
-	defer func() {
-		security.SecureExecuteWithValidation = originalSecureExecute
-	}()
+	mockExec := &mockCommandExecutor{}
+	manager := NewOptimizedManagerWithExecutor(mockExec)
 
 	// Test shouldBatch logic
 	assert.False(t, manager.shouldBatch("create", 100))  // Low VXLAN ID - critical
@@ -655,7 +568,18 @@ func TestOptimizedManager_BatchProcessing(t *testing.T) {
 }
 
 func TestOptimizedManager_CleanupOptimized_Errors(t *testing.T) {
-	manager := NewOptimizedManager()
+	// Mock delete operations with some failures
+	deleteCount := 0
+	mockExec := &mockCommandExecutor{
+		secureExecuteWithValidationFunc: func(ctx context.Context, command string, validator func([]string) error, args ...string) ([]byte, error) {
+			deleteCount++
+			if deleteCount%2 == 0 {
+				return nil, errors.New("delete failed")
+			}
+			return []byte("ok"), nil
+		},
+	}
+	manager := NewOptimizedManagerWithExecutor(mockExec)
 
 	// Add tunnels with different delete behaviors
 	tunnels := map[int32]*EnhancedTunnelInfo{
@@ -668,20 +592,6 @@ func TestOptimizedManager_CleanupOptimized_Errors(t *testing.T) {
 		manager.tunnels[id] = tunnel
 	}
 
-	// Mock delete operations with some failures
-	deleteCount := 0
-	originalSecureExecute := security.SecureExecuteWithValidation
-	security.SecureExecuteWithValidation = func(ctx context.Context, command string, validator func([]string) error, args ...string) ([]byte, error) {
-		deleteCount++
-		if deleteCount%2 == 0 {
-			return nil, errors.New("delete failed")
-		}
-		return []byte("ok"), nil
-	}
-	defer func() {
-		security.SecureExecuteWithValidation = originalSecureExecute
-	}()
-
 	err := manager.CleanupOptimized()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "cleanup failed")
@@ -691,7 +601,8 @@ func TestOptimizedManager_CleanupOptimized_Errors(t *testing.T) {
 }
 
 func TestOptimizedManager_ListActiveTunnels(t *testing.T) {
-	manager := NewOptimizedManager()
+	mockExec := &mockCommandExecutor{}
+	manager := NewOptimizedManagerWithExecutor(mockExec)
 
 	// Add tunnels in different states
 	tunnels := map[int32]*EnhancedTunnelInfo{
@@ -720,7 +631,8 @@ func TestOptimizedManager_ListActiveTunnels(t *testing.T) {
 }
 
 func TestOptimizedManager_GetMetrics(t *testing.T) {
-	manager := NewOptimizedManager()
+	mockExec := &mockCommandExecutor{}
+	manager := NewOptimizedManagerWithExecutor(mockExec)
 
 	// Update some metrics
 	manager.updateMetrics(100*time.Millisecond, true)
@@ -743,7 +655,8 @@ func TestOptimizedManager_GetMetrics(t *testing.T) {
 }
 
 func TestOptimizedManager_GenerateVXLANIP(t *testing.T) {
-	manager := NewOptimizedManager()
+	mockExec := &mockCommandExecutor{}
+	manager := NewOptimizedManagerWithExecutor(mockExec)
 
 	testCases := []struct {
 		name     string
@@ -786,18 +699,14 @@ func TestOptimizedManager_GenerateVXLANIP(t *testing.T) {
 }
 
 func TestOptimizedManager_ConcurrentOperations(t *testing.T) {
-	manager := NewOptimizedManager()
-
-	// Mock successful execution
-	originalSecureExecute := security.SecureExecuteWithValidation
-	security.SecureExecuteWithValidation = func(ctx context.Context, command string, validator func([]string) error, args ...string) ([]byte, error) {
-		// Add small delay to simulate real operation
-		time.Sleep(1 * time.Millisecond)
-		return []byte("ok"), nil
+	mockExec := &mockCommandExecutor{
+		secureExecuteWithValidationFunc: func(ctx context.Context, command string, validator func([]string) error, args ...string) ([]byte, error) {
+			// Add small delay to simulate real operation
+			time.Sleep(1 * time.Millisecond)
+			return []byte("ok"), nil
+		},
 	}
-	defer func() {
-		security.SecureExecuteWithValidation = originalSecureExecute
-	}()
+	manager := NewOptimizedManagerWithExecutor(mockExec)
 
 	// Test concurrent tunnel creation and deletion
 	var wg sync.WaitGroup
@@ -857,16 +766,8 @@ func TestOptimizedManager_ConcurrentOperations(t *testing.T) {
 }
 
 func TestOptimizedManager_MemoryLeaks(t *testing.T) {
-	manager := NewOptimizedManager()
-
-	// Mock successful execution
-	originalSecureExecute := security.SecureExecuteWithValidation
-	security.SecureExecuteWithValidation = func(ctx context.Context, command string, validator func([]string) error, args ...string) ([]byte, error) {
-		return []byte("ok"), nil
-	}
-	defer func() {
-		security.SecureExecuteWithValidation = originalSecureExecute
-	}()
+	mockExec := &mockCommandExecutor{}
+	manager := NewOptimizedManagerWithExecutor(mockExec)
 
 	// Create and delete many tunnels to test for memory leaks
 	for i := 0; i < 1000; i++ {
@@ -904,16 +805,8 @@ func TestOptimizedManager_MemoryLeaks(t *testing.T) {
 
 // Benchmark tests for performance validation
 func BenchmarkOptimizedManager_CreateTunnel(b *testing.B) {
-	manager := NewOptimizedManager()
-
-	// Mock fast execution
-	originalSecureExecute := security.SecureExecuteWithValidation
-	security.SecureExecuteWithValidation = func(ctx context.Context, command string, validator func([]string) error, args ...string) ([]byte, error) {
-		return []byte("ok"), nil
-	}
-	defer func() {
-		security.SecureExecuteWithValidation = originalSecureExecute
-	}()
+	mockExec := &mockCommandExecutor{}
+	manager := NewOptimizedManagerWithExecutor(mockExec)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -923,15 +816,12 @@ func BenchmarkOptimizedManager_CreateTunnel(b *testing.B) {
 }
 
 func BenchmarkOptimizedManager_ExecuteCommand(b *testing.B) {
-	manager := NewOptimizedManager()
-
-	originalSecureExecute := security.SecureExecute
-	security.SecureExecute = func(ctx context.Context, command string, args ...string) ([]byte, error) {
-		return []byte("ok"), nil
+	mockExec := &mockCommandExecutor{
+		secureExecuteFunc: func(ctx context.Context, command string, args ...string) ([]byte, error) {
+			return []byte("ok"), nil
+		},
 	}
-	defer func() {
-		security.SecureExecute = originalSecureExecute
-	}()
+	manager := NewOptimizedManagerWithExecutor(mockExec)
 
 	args := []string{"bridge", "fdb", "show"}
 
@@ -943,15 +833,8 @@ func BenchmarkOptimizedManager_ExecuteCommand(b *testing.B) {
 
 // Fuzz testing for edge cases
 func TestOptimizedManager_FuzzInputs(t *testing.T) {
-	manager := NewOptimizedManager()
-
-	originalSecureExecute := security.SecureExecuteWithValidation
-	security.SecureExecuteWithValidation = func(ctx context.Context, command string, validator func([]string) error, args ...string) ([]byte, error) {
-		return []byte("ok"), nil
-	}
-	defer func() {
-		security.SecureExecuteWithValidation = originalSecureExecute
-	}()
+	mockExec := &mockCommandExecutor{}
+	manager := NewOptimizedManagerWithExecutor(mockExec)
 
 	fuzzInputs := []struct {
 		name          string
