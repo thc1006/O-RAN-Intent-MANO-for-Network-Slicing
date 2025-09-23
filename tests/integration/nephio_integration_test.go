@@ -553,7 +553,7 @@ var _ = Describe("Nephio Package Generation and Deployment Tests", func() {
 
 			totalGenerationTime := time.Since(generationStart)
 
-			Expect(successCount).To(BeNumerically(">=", packageCount*0.95),
+			Expect(successCount).To(BeNumerically(">=", int(float64(packageCount)*0.95)),
 				"At least 95% of packages should generate successfully")
 
 			Expect(totalGenerationTime).To(BeNumerically("<=", 5*time.Minute),

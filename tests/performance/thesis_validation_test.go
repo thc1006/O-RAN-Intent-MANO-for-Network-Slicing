@@ -473,6 +473,7 @@ var _ = Describe("Thesis Performance Validation", func() {
 			samples := int(duration / interval)
 
 			latencyMeasurements := make([]float64, 0, samples)
+			startTime := time.Now()
 
 			for i := 0; i < samples; i++ {
 				latency := suite.measureLatencyWithTC(sliceID, qosClass)
