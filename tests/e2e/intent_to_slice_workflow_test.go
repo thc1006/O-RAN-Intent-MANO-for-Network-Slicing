@@ -2,7 +2,6 @@ package e2e
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -12,7 +11,6 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/ghttp"
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -533,7 +531,10 @@ var _ = Describe("Intent-to-Slice Complete Workflow", func() {
 				"UPF": 4, // Scale UPF to 4 replicas
 			})
 			Expect(scaledStatus.NetworkFunctions).To(ContainElement(
-				HaveField("Type", "UPF").And(HaveField("Replicas", 4))))
+				And(
+					HaveField("Type", "UPF"),
+					HaveField("Replicas", 4),
+				)))
 
 			By("Step 3: Updating slice configuration")
 			updatedQoS := qosMapping

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -12,10 +13,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	manov1alpha1 "github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/adapters/vnf-operator/api/v1alpha1"
 )
 
 // DeploymentTimingSuite manages end-to-end deployment timing validation
@@ -666,22 +664,22 @@ func (s *DeploymentTimingSuite) testIntentToDeploymentTiming(scenario Deployment
 
 	// Phase 6: Config Sync
 	phase6Start := time.Now()
-	configSyncResults := s.waitForConfigSync(packages, scenario.targetClusters)
+	_ = s.waitForConfigSync(packages, scenario.targetClusters)
 	result.PhaseTimings["config_sync"] = time.Since(phase6Start)
 
 	// Phase 7: Resource Deployment
 	phase7Start := time.Now()
-	deploymentResults := s.waitForResourceDeployment(packages)
+	_ = s.waitForResourceDeployment(packages)
 	result.PhaseTimings["resource_deployment"] = time.Since(phase7Start)
 
 	// Phase 8: Network Configuration
 	phase8Start := time.Now()
-	networkResults := s.configureNetworking(scenario.expectedVNFs)
+	_ = s.configureNetworking(scenario.expectedVNFs)
 	result.PhaseTimings["network_configuration"] = time.Since(phase8Start)
 
 	// Phase 9: Health Validation
 	phase9Start := time.Now()
-	healthResults := s.validateDeploymentHealth(scenario.expectedVNFs)
+	_ = s.validateDeploymentHealth(scenario.expectedVNFs)
 	result.PhaseTimings["health_validation"] = time.Since(phase9Start)
 
 	// Collect VNF-specific timing results
