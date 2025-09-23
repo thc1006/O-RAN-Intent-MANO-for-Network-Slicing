@@ -436,3 +436,128 @@ func ValidateFileExists(path string) error {
 func ValidateDirectoryExists(path string) error {
 	return DefaultValidator.ValidateDirectoryExists(path)
 }
+
+// CreateSafeProcessPattern creates a safe process pattern for pkill with parameter validation
+// This function prevents command injection by using predefined pattern templates
+func CreateSafeProcessPattern(command, flag, value string) string {
+	// Validate all inputs before pattern creation
+	if err := ValidateCommandArgument(command); err != nil {
+		return ""
+	}
+	if err := ValidateCommandArgument(flag); err != nil {
+		return ""
+	}
+	if err := ValidateCommandArgument(value); err != nil {
+		return ""
+	}
+
+	// Only allow specific whitelisted commands and flags
+	allowedPatterns := map[string]map[string]string{
+		"iperf3": {
+			"p":       "iperf3.*-p %s",        // for pkill
+			"p_pgrep": "iperf3.*-p.*%s",       // for pgrep (different regex format)
+		},
+		"tc": {
+			"dev": "tc.*dev %s",
+		},
+	}
+
+	if cmdPatterns, exists := allowedPatterns[command]; exists {
+		if pattern, exists := cmdPatterns[flag]; exists {
+			// Use fmt.Sprintf with the predefined pattern template
+			// This ensures the pattern structure cannot be altered
+			return fmt.Sprintf(pattern, value)
+		}
+	}
+
+	return "" // Return empty string if no safe pattern found
+}
+
+// IsValidPortString validates that a string contains only a valid port number
+func IsValidPortString(portStr string) bool {
+	// Use strict regex to ensure only numeric values
+	portPattern := regexp.MustCompile(`^\d{1,5}$`)
+	if !portPattern.MatchString(portStr) {
+		return false
+	}
+
+	// Parse and validate port range
+	port, err := strconv.Atoi(portStr)
+	if err != nil {
+		return false
+	}
+
+	return port >= 1 && port <= 65535
+}
+
+// ValidatePkillPattern validates pkill patterns to prevent command injection
+func ValidatePkillPattern(pattern string) error {
+	if pattern == "" {
+		return fmt.Errorf("pkill pattern cannot be empty")
+	}
+
+	// Length check to prevent excessively long patterns
+	if len(pattern) > 256 {
+		return fmt.Errorf("pkill pattern too long: %d characters", len(pattern))
+	}
+
+	// Check for dangerous characters that could be used for injection
+	dangerousChars := []string{";", "&", "|", "`", "$", "(", ")", "<", ">", "\\", "\"", "'"}
+	for _, char := range dangerousChars {
+		if strings.Contains(pattern, char) {
+			return fmt.Errorf("dangerous character in pkill pattern: %s", char)
+		}
+	}
+
+	// Whitelist allowed pattern formats
+	allowedPatterns := []string{
+		`^iperf3\.\*-p \d{1,5}$`,              // iperf3 with port
+		`^tc\.\*dev [a-zA-Z0-9\-_\.]+$`,       // tc with device
+		`^[a-zA-Z0-9\-_\.\s\*]+$`,             // General safe pattern
+	}
+
+	for _, allowedPattern := range allowedPatterns {
+		matched, err := regexp.MatchString(allowedPattern, pattern)
+		if err == nil && matched {
+			return nil // Pattern is safe
+		}
+	}
+
+	return fmt.Errorf("pkill pattern not in allowlist: %s", pattern)
+}
+
+// ValidatePgrepPattern validates pgrep patterns to prevent command injection
+func ValidatePgrepPattern(pattern string) error {
+	if pattern == "" {
+		return fmt.Errorf("pgrep pattern cannot be empty")
+	}
+
+	// Length check to prevent excessively long patterns
+	if len(pattern) > 256 {
+		return fmt.Errorf("pgrep pattern too long: %d characters", len(pattern))
+	}
+
+	// Check for dangerous characters that could be used for injection
+	dangerousChars := []string{";", "&", "|", "`", "$", "(", ")", "<", ">", "\\", "\"", "'"}
+	for _, char := range dangerousChars {
+		if strings.Contains(pattern, char) {
+			return fmt.Errorf("dangerous character in pgrep pattern: %s", char)
+		}
+	}
+
+	// Whitelist allowed pattern formats for pgrep
+	allowedPatterns := []string{
+		`^iperf3\.\*-p\.\*\d{1,5}$`,           // iperf3 with port (pgrep format)
+		`^tc\.\*dev [a-zA-Z0-9\-_\.]+$`,       // tc with device
+		`^[a-zA-Z0-9\-_\.\s\*]+$`,             // General safe pattern
+	}
+
+	for _, allowedPattern := range allowedPatterns {
+		matched, err := regexp.MatchString(allowedPattern, pattern)
+		if err == nil && matched {
+			return nil // Pattern is safe
+		}
+	}
+
+	return fmt.Errorf("pgrep pattern not in allowlist: %s", pattern)
+}

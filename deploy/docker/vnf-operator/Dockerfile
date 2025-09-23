@@ -34,7 +34,7 @@ COPY adapters/vnf-operator/go.sum go.sum
 
 # Copy pkg/security module (needed for transitive dependencies)
 # The go.mod may have indirect dependencies on pkg/security through other modules
-COPY pkg/security /pkg/security
+COPY pkg/security ../pkg/security
 
 # Copy api module for local replace directive
 COPY adapters/vnf-operator/api /workspace/api

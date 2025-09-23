@@ -94,6 +94,7 @@ func (agent *TNAgent) writeJSONResponse(w http.ResponseWriter, statusCode int, d
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
 
+	// Write response data with proper error handling
 	if _, err := w.Write(buf.Bytes()); err != nil {
 		security.SafeLogError(agent.logger, "Failed to write JSON response", err)
 		return fmt.Errorf("failed to write response: %w", err)
@@ -104,6 +105,7 @@ func (agent *TNAgent) writeJSONResponse(w http.ResponseWriter, statusCode int, d
 
 // Health check handler
 func (agent *TNAgent) handleHealth(w http.ResponseWriter, r *http.Request) {
+	// Build health status response
 	status := map[string]interface{}{
 		"healthy":   agent.healthy,
 		"timestamp": time.Now(),
@@ -116,7 +118,10 @@ func (agent *TNAgent) handleHealth(w http.ResponseWriter, r *http.Request) {
 		statusCode = http.StatusServiceUnavailable
 	}
 
+	// Write JSON response with proper error handling
 	if err := agent.writeJSONResponse(w, statusCode, status); err != nil {
+		// Log the error and send HTTP error response
+		security.SafeLogError(agent.logger, "Failed to write health check response", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }
@@ -130,6 +135,7 @@ func (agent *TNAgent) handleStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := agent.writeJSONResponse(w, http.StatusOK, status); err != nil {
+		security.SafeLogError(agent.logger, "Failed to write status response", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }
@@ -141,6 +147,7 @@ func (agent *TNAgent) handleGetConfig(w http.ResponseWriter, r *http.Request) {
 	agent.mu.RUnlock()
 
 	if err := agent.writeJSONResponse(w, http.StatusOK, config); err != nil {
+		security.SafeLogError(agent.logger, "Failed to write config response", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }
@@ -159,6 +166,7 @@ func (agent *TNAgent) handleUpdateConfig(w http.ResponseWriter, r *http.Request)
 	}
 
 	if err := agent.writeJSONResponse(w, http.StatusOK, map[string]string{"status": "updated"}); err != nil {
+		security.SafeLogError(agent.logger, "Failed to write config update response", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }
@@ -186,6 +194,7 @@ func (agent *TNAgent) handleConfigureSlice(w http.ResponseWriter, r *http.Reques
 	}
 
 	if err := agent.writeJSONResponse(w, http.StatusOK, response); err != nil {
+		security.SafeLogError(agent.logger, "Failed to write slice configuration response", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }
@@ -205,6 +214,7 @@ func (agent *TNAgent) handleDeleteSlice(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if err := agent.writeJSONResponse(w, http.StatusOK, response); err != nil {
+		security.SafeLogError(agent.logger, "Failed to write slice deletion response", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }
@@ -230,6 +240,7 @@ func (agent *TNAgent) handleRunTest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := agent.writeJSONResponse(w, http.StatusOK, result); err != nil {
+		security.SafeLogError(agent.logger, "Failed to write test result response", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }
@@ -248,6 +259,7 @@ func (agent *TNAgent) handleGetTestResult(w http.ResponseWriter, r *http.Request
 	}
 
 	if err := agent.writeJSONResponse(w, http.StatusOK, response); err != nil {
+		security.SafeLogError(agent.logger, "Failed to write test retrieval response", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }
@@ -266,6 +278,7 @@ func (agent *TNAgent) handleVXLANStatus(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if err := agent.writeJSONResponse(w, http.StatusOK, status); err != nil {
+		security.SafeLogError(agent.logger, "Failed to write VXLAN status response", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }
@@ -284,6 +297,7 @@ func (agent *TNAgent) handleUpdateVXLANPeers(w http.ResponseWriter, r *http.Requ
 	}
 
 	if err := agent.vxlanManager.UpdatePeers(peers); err != nil {
+		security.SafeLogError(agent.logger, "Failed to update VXLAN peers", err)
 		http.Error(w, fmt.Sprintf("Failed to update peers: %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -295,6 +309,7 @@ func (agent *TNAgent) handleUpdateVXLANPeers(w http.ResponseWriter, r *http.Requ
 	}
 
 	if err := agent.writeJSONResponse(w, http.StatusOK, response); err != nil {
+		security.SafeLogError(agent.logger, "Failed to write VXLAN peers update response", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }
@@ -314,6 +329,7 @@ func (agent *TNAgent) handleTestVXLANConnectivity(w http.ResponseWriter, r *http
 	}
 
 	if err := agent.writeJSONResponse(w, http.StatusOK, response); err != nil {
+		security.SafeLogError(agent.logger, "Failed to write VXLAN connectivity test response", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }
@@ -332,6 +348,7 @@ func (agent *TNAgent) handleTCStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := agent.writeJSONResponse(w, http.StatusOK, status); err != nil {
+		security.SafeLogError(agent.logger, "Failed to write TC status response", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }
@@ -350,6 +367,7 @@ func (agent *TNAgent) handleApplyTCRules(w http.ResponseWriter, r *http.Request)
 	}
 
 	if err := agent.tcManager.UpdateShaping(&policy); err != nil {
+		security.SafeLogError(agent.logger, "Failed to apply TC shaping rules", err)
 		http.Error(w, fmt.Sprintf("Failed to apply TC rules: %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -361,6 +379,7 @@ func (agent *TNAgent) handleApplyTCRules(w http.ResponseWriter, r *http.Request)
 	}
 
 	if err := agent.writeJSONResponse(w, http.StatusOK, response); err != nil {
+		security.SafeLogError(agent.logger, "Failed to write TC rules apply response", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }
@@ -422,11 +441,13 @@ func (agent *TNAgent) handleBandwidthStream(w http.ResponseWriter, r *http.Reque
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
+	// Write initial metrics data to stream with error handling
 	if _, err := fmt.Fprintf(w, "data: %s\n\n", data); err != nil {
 		security.SafeLogError(agent.logger, "Failed to write initial metrics to stream", err)
 		return
 	}
 
+	// Flush initial response to ensure data is sent immediately
 	if flusher, ok := w.(http.Flusher); ok {
 		flusher.Flush()
 	}
@@ -447,10 +468,12 @@ func (agent *TNAgent) handleBandwidthStream(w http.ResponseWriter, r *http.Reque
 				continue
 			}
 
+			// Write streaming metrics data with error handling
 			if _, err := fmt.Fprintf(w, "data: %s\n\n", data); err != nil {
 				security.SafeLogError(agent.logger, "Failed to write metrics to stream", err)
 				return
 			}
+			// Flush streaming response to ensure real-time delivery
 			if flusher, ok := w.(http.Flusher); ok {
 				flusher.Flush()
 			}
@@ -545,10 +568,12 @@ func (agent *TNAgent) handleExportMetrics(w http.ResponseWriter, r *http.Request
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+	// Set headers for file download
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=metrics_%s_%d.json",
 		agent.config.ClusterName, time.Now().Unix()))
 	w.WriteHeader(http.StatusOK)
 
+	// Write metrics data with error handling
 	if _, err := w.Write(data); err != nil {
 		security.SafeLogError(agent.logger, "Failed to write metrics export data", err)
 		// Cannot send error response as headers are already written
@@ -581,7 +606,7 @@ func (agent *TNAgent) updateConfiguration(newConfig *TNConfig) error {
 	// Update agent configuration
 	agent.config = newConfig
 
-	agent.logger.Println("Configuration updated successfully")
+	security.SafeLogf(agent.logger, "Configuration updated successfully for cluster: %s", security.SanitizeForLog(newConfig.ClusterName))
 	return nil
 }
 

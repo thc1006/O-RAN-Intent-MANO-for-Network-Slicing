@@ -101,15 +101,31 @@ func main() {
 		port = defaultPort
 	}
 
-	// Setup server with timeout configurations to prevent Slowloris attacks
+	// Setup server with comprehensive timeout configurations to prevent various attacks
 	srv := &http.Server{
-		Addr:              ":" + port,
-		Handler:           router,
-		ReadHeaderTimeout: 10 * time.Second,  // Prevent Slowloris attacks
-		ReadTimeout:       15 * time.Second,  // Total time to read request
-		WriteTimeout:      15 * time.Second,  // Time to write response
-		IdleTimeout:       60 * time.Second,  // Keep-alive timeout
-		MaxHeaderBytes:    1 << 20,           // 1MB max header size
+		Addr:    ":" + port,
+		Handler: router,
+
+		// Security timeouts to prevent attacks:
+		// ReadHeaderTimeout prevents Slowloris attacks by limiting time to read request headers
+		// This is critical as attackers can send partial headers slowly to exhaust server resources
+		ReadHeaderTimeout: 10 * time.Second,
+
+		// ReadTimeout limits total time to read the entire request (headers + body)
+		// Prevents slow request body attacks and ensures requests complete in reasonable time
+		ReadTimeout: 15 * time.Second,
+
+		// WriteTimeout limits time to write the response
+		// Prevents slow client attacks where clients read responses very slowly
+		WriteTimeout: 15 * time.Second,
+
+		// IdleTimeout limits how long keep-alive connections can remain idle
+		// Prevents connection exhaustion by closing idle connections
+		IdleTimeout: 60 * time.Second,
+
+		// MaxHeaderBytes limits the size of request headers
+		// Prevents memory exhaustion from oversized headers
+		MaxHeaderBytes: 1 << 20, // 1MB max header size
 	}
 
 	// Start server in a goroutine

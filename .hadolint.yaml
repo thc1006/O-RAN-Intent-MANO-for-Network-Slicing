@@ -1,0 +1,94 @@
+# Hadolint configuration for O-RAN Intent-MANO Dockerfiles
+# Security-focused Dockerfile linting rules
+
+failure-threshold: warning
+
+ignored:
+  # Allow pip install from requirements.txt
+  - DL3013
+  # Allow latest tag for base images in development
+  - DL3007
+
+trusted-registries:
+  - ghcr.io
+  - docker.io
+  - quay.io
+  - registry.k8s.io
+  - gcr.io
+
+override:
+  error:
+    # Security-critical rules
+    - DL3002  # Last USER should not be root
+    - DL3003  # Use WORKDIR for switching to a directory
+    - DL3004  # Do not use sudo
+    - DL3006  # Always tag the version of an image explicitly
+    - DL3008  # Pin versions in apt get install
+    - DL3009  # Delete the apt-get lists after installing
+    - DL3015  # Avoid additional packages by specifying --no-install-recommends
+    - DL3020  # Use COPY instead of ADD for files and folders
+    - DL3025  # Use arguments JSON notation for CMD and ENTRYPOINT
+    - DL3059  # Multiple consecutive RUN instructions
+    - DL4001  # Either use Wget or Curl, not both
+    - DL4003  # Multiple CMD instructions found
+    - DL4004  # Multiple ENTRYPOINT instructions found
+    - DL4006  # Set the SHELL option -o pipefail before RUN
+
+  warning:
+    # Best practice rules
+    - DL3000  # Use absolute WORKDIR
+    - DL3001  # For some bash commands it makes no sense running them in a Docker container
+    - DL3005  # Do not use apt-get upgrade or dist-upgrade
+    - DL3007  # Using latest is prone to errors
+    - DL3010  # Use ADD for extracting archives into an image
+    - DL3011  # Valid UNIX ports range from 0 to 65535
+    - DL3012  # Provide an email address or URL as maintainer
+    - DL3013  # Pin versions in pip
+    - DL3014  # Use the -y switch
+    - DL3016  # Pin versions in npm
+    - DL3018  # Pin versions in apk add
+    - DL3019  # Use the --no-cache switch
+    - DL3021  # COPY with more than 2 arguments requires the last argument to end with /
+    - DL3022  # COPY --from should reference a previously defined FROM alias
+    - DL3023  # COPY --from cannot reference its own FROM alias
+    - DL3024  # FROM aliases should be unique
+    - DL3026  # Use only an allowed registry in the FROM image
+    - DL3027  # Do not use apt as it is meant to be an end-user tool
+    - DL3028  # Pin versions in gem install
+    - DL3029  # Do not use --platform flag with FROM
+    - DL3030  # Use the -y switch
+    - DL3032  # yum clean all missing
+    - DL3033  # Specify version with yum install -y <package>-<version>
+    - DL3034  # Non-interactive switch missing
+    - DL3035  # Do not use zypper dist-upgrade
+    - DL3036  # Specify version with zypper install -y <package>=<version>
+    - DL3037  # Specify version with zypper install -y <package>=<version>
+    - DL3038  # Use the -y switch
+    - DL3040  # tar ca not needed since Docker handles compression
+    - DL3041  # Specify version with dnf install -y <package>-<version>
+    - DL3042  # Avoid cache directory with dnf clean all
+    - DL3043  # ONBUILD, RUN, ADD, COPY instructions are not allowed after ONBUILD
+    - DL3044  # Do not use cd, use WORKDIR
+    - DL3045  # COPY to a relative destination without WORKDIR set
+    - DL3046  # useradd without flag -l and high UID will result in excessively large Image
+    - DL3047  # wget without flag --progress will result in excessively verbose log
+    - DL3048  # Invalid label key
+    - DL3049  # Label `<label>` is missing
+    - DL3050  # Superfluous label(s) present
+    - DL3051  # Label `<label>` is missing
+    - DL3052  # Label `<label>` is missing
+    - DL3053  # Label `<label>` is missing
+    - DL3054  # Label `<label>` is missing
+    - DL3055  # Label `<label>` is missing
+    - DL3056  # Label `<label>` is missing
+    - DL3057  # HEALTHCHECK instruction missing
+    - DL3058  # Label `<label>` is missing
+    - DL4005  # Use SHELL to change the default shell
+
+label-schema:
+  author: text
+  version: semver
+  description: text
+  maintainer: email
+
+strict-labels: true

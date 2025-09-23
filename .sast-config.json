@@ -1,0 +1,68 @@
+{
+  "scan": {
+    "type": ["go", "docker", "kubernetes"],
+    "config": {
+      "detectors": {
+        "go": {
+          "enabled": true,
+          "rules": [
+            "hardcoded-credentials",
+            "sql-injection",
+            "path-traversal",
+            "xss",
+            "weak-crypto",
+            "insecure-random",
+            "command-injection",
+            "unsafe-reflection",
+            "weak-hash",
+            "insecure-tls"
+          ]
+        },
+        "docker": {
+          "enabled": true,
+          "rules": [
+            "dockerfile-security",
+            "hardcoded-secrets",
+            "insecure-base-image",
+            "privileged-containers",
+            "unsafe-syscalls"
+          ]
+        },
+        "kubernetes": {
+          "enabled": true,
+          "rules": [
+            "privilege-escalation",
+            "unsafe-capabilities",
+            "insecure-network-policies",
+            "weak-rbac",
+            "unsafe-pod-security"
+          ]
+        }
+      }
+    },
+    "severity_threshold": "medium",
+    "exclude_paths": [
+      "vendor/",
+      "node_modules/",
+      ".git/",
+      "tests/golden/",
+      "*_test.go",
+      "*.pb.go",
+      "*_generated.go"
+    ],
+    "exclude_rules": [
+      "G104",
+      "G304"
+    ]
+  },
+  "report": {
+    "format": ["json", "sarif"],
+    "output_file": "sast-results",
+    "include_suppressed": false
+  },
+  "suppress": {
+    "by_rule": [],
+    "by_file": [],
+    "by_line": []
+  }
+}

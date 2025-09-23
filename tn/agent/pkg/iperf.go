@@ -117,11 +117,33 @@ func NewIperfManager(logger *log.Logger) *IperfManager {
 
 // findIperfDaemonPID attempts to find the PID of an iperf3 daemon running on the specified port
 func findIperfDaemonPID(port int) (int, error) {
+	// SECURITY: Validate port before using in process search
+	if err := security.ValidatePort(port); err != nil {
+		return 0, fmt.Errorf("invalid port: %w", err)
+	}
+
 	// Use pgrep to find iperf3 processes
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	pattern := fmt.Sprintf("iperf3.*-p.*%d", port)
+	// SECURITY: Use safe pattern creation with input validation
+	portStr := strconv.Itoa(port)
+	if !security.IsValidPortString(portStr) {
+		return 0, fmt.Errorf("invalid port format: %s", portStr)
+	}
+
+	// Create pattern using safe construction method (pgrep format)
+	pattern := security.CreateSafeProcessPattern("iperf3", "p_pgrep", portStr)
+	if pattern == "" {
+		// Fallback to manual construction with enhanced validation
+		pattern = "iperf3.*-p.*" + portStr
+	}
+
+	// Validate the pattern before use
+	if err := security.ValidatePgrepPattern(pattern); err != nil {
+		return 0, fmt.Errorf("unsafe pgrep pattern: %w", err)
+	}
+
 	args := []string{"-f", pattern}
 
 	output, err := security.SecureExecute(ctx, "pgrep", args...)
@@ -279,14 +301,38 @@ func (im *IperfManager) StopServer(port int) error {
 	server.Cancel()
 
 	// Kill the process if it's still running
-	// Validate port argument
+	// SECURITY: Use enhanced validation and safer pattern construction for process killing
+	// Validate port argument with strict bounds checking
 	portStr := strconv.Itoa(port)
 	if err := security.ValidateCommandArgument(portStr); err != nil {
 		return fmt.Errorf("invalid port argument: %w", err)
 	}
-	pattern := fmt.Sprintf("iperf3.*-p %s", portStr)
-	// Use secure subprocess execution for pkill
+
+	// Additional port validation to ensure it's a valid numeric port
+	if port < 1 || port > 65535 {
+		return fmt.Errorf("port out of valid range: %d", port)
+	}
+
+	// SECURITY: Use predefined pattern with parameter substitution instead of string concatenation
+	// This prevents injection attacks by ensuring the pattern structure is fixed
+	pattern := security.CreateSafeProcessPattern("iperf3", "p", portStr)
+	if pattern == "" {
+		// Fallback to manual pattern construction with strict validation
+		// Only allow numeric port values by using regex validation
+		if !security.IsValidPortString(portStr) {
+			return fmt.Errorf("invalid port format for process killing: %s", portStr)
+		}
+		pattern = "iperf3.*-p " + portStr
+	}
+
+	// Use secure subprocess execution for pkill with enhanced argument validation
 	args := []string{"-f", pattern}
+
+	// SECURITY: Validate the complete pkill pattern before execution
+	if err := security.ValidatePkillPattern(pattern); err != nil {
+		return fmt.Errorf("unsafe pkill pattern: %w", err)
+	}
+
 	killCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -738,13 +784,36 @@ func (im *IperfManager) StopAllServers() error {
 		server.Cancel()
 
 		// Kill the process if it's still running
+		// SECURITY: Enhanced validation for batch server termination
 		portStr := strconv.Itoa(server.Port)
 		if err := security.ValidateCommandArgument(portStr); err != nil {
 			errors = append(errors, fmt.Sprintf("Invalid port argument for server %s: %v", serverKey, err))
 			continue
 		}
 
-		pattern := fmt.Sprintf("iperf3.*-p %s", portStr)
+		// Additional port validation for security
+		if server.Port < 1 || server.Port > 65535 {
+			errors = append(errors, fmt.Sprintf("Port out of valid range for server %s: %d", serverKey, server.Port))
+			continue
+		}
+
+		// SECURITY: Use safe pattern creation with predefined templates
+		pattern := security.CreateSafeProcessPattern("iperf3", "p", portStr)
+		if pattern == "" {
+			// Fallback with strict validation
+			if !security.IsValidPortString(portStr) {
+				errors = append(errors, fmt.Sprintf("Invalid port format for server %s: %s", serverKey, portStr))
+				continue
+			}
+			pattern = "iperf3.*-p " + portStr
+		}
+
+		// Validate the complete pattern before execution
+		if err := security.ValidatePkillPattern(pattern); err != nil {
+			errors = append(errors, fmt.Sprintf("Unsafe pkill pattern for server %s: %v", serverKey, err))
+			continue
+		}
+
 		args := []string{"-f", pattern}
 		killCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 

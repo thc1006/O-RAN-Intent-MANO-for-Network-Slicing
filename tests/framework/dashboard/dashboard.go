@@ -398,7 +398,7 @@ func (d *Dashboard) GenerateHTML(outputPath string) error {
 	}
 	defer func() {
 		if err := file.Close(); err != nil {
-			fmt.Printf("Error closing file %s: %v\n", outputPath, err)
+			fmt.Printf("Error closing file %s: %v\n", security.SanitizeForLog(outputPath), err)
 		}
 	}()
 
