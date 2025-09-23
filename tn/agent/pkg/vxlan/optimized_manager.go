@@ -36,6 +36,9 @@ type OptimizedManager struct {
 	// System optimization
 	netlinkSocket   int
 	useNetlink     bool
+
+	// Command executor for dependency injection
+	cmdExecutor     security.CommandExecutor
 }
 
 // EnhancedTunnelInfo stores comprehensive tunnel information
@@ -106,16 +109,24 @@ type PerformanceMetrics struct {
 
 // NewOptimizedManager creates a new optimized VXLAN manager
 func NewOptimizedManager() *OptimizedManager {
+	return NewOptimizedManagerWithExecutor(nil)
+}
+
+// NewOptimizedManagerWithExecutor creates a new optimized VXLAN manager with custom command executor
+func NewOptimizedManagerWithExecutor(executor security.CommandExecutor) *OptimizedManager {
+	if executor == nil {
+		executor = security.DefaultSecureExecutor
+	}
+
 	manager := &OptimizedManager{
 		tunnels:       make(map[int32]*EnhancedTunnelInfo),
 		commandCache:  make(map[string]*CachedCommand),
 		workerPool:    make(chan struct{}, 10), // Max 10 concurrent operations
 		batchInterval: 100 * time.Millisecond,  // 100ms batching
 		metrics:       &PerformanceMetrics{},
-		useNetlink:    true, // Try to use netlink for better performance
+		useNetlink:    false, // Start with false to avoid netlink in tests
+		cmdExecutor:   executor,
 	}
-
-	// Command pooling removed - using secure execution instead
 
 	// Try to initialize netlink socket for direct kernel communication
 	manager.initNetlink()
@@ -368,30 +379,30 @@ func (m *OptimizedManager) executeOptimizedCommand(args []string) error {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
-		// Use security package for all command execution
+		// Use injected command executor for all command execution
 		if args[0] == "ip" {
 			// #nosec - Using secure execution with validation
-			_, err := security.SecureExecuteWithValidation(ctx, args[0], security.ValidateIPArgs, args[1:]...)
+			_, err := m.cmdExecutor.SecureExecuteWithValidation(ctx, args[0], security.ValidateIPArgs, args[1:]...)
 			return err
 		} else {
 			// #nosec - Using secure execution
-			_, err := security.SecureExecute(ctx, args[0], args[1:]...)
+			_, err := m.cmdExecutor.SecureExecute(ctx, args[0], args[1:]...)
 			return err
 		}
 	}
 	m.cacheMutex.RUnlock()
 
-	// Execute new command using secure execution
+	// Execute new command using injected secure execution
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	var err error
 	if args[0] == "ip" {
 		// #nosec - Using secure execution with validation
-		_, err = security.SecureExecuteWithValidation(ctx, args[0], security.ValidateIPArgs, args[1:]...)
+		_, err = m.cmdExecutor.SecureExecuteWithValidation(ctx, args[0], security.ValidateIPArgs, args[1:]...)
 	} else {
 		// #nosec - Using secure execution
-		_, err = security.SecureExecute(ctx, args[0], args[1:]...)
+		_, err = m.cmdExecutor.SecureExecute(ctx, args[0], args[1:]...)
 	}
 
 	if err != nil {
