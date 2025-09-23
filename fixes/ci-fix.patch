@@ -1,26 +1,49 @@
-diff --git a/.github/workflows/ci-quickfix.yml b/.github/workflows/ci-quickfix.yml
-index 1234567..abcdefg 100644
---- a/.github/workflows/ci-quickfix.yml
-+++ b/.github/workflows/ci-quickfix.yml
-@@ -8,7 +8,7 @@ on:
-     branches: [ main, develop ]
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -285,6 +285,22 @@ jobs:
+             echo "Using debug mode for golangci-lint"
+           fi
+         fi
++
++    - name: Prepare Docker build context for tn-agent
++      if: matrix.component == 'tn-agent'
++      run: |
++        # Special handling for tn-agent to ensure pkg/security is available
++        if [ -d "deploy/docker/tn-agent" ]; then
++          # Copy pkg/security to build context if needed
++          if [ -d "pkg/security" ] && [ ! -d "deploy/docker/tn-agent/pkg/security" ]; then
++            mkdir -p deploy/docker/tn-agent/pkg
++            cp -r pkg/security deploy/docker/tn-agent/pkg/
++          fi
++          # Copy tn module files if not present
++          if [ -d "tn" ] && [ ! -f "deploy/docker/tn-agent/tn/go.mod" ]; then
++            cp -r tn deploy/docker/tn-agent/
++          fi
++        fi
 
- env:
--  GO_VERSION: '1.24'
-+  GO_VERSION: '1.24.0'
-   PYTHON_VERSION: '3.11'
-   NODE_VERSION: '18'
+     - name: Build Docker image
+       uses: docker/build-push-action@v5
+--- a/.github/workflows/production-deployment.yml
++++ b/.github/workflows/production-deployment.yml
+@@ -189,6 +189,21 @@ jobs:
+             echo "No go.mod found, skipping tests for ${{ matrix.component }}"
+           fi
 
-diff --git a/.github/workflows/enhanced-ci.yml b/.github/workflows/enhanced-ci.yml
-index 1234567..abcdefg 100644
---- a/.github/workflows/enhanced-ci.yml
-+++ b/.github/workflows/enhanced-ci.yml
-@@ -46,7 +46,7 @@ on:
- env:
-   REGISTRY: ghcr.io
-   IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}
--  GO_VERSION: '1.24'
-+  GO_VERSION: '1.24.0'
-   PYTHON_VERSION: '3.11'
-
-   # Dashboard and reporting configuration
++      - name: Prepare Docker build context for tn-agent
++        if: matrix.component == 'tn-agent'
++        run: |
++          # Ensure tn-agent has access to required dependencies
++          if [ -d "deploy/docker/tn-agent" ]; then
++            # Copy pkg/security if needed
++            if [ -d "pkg/security" ] && [ ! -d "deploy/docker/tn-agent/pkg/security" ]; then
++              mkdir -p deploy/docker/tn-agent/pkg
++              cp -r pkg/security deploy/docker/tn-agent/pkg/
++            fi
++            # Copy tn module files if needed
++            if [ -d "tn" ] && [ ! -f "deploy/docker/tn-agent/tn/go.mod" ]; then
++              cp -r tn deploy/docker/tn-agent/
++            fi
++          fi
++
+       - name: Upload coverage reports
+         uses: codecov/codecov-action@v3

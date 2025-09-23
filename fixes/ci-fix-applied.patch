@@ -1,0 +1,136 @@
+diff --git a/.github/workflows/ci-quickfix.yml b/.github/workflows/ci-quickfix.yml
+index 766e763..8ce7d1c 100644
+--- a/.github/workflows/ci-quickfix.yml
++++ b/.github/workflows/ci-quickfix.yml
+@@ -8,7 +8,7 @@ on:
+     branches: [ main, develop ]
+ 
+ env:
+-  GO_VERSION: '1.24.0'
++  GO_VERSION: '1.23.4'
+   PYTHON_VERSION: '3.11'
+   NODE_VERSION: '18'
+ 
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index c966699..4774378 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -21,7 +21,7 @@ on:
+ env:
+   REGISTRY: ghcr.io
+   IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}
+-  GO_VERSION: '1.24.0'
++  GO_VERSION: '1.23.4'
+   KIND_VERSION: 'v0.20.0'
+   KUBECTL_VERSION: 'v1.28.0'
+   HELM_VERSION: 'v3.13.0'
+diff --git a/.github/workflows/enhanced-ci.yml b/.github/workflows/enhanced-ci.yml
+index 6ab731d..41e5195 100644
+--- a/.github/workflows/enhanced-ci.yml
++++ b/.github/workflows/enhanced-ci.yml
+@@ -46,7 +46,7 @@ on:
+ env:
+   REGISTRY: ghcr.io
+   IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}
+-  GO_VERSION: '1.24.0'
++  GO_VERSION: '1.23.4'
+   PYTHON_VERSION: '3.11'
+ 
+   # Dashboard and reporting configuration
+diff --git a/.github/workflows/production-deployment.yml b/.github/workflows/production-deployment.yml
+index 6e644fb..7321c0e 100644
+--- a/.github/workflows/production-deployment.yml
++++ b/.github/workflows/production-deployment.yml
+@@ -124,7 +124,7 @@ jobs:
+       - name: Set up Go
+         uses: actions/setup-go@v4
+         with:
+-          go-version: '1.24.0'
++          go-version: '1.23.4'
+           cache: true
+           cache-dependency-path: |
+             go.sum
+diff --git a/.github/workflows/security-scan-simple.yml b/.github/workflows/security-scan-simple.yml
+index 341eb74..f326671 100644
+--- a/.github/workflows/security-scan-simple.yml
++++ b/.github/workflows/security-scan-simple.yml
+@@ -107,7 +107,7 @@ jobs:
+     - name: Set up Go
+       uses: actions/setup-go@v4
+       with:
+-        go-version: '1.24.0'
++        go-version: '1.23.4'
+ 
+     - name: Run security scans and generate report
+       run: |
+@@ -224,7 +224,7 @@ jobs:
+     - name: Set up Go
+       uses: actions/setup-go@v4
+       with:
+-        go-version: '1.24.0'
++        go-version: '1.23.4'
+ 
+     - name: Install and run GoSec
+       run: |
+diff --git a/.github/workflows/security.yml b/.github/workflows/security.yml
+index 99483b2..0eb9eba 100644
+--- a/.github/workflows/security.yml
++++ b/.github/workflows/security.yml
+@@ -51,7 +51,7 @@ jobs:
+     - name: Set up Go
+       uses: actions/setup-go@v5
+       with:
+-        go-version: '1.24.0'
++        go-version: '1.23.4'
+         cache: true
+         cache-dependency-path: |
+           go.sum
+@@ -122,7 +122,7 @@ jobs:
+     - name: Set up Go
+       uses: actions/setup-go@v5
+       with:
+-        go-version: '1.24.0'
++        go-version: '1.23.4'
+ 
+     - name: Configure Git for Go modules
+       run: |
+@@ -709,7 +709,7 @@ jobs:
+     - name: Set up Go
+       uses: actions/setup-go@v5
+       with:
+-        go-version: '1.24.0'
++        go-version: '1.23.4'
+ 
+     - name: Configure Git for Go modules
+       run: |
+@@ -845,7 +845,7 @@ jobs:
+ 
+         | Tool | Version | Purpose |
+         |------|---------|---------|
+-        | Go | 1.24.5 | Build environment |
++        | Go | 1.23.4 | Build environment |
+         | Trivy | 0.24.0 | Container vulnerability scanning |
+         | Grype | v4.x | Container vulnerability scanning |
+         | Snyk | 0.4.0 | Security and compliance scanning |
+@@ -939,7 +939,7 @@ jobs:
+             "cn-dms"
+           ],
+           "tools_versions": {
+-            "go": "1.24.5",
++            "go": "1.23.4",
+             "trivy": "0.24.0",
+             "grype": "v4.x",
+             "snyk": "0.4.0",
+diff --git a/.github/workflows/trivy-scan.yml b/.github/workflows/trivy-scan.yml
+index 18231ec..b881bcf 100644
+--- a/.github/workflows/trivy-scan.yml
++++ b/.github/workflows/trivy-scan.yml
+@@ -78,7 +78,7 @@ jobs:
+     - name: Set up Go
+       uses: actions/setup-go@v4
+       with:
+-        go-version: '1.24.0'
++        go-version: '1.23.4'
+ 
+     - name: Run gosec Security Scanner
+       uses: securego/gosec@master

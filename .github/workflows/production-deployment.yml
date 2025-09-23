@@ -188,6 +188,22 @@ jobs:
             echo "No go.mod found, skipping tests for ${{ matrix.component }}"
           fi
 
+      - name: Prepare Docker build context for tn-agent
+        if: matrix.component == 'tn-agent'
+        run: |
+          # Ensure tn-agent has access to required dependencies
+          if [ -d "deploy/docker/tn-agent" ]; then
+            # Copy pkg/security if needed
+            if [ -d "pkg/security" ] && [ ! -d "deploy/docker/tn-agent/pkg/security" ]; then
+              mkdir -p deploy/docker/tn-agent/pkg
+              cp -r pkg/security deploy/docker/tn-agent/pkg/
+            fi
+            # Copy tn module files if needed
+            if [ -d "tn" ] && [ ! -f "deploy/docker/tn-agent/tn/go.mod" ]; then
+              cp -r tn deploy/docker/tn-agent/
+            fi
+          fi
+
       - name: Upload coverage reports
         uses: codecov/codecov-action@v3
         if: env.COMPONENT_PATH != ''
