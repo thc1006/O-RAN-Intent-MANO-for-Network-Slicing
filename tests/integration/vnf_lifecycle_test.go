@@ -849,15 +849,14 @@ func (s *VNFLifecycleSuite) createVNF(vnfSpec manov1alpha1.VNFSpec) struct {
 	Success      bool
 	ErrorMessage string
 } {
-	vnf := &manov1alpha1.VNF{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      vnfSpec.Name,
-			Namespace: "default",
-		},
-		Spec: vnfSpec,
-	}
-
 	// TODO: Implement actual VNF creation using k8s client
+	// vnf := &manov1alpha1.VNF{
+	//	ObjectMeta: metav1.ObjectMeta{
+	//		Name:      vnfSpec.Name,
+	//		Namespace: "default",
+	//	},
+	//	Spec: vnfSpec,
+	// }
 	// err := s.k8sClient.Create(s.testContext, vnf)
 
 	// For now, simulate creation

@@ -1,0 +1,417 @@
+---
+# Security validation script runner
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: security-validation-scripts
+  namespace: oran-mano
+  labels:
+    app.kubernetes.io/name: security-validation
+    app.kubernetes.io/component: scripts
+data:
+  validate-kubesec.sh: |
+    #!/bin/bash
+    set -euo pipefail
+
+    echo "Running Kubesec security validation..."
+
+    # Find all YAML manifests
+    MANIFEST_DIR="${MANIFEST_DIR:-/manifests}"
+    KUBESEC_THRESHOLD="${KUBESEC_THRESHOLD:-8}"
+
+    if ! command -v kubesec &> /dev/null; then
+        echo "Installing kubesec..."
+        curl -sSX GET https://api.github.com/repos/controlplaneio/kubesec/releases/latest \
+        | grep "browser_download_url.*linux" \
+        | cut -d '"' -f 4 \
+        | xargs curl -sSL -o kubesec
+        chmod +x kubesec
+        mv kubesec /usr/local/bin/
+    fi
+
+    failed_scans=0
+    total_scans=0
+
+    for manifest in $(find "$MANIFEST_DIR" -name "*.yaml" -o -name "*.yml"); do
+        echo "Scanning: $manifest"
+
+        # Extract individual resources from multi-resource files
+        kubectl-slice --input-file="$manifest" --output-dir="/tmp/split" --template="{{.kind}}-{{.metadata.name}}"
+
+        for resource in /tmp/split/*.yaml; do
+            if [[ -f "$resource" ]]; then
+                score=$(kubesec scan "$resource" | jq -r '.[0].score // 0')
+                total_scans=$((total_scans + 1))
+
+                if (( $(echo "$score < $KUBESEC_THRESHOLD" | bc -l) )); then
+                    echo "❌ FAILED: $resource (score: $score, threshold: $KUBESEC_THRESHOLD)"
+                    kubesec scan "$resource" | jq '.[0].scoring.advise'
+                    failed_scans=$((failed_scans + 1))
+                else
+                    echo "✅ PASSED: $resource (score: $score)"
+                fi
+            fi
+        done
+
+        rm -rf /tmp/split/*
+    done
+
+    echo "Kubesec scan complete: $((total_scans - failed_scans))/$total_scans passed"
+
+    if [[ $failed_scans -gt 0 ]]; then
+        echo "❌ Kubesec validation failed: $failed_scans resources below security threshold"
+        exit 1
+    fi
+
+    echo "✅ All resources passed Kubesec security validation"
+
+  validate-polaris.sh: |
+    #!/bin/bash
+    set -euo pipefail
+
+    echo "Running Polaris security and best practices validation..."
+
+    MANIFEST_DIR="${MANIFEST_DIR:-/manifests}"
+    POLARIS_THRESHOLD="${POLARIS_THRESHOLD:-90}"
+
+    if ! command -v polaris &> /dev/null; then
+        echo "Installing Polaris..."
+        curl -sSL https://github.com/FairwindsOps/polaris/releases/latest/download/polaris_linux_amd64.tar.gz \
+        | tar -xzf - polaris
+        chmod +x polaris
+        mv polaris /usr/local/bin/
+    fi
+
+    # Create Polaris config
+    cat > /tmp/polaris-config.yaml << EOF
+    checks:
+      # Security
+      runAsNonRoot: error
+      runAsRootAllowed: error
+      readOnlyRootFilesystem: error
+      allowPrivilegeEscalation: error
+
+      # Resources
+      cpuLimitsMissing: error
+      memoryLimitsMissing: error
+      cpuRequestsMissing: warning
+      memoryRequestsMissing: warning
+
+      # Images
+      tagNotSpecified: error
+      pullPolicyNotAlways: ignore
+
+      # Networking
+      hostNetworkSet: error
+      hostPortSet: error
+
+      # Other
+      priorityClassNotSet: ignore
+    EOF
+
+    total_score=0
+    resource_count=0
+
+    for manifest in $(find "$MANIFEST_DIR" -name "*.yaml" -o -name "*.yml"); do
+        echo "Scanning: $manifest"
+
+        score=$(polaris audit --audit-path="$manifest" --config="/tmp/polaris-config.yaml" --format=json | jq -r '.summary.score')
+        resource_count=$((resource_count + 1))
+        total_score=$(echo "$total_score + $score" | bc -l)
+
+        if (( $(echo "$score < $POLARIS_THRESHOLD" | bc -l) )); then
+            echo "❌ FAILED: $manifest (score: ${score}%, threshold: ${POLARIS_THRESHOLD}%)"
+            polaris audit --audit-path="$manifest" --config="/tmp/polaris-config.yaml" --format=pretty
+        else
+            echo "✅ PASSED: $manifest (score: ${score}%)"
+        fi
+    done
+
+    if [[ $resource_count -gt 0 ]]; then
+        avg_score=$(echo "scale=2; $total_score / $resource_count" | bc -l)
+        echo "Polaris average score: ${avg_score}%"
+
+        if (( $(echo "$avg_score < $POLARIS_THRESHOLD" | bc -l) )); then
+            echo "❌ Polaris validation failed: Average score below threshold"
+            exit 1
+        fi
+    fi
+
+    echo "✅ All resources passed Polaris validation"
+
+  validate-checkov.sh: |
+    #!/bin/bash
+    set -euo pipefail
+
+    echo "Running Checkov compliance validation..."
+
+    MANIFEST_DIR="${MANIFEST_DIR:-/manifests}"
+
+    if ! command -v checkov &> /dev/null; then
+        echo "Installing Checkov..."
+        pip3 install checkov
+    fi
+
+    # Run Checkov with Kubernetes framework
+    checkov_result=$(checkov --framework kubernetes \
+                             --directory "$MANIFEST_DIR" \
+                             --output json \
+                             --soft-fail || true)
+
+    echo "$checkov_result" > /tmp/checkov-results.json
+
+    # Parse results
+    failed_checks=$(echo "$checkov_result" | jq -r '.results.failed_checks | length')
+    passed_checks=$(echo "$checkov_result" | jq -r '.results.passed_checks | length')
+    total_checks=$((failed_checks + passed_checks))
+
+    echo "Checkov results: $passed_checks/$total_checks checks passed"
+
+    if [[ $failed_checks -gt 0 ]]; then
+        echo "❌ Failed checks:"
+        echo "$checkov_result" | jq -r '.results.failed_checks[] | "- \(.check_id): \(.check_name) (\(.file_path))"'
+
+        # Check for critical failures
+        critical_failures=$(echo "$checkov_result" | jq -r '.results.failed_checks[] | select(.severity == "CRITICAL") | .check_id' | wc -l)
+
+        if [[ $critical_failures -gt 0 ]]; then
+            echo "❌ Checkov validation failed: $critical_failures critical security issues found"
+            exit 1
+        fi
+
+        echo "⚠️  Warning: $failed_checks non-critical issues found"
+    fi
+
+    echo "✅ Checkov validation passed (no critical issues)"
+
+  validate-cis-benchmark.sh: |
+    #!/bin/bash
+    set -euo pipefail
+
+    echo "Running CIS Kubernetes Benchmark validation..."
+
+    MANIFEST_DIR="${MANIFEST_DIR:-/manifests}"
+
+    # CIS benchmark checks
+    cis_failures=0
+
+    echo "Checking CIS 5.1.6 - Service Account Tokens are only mounted where necessary"
+    if grep -r "automountServiceAccountToken.*true" "$MANIFEST_DIR" 2>/dev/null; then
+        echo "❌ CIS 5.1.6 FAILED: Found automountServiceAccountToken: true"
+        cis_failures=$((cis_failures + 1))
+    else
+        echo "✅ CIS 5.1.6 PASSED"
+    fi
+
+    echo "Checking CIS 5.2.1 - Minimize admission of privileged containers"
+    if grep -r "privileged.*true" "$MANIFEST_DIR" 2>/dev/null; then
+        echo "❌ CIS 5.2.1 FAILED: Found privileged containers"
+        cis_failures=$((cis_failures + 1))
+    else
+        echo "✅ CIS 5.2.1 PASSED"
+    fi
+
+    echo "Checking CIS 5.2.5 - Minimize admission of containers with allowPrivilegeEscalation"
+    if grep -r "allowPrivilegeEscalation.*true" "$MANIFEST_DIR" 2>/dev/null; then
+        echo "❌ CIS 5.2.5 FAILED: Found allowPrivilegeEscalation: true"
+        cis_failures=$((cis_failures + 1))
+    else
+        echo "✅ CIS 5.2.5 PASSED"
+    fi
+
+    echo "Checking CIS 5.2.6 - Minimize admission of root containers"
+    if grep -r "runAsUser.*0" "$MANIFEST_DIR" 2>/dev/null; then
+        echo "❌ CIS 5.2.6 FAILED: Found containers running as root (UID 0)"
+        cis_failures=$((cis_failures + 1))
+    else
+        echo "✅ CIS 5.2.6 PASSED"
+    fi
+
+    echo "Checking CIS 5.7.2 - Seccomp profile set to runtime/default"
+    if ! grep -r "runtime/default" "$MANIFEST_DIR" 2>/dev/null | grep -q seccomp; then
+        echo "❌ CIS 5.7.2 FAILED: Missing seccomp profile runtime/default"
+        cis_failures=$((cis_failures + 1))
+    else
+        echo "✅ CIS 5.7.2 PASSED"
+    fi
+
+    echo "CIS Benchmark validation complete"
+
+    if [[ $cis_failures -gt 0 ]]; then
+        echo "❌ CIS Kubernetes Benchmark validation failed: $cis_failures checks failed"
+        exit 1
+    fi
+
+    echo "✅ All CIS Kubernetes Benchmark checks passed"
+
+  run-all-validations.sh: |
+    #!/bin/bash
+    set -euo pipefail
+
+    echo "🔒 Starting comprehensive security validation..."
+    echo "========================================"
+
+    MANIFEST_DIR="${MANIFEST_DIR:-/manifests}"
+    VALIDATION_DIR="/scripts"
+
+    # Export environment variables
+    export MANIFEST_DIR KUBESEC_THRESHOLD POLARIS_THRESHOLD
+
+    validation_failures=0
+
+    echo "📋 Running validation suite on: $MANIFEST_DIR"
+    echo ""
+
+    # Run Kubesec validation
+    echo "1️⃣ Running Kubesec validation..."
+    if bash "$VALIDATION_DIR/validate-kubesec.sh"; then
+        echo "✅ Kubesec validation PASSED"
+    else
+        echo "❌ Kubesec validation FAILED"
+        validation_failures=$((validation_failures + 1))
+    fi
+    echo ""
+
+    # Run Polaris validation
+    echo "2️⃣ Running Polaris validation..."
+    if bash "$VALIDATION_DIR/validate-polaris.sh"; then
+        echo "✅ Polaris validation PASSED"
+    else
+        echo "❌ Polaris validation FAILED"
+        validation_failures=$((validation_failures + 1))
+    fi
+    echo ""
+
+    # Run Checkov validation
+    echo "3️⃣ Running Checkov validation..."
+    if bash "$VALIDATION_DIR/validate-checkov.sh"; then
+        echo "✅ Checkov validation PASSED"
+    else
+        echo "❌ Checkov validation FAILED"
+        validation_failures=$((validation_failures + 1))
+    fi
+    echo ""
+
+    # Run CIS Benchmark validation
+    echo "4️⃣ Running CIS Benchmark validation..."
+    if bash "$VALIDATION_DIR/validate-cis-benchmark.sh"; then
+        echo "✅ CIS Benchmark validation PASSED"
+    else
+        echo "❌ CIS Benchmark validation FAILED"
+        validation_failures=$((validation_failures + 1))
+    fi
+    echo ""
+
+    echo "========================================"
+    echo "🔒 Security validation summary:"
+    echo "   - Total validations: 4"
+    echo "   - Passed: $((4 - validation_failures))"
+    echo "   - Failed: $validation_failures"
+
+    if [[ $validation_failures -eq 0 ]]; then
+        echo ""
+        echo "🎉 ALL SECURITY VALIDATIONS PASSED!"
+        echo "   Your Kubernetes manifests are compliant with:"
+        echo "   ✅ Kubesec security best practices"
+        echo "   ✅ Polaris configuration standards"
+        echo "   ✅ Checkov compliance rules"
+        echo "   ✅ CIS Kubernetes Benchmark"
+        echo ""
+        echo "🛡️  Your O-RAN MANO deployment is security-ready!"
+        exit 0
+    else
+        echo ""
+        echo "❌ SECURITY VALIDATION FAILED!"
+        echo "   Please fix the security issues above before deploying."
+        exit 1
+    fi
+---
+# Job to run security validation
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: oran-security-validation
+  namespace: oran-mano
+  labels:
+    app.kubernetes.io/name: oran-security-validation
+    app.kubernetes.io/component: security-validation
+spec:
+  template:
+    metadata:
+      annotations:
+        seccomp.security.alpha.kubernetes.io/pod: runtime/default
+        container.apparmor.security.beta.kubernetes.io/validator: runtime/default
+    spec:
+      serviceAccountName: oran-security-validator
+      automountServiceAccountToken: false
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: security-validator
+        image: ghcr.io/oran-mano/security-validator:v1.0.0@sha256:abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890
+        imagePullPolicy: IfNotPresent
+        command:
+        - /bin/bash
+        - /scripts/run-all-validations.sh
+        env:
+        - name: MANIFEST_DIR
+          value: "/manifests"
+        - name: KUBESEC_THRESHOLD
+          value: "8"
+        - name: POLARIS_THRESHOLD
+          value: "90"
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+            ephemeral-storage: 2Gi
+          requests:
+            cpu: 500m
+            memory: 512Mi
+            ephemeral-storage: 1Gi
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 65532
+          runAsGroup: 65532
+          capabilities:
+            drop:
+            - ALL
+          seccompProfile:
+            type: RuntimeDefault
+        volumeMounts:
+        - name: scripts
+          mountPath: /scripts
+          readOnly: true
+        - name: manifests
+          mountPath: /manifests
+          readOnly: true
+        - name: temp
+          mountPath: /tmp
+      volumes:
+      - name: scripts
+        configMap:
+          name: security-validation-scripts
+          defaultMode: 0755
+      - name: manifests
+        configMap:
+          name: kubernetes-manifests
+      - name: temp
+        emptyDir: {}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: oran-security-validator
+  namespace: oran-mano
+  labels:
+    app.kubernetes.io/name: oran-security-validator
+    app.kubernetes.io/component: security-validation
+automountServiceAccountToken: false

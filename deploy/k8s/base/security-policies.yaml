@@ -1,78 +1,53 @@
 ---
-# Pod Security Policy for O-RAN MANO Components
-apiVersion: policy/v1beta1
-kind: PodSecurityPolicy
+# Pod Security Standards ValidatingAdmissionWebhook
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionWebhook
 metadata:
-  name: oran-mano-restricted
-  namespace: oran-mano
-  labels:
-    app.kubernetes.io/name: oran-mano
-    app.kubernetes.io/component: security-policy
-spec:
-  privileged: false
-  allowPrivilegeEscalation: false
-  requiredDropCapabilities:
-    - ALL
-  volumes:
-    - 'configMap'
-    - 'emptyDir'
-    - 'projected'
-    - 'secret'
-    - 'downwardAPI'
-    - 'persistentVolumeClaim'
-  hostNetwork: false
-  hostIPC: false
-  hostPID: false
-  runAsUser:
-    rule: 'MustRunAsNonRoot'
-  supplementalGroups:
-    rule: 'MustRunAs'
-    ranges:
-      - min: 1
-        max: 65535
-  fsGroup:
-    rule: 'MustRunAs'
-    ranges:
-      - min: 1
-        max: 65535
-  readOnlyRootFilesystem: true
-  seccompProfile:
-    type: RuntimeDefault
+  name: pod-security-standards-enforcer
+webhooks:
+- name: pod-security.oran-mano.io
+  clientConfig:
+    service:
+      name: pod-security-webhook
+      namespace: oran-mano
+      path: "/validate-security"
+  rules:
+  - operations: ["CREATE", "UPDATE"]
+    apiGroups: [""]
+    apiVersions: ["v1"]
+    resources: ["pods"]
+  - operations: ["CREATE", "UPDATE"]
+    apiGroups: ["apps"]
+    apiVersions: ["v1"]
+    resources: ["deployments", "replicasets", "daemonsets", "statefulsets"]
+  namespaceSelector:
+    matchLabels:
+      pod-security.kubernetes.io/enforce: restricted
+  admissionReviewVersions: ["v1", "v1beta1"]
+  sideEffects: None
+  failurePolicy: Fail
 ---
-# ClusterRole for PodSecurityPolicy
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
+# Pod Security Standards enforcement via admission controller
+apiVersion: v1
+kind: ConfigMap
 metadata:
-  name: oran-mano-psp-user
-rules:
-- apiGroups: ['policy']
-  resources: ['podsecuritypolicies']
-  verbs: ['use']
-  resourceNames:
-  - oran-mano-restricted
----
-# ClusterRoleBinding for PodSecurityPolicy
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: oran-mano-psp-binding
-roleRef:
-  kind: ClusterRole
-  name: oran-mano-psp-user
-  apiGroup: rbac.authorization.k8s.io
-subjects:
-- kind: ServiceAccount
-  name: oran-orchestrator
+  name: pod-security-config
   namespace: oran-mano
-- kind: ServiceAccount
-  name: oran-vnf-operator
-  namespace: oran-mano
-- kind: ServiceAccount
-  name: oran-o2-client
-  namespace: oran-mano
-- kind: ServiceAccount
-  name: oran-tn-manager
-  namespace: oran-mano
+data:
+  policy.yaml: |
+    apiVersion: security.k8s.io/v1
+    kind: PodSecurityConfiguration
+    defaults:
+      enforce: "restricted"
+      enforce-version: "latest"
+      audit: "restricted"
+      audit-version: "latest"
+      warn: "restricted"
+      warn-version: "latest"
+    exemptions:
+      usernames: []
+      runtimeClasses: []
+      namespaces: ["kube-system", "kube-public", "kube-node-lease"]
 ---
 # Network Policy to deny all traffic by default (more restrictive)
 apiVersion: networking.k8s.io/v1
@@ -151,34 +126,39 @@ spec:
     configmaps: "20"
     pods: "20"
 ---
-# Security-focused ValidatingAdmissionWebhook configuration
+# CIS Kubernetes Benchmark compliance ValidatingAdmissionWebhook
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionWebhook
 metadata:
-  name: oran-security-validator
-spec:
+  name: cis-compliance-validator
+webhooks:
+- name: cis-compliance.oran-mano.io
   clientConfig:
     service:
-      name: oran-security-validator
+      name: cis-compliance-webhook
       namespace: oran-mano
-      path: "/validate"
+      path: "/validate-cis"
   rules:
   - operations: ["CREATE", "UPDATE"]
     apiGroups: [""]
     apiVersions: ["v1"]
-    resources: ["pods"]
+    resources: ["pods", "services", "configmaps", "secrets"]
   - operations: ["CREATE", "UPDATE"]
     apiGroups: ["apps"]
     apiVersions: ["v1"]
     resources: ["deployments", "replicasets", "daemonsets", "statefulsets"]
+  - operations: ["CREATE", "UPDATE"]
+    apiGroups: ["rbac.authorization.k8s.io"]
+    apiVersions: ["v1"]
+    resources: ["roles", "rolebindings", "clusterroles", "clusterrolebindings"]
   namespaceSelector:
     matchLabels:
-      name: oran-mano
+      security-scan: "enabled"
   admissionReviewVersions: ["v1", "v1beta1"]
   sideEffects: None
   failurePolicy: Fail
 ---
-# Distroless base image policy (Gatekeeper/OPA if available)
+# Secure Base Image Policy (OPA Gatekeeper)
 apiVersion: templates.gatekeeper.sh/v1beta1
 kind: ConstraintTemplate
 metadata:
@@ -195,6 +175,10 @@ spec:
             type: array
             items:
               type: string
+          allowedRegistries:
+            type: array
+            items:
+              type: string
   targets:
     - target: admission.k8s.gatekeeper.sh
       rego: |
@@ -202,24 +186,35 @@ spec:
 
         violation[{"msg": msg}] {
           container := input.review.object.spec.containers[_]
-          not starts_with_allowed_image(container.image)
-          msg := sprintf("Container <%v> uses disallowed image <%v>", [container.name, container.image])
+          not image_allowed(container.image)
+          msg := sprintf("Container '%v' uses disallowed image '%v'. Must use approved base images or registries.", [container.name, container.image])
         }
 
-        starts_with_allowed_image(image) {
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.initContainers[_]
+          not image_allowed(container.image)
+          msg := sprintf("Init container '%v' uses disallowed image '%v'. Must use approved base images or registries.", [container.name, container.image])
+        }
+
+        image_allowed(image) {
           allowed_image := input.parameters.allowedImages[_]
           startswith(image, allowed_image)
+        }
+
+        image_allowed(image) {
+          allowed_registry := input.parameters.allowedRegistries[_]
+          startswith(image, allowed_registry)
         }
 ---
 apiVersion: constraints.gatekeeper.sh/v1beta1
 kind: K8sRequiredBaseImage
 metadata:
-  name: must-use-secure-base-images
+  name: secure-base-images-only
 spec:
   match:
     kinds:
       - apiGroups: ["apps"]
-        kinds: ["Deployment"]
+        kinds: ["Deployment", "DaemonSet", "StatefulSet"]
       - apiGroups: [""]
         kinds: ["Pod"]
     namespaces: ["oran-mano", "oran-edge", "oran-core"]
@@ -227,5 +222,68 @@ spec:
     allowedImages:
       - "ghcr.io/oran-mano/"
       - "gcr.io/distroless/"
-      - "chainguard.dev/"
+      - "cgr.dev/chainguard/"
+    allowedRegistries:
+      - "ghcr.io/oran-mano/"
+      - "gcr.io/distroless/"
+      - "cgr.dev/chainguard/"
       - "registry.access.redhat.com/ubi8/ubi-minimal"
+---
+# Security Context Constraint Template
+apiVersion: templates.gatekeeper.sh/v1beta1
+kind: ConstraintTemplate
+metadata:
+  name: k8srequiredsecuritycontext
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sRequiredSecurityContext
+      validation:
+        type: object
+        properties:
+          runAsNonRoot:
+            type: boolean
+          readOnlyRootFilesystem:
+            type: boolean
+          allowPrivilegeEscalation:
+            type: boolean
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8srequiredsecuritycontext
+
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.containers[_]
+          not container.securityContext.runAsNonRoot == input.parameters.runAsNonRoot
+          msg := sprintf("Container '%v' must have runAsNonRoot set to %v", [container.name, input.parameters.runAsNonRoot])
+        }
+
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.containers[_]
+          not container.securityContext.readOnlyRootFilesystem == input.parameters.readOnlyRootFilesystem
+          msg := sprintf("Container '%v' must have readOnlyRootFilesystem set to %v", [container.name, input.parameters.readOnlyRootFilesystem])
+        }
+
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.containers[_]
+          not container.securityContext.allowPrivilegeEscalation == input.parameters.allowPrivilegeEscalation
+          msg := sprintf("Container '%v' must have allowPrivilegeEscalation set to %v", [container.name, input.parameters.allowPrivilegeEscalation])
+        }
+---
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sRequiredSecurityContext
+metadata:
+  name: enforce-security-context
+spec:
+  match:
+    kinds:
+      - apiGroups: ["apps"]
+        kinds: ["Deployment", "DaemonSet", "StatefulSet"]
+      - apiGroups: [""]
+        kinds: ["Pod"]
+    namespaces: ["oran-mano", "oran-edge", "oran-core"]
+  parameters:
+    runAsNonRoot: true
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false

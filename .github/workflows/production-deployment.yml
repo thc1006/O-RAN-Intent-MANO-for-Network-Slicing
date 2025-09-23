@@ -155,18 +155,26 @@ jobs:
 
       - name: Validate component directory
         run: |
-          # Check if component directory exists, if not look in deploy/docker/
-          if [ ! -d "${{ matrix.component }}" ]; then
-            if [ -d "deploy/docker/${{ matrix.component }}" ]; then
-              echo "Component found in deploy/docker/${{ matrix.component }}"
-              COMPONENT_PATH="deploy/docker/${{ matrix.component }}"
-            else
-              echo "ERROR: Component directory ${{ matrix.component }} not found!"
-              exit 1
-            fi
-          else
+          # Check component directory in multiple locations
+          COMPONENT_PATH=""
+
+          # First check root directory
+          if [ -d "${{ matrix.component }}" ]; then
             COMPONENT_PATH="${{ matrix.component }}"
+          # Then check deploy/docker/
+          elif [ -d "deploy/docker/${{ matrix.component }}" ]; then
+            COMPONENT_PATH="deploy/docker/${{ matrix.component }}"
+          # Check for tn components in tn/ subdirectory
+          elif [ "${{ matrix.component }}" = "tn-agent" ] && [ -d "tn/agent" ]; then
+            COMPONENT_PATH="tn/agent"
+          elif [ "${{ matrix.component }}" = "tn-manager" ] && [ -d "tn/manager" ]; then
+            COMPONENT_PATH="tn/manager"
+          else
+            echo "ERROR: Component directory ${{ matrix.component }} not found!"
+            exit 1
           fi
+
+          echo "Component ${{ matrix.component }} found at: $COMPONENT_PATH"
           echo "COMPONENT_PATH=$COMPONENT_PATH" >> $GITHUB_ENV
 
       - name: Run unit tests
@@ -192,7 +200,12 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ${{ env.COMPONENT_PATH }}/Dockerfile
+          file: |
+            ${{
+              matrix.component == 'tn-agent' && 'deploy/docker/tn-agent/Dockerfile' ||
+              matrix.component == 'tn-manager' && 'deploy/docker/tn-manager/Dockerfile' ||
+              format('{0}/Dockerfile', env.COMPONENT_PATH)
+            }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
