@@ -382,7 +382,6 @@ var _ = Describe("VNF Controller", func() {
 		})
 
 		It("Should test controller phases and transitions", func() {
-			ctx := context.Background()
 
 			// Test pending phase validation
 			vnf := &manov1alpha1.VNF{
