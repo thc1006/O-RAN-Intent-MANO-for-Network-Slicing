@@ -189,7 +189,10 @@ func (m *OptimizedManager) createTunnelOptimized(vxlanID int32, localIP string, 
 			return nil
 		}
 		// Delete existing tunnel if in failed state
-		m.DeleteTunnelOptimized(vxlanID)
+		if err := m.DeleteTunnelOptimized(vxlanID); err != nil {
+			// Log but continue - we'll try to create a new one
+			fmt.Printf("Warning: failed to delete existing tunnel %d: %v\n", vxlanID, err)
+		}
 	} else {
 		m.tunnelMutex.Unlock()
 	}
@@ -259,7 +262,10 @@ func (m *OptimizedManager) createTunnelIPCommand(vxlanID int32, localIP string, 
 	for _, cmdArgs := range commands {
 		if err := m.executeOptimizedCommand(cmdArgs); err != nil {
 			// Cleanup on failure
-			m.executeOptimizedCommand([]string{"ip", "link", "del", ifaceName})
+			if cleanupErr := m.executeOptimizedCommand([]string{"ip", "link", "del", ifaceName}); cleanupErr != nil {
+				fmt.Printf("Warning: failed to cleanup interface %s during error recovery: %v\n", ifaceName, cleanupErr)
+				// Continue with original error
+			}
 			return fmt.Errorf("failed to create VXLAN interface: %w", err)
 		}
 	}
@@ -291,9 +297,12 @@ func (m *OptimizedManager) createTunnelIPCommand(vxlanID int32, localIP string, 
 		}
 	} else if len(remoteIPs) > 0 {
 		// Single remote IP
-		m.executeOptimizedCommand([]string{
+		if err := m.executeOptimizedCommand([]string{
 			"bridge", "fdb", "append", "00:00:00:00:00:00", "dst", remoteIPs[0], "dev", ifaceName,
-		})
+		}); err != nil {
+			fmt.Printf("Warning: failed to add FDB entry for %s: %v\n", remoteIPs[0], err)
+			// Continue - FDB entries are not critical for basic functionality
+		}
 	}
 
 	// Assign IP address

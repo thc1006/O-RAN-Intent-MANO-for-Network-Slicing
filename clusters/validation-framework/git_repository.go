@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -127,10 +126,13 @@ func (gr *GitRepository) setupAuth() error {
 
 // configureTokenAuth configures Git to use token authentication
 func (gr *GitRepository) configureTokenAuth() error {
-	// Set up credential helper for token authentication
-	cmd := exec.Command("git", "config", "--local", "credential.helper", "store")
-	cmd.Dir = gr.LocalPath
-	if err := cmd.Run(); err != nil {
+	// Set up credential helper for token authentication using secure execution
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	args := []string{"config", "--local", "credential.helper", "store"}
+	_, err := security.SecureExecuteWithValidation(ctx, "git", security.ValidateGitArgs, args...)
+	if err != nil {
 		return fmt.Errorf("failed to configure git credential helper: %w", err)
 	}
 
@@ -171,10 +173,13 @@ func (gr *GitRepository) validateRepository() error {
 		return fmt.Errorf("not a git repository: %s", gr.LocalPath)
 	}
 
-	// Check if we can run git commands
-	cmd := exec.Command("git", "rev-parse", "--git-dir")
-	cmd.Dir = gr.LocalPath
-	if err := cmd.Run(); err != nil {
+	// Check if we can run git commands using secure execution
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	args := []string{"rev-parse", "--git-dir"}
+	_, err := security.SecureExecuteWithValidation(ctx, "git", security.ValidateGitArgs, args...)
+	if err != nil {
 		return fmt.Errorf("git command failed: %w", err)
 	}
 
@@ -183,10 +188,11 @@ func (gr *GitRepository) validateRepository() error {
 
 // GetCurrentBranch returns the current Git branch
 func (gr *GitRepository) GetCurrentBranch() (string, error) {
-	cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
-	cmd.Dir = gr.LocalPath
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
-	output, err := cmd.Output()
+	args := []string{"rev-parse", "--abbrev-ref", "HEAD"}
+	output, err := security.SecureExecuteWithValidation(ctx, "git", security.ValidateGitArgs, args...)
 	if err != nil {
 		return "", fmt.Errorf("failed to get current branch: %w", err)
 	}
@@ -196,10 +202,11 @@ func (gr *GitRepository) GetCurrentBranch() (string, error) {
 
 // GetLastCommit returns the last commit information
 func (gr *GitRepository) GetLastCommit() (string, error) {
-	cmd := exec.Command("git", "rev-parse", "HEAD")
-	cmd.Dir = gr.LocalPath
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
-	output, err := cmd.Output()
+	args := []string{"rev-parse", "HEAD"}
+	output, err := security.SecureExecuteWithValidation(ctx, "git", security.ValidateGitArgs, args...)
 	if err != nil {
 		return "", fmt.Errorf("failed to get last commit: %w", err)
 	}
@@ -209,10 +216,11 @@ func (gr *GitRepository) GetLastCommit() (string, error) {
 
 // GetLastCommitInfo returns detailed information about the last commit
 func (gr *GitRepository) GetLastCommitInfo() (*GitCommit, error) {
-	cmd := exec.Command("git", "log", "-1", "--pretty=format:%H|%an|%ae|%ct|%s")
-	cmd.Dir = gr.LocalPath
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
-	output, err := cmd.Output()
+	args := []string{"log", "-1", "--pretty=format:%H|%an|%ae|%ct|%s"}
+	output, err := security.SecureExecuteWithValidation(ctx, "git", security.ValidateGitArgs, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get commit info: %w", err)
 	}
@@ -227,10 +235,12 @@ func (gr *GitRepository) GetLastCommitInfo() (*GitCommit, error) {
 		return nil, fmt.Errorf("failed to parse commit timestamp: %w", err)
 	}
 
-	// Get modified files for this commit
-	filesCmd := exec.Command("git", "diff-tree", "--no-commit-id", "--name-only", "-r", parts[0])
-	filesCmd.Dir = gr.LocalPath
-	filesOutput, _ := filesCmd.Output()
+	// Get modified files for this commit using secure execution
+	filesCtx, filesCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer filesCancel()
+
+	filesArgs := []string{"diff-tree", "--no-commit-id", "--name-only", "-r", parts[0]}
+	filesOutput, _ := security.SecureExecuteWithValidation(filesCtx, "git", security.ValidateGitArgs, filesArgs...)
 
 	var files []string
 	if len(filesOutput) > 0 {
@@ -249,10 +259,11 @@ func (gr *GitRepository) GetLastCommitInfo() (*GitCommit, error) {
 
 // IsClean returns true if the repository has no uncommitted changes
 func (gr *GitRepository) IsClean() (bool, error) {
-	cmd := exec.Command("git", "status", "--porcelain")
-	cmd.Dir = gr.LocalPath
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
-	output, err := cmd.Output()
+	args := []string{"status", "--porcelain"}
+	output, err := security.SecureExecuteWithValidation(ctx, "git", security.ValidateGitArgs, args...)
 	if err != nil {
 		return false, fmt.Errorf("failed to check git status: %w", err)
 	}
@@ -280,10 +291,12 @@ func (gr *GitRepository) GetStatus() (*GitStatus, error) {
 		status.Behind = behind
 	}
 
-	// Get porcelain status
-	cmd := exec.Command("git", "status", "--porcelain")
-	cmd.Dir = gr.LocalPath
-	output, err := cmd.Output()
+	// Get porcelain status using secure execution
+	statusCtx, statusCancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer statusCancel()
+
+	statusArgs := []string{"status", "--porcelain"}
+	output, err := security.SecureExecuteWithValidation(statusCtx, "git", security.ValidateGitArgs, statusArgs...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get git status: %w", err)
 	}
@@ -344,10 +357,11 @@ func (gr *GitRepository) GetStatus() (*GitStatus, error) {
 
 // getAheadBehind gets the ahead/behind count compared to remote
 func (gr *GitRepository) getAheadBehind() (int, int, error) {
-	cmd := exec.Command("git", "rev-list", "--left-right", "--count", "HEAD...@{upstream}")
-	cmd.Dir = gr.LocalPath
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
 
-	output, err := cmd.Output()
+	args := []string{"rev-list", "--left-right", "--count", "HEAD...@{upstream}"}
+	output, err := security.SecureExecuteWithValidation(ctx, "git", security.ValidateGitArgs, args...)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -372,10 +386,11 @@ func (gr *GitRepository) getAheadBehind() (int, int, error) {
 
 // getRemoteURL gets the remote URL
 func (gr *GitRepository) getRemoteURL() (string, error) {
-	cmd := exec.Command("git", "remote", "get-url", "origin")
-	cmd.Dir = gr.LocalPath
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
-	output, err := cmd.Output()
+	args := []string{"remote", "get-url", "origin"}
+	output, err := security.SecureExecuteWithValidation(ctx, "git", security.ValidateGitArgs, args...)
 	if err != nil {
 		return "", err
 	}
@@ -385,10 +400,11 @@ func (gr *GitRepository) getRemoteURL() (string, error) {
 
 // getTags gets repository tags
 func (gr *GitRepository) getTags() ([]string, error) {
-	cmd := exec.Command("git", "tag", "--sort=-version:refname")
-	cmd.Dir = gr.LocalPath
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
-	output, err := cmd.Output()
+	args := []string{"tag", "--sort=-version:refname"}
+	output, err := security.SecureExecuteWithValidation(ctx, "git", security.ValidateGitArgs, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -402,10 +418,11 @@ func (gr *GitRepository) getTags() ([]string, error) {
 
 // getRemotes gets all remotes
 func (gr *GitRepository) getRemotes() (map[string]string, error) {
-	cmd := exec.Command("git", "remote", "-v")
-	cmd.Dir = gr.LocalPath
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
-	output, err := cmd.Output()
+	args := []string{"remote", "-v"}
+	output, err := security.SecureExecuteWithValidation(ctx, "git", security.ValidateGitArgs, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -461,11 +478,12 @@ func (gr *GitRepository) GetSyncStatus() (string, time.Time, error) {
 
 // fetchRemote fetches latest changes from remote
 func (gr *GitRepository) fetchRemote() error {
-	cmd := exec.Command("git", "fetch", "origin")
-	cmd.Dir = gr.LocalPath
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
 
-	// Suppress output unless there's an error
-	if err := cmd.Run(); err != nil {
+	args := []string{"fetch", "origin"}
+	_, err := security.SecureExecuteWithValidation(ctx, "git", security.ValidateGitArgs, args...)
+	if err != nil {
 		return fmt.Errorf("git fetch failed: %w", err)
 	}
 
@@ -479,10 +497,8 @@ func (gr *GitRepository) Pull(ctx context.Context) error {
 		return fmt.Errorf("invalid branch name: %w", err)
 	}
 
-	cmd := exec.CommandContext(ctx, "git", "pull", "origin", gr.Config.Branch)
-	cmd.Dir = gr.LocalPath
-
-	output, err := cmd.CombinedOutput()
+	args := []string{"pull", "origin", gr.Config.Branch}
+	output, err := security.SecureExecuteWithValidation(ctx, "git", security.ValidateGitArgs, args...)
 	if err != nil {
 		return fmt.Errorf("git pull failed: %w, output: %s", err, string(output))
 	}
@@ -497,10 +513,8 @@ func (gr *GitRepository) Push(ctx context.Context) error {
 		return fmt.Errorf("invalid branch name: %w", err)
 	}
 
-	cmd := exec.CommandContext(ctx, "git", "push", "origin", gr.Config.Branch)
-	cmd.Dir = gr.LocalPath
-
-	output, err := cmd.CombinedOutput()
+	args := []string{"push", "origin", gr.Config.Branch}
+	output, err := security.SecureExecuteWithValidation(ctx, "git", security.ValidateGitArgs, args...)
 	if err != nil {
 		return fmt.Errorf("git push failed: %w, output: %s", err, string(output))
 	}
@@ -515,10 +529,12 @@ func (gr *GitRepository) CreateBranch(branchName string) error {
 		return fmt.Errorf("invalid branch name: %w", err)
 	}
 
-	cmd := exec.Command("git", "checkout", "-b", branchName)
-	cmd.Dir = gr.LocalPath
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
 
-	if err := cmd.Run(); err != nil {
+	args := []string{"checkout", "-b", branchName}
+	_, err := security.SecureExecuteWithValidation(ctx, "git", security.ValidateGitArgs, args...)
+	if err != nil {
 		return fmt.Errorf("failed to create branch %s: %w", branchName, err)
 	}
 
@@ -532,10 +548,12 @@ func (gr *GitRepository) SwitchBranch(branchName string) error {
 		return fmt.Errorf("invalid branch name: %w", err)
 	}
 
-	cmd := exec.Command("git", "checkout", branchName)
-	cmd.Dir = gr.LocalPath
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
 
-	if err := cmd.Run(); err != nil {
+	args := []string{"checkout", branchName}
+	_, err := security.SecureExecuteWithValidation(ctx, "git", security.ValidateGitArgs, args...)
+	if err != nil {
 		return fmt.Errorf("failed to switch to branch %s: %w", branchName, err)
 	}
 
@@ -552,10 +570,11 @@ func (gr *GitRepository) GetDiff(fromCommit, toCommit string) (string, error) {
 		return "", fmt.Errorf("invalid to commit: %w", err)
 	}
 
-	cmd := exec.Command("git", "diff", fromCommit, toCommit)
-	cmd.Dir = gr.LocalPath
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
-	output, err := cmd.Output()
+	args := []string{"diff", fromCommit, toCommit}
+	output, err := security.SecureExecuteWithValidation(ctx, "git", security.ValidateGitArgs, args...)
 	if err != nil {
 		return "", fmt.Errorf("failed to get diff: %w", err)
 	}
@@ -573,10 +592,11 @@ func (gr *GitRepository) GetChangedFiles(fromCommit, toCommit string) ([]string,
 		return nil, fmt.Errorf("invalid to commit: %w", err)
 	}
 
-	cmd := exec.Command("git", "diff", "--name-only", fromCommit, toCommit)
-	cmd.Dir = gr.LocalPath
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
-	output, err := cmd.Output()
+	args := []string{"diff", "--name-only", fromCommit, toCommit}
+	output, err := security.SecureExecuteWithValidation(ctx, "git", security.ValidateGitArgs, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get changed files: %w", err)
 	}
@@ -595,16 +615,17 @@ func (gr *GitRepository) Reset(commit string, hard bool) error {
 		return fmt.Errorf("invalid commit: %w", err)
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
 	args := []string{"reset"}
 	if hard {
 		args = append(args, "--hard")
 	}
 	args = append(args, commit)
 
-	cmd := exec.Command("git", args...)
-	cmd.Dir = gr.LocalPath
-
-	if err := cmd.Run(); err != nil {
+	_, err := security.SecureExecuteWithValidation(ctx, "git", security.ValidateGitArgs, args...)
+	if err != nil {
 		return fmt.Errorf("failed to reset to commit %s: %w", commit, err)
 	}
 
@@ -613,15 +634,15 @@ func (gr *GitRepository) Reset(commit string, hard bool) error {
 
 // GetCommitHistory returns commit history
 func (gr *GitRepository) GetCommitHistory(limit int) ([]GitCommit, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
 	args := []string{"log", "--pretty=format:%H|%an|%ae|%ct|%s"}
 	if limit > 0 {
 		args = append(args, fmt.Sprintf("-%d", limit))
 	}
 
-	cmd := exec.Command("git", args...)
-	cmd.Dir = gr.LocalPath
-
-	output, err := cmd.Output()
+	output, err := security.SecureExecuteWithValidation(ctx, "git", security.ValidateGitArgs, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get commit history: %w", err)
 	}

@@ -15,6 +15,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
+	"golang.org/x/time/rate"
 )
 
 // Version information
@@ -130,11 +131,13 @@ func main() {
 
 	// Create server
 	srv := &http.Server{
-		Addr:         fmt.Sprintf(":%d", config.Server.Port),
-		Handler:      router,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
-		IdleTimeout:  60 * time.Second,
+		Addr:              fmt.Sprintf(":%d", config.Server.Port),
+		Handler:           router,
+		ReadHeaderTimeout: 10 * time.Second,  // Prevent Slowloris attacks
+		ReadTimeout:       15 * time.Second,  // Total time to read request
+		WriteTimeout:      15 * time.Second,  // Time to write response
+		IdleTimeout:       60 * time.Second,  // Keep-alive timeout
+		MaxHeaderBytes:    1 << 20,           // 1MB max header size
 	}
 
 	// Start server in goroutine
@@ -148,11 +151,13 @@ func main() {
 	// Start TLS server if enabled
 	if config.Server.TLSEnabled {
 		tlsSrv := &http.Server{
-			Addr:         fmt.Sprintf(":%d", config.Server.TLSPort),
-			Handler:      router,
-			ReadTimeout:  15 * time.Second,
-			WriteTimeout: 15 * time.Second,
-			IdleTimeout:  60 * time.Second,
+			Addr:              fmt.Sprintf(":%d", config.Server.TLSPort),
+			Handler:           router,
+			ReadHeaderTimeout: 10 * time.Second,  // Prevent Slowloris attacks
+			ReadTimeout:       15 * time.Second,  // Total time to read request
+			WriteTimeout:      15 * time.Second,  // Time to write response
+			IdleTimeout:       60 * time.Second,  // Keep-alive timeout
+			MaxHeaderBytes:    1 << 20,           // 1MB max header size
 		}
 
 		go func() {
@@ -253,7 +258,9 @@ func setupRouter(config *Config) *gin.Engine {
 	router := gin.New()
 
 	// Add middleware
-	router.Use(gin.Recovery())
+	router.Use(customRecoveryMiddleware())
+	router.Use(securityHeadersMiddleware())
+	router.Use(rateLimitingMiddleware())
 	router.Use(loggingMiddleware())
 	router.Use(metricsMiddleware())
 
@@ -318,6 +325,62 @@ func startMetricsServer(port int) {
 }
 
 // Middleware
+
+// customRecoveryMiddleware provides enhanced error handling and logging
+func customRecoveryMiddleware() gin.HandlerFunc {
+	return gin.CustomRecoveryWithWriter(os.Stderr, func(c *gin.Context, recovered interface{}) {
+		if err, ok := recovered.(string); ok {
+			log.WithFields(log.Fields{
+				"error":      err,
+				"path":       c.Request.URL.Path,
+				"method":     c.Request.Method,
+				"client_ip":  c.ClientIP(),
+				"user_agent": c.Request.UserAgent(),
+			}).Error("Panic recovered in RAN-DMS")
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Internal server error",
+			"code":  "INTERNAL_ERROR",
+		})
+	})
+}
+
+// securityHeadersMiddleware adds security headers to all responses
+func securityHeadersMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Security headers
+		c.Header("X-Content-Type-Options", "nosniff")
+		c.Header("X-Frame-Options", "DENY")
+		c.Header("X-XSS-Protection", "1; mode=block")
+		c.Header("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+		c.Header("Referrer-Policy", "strict-origin-when-cross-origin")
+		c.Header("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'")
+		c.Header("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
+
+		// Remove server information
+		c.Header("Server", "")
+
+		c.Next()
+	}
+}
+
+// rateLimitingMiddleware implements rate limiting
+func rateLimitingMiddleware() gin.HandlerFunc {
+	limiter := rate.NewLimiter(rate.Limit(100), 200) // 100 req/sec with burst of 200
+
+	return func(c *gin.Context) {
+		if !limiter.Allow() {
+			c.JSON(http.StatusTooManyRequests, gin.H{
+				"error": "Rate limit exceeded",
+				"retry_after": "1s",
+			})
+			c.Abort()
+			return
+		}
+		c.Next()
+	}
+}
+
 func loggingMiddleware() gin.HandlerFunc {
 	return gin.LoggerWithConfig(gin.LoggerConfig{
 		SkipPaths: []string{"/health", "/ready"},

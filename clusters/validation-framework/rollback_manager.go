@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -389,10 +388,11 @@ func (rm *RollbackManager) getFileAtCommit(filename, commit string) (string, err
 		return "", fmt.Errorf("invalid commit: %w", err)
 	}
 
-	cmd := exec.Command("git", "show", fmt.Sprintf("%s:%s", commit, filename))
-	cmd.Dir = rm.GitRepo.LocalPath
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
-	output, err := cmd.Output()
+	args := []string{"show", fmt.Sprintf("%s:%s", commit, filename)}
+	output, err := security.SecureExecuteWithValidation(ctx, "git", security.ValidateGitArgs, args...)
 	if err != nil {
 		return "", fmt.Errorf("failed to get file %s at commit %s: %w", filename, commit, err)
 	}

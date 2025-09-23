@@ -6,6 +6,7 @@ metadata:
   labels:
     app.kubernetes.io/name: oran-orchestrator
     app.kubernetes.io/component: orchestrator
+automountServiceAccountToken: false
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -15,6 +16,7 @@ metadata:
   labels:
     app.kubernetes.io/name: oran-vnf-operator
     app.kubernetes.io/component: vnf-operator
+automountServiceAccountToken: false
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -76,36 +78,86 @@ kind: ClusterRole
 metadata:
   name: oran-orchestrator
 rules:
+# Read-only access to nodes for placement decisions
 - apiGroups: [""]
-  resources: ["nodes", "pods", "services", "endpoints", "configmaps", "secrets"]
-  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  resources: ["nodes"]
+  verbs: ["get", "list", "watch"]
+# Limited pod operations (only get/list/watch for monitoring)
+- apiGroups: [""]
+  resources: ["pods", "pods/status"]
+  verbs: ["get", "list", "watch"]
+# Service management for VNF connectivity
+- apiGroups: [""]
+  resources: ["services", "endpoints"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+# ConfigMap and Secret access (read-only for config, limited write for generated configs)
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get", "list", "watch"]
+# Application deployment management
 - apiGroups: ["apps"]
-  resources: ["deployments", "replicasets", "daemonsets", "statefulsets"]
-  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  resources: ["deployments", "replicasets"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+- apiGroups: ["apps"]
+  resources: ["daemonsets", "statefulsets"]
+  verbs: ["get", "list", "watch"]
+# Network policy management for slice isolation
 - apiGroups: ["networking.k8s.io"]
-  resources: ["networkpolicies", "ingresses"]
-  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  resources: ["networkpolicies"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+- apiGroups: ["networking.k8s.io"]
+  resources: ["ingresses"]
+  verbs: ["get", "list", "watch"]
+# Custom resource management
 - apiGroups: ["mano.oran.io"]
   resources: ["vnfs", "networkslices", "intents"]
   verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["mano.oran.io"]
+  resources: ["vnfs/status", "networkslices/status", "intents/status"]
+  verbs: ["get", "update", "patch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: oran-vnf-operator
 rules:
+# Pod management for VNF lifecycle
 - apiGroups: [""]
-  resources: ["pods", "services", "configmaps", "secrets"]
+  resources: ["pods", "pods/status"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+# Service management for VNF networking
+- apiGroups: [""]
+  resources: ["services"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+# ConfigMap management for VNF configuration
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+# Secret access (read-only for security)
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get", "list", "watch"]
+# Deployment management for VNF workloads
+- apiGroups: ["apps"]
+  resources: ["deployments", "deployments/status"]
   verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
 - apiGroups: ["apps"]
-  resources: ["deployments", "replicasets"]
+  resources: ["replicasets", "replicasets/status"]
   verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+# VNF custom resource management
 - apiGroups: ["mano.oran.io"]
   resources: ["vnfs"]
   verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
 - apiGroups: ["mano.oran.io"]
   resources: ["vnfs/status", "vnfs/finalizers"]
   verbs: ["get", "update", "patch"]
+# Events for debugging and monitoring
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["get", "list", "watch", "create"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole

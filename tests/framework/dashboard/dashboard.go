@@ -417,27 +417,58 @@ func (d *Dashboard) GenerateHTML(outputPath string) error {
 
 // ServeHTTP serves the dashboard over HTTP
 func (d *Dashboard) ServeHTTP() error {
-	http.HandleFunc("/", d.handleDashboard)
-	http.HandleFunc("/api/metrics", d.handleMetricsAPI)
-	http.HandleFunc("/api/refresh", d.handleRefresh)
-	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static/"))))
+	// Create a new mux for better control
+	mux := http.NewServeMux()
+
+	// Add security headers middleware
+	secureHandler := d.addSecurityHeaders(mux)
+
+	mux.HandleFunc("/", d.handleDashboard)
+	mux.HandleFunc("/api/metrics", d.handleMetricsAPI)
+	mux.HandleFunc("/api/refresh", d.handleRefresh)
+	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static/"))))
 
 	server := &http.Server{
 		Addr:              fmt.Sprintf(":%d", d.config.Port),
+		Handler:           secureHandler,
 		ReadHeaderTimeout: 10 * time.Second,  // Prevent Slowloris attacks
 		ReadTimeout:       30 * time.Second,  // Total time to read request
 		WriteTimeout:      30 * time.Second,  // Time to write response
 		IdleTimeout:       120 * time.Second, // Keep-alive timeout
+		MaxHeaderBytes:    1 << 20,           // 1MB max header size
 	}
 
 	fmt.Printf("Dashboard server starting on port %d\n", d.config.Port)
 	return server.ListenAndServe()
 }
 
+// addSecurityHeaders wraps a handler with security headers middleware
+func (d *Dashboard) addSecurityHeaders(handler http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Security headers
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("X-XSS-Protection", "1; mode=block")
+		w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+		w.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'")
+		w.Header().Set("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
+
+		// Remove server information
+		w.Header().Set("Server", "")
+
+		// Request size limit (10MB)
+		r.Body = http.MaxBytesReader(w, r.Body, 10<<20)
+
+		handler.ServeHTTP(w, r)
+	})
+}
+
 // handleDashboard handles the main dashboard page
 func (d *Dashboard) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	if err := d.LoadMetrics(); err != nil {
-		http.Error(w, fmt.Sprintf("Failed to load metrics: %v", err), http.StatusInternalServerError)
+		d.logError(r, err, "Failed to load metrics")
+		http.Error(w, "Failed to load metrics", http.StatusInternalServerError)
 		return
 	}
 
@@ -453,7 +484,8 @@ func (d *Dashboard) handleDashboard(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
 	if err := d.templates.ExecuteTemplate(w, "dashboard.html", data); err != nil {
-		http.Error(w, fmt.Sprintf("Template error: %v", err), http.StatusInternalServerError)
+		d.logError(r, err, "Template execution failed")
+		http.Error(w, "Template error", http.StatusInternalServerError)
 		return
 	}
 }
@@ -461,13 +493,15 @@ func (d *Dashboard) handleDashboard(w http.ResponseWriter, r *http.Request) {
 // handleMetricsAPI handles the metrics API endpoint
 func (d *Dashboard) handleMetricsAPI(w http.ResponseWriter, r *http.Request) {
 	if err := d.LoadMetrics(); err != nil {
-		http.Error(w, fmt.Sprintf("Failed to load metrics: %v", err), http.StatusInternalServerError)
+		d.logError(r, err, "Failed to load metrics for API")
+		http.Error(w, "Failed to load metrics", http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(d.metrics); err != nil {
-		http.Error(w, fmt.Sprintf("JSON encoding error: %v", err), http.StatusInternalServerError)
+		d.logError(r, err, "JSON encoding failed")
+		http.Error(w, "JSON encoding error", http.StatusInternalServerError)
 		return
 	}
 }
@@ -475,16 +509,27 @@ func (d *Dashboard) handleMetricsAPI(w http.ResponseWriter, r *http.Request) {
 // handleRefresh handles the refresh endpoint
 func (d *Dashboard) handleRefresh(w http.ResponseWriter, r *http.Request) {
 	if err := d.LoadMetrics(); err != nil {
-		http.Error(w, fmt.Sprintf("Failed to refresh metrics: %v", err), http.StatusInternalServerError)
+		d.logError(r, err, "Failed to refresh metrics")
+		http.Error(w, "Failed to refresh metrics", http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
 		"status":    "success",
 		"timestamp": time.Now(),
 		"message":   "Metrics refreshed successfully",
-	})
+	}); err != nil {
+		d.logError(r, err, "Failed to encode refresh response")
+		http.Error(w, "JSON encoding error", http.StatusInternalServerError)
+		return
+	}
+}
+
+// logError logs HTTP request errors with detailed context
+func (d *Dashboard) logError(r *http.Request, err error, context string) {
+	fmt.Printf("[ERROR] %s: %v | Method: %s | Path: %s | Remote: %s | UserAgent: %s\n",
+		context, err, r.Method, r.URL.Path, r.RemoteAddr, r.UserAgent())
 }
 
 // Helper methods for loading different types of data

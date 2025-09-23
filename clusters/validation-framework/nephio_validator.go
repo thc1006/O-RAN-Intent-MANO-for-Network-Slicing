@@ -322,9 +322,9 @@ func (nv *NephioValidator) renderPackage(ctx context.Context, packagePath string
 		return nil, fmt.Errorf("failed to copy package: %w", err)
 	}
 
-	// Run kpt fn render
-	cmd := exec.CommandContext(ctx, nv.kptPath, "fn", "render", tempDir)
-	output, err := cmd.CombinedOutput()
+	// Run kpt fn render using secure execution
+	args := []string{"fn", "render", tempDir}
+	output, err := security.SecureExecuteWithValidation(ctx, "kpt", security.ValidateKptArgs, args...)
 	if err != nil {
 		return nil, fmt.Errorf("kpt fn render failed: %w, output: %s", err, string(output))
 	}
@@ -340,9 +340,21 @@ func (nv *NephioValidator) renderPackage(ctx context.Context, packagePath string
 
 // copyDirectory copies a directory recursively
 func (nv *NephioValidator) copyDirectory(src, dst string) error {
-	// Simple implementation - in production, use a more robust copy function
-	cmd := exec.Command("cp", "-r", src+"/.", dst)
-	return cmd.Run()
+	// Validate paths for security
+	if err := security.ValidateFilePath(src); err != nil {
+		return fmt.Errorf("invalid source path: %w", err)
+	}
+	if err := security.ValidateFilePath(dst); err != nil {
+		return fmt.Errorf("invalid destination path: %w", err)
+	}
+
+	// Use secure execution for copy command
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	args := []string{"-r", src + "/.", dst}
+	_, err := security.SecureExecute(ctx, "cp", args...)
+	return err
 }
 
 // parseRenderedResources parses rendered Kubernetes resources

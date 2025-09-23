@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -59,6 +60,7 @@ type O2DMSTestResult struct {
 	ResourceType     string                 `json:"resource_type"`
 	Operation        string                 `json:"operation"`
 	RequestPayload   interface{}            `json:"request_payload,omitempty"`
+	ResponsePayload  interface{}            `json:"response_payload,omitempty"`
 	ResponseStatus   int                    `json:"response_status"`
 	ResponseTime     time.Duration          `json:"response_time_ms"`
 	DeploymentStatus string                 `json:"deployment_status"`
@@ -230,7 +232,7 @@ var _ = Describe("O2 Interface Integration Tests", func() {
 			for _, pool := range pools {
 				if pool.ID == poolID {
 					found = true
-					Expect(pool.Description).To(Equal(updateSpec.Description),
+					Expect(pool.Spec.Description).To(Equal(updateSpec.Description),
 						"Pool should reflect updated description")
 					break
 				}

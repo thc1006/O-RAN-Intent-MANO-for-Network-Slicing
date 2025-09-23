@@ -97,7 +97,11 @@ func (agent *TNAgent) handleHealth(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusServiceUnavailable)
 	}
 
-	json.NewEncoder(w).Encode(status)
+	if err := json.NewEncoder(w).Encode(status); err != nil {
+		security.SafeLogError(agent.logger, "Failed to encode health status response", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 }
 
 // Status handler
@@ -109,7 +113,11 @@ func (agent *TNAgent) handleStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(status)
+	if err := json.NewEncoder(w).Encode(status); err != nil {
+		security.SafeLogError(agent.logger, "Failed to encode status response", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 }
 
 // Get configuration handler
@@ -119,7 +127,11 @@ func (agent *TNAgent) handleGetConfig(w http.ResponseWriter, r *http.Request) {
 	agent.mu.RUnlock()
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(config)
+	if err := json.NewEncoder(w).Encode(config); err != nil {
+		security.SafeLogError(agent.logger, "Failed to encode config response", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 }
 
 // Update configuration handler
@@ -136,7 +148,11 @@ func (agent *TNAgent) handleUpdateConfig(w http.ResponseWriter, r *http.Request)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"status": "updated"})
+	if err := json.NewEncoder(w).Encode(map[string]string{"status": "updated"}); err != nil {
+		security.SafeLogError(agent.logger, "Failed to encode update config response", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 }
 
 // Configure slice handler
@@ -162,7 +178,11 @@ func (agent *TNAgent) handleConfigureSlice(w http.ResponseWriter, r *http.Reques
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		security.SafeLogError(agent.logger, "Failed to encode configure slice response", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 }
 
 // Delete slice handler
@@ -180,7 +200,11 @@ func (agent *TNAgent) handleDeleteSlice(w http.ResponseWriter, r *http.Request) 
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		security.SafeLogError(agent.logger, "Failed to encode delete slice response", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 }
 
 // Run test handler
@@ -204,7 +228,11 @@ func (agent *TNAgent) handleRunTest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(result)
+	if err := json.NewEncoder(w).Encode(result); err != nil {
+		security.SafeLogError(agent.logger, "Failed to encode test result response", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 }
 
 // Get test result handler
@@ -221,7 +249,11 @@ func (agent *TNAgent) handleGetTestResult(w http.ResponseWriter, r *http.Request
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		security.SafeLogError(agent.logger, "Failed to encode test result response", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 }
 
 // VXLAN status handler
@@ -238,7 +270,11 @@ func (agent *TNAgent) handleVXLANStatus(w http.ResponseWriter, r *http.Request) 
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(status)
+	if err := json.NewEncoder(w).Encode(status); err != nil {
+		security.SafeLogError(agent.logger, "Failed to encode VXLAN status response", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 }
 
 // Update VXLAN peers handler
@@ -266,7 +302,11 @@ func (agent *TNAgent) handleUpdateVXLANPeers(w http.ResponseWriter, r *http.Requ
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		security.SafeLogError(agent.logger, "Failed to encode VXLAN peers response", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 }
 
 // Test VXLAN connectivity handler
@@ -284,7 +324,11 @@ func (agent *TNAgent) handleTestVXLANConnectivity(w http.ResponseWriter, r *http
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		security.SafeLogError(agent.logger, "Failed to encode VXLAN connectivity response", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 }
 
 // TC status handler
@@ -301,7 +345,11 @@ func (agent *TNAgent) handleTCStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(status)
+	if err := json.NewEncoder(w).Encode(status); err != nil {
+		security.SafeLogError(agent.logger, "Failed to encode TC status response", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 }
 
 // Apply TC rules handler
@@ -329,7 +377,11 @@ func (agent *TNAgent) handleApplyTCRules(w http.ResponseWriter, r *http.Request)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		security.SafeLogError(agent.logger, "Failed to encode TC rules response", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 }
 
 // Clear TC rules handler
@@ -350,7 +402,11 @@ func (agent *TNAgent) handleClearTCRules(w http.ResponseWriter, r *http.Request)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		security.SafeLogError(agent.logger, "Failed to encode clear TC rules response", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 }
 
 // Bandwidth metrics handler
@@ -363,7 +419,11 @@ func (agent *TNAgent) handleBandwidthMetrics(w http.ResponseWriter, r *http.Requ
 	metrics := agent.monitor.GetCurrentMetrics()
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(metrics)
+	if err := json.NewEncoder(w).Encode(metrics); err != nil {
+		security.SafeLogError(agent.logger, "Failed to encode bandwidth metrics response", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 }
 
 // Bandwidth stream handler (Server-Sent Events)
@@ -381,8 +441,16 @@ func (agent *TNAgent) handleBandwidthStream(w http.ResponseWriter, r *http.Reque
 
 	// Send initial metrics
 	metrics := agent.monitor.GetCurrentMetrics()
-	data, _ := json.Marshal(metrics)
-	fmt.Fprintf(w, "data: %s\n\n", data)
+	data, err := json.Marshal(metrics)
+	if err != nil {
+		security.SafeLogError(agent.logger, "Failed to marshal initial metrics for stream", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	if _, err := fmt.Fprintf(w, "data: %s\n\n", data); err != nil {
+		security.SafeLogError(agent.logger, "Failed to write initial metrics to stream", err)
+		return
+	}
 
 	if flusher, ok := w.(http.Flusher); ok {
 		flusher.Flush()
@@ -403,7 +471,10 @@ func (agent *TNAgent) handleBandwidthStream(w http.ResponseWriter, r *http.Reque
 				continue
 			}
 
-			fmt.Fprintf(w, "data: %s\n\n", data)
+			if _, err := fmt.Fprintf(w, "data: %s\n\n", data); err != nil {
+				security.SafeLogError(agent.logger, "Failed to write metrics to stream", err)
+				return
+			}
 			if flusher, ok := w.(http.Flusher); ok {
 				flusher.Flush()
 			}
@@ -422,7 +493,11 @@ func (agent *TNAgent) handleIperfServers(w http.ResponseWriter, r *http.Request)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		security.SafeLogError(agent.logger, "Failed to encode iperf servers response", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 }
 
 // Start iperf server handler
@@ -448,7 +523,11 @@ func (agent *TNAgent) handleStartIperfServer(w http.ResponseWriter, r *http.Requ
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		security.SafeLogError(agent.logger, "Failed to encode start iperf server response", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 }
 
 // Stop iperf server handler
@@ -474,7 +553,11 @@ func (agent *TNAgent) handleStopIperfServer(w http.ResponseWriter, r *http.Reque
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		security.SafeLogError(agent.logger, "Failed to encode stop iperf server response", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 }
 
 // Get metrics handler
@@ -482,7 +565,11 @@ func (agent *TNAgent) handleGetMetrics(w http.ResponseWriter, r *http.Request) {
 	summary := agent.monitor.GetPerformanceSummary()
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(summary)
+	if err := json.NewEncoder(w).Encode(summary); err != nil {
+		security.SafeLogError(agent.logger, "Failed to encode metrics summary response", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 }
 
 // Export metrics handler
@@ -496,7 +583,10 @@ func (agent *TNAgent) handleExportMetrics(w http.ResponseWriter, r *http.Request
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=metrics_%s_%d.json",
 		agent.config.ClusterName, time.Now().Unix()))
-	w.Write(data)
+	if _, err := w.Write(data); err != nil {
+		security.SafeLogError(agent.logger, "Failed to write metrics export data", err)
+		return
+	}
 }
 
 // updateConfiguration updates the agent configuration

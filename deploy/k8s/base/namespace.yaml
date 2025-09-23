@@ -7,6 +7,11 @@ metadata:
     app.kubernetes.io/name: oran-mano
     app.kubernetes.io/version: "v1.0.0"
     app.kubernetes.io/managed-by: helm
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+  annotations:
+    seccomp.security.alpha.kubernetes.io/defaultProfileName: runtime/default
 ---
 apiVersion: v1
 kind: Namespace
@@ -17,6 +22,11 @@ metadata:
     app.kubernetes.io/name: oran-edge
     app.kubernetes.io/version: "v1.0.0"
     app.kubernetes.io/managed-by: helm
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+  annotations:
+    seccomp.security.alpha.kubernetes.io/defaultProfileName: runtime/default
 ---
 apiVersion: v1
 kind: Namespace
@@ -27,6 +37,11 @@ metadata:
     app.kubernetes.io/name: oran-core
     app.kubernetes.io/version: "v1.0.0"
     app.kubernetes.io/managed-by: helm
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+  annotations:
+    seccomp.security.alpha.kubernetes.io/defaultProfileName: runtime/default
 ---
 apiVersion: v1
 kind: Namespace
@@ -37,3 +52,8 @@ metadata:
     app.kubernetes.io/name: oran-monitoring
     app.kubernetes.io/version: "v1.0.0"
     app.kubernetes.io/managed-by: helm
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+  annotations:
+    seccomp.security.alpha.kubernetes.io/defaultProfileName: runtime/default

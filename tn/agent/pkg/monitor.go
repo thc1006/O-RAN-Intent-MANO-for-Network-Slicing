@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"os/exec"
 	"strconv"
 	"strings"
 	"sync"
@@ -149,15 +148,12 @@ func (bm *BandwidthMonitor) SetInterval(interval time.Duration) {
 
 // discoverInterfaces discovers available network interfaces
 func (bm *BandwidthMonitor) discoverInterfaces() ([]string, error) {
-	// Validate ip command arguments
+	// Use secure ip command execution to discover interfaces
 	ipArgs := []string{"link", "show"}
-	for _, arg := range ipArgs {
-		if err := security.ValidateCommandArgument(arg); err != nil {
-			return nil, fmt.Errorf("invalid ip command argument %s: %w", arg, err)
-		}
-	}
-	cmd := exec.Command("ip", ipArgs...)
-	output, err := cmd.CombinedOutput()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	output, err := security.SecureExecuteWithValidation(ctx, "ip", security.ValidateIPArgs, ipArgs...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list interfaces: %w", err)
 	}
@@ -251,13 +247,12 @@ func (mc *MetricCollector) collectInterfaceMetrics() (*InterfaceMetrics, error) 
 
 // getInterfaceStats gets basic interface statistics
 func (mc *MetricCollector) getInterfaceStats(metrics *InterfaceMetrics) error {
-	// Validate file path for security
+	// Use secure file reading for network device statistics
 	filePath := "/proc/net/dev"
-	if err := security.ValidateFilePath(filePath); err != nil {
-		return fmt.Errorf("invalid file path: %w", err)
-	}
-	cmd := exec.Command("cat", filePath)
-	output, err := cmd.CombinedOutput()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	output, err := security.SecureExecute(ctx, "cat", filePath)
 	if err != nil {
 		return fmt.Errorf("failed to read /proc/net/dev: %w", err)
 	}
@@ -331,17 +326,12 @@ func (mc *MetricCollector) getQueueStats(metrics *InterfaceMetrics) {
 		return
 	}
 
-	// Validate all tc command arguments
+	// Use secure tc command execution for queue statistics
 	tcArgs := []string{"-s", "qdisc", "show", "dev", mc.interfaceName}
-	for _, arg := range tcArgs {
-		if err := security.ValidateCommandArgument(arg); err != nil {
-			security.SafeLogError(mc.logger, "Warning: invalid tc command argument", err)
-			return
-		}
-	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
-	cmd := exec.Command("tc", tcArgs...)
-	output, err := cmd.CombinedOutput()
+	output, err := security.SecureExecuteWithValidation(ctx, "tc", security.ValidateTCArgs, tcArgs...)
 	if err != nil {
 		// TC stats not available, skip
 		return
