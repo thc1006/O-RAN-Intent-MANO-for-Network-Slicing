@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -330,12 +331,13 @@ func startMetricsServer(port int) {
 func customRecoveryMiddleware() gin.HandlerFunc {
 	return gin.CustomRecoveryWithWriter(os.Stderr, func(c *gin.Context, recovered interface{}) {
 		if err, ok := recovered.(string); ok {
+			// Sanitize log inputs to prevent log injection
 			log.WithFields(log.Fields{
-				"error":      err,
-				"path":       c.Request.URL.Path,
-				"method":     c.Request.Method,
-				"client_ip":  c.ClientIP(),
-				"user_agent": c.Request.UserAgent(),
+				"error":      sanitizeLogInput(err),
+				"path":       sanitizeLogInput(c.Request.URL.Path),
+				"method":     sanitizeLogInput(c.Request.Method),
+				"client_ip":  sanitizeLogInput(c.ClientIP()),
+				"user_agent": sanitizeLogInput(c.Request.UserAgent()),
 			}).Error("Panic recovered in RAN-DMS")
 		}
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -343,6 +345,24 @@ func customRecoveryMiddleware() gin.HandlerFunc {
 			"code":  "INTERNAL_ERROR",
 		})
 	})
+}
+
+// sanitizeLogInput removes control characters and limits length to prevent log injection
+func sanitizeLogInput(input string) string {
+	// Remove control characters (0x00-0x1F and 0x7F-0x9F)
+	sanitized := strings.Map(func(r rune) rune {
+		if r < 32 || (r >= 127 && r <= 159) {
+			return ' '
+		}
+		return r
+	}, input)
+
+	// Limit length to prevent log flooding
+	if len(sanitized) > 200 {
+		sanitized = sanitized[:200] + "..."
+	}
+
+	return sanitized
 }
 
 // securityHeadersMiddleware adds security headers to all responses
