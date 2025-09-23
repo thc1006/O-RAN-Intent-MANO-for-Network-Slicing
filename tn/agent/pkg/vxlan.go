@@ -74,15 +74,13 @@ func (vm *VXLANManager) CreateTunnel() error {
 		}
 		mtuStr := strconv.Itoa(vm.config.MTU)
 		mtuArgs := []string{"link", "set", "dev", vm.config.DeviceName, "mtu", mtuStr}
-		// Validate all mtu arguments
-		for _, arg := range mtuArgs {
-			if err := security.ValidateCommandArgument(arg); err != nil {
-				return fmt.Errorf("invalid mtu command argument %s: %w", arg, err)
-			}
-		}
-		cmd = exec.Command("ip", mtuArgs...)
-		if _, err := cmd.CombinedOutput(); err != nil {
-			security.SafeLogError(vm.logger, "Warning: failed to configure interface", err)
+
+		// Use secure ip command execution for MTU setting
+		mtuCtx, mtuCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer mtuCancel()
+
+		if _, err := security.SecureExecuteWithValidation(mtuCtx, "ip", security.ValidateIPArgs, mtuArgs...); err != nil {
+			security.SafeLogError(vm.logger, "Warning: failed to set MTU", err)
 		}
 	}
 

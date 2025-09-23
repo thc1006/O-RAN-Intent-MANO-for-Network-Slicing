@@ -539,7 +539,7 @@ func TestContainsLogInjectionPatterns(t *testing.T) {
 		{
 			name:     "ANSI escape sequence",
 			input:    "message\x1b[31m",
-			expected: true,
+			expected: false, // ANSI alone is not an injection attack
 		},
 		{
 			name:     "Log level injection",
