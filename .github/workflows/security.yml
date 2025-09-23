@@ -46,6 +46,13 @@ jobs:
       with:
         go-version: '1.21'
 
+    - name: Configure Git for Go modules
+      run: |
+        # Configure git to use GitHub token for private repos
+        git config --global url."https://${GITHUB_TOKEN}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
     - name: Build Go modules
       run: |
         find . -name "go.mod" -execdir go build -v ./... \;
@@ -69,18 +76,35 @@ jobs:
       with:
         go-version: '1.21'
 
+    - name: Configure Git for Go modules
+      run: |
+        # Configure git to use GitHub token for private repos
+        git config --global url."https://${GITHUB_TOKEN}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+
+        # Clean module cache to avoid stale dependencies
+        go clean -modcache || true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
     - name: Generate go.sum if missing
       run: |
         if [ ! -f go.sum ]; then
           echo "go.sum is missing, attempting to generate it..."
+          # Try to download dependencies with proper authentication
           go mod download || echo "Warning: Some dependencies could not be downloaded"
           go mod tidy || echo "Warning: go mod tidy encountered issues, continuing anyway"
         fi
 
         # Ensure go.sum exists even if empty
         touch go.sum
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GOPRIVATE: github.com/securecodewarrior
 
     - name: Run Nancy (Go dependency scanner)
+      env:
+        OSSINDEX_USERNAME: ${{ secrets.OSSINDEX_USERNAME }}
+        OSSINDEX_TOKEN: ${{ secrets.OSSINDEX_TOKEN }}
       run: |
         # Download and install Nancy from official GitHub releases
         # Get the latest release version dynamically
@@ -107,7 +131,16 @@ jobs:
         # Check if go.sum has content before running Nancy
         if [ -s go.sum ]; then
           echo "Running Nancy vulnerability scan..."
-          ./nancy sleuth < go.sum
+          # Use OSS Index credentials if available, otherwise run without (may hit rate limits)
+          if [ -n "$OSSINDEX_USERNAME" ] && [ -n "$OSSINDEX_TOKEN" ]; then
+            echo "Using OSS Index credentials for authenticated scanning"
+            ./nancy sleuth -u "$OSSINDEX_USERNAME" -t "$OSSINDEX_TOKEN" < go.sum
+          else
+            echo "Warning: Running Nancy without OSS Index credentials (may hit rate limits)"
+            echo "To avoid rate limiting, add OSSINDEX_USERNAME and OSSINDEX_TOKEN as GitHub secrets"
+            echo "Register at: https://ossindex.sonatype.org/user/register"
+            ./nancy sleuth < go.sum
+          fi
         else
           echo "Warning: go.sum is empty, skipping Nancy scan"
           echo "This may indicate issues with Go module resolution"
@@ -241,7 +274,15 @@ jobs:
     - name: Run Polaris security audit
       run: |
         curl -L https://github.com/FairwindsOps/polaris/releases/latest/download/polaris_linux_amd64.tar.gz | tar xz
-        ./polaris audit --config deploy/k8s --format=json > polaris-audit.json
+        # Audit all YAML files in the deploy/k8s directory
+        find deploy/k8s -name "*.yaml" -o -name "*.yml" | while read file; do
+          echo "Auditing $file"
+          ./polaris audit --audit-path "$file" --format=json >> polaris-audit.json
+        done
+        # If no results were generated, create an empty JSON array
+        if [ ! -s polaris-audit.json ]; then
+          echo '{"results": []}' > polaris-audit.json
+        fi
 
     - name: Upload Polaris results
       uses: actions/upload-artifact@v4
@@ -378,6 +419,13 @@ jobs:
       uses: actions/setup-go@v4
       with:
         go-version: '1.21'
+
+    - name: Configure Git for Go modules
+      run: |
+        # Configure git to use GitHub token for private repos
+        git config --global url."https://${GITHUB_TOKEN}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Install go-licenses
       run: go install github.com/google/go-licenses@latest
