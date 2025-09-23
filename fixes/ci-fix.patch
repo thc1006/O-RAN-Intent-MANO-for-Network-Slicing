@@ -1,0 +1,26 @@
+diff --git a/.github/workflows/ci-quickfix.yml b/.github/workflows/ci-quickfix.yml
+index 1234567..abcdefg 100644
+--- a/.github/workflows/ci-quickfix.yml
++++ b/.github/workflows/ci-quickfix.yml
+@@ -8,7 +8,7 @@ on:
+     branches: [ main, develop ]
+
+ env:
+-  GO_VERSION: '1.24'
++  GO_VERSION: '1.24.0'
+   PYTHON_VERSION: '3.11'
+   NODE_VERSION: '18'
+
+diff --git a/.github/workflows/enhanced-ci.yml b/.github/workflows/enhanced-ci.yml
+index 1234567..abcdefg 100644
+--- a/.github/workflows/enhanced-ci.yml
++++ b/.github/workflows/enhanced-ci.yml
+@@ -46,7 +46,7 @@ on:
+ env:
+   REGISTRY: ghcr.io
+   IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}
+-  GO_VERSION: '1.24'
++  GO_VERSION: '1.24.0'
+   PYTHON_VERSION: '3.11'
+
+   # Dashboard and reporting configuration

@@ -42,6 +42,12 @@ jobs:
         languages: ${{ matrix.language }}
         queries: security-extended,security-and-quality
 
+    - name: Clean Go module cache
+      run: |
+        # Clean Go module cache to avoid tar extraction conflicts
+        rm -rf ~/go/pkg/mod || true
+        go clean -modcache || true
+
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
@@ -106,6 +112,12 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+
+    - name: Clean Go module cache
+      run: |
+        # Clean Go module cache to avoid tar extraction conflicts
+        rm -rf ~/go/pkg/mod || true
+        go clean -modcache || true
 
     - name: Set up Go
       uses: actions/setup-go@v5
@@ -687,6 +699,12 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+
+    - name: Clean Go module cache
+      run: |
+        # Clean Go module cache to avoid tar extraction conflicts
+        rm -rf ~/go/pkg/mod || true
+        go clean -modcache || true
 
     - name: Set up Go
       uses: actions/setup-go@v5
