@@ -289,3 +289,43 @@ func CreateValidatorForConfig(workingDir string) *FilePathValidator {
 
 	return validator
 }
+
+// ValidateFilePath is a global function for backward compatibility
+func ValidateFilePath(path string) error {
+	validator := NewFilePathValidator()
+	return validator.ValidateFilePath(path)
+}
+
+// ValidateGitRef validates a Git reference (commit hash, branch name, tag)
+func ValidateGitRef(ref string) error {
+	if ref == "" {
+		return fmt.Errorf("git reference cannot be empty")
+	}
+
+	// Check for null bytes
+	if strings.Contains(ref, "\x00") {
+		return fmt.Errorf("git reference contains null byte")
+	}
+
+	// Check for command injection characters
+	dangerousChars := []string{";", "&", "|", "$", "`", "(", ")", "<", ">", "\"", "'", "\\"}
+	for _, char := range dangerousChars {
+		if strings.Contains(ref, char) {
+			return fmt.Errorf("git reference contains dangerous character: %s", char)
+		}
+	}
+
+	// Check length (Git refs should be reasonable length)
+	if len(ref) > 256 {
+		return fmt.Errorf("git reference too long: %d characters (max: 256)", len(ref))
+	}
+
+	// Basic validation for common Git ref patterns
+	// Commit hashes are 7-40 hex characters
+	// Branch/tag names should not start with certain characters
+	if strings.HasPrefix(ref, "-") || strings.HasPrefix(ref, ".") {
+		return fmt.Errorf("invalid git reference format: %s", ref)
+	}
+
+	return nil
+}

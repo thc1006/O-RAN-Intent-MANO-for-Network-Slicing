@@ -4,11 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/o-ran-intent-mano/pkg/security"
 )
 
 // DashboardConfig holds dashboard configuration
@@ -310,7 +311,15 @@ func loadConfig(configPath string) (*DashboardConfig, error) {
 	}
 
 	if configPath != "" {
-		data, err := ioutil.ReadFile(configPath)
+		// Create validator for configuration files
+		validator := security.CreateValidatorForConfig(".")
+
+		// Validate file path for security
+		if err := validator.ValidateFilePathAndExtension(configPath, []string{".json", ".yaml", ".yml", ".toml", ".conf", ".cfg"}); err != nil {
+			return nil, fmt.Errorf("config file path validation failed: %w", err)
+		}
+
+		data, err := validator.SafeReadFile(configPath)
 		if err != nil {
 			return config, nil // Use defaults if config file doesn't exist
 		}
@@ -373,6 +382,14 @@ func (d *Dashboard) LoadMetrics() error {
 func (d *Dashboard) GenerateHTML(outputPath string) error {
 	if d.metrics == nil {
 		return fmt.Errorf("no metrics loaded")
+	}
+
+	// Create validator for output files
+	validator := security.CreateValidatorForConfig(".")
+
+	// Validate file path for security
+	if err := validator.ValidateFilePathAndExtension(outputPath, []string{".html", ".htm"}); err != nil {
+		return fmt.Errorf("output file path validation failed: %w", err)
 	}
 
 	file, err := os.Create(outputPath)

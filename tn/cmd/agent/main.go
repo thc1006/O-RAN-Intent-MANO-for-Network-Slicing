@@ -13,6 +13,7 @@ import (
 
 	"gopkg.in/yaml.v2"
 
+	"github.com/o-ran-intent-mano/pkg/security"
 	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tn/agent/pkg"
 )
 
@@ -253,7 +254,15 @@ func loadConfig(configFile string) (*Config, error) {
 	// Override with file if it exists
 	if configFile != "" {
 		if _, err := os.Stat(configFile); err == nil {
-			data, err := os.ReadFile(configFile)
+			// Create validator for configuration files
+			validator := security.CreateValidatorForConfig(".")
+
+			// Validate file path for security
+			if err := validator.ValidateFilePathAndExtension(configFile, []string{".yaml", ".yml", ".json", ".toml", ".conf", ".cfg"}); err != nil {
+				return nil, fmt.Errorf("config file path validation failed: %w", err)
+			}
+
+			data, err := validator.SafeReadFile(configFile)
 			if err != nil {
 				return nil, fmt.Errorf("failed to read config file: %w", err)
 			}

@@ -4,8 +4,11 @@ go 1.24.0
 
 toolchain go1.24.5
 
+replace github.com/o-ran-intent-mano/pkg/security => ../pkg/security
+
 require (
 	github.com/gorilla/mux v1.8.1
+	github.com/o-ran-intent-mano/pkg/security v0.0.0-00010101000000-000000000000
 	github.com/prometheus/client_golang v1.23.2
 	github.com/stretchr/testify v1.11.1
 	gopkg.in/yaml.v2 v2.4.0

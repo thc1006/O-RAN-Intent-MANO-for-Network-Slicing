@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"sort"
@@ -18,6 +17,8 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/yaml"
+
+	"github.com/o-ran-intent-mano/pkg/security"
 )
 
 // RollbackManager handles automated rollback operations
@@ -26,6 +27,7 @@ type RollbackManager struct {
 	ClusterClient *ClusterClient
 	GitRepo       *GitRepository
 	Validator     *ValidationFramework
+	validator     *security.FilePathValidator
 }
 
 // RollbackState represents the state of a rollback operation
@@ -93,11 +95,15 @@ type RollbackTrigger struct {
 
 // NewRollbackManager creates a new rollback manager
 func NewRollbackManager(config RollbackConfig, client *ClusterClient, gitRepo *GitRepository, validator *ValidationFramework) *RollbackManager {
+	// Create secure file path validator for Kubernetes files
+	fileValidator := security.CreateValidatorForKubernetes(gitRepo.LocalPath)
+
 	return &RollbackManager{
 		Config:        config,
 		ClusterClient: client,
 		GitRepo:       gitRepo,
 		Validator:     validator,
+		validator:     fileValidator,
 	}
 }
 
@@ -331,7 +337,13 @@ func (rm *RollbackManager) parseResourceFile(ctx context.Context, filename, comm
 	if commit == currentBranch {
 		// Read current file
 		fullPath := filepath.Join(rm.GitRepo.LocalPath, filename)
-		data, err := os.ReadFile(fullPath)
+
+		// Validate file path for security
+		if err := rm.validator.ValidateFilePathAndExtension(fullPath, []string{".yaml", ".yml"}); err != nil {
+			return nil, fmt.Errorf("file path validation failed: %w", err)
+		}
+
+		data, err := rm.validator.SafeReadFile(fullPath)
 		if err != nil {
 			return nil, err
 		}
@@ -369,6 +381,14 @@ func (rm *RollbackManager) parseResourceFile(ctx context.Context, filename, comm
 
 // getFileAtCommit gets file content at a specific commit
 func (rm *RollbackManager) getFileAtCommit(filename, commit string) (string, error) {
+	// Validate inputs for security
+	if err := security.ValidateFilePath(filename); err != nil {
+		return "", fmt.Errorf("invalid filename: %w", err)
+	}
+	if err := security.ValidateGitRef(commit); err != nil {
+		return "", fmt.Errorf("invalid commit: %w", err)
+	}
+
 	cmd := exec.Command("git", "show", fmt.Sprintf("%s:%s", commit, filename))
 	cmd.Dir = rm.GitRepo.LocalPath
 
@@ -390,6 +410,11 @@ func (rm *RollbackManager) resourcesMatch(res1, res2 *unstructured.Unstructured)
 
 // executeGitRollback executes the Git rollback
 func (rm *RollbackManager) executeGitRollback(ctx context.Context, targetCommit string) error {
+	// Validate target commit for security
+	if err := security.ValidateGitRef(targetCommit); err != nil {
+		return fmt.Errorf("invalid target commit: %w", err)
+	}
+
 	log.Printf("Executing Git rollback to commit %s", targetCommit)
 
 	// Create a backup branch before rollback

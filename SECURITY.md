@@ -27,7 +27,98 @@ We take security vulnerabilities seriously. If you discover a security vulnerabi
 - **Status Update**: Within 7 days
 - **Resolution Target**: Critical: 7 days, High: 14 days, Medium: 30 days, Low: 90 days
 
-## Security Measures
+## Command Injection Security Fixes
+
+### Overview
+
+This codebase has been secured against "subprocess launched with variable" vulnerabilities and command injection attacks through comprehensive input validation and secure coding practices.
+
+### Security Measures Implemented
+
+#### Input Validation Framework (`pkg/security/validation.go`)
+
+A comprehensive validation framework that provides secure input validation for all external inputs:
+
+**Network Security**
+- Interface Name Validation: Validates network interface names against allowlist patterns
+- IP Address Validation: Robust IPv4/IPv6 validation with security checks
+- Port Validation: Port range validation with allowlist for privileged ports
+- VNI Validation: VXLAN Network Identifier validation with reserved range checks
+- Bandwidth Validation: Bandwidth string validation with reasonable limits
+
+**File System Security**
+- Path Validation: Prevents path traversal attacks (`../` sequences)
+- File Existence Checks: Secure file and directory existence validation
+- Allowed Directory Restrictions: Restricts absolute paths to safe directories
+
+**Command Security**
+- Argument Sanitization: Removes dangerous shell metacharacters
+- Command Injection Prevention: Validates command arguments for suspicious patterns
+- Environment Variable Validation: Prevents code injection through environment values
+
+#### Secured Files
+
+**Traffic Control (`tn/agent/pkg/tc.go`)**
+- Validates network interface names before TC operations
+- Validates bandwidth configuration parameters
+- Prevents injection through interface names in TC commands
+
+**VXLAN Management (`tn/agent/pkg/vxlan.go`)**
+- Validates device names, VNI values, ports, and IP addresses
+- Validates MTU ranges and remote peer IPs
+- Secure FDB entry management with IP validation
+
+**Network Performance Testing (`tn/agent/pkg/iperf.go`)**
+- Validates server IPs and ports for iperf3 operations
+- Validates test duration and parallel stream limits
+- Validates bandwidth and window size parameters
+
+**Network Monitoring (`tn/agent/pkg/monitor.go`)**
+- Validates interface names for monitoring operations
+- Secure interface discovery with validation
+- Validates queue statistics collection
+
+**Git Operations (`clusters/validation-framework/git_repository.go`)**
+- Validates SSH key paths and Git references
+- Validates branch names for Git operations
+- Validates commit hashes for diff and reset operations
+
+**Package Validation (`clusters/validation-framework/nephio_validator.go`)**
+- Validates package paths and file paths
+- Secure file reading with path validation
+- Validates Kptfile structure and content
+
+**Rollback Operations (`clusters/validation-framework/rollback_manager.go`)**
+- Validates Git references for rollback operations
+- Validates file paths for resource parsing
+- Secure file operations with path validation
+
+#### Security Features
+
+1. **Defense in Depth**: Multiple layers of validation for each input type
+2. **Allowlist-Based Validation**: Only approved patterns and values allowed
+3. **Length and Range Limits**: Prevents buffer overflow and DoS attacks
+4. **Pattern-Based Detection**: Identifies dangerous characters and injection attempts
+5. **Sanitization and Escaping**: Safe handling of user input
+
+#### Testing
+
+Comprehensive test suite (`pkg/security/validation_test.go`) covering:
+- All validation functions with positive and negative test cases
+- Edge cases and boundary conditions
+- Security attack vectors and injection attempts
+- Performance benchmarks for validation functions
+
+### Common Vulnerabilities Addressed
+
+- **CWE-78**: OS Command Injection
+- **CWE-22**: Path Traversal
+- **CWE-20**: Improper Input Validation
+- **CWE-88**: Argument Injection
+- **CWE-94**: Code Injection
+- **CWE-116**: Improper Encoding or Escaping of Output
+
+## General Security Measures
 
 ### Container Security
 

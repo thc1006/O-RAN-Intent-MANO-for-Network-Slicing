@@ -488,7 +488,7 @@ func generateStaticDashboard() {
 	}
 
 	// Ensure output directory exists
-	if err := os.MkdirAll(filepath.Dir(outputFile), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(outputFile), 0750); err != nil {
 		log.Fatalf("Failed to create output directory: %v", err)
 	}
 
