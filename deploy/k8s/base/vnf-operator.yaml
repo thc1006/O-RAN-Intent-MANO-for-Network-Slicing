@@ -24,14 +24,17 @@ spec:
         prometheus.io/path: "/metrics"
     spec:
       serviceAccountName: oran-vnf-operator
+      automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true
         runAsUser: 65532
         fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: vnf-operator
-        image: oran-vnf-operator:latest
-        imagePullPolicy: IfNotPresent
+        image: ghcr.io/oran-mano/vnf-operator:v1.0.0@sha256:5g64deb29d3cbb1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u2
+        imagePullPolicy: Always
         args:
         - --metrics-bind-address=0.0.0.0:8080
         - --health-probe-bind-address=0.0.0.0:8081
@@ -88,6 +91,8 @@ spec:
           capabilities:
             drop:
             - ALL
+          seccompProfile:
+            type: RuntimeDefault
         volumeMounts:
         - name: webhook-certs
           mountPath: /tmp/k8s-webhook-server/serving-certs

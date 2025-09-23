@@ -1,0 +1,29 @@
+server:
+  port: 8080
+  tls_port: 8443
+  tls_enabled: false
+
+logging:
+  level: info
+  format: json
+
+metrics:
+  enabled: true
+  port: 9090
+
+ran:
+  update_interval: 30s
+  max_cells: 100
+  max_slices: 50
+  cell_types:
+    - macro
+    - micro
+    - pico
+    - femto
+
+o2:
+  enabled: false
+  endpoint: http://o2-client:8090
+  timeout: 30s
+  auth:
+    enabled: false

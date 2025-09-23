@@ -718,12 +718,23 @@ func (ma *MetricsAggregator) GetMetricsHistory(limit int) []*TestMetrics {
 	ma.mutex.RLock()
 	defer ma.mutex.RUnlock()
 
-	if limit <= 0 || limit > len(ma.metricsHistory) {
-		limit = len(ma.metricsHistory)
+	// Protect against excessive memory allocation
+	const maxLimit = 10000 // reasonable maximum history size
+	historyLen := len(ma.metricsHistory)
+
+	if limit <= 0 || limit > historyLen {
+		limit = historyLen
+	}
+	if limit > maxLimit {
+		limit = maxLimit
+	}
+
+	if limit == 0 {
+		return []*TestMetrics{}
 	}
 
 	history := make([]*TestMetrics, limit)
-	copy(history, ma.metricsHistory[len(ma.metricsHistory)-limit:])
+	copy(history, ma.metricsHistory[historyLen-limit:])
 
 	// Sort by timestamp (newest first)
 	sort.Slice(history, func(i, j int) bool {

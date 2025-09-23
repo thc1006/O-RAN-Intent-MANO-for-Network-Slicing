@@ -495,7 +495,7 @@ type NetworkSliceConfig struct {
 	VxlanID       int
 }
 
-type NetworkSlice struct {
+type NetworkSlicePerf struct {
 	ID        string
 	Config    NetworkSliceConfig
 	CreatedAt time.Time
@@ -620,9 +620,9 @@ func (s *NetworkPerformanceSuite) performBurstThroughputTest(sourcePod, targetPo
 
 // Supporting infrastructure methods
 
-func (s *NetworkPerformanceSuite) createNetworkSlice(config NetworkSliceConfig) *NetworkSlice {
+func (s *NetworkPerformanceSuite) createNetworkSlice(config NetworkSliceConfig) *NetworkSlicePerf {
 	// TODO: Implement actual network slice creation using TN manager
-	return &NetworkSlice{
+	return &NetworkSlicePerf{
 		ID:        config.SliceID,
 		Config:    config,
 		CreatedAt: time.Now(),

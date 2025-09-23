@@ -1,0 +1,28 @@
+server:
+  port: 8080
+  tls_port: 8443
+  tls_enabled: false
+
+logging:
+  level: info
+  format: json
+
+metrics:
+  enabled: true
+  port: 9090
+
+cn:
+  update_interval: 30s
+  max_slices: 100
+  slice_types:
+    - eMBB
+    - URLLC
+    - mMTC
+  supported_nfs:
+    - AMF
+    - SMF
+    - UPF
+    - PCF
+    - UDM
+    - AUSF
+    - NRF
