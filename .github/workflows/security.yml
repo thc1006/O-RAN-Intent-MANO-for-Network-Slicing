@@ -45,7 +45,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.24.5'
+        go-version: '1.23'
         cache: true
         cache-dependency-path: |
           go.sum
@@ -110,7 +110,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.24.5'
+        go-version: '1.23'
 
     - name: Configure Git for Go modules
       run: |
@@ -201,9 +201,45 @@ jobs:
 
     - name: Run OSV Scanner
       run: |
-        # Install latest OSV scanner
-        curl -sSfL https://github.com/google/osv-scanner/releases/download/v1.8.5/osv-scanner_1.8.5_linux_amd64 -o osv-scanner
+        # Install latest OSV scanner - Get latest release dynamically
+        LATEST_RELEASE=$(curl -s https://api.github.com/repos/google/osv-scanner/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+
+        # Fallback to known working version if API call fails
+        if [ -z "$LATEST_RELEASE" ]; then
+          LATEST_RELEASE="v1.9.0"
+          echo "Using fallback OSV scanner version: $LATEST_RELEASE"
+        else
+          echo "Installing OSV scanner version: $LATEST_RELEASE"
+        fi
+
+        # Remove 'v' prefix for download URL
+        VERSION=${LATEST_RELEASE#v}
+        OSV_URL="https://github.com/google/osv-scanner/releases/download/${LATEST_RELEASE}/osv-scanner_${VERSION}_linux_amd64"
+        echo "Downloading OSV scanner from: $OSV_URL"
+
+        # Download with error handling
+        if ! curl -sSfL "$OSV_URL" -o osv-scanner; then
+          echo "Failed to download OSV scanner from primary URL, trying fallback..."
+          # Try fallback version
+          LATEST_RELEASE="v1.9.0"
+          VERSION="1.9.0"
+          OSV_URL="https://github.com/google/osv-scanner/releases/download/${LATEST_RELEASE}/osv-scanner_${VERSION}_linux_amd64"
+          echo "Trying fallback URL: $OSV_URL"
+          curl -sSfL "$OSV_URL" -o osv-scanner
+        fi
+
         chmod +x osv-scanner
+
+        # Verify download
+        if [ ! -f osv-scanner ] || [ ! -s osv-scanner ]; then
+          echo "Failed to download OSV scanner or file is empty"
+          exit 1
+        fi
+
+        echo "Successfully downloaded OSV scanner:"
+        ls -la osv-scanner
+        ./osv-scanner --version || echo "OSV scanner version check failed"
+
         # Run scan with SARIF output
         ./osv-scanner --recursive --skip-git --format sarif --output osv-results.sarif ./ || true
         # Fallback to JSON if SARIF fails
@@ -657,7 +693,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.24.5'
+        go-version: '1.23'
 
     - name: Configure Git for Go modules
       run: |
