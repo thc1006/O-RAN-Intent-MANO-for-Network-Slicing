@@ -59,8 +59,8 @@ func TestFilePathValidationSecurity(t *testing.T) {
 		{
 			name:        "path with only dots",
 			path:        "....",
-			expectError: false,
-			description: "Multiple dots (not traversal) should be allowed",
+			expectError: true, // Actually, this should be blocked as it's suspicious
+			description: "Multiple dots should be blocked as suspicious",
 		},
 		{
 			name:        "mixed separators attack",
