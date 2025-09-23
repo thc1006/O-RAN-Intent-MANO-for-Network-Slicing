@@ -402,6 +402,7 @@ func (agent *TNAgent) handleClearTCRules(w http.ResponseWriter, r *http.Request)
 	}
 
 	if err := agent.writeJSONResponse(w, http.StatusOK, response); err != nil {
+		security.SafeLogError(agent.logger, "Failed to write TC rules clear response", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }
@@ -416,6 +417,7 @@ func (agent *TNAgent) handleBandwidthMetrics(w http.ResponseWriter, r *http.Requ
 	metrics := agent.monitor.GetCurrentMetrics()
 
 	if err := agent.writeJSONResponse(w, http.StatusOK, metrics); err != nil {
+		security.SafeLogError(agent.logger, "Failed to write bandwidth metrics response", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }
@@ -492,6 +494,7 @@ func (agent *TNAgent) handleIperfServers(w http.ResponseWriter, r *http.Request)
 	}
 
 	if err := agent.writeJSONResponse(w, http.StatusOK, response); err != nil {
+		security.SafeLogError(agent.logger, "Failed to write iperf servers response", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }
@@ -503,6 +506,7 @@ func (agent *TNAgent) handleStartIperfServer(w http.ResponseWriter, r *http.Requ
 
 	port, err := strconv.Atoi(portStr)
 	if err != nil {
+		security.SafeLogError(agent.logger, "Invalid port number for iperf server start", err)
 		http.Error(w, "Invalid port number", http.StatusBadRequest)
 		return
 	}
@@ -519,6 +523,7 @@ func (agent *TNAgent) handleStartIperfServer(w http.ResponseWriter, r *http.Requ
 	}
 
 	if err := agent.writeJSONResponse(w, http.StatusOK, response); err != nil {
+		security.SafeLogError(agent.logger, "Failed to write iperf start server response", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }
@@ -530,6 +535,7 @@ func (agent *TNAgent) handleStopIperfServer(w http.ResponseWriter, r *http.Reque
 
 	port, err := strconv.Atoi(portStr)
 	if err != nil {
+		security.SafeLogError(agent.logger, "Invalid port number for iperf server stop", err)
 		http.Error(w, "Invalid port number", http.StatusBadRequest)
 		return
 	}
@@ -546,6 +552,7 @@ func (agent *TNAgent) handleStopIperfServer(w http.ResponseWriter, r *http.Reque
 	}
 
 	if err := agent.writeJSONResponse(w, http.StatusOK, response); err != nil {
+		security.SafeLogError(agent.logger, "Failed to write iperf stop server response", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }
@@ -555,6 +562,7 @@ func (agent *TNAgent) handleGetMetrics(w http.ResponseWriter, r *http.Request) {
 	summary := agent.monitor.GetPerformanceSummary()
 
 	if err := agent.writeJSONResponse(w, http.StatusOK, summary); err != nil {
+		security.SafeLogError(agent.logger, "Failed to write metrics summary response", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }

@@ -17,18 +17,18 @@ import (
 
 // IperfManager manages iperf3 testing operations
 type IperfManager struct {
-	logger   *log.Logger
-	servers  map[string]*IperfServer
-	mu       sync.RWMutex
+	logger  *log.Logger
+	servers map[string]*IperfServer
+	mu      sync.RWMutex
 }
 
 // IperfServer represents an iperf3 server instance
 type IperfServer struct {
-	Port     int             `json:"port"`
-	PID      int             `json:"pid"`
-	Started  time.Time       `json:"started"`
-	Context  context.Context `json:"-"`
-	Cancel   context.CancelFunc `json:"-"`
+	Port    int                `json:"port"`
+	PID     int                `json:"pid"`
+	Started time.Time          `json:"started"`
+	Context context.Context    `json:"-"`
+	Cancel  context.CancelFunc `json:"-"`
 }
 
 // IperfTestConfig defines parameters for iperf3 tests
@@ -48,15 +48,15 @@ type IperfTestConfig struct {
 
 // IperfResult contains iperf3 test results
 type IperfResult struct {
-	TestID        string            `json:"testId"`
-	Timestamp     time.Time         `json:"timestamp"`
-	Duration      float64           `json:"duration"`
-	Protocol      string            `json:"protocol"`
-	Streams       []IperfStream     `json:"streams"`
-	Summary       IperfSummary      `json:"summary"`
-	ServerInfo    IperfServerInfo   `json:"serverInfo"`
-	ErrorMessages []string          `json:"errorMessages,omitempty"`
-	RawOutput     string            `json:"rawOutput,omitempty"`
+	TestID        string          `json:"testId"`
+	Timestamp     time.Time       `json:"timestamp"`
+	Duration      float64         `json:"duration"`
+	Protocol      string          `json:"protocol"`
+	Streams       []IperfStream   `json:"streams"`
+	Summary       IperfSummary    `json:"summary"`
+	ServerInfo    IperfServerInfo `json:"serverInfo"`
+	ErrorMessages []string        `json:"errorMessages,omitempty"`
+	RawOutput     string          `json:"rawOutput,omitempty"`
 }
 
 // IperfStream represents individual stream results
@@ -73,29 +73,29 @@ type IperfStream struct {
 
 // IperfSummary contains aggregated test results
 type IperfSummary struct {
-	Sent          IperfStreamSummary `json:"sent"`
-	Received      IperfStreamSummary `json:"received"`
-	CPUUtil       IperfCPUUtil       `json:"cpuUtil"`
-	LostPackets   int                `json:"lostPackets,omitempty"`
-	LostPercent   float64            `json:"lostPercent,omitempty"`
-	Jitter        float64            `json:"jitter,omitempty"`
+	Sent        IperfStreamSummary `json:"sent"`
+	Received    IperfStreamSummary `json:"received"`
+	CPUUtil     IperfCPUUtil       `json:"cpuUtil"`
+	LostPackets int                `json:"lostPackets,omitempty"`
+	LostPercent float64            `json:"lostPercent,omitempty"`
+	Jitter      float64            `json:"jitter,omitempty"`
 }
 
 // IperfStreamSummary contains summary for sent/received data
 type IperfStreamSummary struct {
-	Bytes      int64   `json:"bytes"`
-	BitsPerSec float64 `json:"bitsPerSec"`
+	Bytes       int64   `json:"bytes"`
+	BitsPerSec  float64 `json:"bitsPerSec"`
 	MbitsPerSec float64 `json:"mbitsPerSec"`
-	Retransmits int    `json:"retransmits,omitempty"`
+	Retransmits int     `json:"retransmits,omitempty"`
 }
 
 // IperfCPUUtil contains CPU utilization information
 type IperfCPUUtil struct {
-	HostTotal   float64 `json:"hostTotal"`
-	HostUser    float64 `json:"hostUser"`
-	HostSystem  float64 `json:"hostSystem"`
-	RemoteTotal float64 `json:"remoteTotal"`
-	RemoteUser  float64 `json:"remoteUser"`
+	HostTotal    float64 `json:"hostTotal"`
+	HostUser     float64 `json:"hostUser"`
+	HostSystem   float64 `json:"hostSystem"`
+	RemoteTotal  float64 `json:"remoteTotal"`
+	RemoteUser   float64 `json:"remoteUser"`
 	RemoteSystem float64 `json:"remoteSystem"`
 }
 
@@ -160,9 +160,15 @@ func findIperfDaemonPID(port int) (int, error) {
 	pids := strings.Split(pidStr, "\n")
 	if len(pids) > 0 {
 		var pid int
-		if _, err := fmt.Sscanf(pids[0], "%d", &pid); err != nil {
+		// SECURITY: Check both return values from fmt.Sscanf to prevent parsing errors
+		n, err := fmt.Sscanf(pids[0], "%d", &pid)
+		if err != nil {
 			return 0, fmt.Errorf("failed to parse PID from first line '%s': %w", pids[0], err)
 		}
+		if n != 1 {
+			return 0, fmt.Errorf("failed to parse exactly one PID from line '%s': parsed %d items", pids[0], n)
+		}
+
 		return pid, nil
 	}
 
@@ -495,38 +501,104 @@ func (im *IperfManager) parseJSONOutput(output string, result *IperfResult) erro
 		return fmt.Errorf("failed to unmarshal JSON: %w", err)
 	}
 
+	// SECURITY: All type assertions use safe comma-ok idiom to prevent panics
 	// Extract summary information
 	if end, ok := jsonResult["end"].(map[string]interface{}); ok {
 		// Sum sent
 		if sumSent, ok := end["sum_sent"].(map[string]interface{}); ok {
 			result.Summary.Sent = IperfStreamSummary{
-				Bytes:       int64(sumSent["bytes"].(float64)),
-				BitsPerSec:  sumSent["bits_per_second"].(float64),
-				MbitsPerSec: sumSent["bits_per_second"].(float64) / 1000000,
+				Bytes: func() int64 {
+					if val, ok := sumSent["bytes"].(float64); ok {
+						return int64(val)
+					}
+					return 0
+				}(),
+				BitsPerSec: func() float64 {
+					if val, ok := sumSent["bits_per_second"].(float64); ok {
+						return val
+					}
+					return 0
+				}(),
+				MbitsPerSec: func() float64 {
+					if val, ok := sumSent["bits_per_second"].(float64); ok {
+						return val
+					}
+					return 0
+				}() / 1000000,
 			}
 			if retrans, ok := sumSent["retransmits"]; ok {
-				result.Summary.Sent.Retransmits = int(retrans.(float64))
+				result.Summary.Sent.Retransmits = int(func() float64 {
+					if val, ok := retrans.(float64); ok {
+						return val
+					}
+					return 0
+				}())
 			}
 		}
 
 		// Sum received
 		if sumReceived, ok := end["sum_received"].(map[string]interface{}); ok {
 			result.Summary.Received = IperfStreamSummary{
-				Bytes:       int64(sumReceived["bytes"].(float64)),
-				BitsPerSec:  sumReceived["bits_per_second"].(float64),
-				MbitsPerSec: sumReceived["bits_per_second"].(float64) / 1000000,
+				Bytes: func() int64 {
+					if val, ok := sumReceived["bytes"].(float64); ok {
+						return int64(val)
+					}
+					return 0
+				}(),
+				BitsPerSec: func() float64 {
+					if val, ok := sumReceived["bits_per_second"].(float64); ok {
+						return val
+					}
+					return 0
+				}(),
+				MbitsPerSec: func() float64 {
+					if val, ok := sumReceived["bits_per_second"].(float64); ok {
+						return val
+					}
+					return 0
+				}() / 1000000,
 			}
 		}
 
 		// CPU utilization
 		if cpuUtil, ok := end["cpu_utilization_percent"].(map[string]interface{}); ok {
 			result.Summary.CPUUtil = IperfCPUUtil{
-				HostTotal:   cpuUtil["host_total"].(float64),
-				HostUser:    cpuUtil["host_user"].(float64),
-				HostSystem:  cpuUtil["host_system"].(float64),
-				RemoteTotal: cpuUtil["remote_total"].(float64),
-				RemoteUser:  cpuUtil["remote_user"].(float64),
-				RemoteSystem: cpuUtil["remote_system"].(float64),
+				HostTotal: func() float64 {
+					if val, ok := cpuUtil["host_total"].(float64); ok {
+						return val
+					}
+					return 0
+				}(),
+				HostUser: func() float64 {
+					if val, ok := cpuUtil["host_user"].(float64); ok {
+						return val
+					}
+					return 0
+				}(),
+				HostSystem: func() float64 {
+					if val, ok := cpuUtil["host_system"].(float64); ok {
+						return val
+					}
+					return 0
+				}(),
+				RemoteTotal: func() float64 {
+					if val, ok := cpuUtil["remote_total"].(float64); ok {
+						return val
+					}
+					return 0
+				}(),
+				RemoteUser: func() float64 {
+					if val, ok := cpuUtil["remote_user"].(float64); ok {
+						return val
+					}
+					return 0
+				}(),
+				RemoteSystem: func() float64 {
+					if val, ok := cpuUtil["remote_system"].(float64); ok {
+						return val
+					}
+					return 0
+				}(),
 			}
 		}
 	}
@@ -534,11 +606,26 @@ func (im *IperfManager) parseJSONOutput(output string, result *IperfResult) erro
 	// Extract server information
 	if start, ok := jsonResult["start"].(map[string]interface{}); ok {
 		if connecting, ok := start["connecting_to"].(map[string]interface{}); ok {
-			result.ServerInfo.Host = connecting["host"].(string)
-			result.ServerInfo.Port = int(connecting["port"].(float64))
+			result.ServerInfo.Host = func() string {
+				if val, ok := connecting["host"].(string); ok {
+					return val
+				}
+				return ""
+			}()
+			result.ServerInfo.Port = func() int {
+				if val, ok := connecting["port"].(float64); ok {
+					return int(val)
+				}
+				return 0
+			}()
 		}
 		if version, ok := start["version"]; ok {
-			result.ServerInfo.Version = version.(string)
+			result.ServerInfo.Version = func() string {
+				if val, ok := version.(string); ok {
+					return val
+				}
+				return ""
+			}()
 		}
 	}
 
@@ -853,13 +940,13 @@ type ThroughputMetrics struct {
 
 // LatencyMetrics contains detailed latency measurements (from types.go)
 type LatencyMetrics struct {
-	RTTMs     float64 `json:"rttMs"`
-	MinRTTMs  float64 `json:"minRttMs"`
-	MaxRTTMs  float64 `json:"maxRttMs"`
-	AvgRTTMs  float64 `json:"avgRttMs"`
-	StdDevMs  float64 `json:"stdDevMs"`
-	P50Ms     float64 `json:"p50Ms"`
-	P95Ms     float64 `json:"p95Ms"`
-	P99Ms     float64 `json:"p99Ms"`
-	TargetMs  float64 `json:"targetMs"`
+	RTTMs    float64 `json:"rttMs"`
+	MinRTTMs float64 `json:"minRttMs"`
+	MaxRTTMs float64 `json:"maxRttMs"`
+	AvgRTTMs float64 `json:"avgRttMs"`
+	StdDevMs float64 `json:"stdDevMs"`
+	P50Ms    float64 `json:"p50Ms"`
+	P95Ms    float64 `json:"p95Ms"`
+	P99Ms    float64 `json:"p99Ms"`
+	TargetMs float64 `json:"targetMs"`
 }
