@@ -1,7 +1,6 @@
 package security
 
 import (
-	"context"
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
@@ -11,9 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/yaml"
-	"k8s.io/client-go/kubernetes/scheme"
 )
 
 // SecurityPolicy defines security requirements for Kubernetes manifests
@@ -733,8 +730,6 @@ func TestKubernetesManifests_NetworkPolicies(t *testing.T) {
 }
 
 func TestKubernetesManifests_RBAC(t *testing.T) {
-	validator := NewKubernetesManifestValidator()
-
 	rbacFiles, err := filepath.Glob("../../deploy/k8s/base/rbac*.yaml")
 	require.NoError(t, err)
 

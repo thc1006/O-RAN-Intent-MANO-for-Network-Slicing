@@ -2,7 +2,7 @@
 # Reproducible development environment setup
 
 SHELL := /bin/bash
-.PHONY: help setup check kind k3s clean test lint format license spell install-tools verify-env ci:local ci:watch
+.PHONY: help setup check kind k3s clean test lint format license spell install-tools verify-env ci-local ci-watch test-full test-security test-coverage test-unit test-integration
 
 # Colors for output
 RED := \033[0;31m
@@ -145,7 +145,55 @@ test: verify-env
 	@if [ -d "adapters/vnf-operator" ] && [ -f "adapters/vnf-operator/go.mod" ] 2>/dev/null; then \
 		cd adapters/vnf-operator && $(GO) test ./... -v; \
 	fi
+	@if [ -d "tn/agent/pkg" ]; then \
+		$(GO) test ./tn/agent/pkg/... -v; \
+	fi
 	@echo -e "$(GREEN)All tests passed$(NC)"
+
+## test-full: Run comprehensive test suite with coverage
+test-full: verify-env
+	@echo -e "$(YELLOW)Running comprehensive test suite...$(NC)"
+	@echo -e "$(YELLOW)1. Unit tests with coverage...$(NC)"
+	@$(GO) test -coverprofile=coverage.out ./tn/agent/pkg/... -v
+	@echo -e "$(YELLOW)2. Integration tests...$(NC)"
+	@$(GO) test ./tn/tests/integration/... -v -timeout 10m || echo -e "$(YELLOW)Warning: Some integration tests failed (may require privileges)$(NC)"
+	@echo -e "$(YELLOW)3. Security validation...$(NC)"
+	@$(GO) test ./tn/tests/security/... -v
+	@echo -e "$(YELLOW)4. Coverage analysis...$(NC)"
+	@$(GO) test ./tn/tests/coverage/... -v
+	@echo -e "$(YELLOW)5. Generating HTML coverage report...$(NC)"
+	@$(GO) tool cover -html=coverage.out -o coverage.html
+	@echo -e "$(GREEN)Test suite completed! Coverage report: coverage.html$(NC)"
+
+## test-security: Run security-specific tests only
+test-security: verify-env
+	@echo -e "$(YELLOW)Running security tests...$(NC)"
+	@$(GO) test ./tn/tests/security/... -v
+	@if command -v gosec &> /dev/null; then \
+		gosec ./... || echo -e "$(YELLOW)Warning: gosec found security issues$(NC)"; \
+	else \
+		echo -e "$(YELLOW)gosec not installed, skipping security scan$(NC)"; \
+	fi
+
+## test-coverage: Generate and validate test coverage
+test-coverage: verify-env
+	@echo -e "$(YELLOW)Generating test coverage report...$(NC)"
+	@$(GO) test -coverprofile=coverage.out ./...
+	@$(GO) tool cover -func=coverage.out
+	@$(GO) tool cover -html=coverage.out -o coverage.html
+	@$(GO) test ./tn/tests/coverage/... -v
+	@echo -e "$(GREEN)Coverage report generated: coverage.html$(NC)"
+
+## test-unit: Run unit tests only
+test-unit: verify-env
+	@echo -e "$(YELLOW)Running unit tests...$(NC)"
+	@$(GO) test ./tn/agent/pkg/... -v
+
+## test-integration: Run integration tests only
+test-integration: verify-env
+	@echo -e "$(YELLOW)Running integration tests...$(NC)"
+	@echo -e "$(YELLOW)Note: Integration tests may require elevated privileges$(NC)"
+	@$(GO) test ./tn/tests/integration/... -v -timeout 10m
 
 ## build: Build all components
 build: verify-env
@@ -191,8 +239,8 @@ clean:
 	@find . -type f -name "*.log" -delete 2>/dev/null || true
 	@echo -e "$(GREEN)Clean complete$(NC)"
 
-## ci:local: Run local CI validation using act
-ci:local: verify-env
+## ci-local: Run local CI validation using act
+ci-local: verify-env
 	@echo -e "$(YELLOW)Running local CI validation with act...$(NC)"
 	@if ! command -v act &> /dev/null; then \
 		echo -e "$(RED)Error: 'act' is not installed$(NC)"; \
@@ -205,8 +253,8 @@ ci:local: verify-env
 	act -j "$$CI_JOB" --container-architecture linux/amd64
 	@echo -e "$(GREEN)Local CI validation completed$(NC)"
 
-## ci:watch: Watch GitHub Actions run status
-ci:watch: verify-env
+## ci-watch: Watch GitHub Actions run status
+ci-watch: verify-env
 	@echo -e "$(YELLOW)Watching GitHub Actions run...$(NC)"
 	@if ! command -v gh &> /dev/null; then \
 		echo -e "$(RED)Error: 'gh' CLI is not installed$(NC)"; \
