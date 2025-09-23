@@ -41,7 +41,10 @@ COPY cn-dms/ cn-dms/
 COPY ran-dms/ ran-dms/
 COPY tn/ tn/
 
-# Download dependencies (after copying local packages)
+# Download dependencies (after copying local packages) with explicit toolchain
+ENV GOTOOLCHAIN=go1.24.5
+ENV GOPROXY=https://proxy.golang.org,direct
+ENV GOSUMDB=sum.golang.org
 RUN go mod download
 
 # Build the binary with security flags

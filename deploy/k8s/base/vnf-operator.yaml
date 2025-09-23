@@ -48,6 +48,10 @@ spec:
       # 5. Leader election for operator high availability
       # Service account token is required for controller-runtime operations
       # COMPLIANCE: Reviewed 2025-09-24 - Required for Kubernetes operator functionality
+      #
+      # NOTE: For strict CKV_K8S_38 compliance in non-production environments,
+      # automountServiceAccountToken can be set to false, but this will disable
+      # all operator functionality and break VNF management capabilities.
       securityContext:
         runAsNonRoot: true
         runAsUser: 65532
