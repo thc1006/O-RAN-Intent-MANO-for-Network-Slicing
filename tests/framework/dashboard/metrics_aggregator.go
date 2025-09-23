@@ -192,7 +192,7 @@ func (ma *MetricsAggregator) Start(ctx context.Context) error {
 	log.Println("Starting metrics aggregator...")
 
 	// Create output directory
-	if err := os.MkdirAll(ma.config.OutputDirectory, 0750); err != nil {
+	if err := os.MkdirAll(ma.config.OutputDirectory, security.SecureDirMode); err != nil {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
 
@@ -583,21 +583,21 @@ func (ma *MetricsAggregator) saveAggregatedMetrics(metrics *TestMetrics) error {
 	if err != nil {
 		return err
 	}
-	if err := ioutil.WriteFile(jsonPath, jsonData, 0600); err != nil {
+	if err := ioutil.WriteFile(jsonPath, jsonData, security.SecureFileMode); err != nil {
 		return err
 	}
 
 	// Save timestamped version
 	timestampedPath := filepath.Join(ma.config.OutputDirectory, fmt.Sprintf("metrics_%s.json",
 		metrics.Timestamp.Format("20060102_150405")))
-	if err := ioutil.WriteFile(timestampedPath, jsonData, 0600); err != nil {
+	if err := ioutil.WriteFile(timestampedPath, jsonData, security.SecureFileMode); err != nil {
 		return err
 	}
 
 	// Save summary report
 	summaryPath := filepath.Join(ma.config.OutputDirectory, "summary.txt")
 	summary := ma.generateSummaryReport(metrics)
-	if err := ioutil.WriteFile(summaryPath, []byte(summary), 0600); err != nil {
+	if err := ioutil.WriteFile(summaryPath, []byte(summary), security.SecureFileMode); err != nil {
 		return err
 	}
 
@@ -818,14 +818,24 @@ func (ma *MetricsAggregator) GetMetricsHistory(limit int) []*TestMetrics {
 	// Pre-allocate slice with validated size
 	history := make([]*TestMetrics, validatedLimit)
 
-	// Calculate the start index for copying
-	startIndex := historyLen - validatedLimit
+	// Calculate the start index for copying, ensuring we don't exceed available history
+	actualLimit := validatedLimit
+	if actualLimit > historyLen {
+		actualLimit = historyLen
+	}
+
+	startIndex := historyLen - actualLimit
 	if startIndex < 0 {
 		startIndex = 0
 	}
 
+	// Re-allocate slice with actual size if needed
+	if actualLimit != validatedLimit {
+		history = make([]*TestMetrics, actualLimit)
+	}
+
 	// Safely copy the requested portion of history
-	copy(history, ma.metricsHistory[startIndex:startIndex+validatedLimit])
+	copy(history, ma.metricsHistory[startIndex:startIndex+actualLimit])
 
 	// Sort by timestamp (newest first)
 	sort.Slice(history, func(i, j int) bool {

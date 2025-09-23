@@ -168,6 +168,21 @@ func (se *SecureSubprocessExecutor) registerDefaultCommands() {
 		Timeout:     5 * time.Second,
 		Description: "File reading utility (restricted paths)",
 	})
+
+	// pgrep command allowlist (for finding processes)
+	se.RegisterCommand(&AllowedCommand{
+		Command: "pgrep",
+		AllowedArgs: map[string]bool{
+			"-f": true, "-x": true, "-l": true, "-u": true, "-g": true,
+		},
+		ArgPatterns: []string{
+			`^iperf3.*-p.*\d{1,5}$`,       // iperf3 processes with port
+			`^[a-zA-Z0-9\-_\.\s]+$`,       // Simple process names/patterns
+		},
+		MaxArgs:     5,
+		Timeout:     5 * time.Second,
+		Description: "Process finding utility (restricted patterns)",
+	})
 }
 
 // RegisterCommand registers a new allowed command

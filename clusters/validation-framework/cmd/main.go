@@ -307,12 +307,12 @@ func truncateString(s string, maxLen int) string {
 func writeToFile(filename string, data []byte) error {
 	// Create directory if it doesn't exist
 	dir := filepath.Dir(filename)
-	if err := os.MkdirAll(dir, 0750); err != nil {
+	if err := os.MkdirAll(dir, security.SecureDirMode); err != nil {
 		return fmt.Errorf("failed to create directory: %w", err)
 	}
 
 	// Write file
-	if err := os.WriteFile(filename, data, 0600); err != nil {
+	if err := os.WriteFile(filename, data, security.SecureFileMode); err != nil {
 		return fmt.Errorf("failed to write file: %w", err)
 	}
 

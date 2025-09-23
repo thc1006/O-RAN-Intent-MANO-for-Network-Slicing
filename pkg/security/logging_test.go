@@ -523,3 +523,408 @@ func TestSanitizeLogArgument(t *testing.T) {
 		})
 	}
 }
+
+// TestContainsLogInjectionPatterns tests the new log injection detection
+func TestContainsLogInjectionPatterns(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected bool
+	}{
+		{
+			name:     "Normal message",
+			input:    "This is a normal log message",
+			expected: false,
+		},
+		{
+			name:     "ANSI escape sequence",
+			input:    "message\x1b[31m",
+			expected: true,
+		},
+		{
+			name:     "Log level injection",
+			input:    "user input\n[ERROR] injected",
+			expected: true,
+		},
+		{
+			name:     "Timestamp injection",
+			input:    "message\n2024-01-01",
+			expected: true,
+		},
+		{
+			name:     "CRLF injection",
+			input:    "message\r\ninjected",
+			expected: true,
+		},
+		{
+			name:     "Null byte",
+			input:    "message\x00hidden",
+			expected: true,
+		},
+		{
+			name:     "Unicode line separator",
+			input:    "message\u2028injected",
+			expected: true,
+		},
+		{
+			name:     "Excessive newlines",
+			input:    "message\n\n\n\n\ninjected",
+			expected: true,
+		},
+		{
+			name:     "URL encoded newline",
+			input:    "message%0ainjected",
+			expected: true,
+		},
+		{
+			name:     "Case insensitive detection",
+			input:    "message\n[Error] injected",
+			expected: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := containsLogInjectionPatterns(tt.input)
+			if result != tt.expected {
+				t.Errorf("containsLogInjectionPatterns(%q) = %v, want %v", tt.input, result, tt.expected)
+			}
+		})
+	}
+}
+
+// TestDetectExcessiveRepetition tests the repetition detection
+func TestDetectExcessiveRepetition(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected bool
+	}{
+		{
+			name:     "Normal text",
+			input:    "This is normal text",
+			expected: false,
+		},
+		{
+			name:     "Excessive character repetition",
+			input:    "AAAAAAAAAAAAAAAAA",
+			expected: true,
+		},
+		{
+			name:     "Pattern repetition",
+			input:    "abcabcabcabcabcabc",
+			expected: true,
+		},
+		{
+			name:     "Short repetition - allowed",
+			input:    "aaa",
+			expected: false,
+		},
+		{
+			name:     "Space repetition",
+			input:    "word" + strings.Repeat(" ", 15) + "word",
+			expected: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := detectExcessiveRepetition(tt.input)
+			if result != tt.expected {
+				t.Errorf("detectExcessiveRepetition(%q) = %v, want %v", tt.input, result, tt.expected)
+			}
+		})
+	}
+}
+
+// TestSecureLoggerValidation tests the enhanced validation in SecureLogger
+func TestSecureLoggerValidation(t *testing.T) {
+	var buf bytes.Buffer
+	logger := log.New(&buf, "", 0)
+	secureLogger := NewSecureLogger(logger)
+
+	tests := []struct {
+		name        string
+		format      string
+		args        []interface{}
+		expectError bool
+		expectLog   bool
+	}{
+		{
+			name:      "Normal logging",
+			format:    "User %s logged in from %s",
+			args:      []interface{}{"alice", "192.168.1.1"},
+			expectLog: true,
+		},
+		{
+			name:        "Format string attack",
+			format:      "User %s logged in %n",
+			args:        []interface{}{"alice"},
+			expectError: true,
+			expectLog:   true, // Should log security warning
+		},
+		{
+			name:      "Log injection in arguments",
+			format:    "User %s performed action",
+			args:      []interface{}{"alice\n[ERROR] Fake error"},
+			expectLog: true, // Should sanitize the argument
+		},
+		{
+			name:        "Excessive format specifiers",
+			format:      strings.Repeat("%s ", 15),
+			args:        make([]interface{}, 15),
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			buf.Reset()
+			secureLogger.SafeLogf(tt.format, tt.args...)
+
+			output := buf.String()
+			if tt.expectLog && output == "" {
+				t.Error("Expected log output but got none")
+			}
+
+			if tt.expectError && !strings.Contains(output, "[SECURITY]") {
+				t.Error("Expected security warning in log output")
+			}
+
+			// Verify no dangerous patterns made it through
+			if strings.Contains(output, "\n[ERROR]") {
+				t.Error("Dangerous log injection pattern found in output")
+			}
+		})
+	}
+}
+
+// TestValidateLogMessage tests the comprehensive message validation
+func TestValidateLogMessage(t *testing.T) {
+	logger := log.New(&bytes.Buffer{}, "", 0)
+	secureLogger := NewSecureLogger(logger)
+
+	tests := []struct {
+		name        string
+		message     string
+		expectError bool
+	}{
+		{
+			name:        "Normal message",
+			message:     "This is a normal log message",
+			expectError: false,
+		},
+		{
+			name:        "Message with injection",
+			message:     "message\n[ERROR] injected",
+			expectError: true,
+		},
+		{
+			name:        "Excessive length",
+			message:     strings.Repeat("A", 3000),
+			expectError: true,
+		},
+		{
+			name:        "Excessive newlines",
+			message:     "message" + strings.Repeat("\\n", 10),
+			expectError: true,
+		},
+		{
+			name:        "Null bytes",
+			message:     "message\x00hidden",
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := secureLogger.validateLogMessage(tt.message)
+			if (err != nil) != tt.expectError {
+				t.Errorf("validateLogMessage() error = %v, expectError %v", err, tt.expectError)
+			}
+		})
+	}
+}
+
+// TestStrictValidateMessage tests strict validation mode
+func TestStrictValidateMessage(t *testing.T) {
+	logger := log.New(&bytes.Buffer{}, "", 0)
+	secureLogger := NewSecureLogger(logger)
+	secureLogger.strict = true
+
+	tests := []struct {
+		name        string
+		message     string
+		expectError bool
+	}{
+		{
+			name:        "Normal message",
+			message:     "Normal message",
+			expectError: false,
+		},
+		{
+			name:        "Too many non-printables",
+			message:     strings.Repeat("\x01", 20),
+			expectError: true,
+		},
+		{
+			name:        "Bidirectional override",
+			message:     "message\u202Dhidden",
+			expectError: true,
+		},
+		{
+			name:        "Directional isolate",
+			message:     "message\u2066hidden\u2069",
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := secureLogger.strictValidateMessage(tt.message)
+			if (err != nil) != tt.expectError {
+				t.Errorf("strictValidateMessage() error = %v, expectError %v", err, tt.expectError)
+			}
+		})
+	}
+}
+
+// TestFinalSanitize tests the final sanitization layer
+func TestFinalSanitize(t *testing.T) {
+	logger := log.New(&bytes.Buffer{}, "", 0)
+	secureLogger := NewSecureLogger(logger)
+
+	tests := []struct {
+		name        string
+		input       string
+		notContains []string
+	}{
+		{
+			name:        "ANSI escape removal",
+			input:       "message\x1b[31m",
+			notContains: []string{"\x1b["},
+		},
+		{
+			name:        "Null byte removal",
+			input:       "message\x00hidden",
+			notContains: []string{"\x00"},
+		},
+		{
+			name:        "BOM removal",
+			input:       "\ufeffmessage",
+			notContains: []string{"\ufeff"},
+		},
+		{
+			name:        "Zero-width space removal",
+			input:       "mess\u200bage",
+			notContains: []string{"\u200b"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := secureLogger.finalSanitize(tt.input)
+
+			for _, notContain := range tt.notContains {
+				if strings.Contains(result, notContain) {
+					t.Errorf("finalSanitize() result should not contain %q, got %q", notContain, result)
+				}
+			}
+		})
+	}
+}
+
+// TestValidateLogContent tests the utility validation function
+func TestValidateLogContent(t *testing.T) {
+	tests := []struct {
+		name        string
+		content     string
+		expectError bool
+	}{
+		{
+			name:        "Normal content",
+			content:     "This is normal log content",
+			expectError: false,
+		},
+		{
+			name:        "Content with injection",
+			content:     "content\n[ERROR] injected",
+			expectError: true,
+		},
+		{
+			name:        "Oversized content",
+			content:     strings.Repeat("A", 15000),
+			expectError: true,
+		},
+		{
+			name:        "Excessive control characters",
+			content:     strings.Repeat("\x01", 100),
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateLogContent(tt.content)
+			if (err != nil) != tt.expectError {
+				t.Errorf("ValidateLogContent() error = %v, expectError %v", err, tt.expectError)
+			}
+		})
+	}
+}
+
+// TestLine151VulnerabilityFix tests the specific vulnerability fix
+func TestLine151VulnerabilityFix(t *testing.T) {
+	var buf bytes.Buffer
+	logger := log.New(&buf, "", 0)
+	secureLogger := NewSecureLogger(logger)
+
+	// Test the specific vulnerability: user-controlled input being logged without sanitization
+	maliciousInput := "legitimate message\n[ERROR] 2024-01-01 12:00:00 Injected fake error message"
+
+	// This should be sanitized and not create a fake log entry
+	secureLogger.SafeLogf("Processing user input: %s", maliciousInput)
+
+	output := buf.String()
+
+	// Verify that the malicious newline + log level injection was prevented
+	if strings.Contains(output, "\n[ERROR]") {
+		t.Error("Log injection vulnerability: malicious log entry was not sanitized")
+	}
+
+	// Verify that the input was sanitized (should contain escaped newline)
+	if !strings.Contains(output, "\\n") {
+		t.Error("Expected sanitized newline in output")
+	}
+
+	// Verify that our logger ID and timestamp are present (showing our secure formatting)
+	if !strings.Contains(output, "][") {
+		t.Error("Expected secure log format with logger ID")
+	}
+
+	// Verify that original malicious content is not present verbatim
+	if strings.Contains(output, maliciousInput) {
+		t.Error("Original malicious input found in output - sanitization failed")
+	}
+}
+
+// TestSetSecureLoggerStrict tests the strict mode toggle
+func TestSetSecureLoggerStrict(t *testing.T) {
+	var buf bytes.Buffer
+	logger := log.New(&buf, "", 0)
+
+	// Initialize default logger
+	InitializeDefaultSecureLogger(logger)
+
+	// Test enabling strict mode
+	SetSecureLoggerStrict(true)
+	if !defaultSecureLogger.strict {
+		t.Error("Failed to enable strict mode")
+	}
+
+	// Test disabling strict mode
+	SetSecureLoggerStrict(false)
+	if defaultSecureLogger.strict {
+		t.Error("Failed to disable strict mode")
+	}
+}

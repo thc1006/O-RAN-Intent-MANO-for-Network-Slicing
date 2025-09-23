@@ -128,7 +128,7 @@ func (tf *TestFramework) SetupTestEnvironment() error {
 	// Set up test data directory
 	testDataDir := filepath.Join(".", "testdata")
 	if _, err := os.Stat(testDataDir); os.IsNotExist(err) {
-		if err := os.MkdirAll(testDataDir, 0750); err != nil {
+		if err := os.MkdirAll(testDataDir, security.SecureDirMode); err != nil {
 			return fmt.Errorf("failed to create test data directory: %w", err)
 		}
 	}

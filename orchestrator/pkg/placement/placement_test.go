@@ -103,6 +103,11 @@ func (p *IntelligentPlacementPolicy) calculatePlacementScore(nf *NetworkFunction
 	qosScore := p.calculateQoSScore(nf, site)
 	score += qosScore * 0.4
 
+	// If site can't meet basic resource or QoS requirements, penalize heavily
+	if resourceScore == 0.0 || qosScore == 0.0 {
+		return score * 0.1 // Only 10% of the score for impossible placements
+	}
+
 	// Placement hints score (0-20 points)
 	hintsScore := p.calculateHintsScore(nf, site)
 	score += hintsScore * 0.2
@@ -360,8 +365,8 @@ func (suite *PlacementTestSuite) setupTestData() {
 				MinBandwidthMbps: 1000,
 			},
 			QoSRequirements: QoSRequirements{
-				MaxLatencyMs:      1.0, // Ultra-low latency for emergency
-				MinThroughputMbps: 100,
+				MaxLatencyMs:      6.3, // Thesis target for emergency services
+				MinThroughputMbps: 4.57, // Thesis target for emergency services
 				MaxPacketLossRate: 0.001, // 99.9% reliability
 				MaxJitterMs:       0.5,
 			},
