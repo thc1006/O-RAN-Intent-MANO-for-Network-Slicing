@@ -1,0 +1,408 @@
+---
+# SLSA Build Provenance for O-RAN Intent-MANO components
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: oran-slsa-build-pipeline
+  namespace: oran-orchestrator
+  labels:
+    app.kubernetes.io/name: slsa-build-pipeline
+    app.kubernetes.io/part-of: oran-intent-mano
+  annotations:
+    chains.tekton.dev/signed: "true"
+    chains.tekton.dev/transparency: "true"
+spec:
+  params:
+  - name: git-url
+    type: string
+    description: Git repository URL
+  - name: git-revision
+    type: string
+    description: Git revision to build
+    default: main
+  - name: component-name
+    type: string
+    description: O-RAN component name (nlp, orchestrator, ran, cn, tn)
+  - name: image-registry
+    type: string
+    description: Container registry for images
+    default: ghcr.io/oran-intent-mano
+  workspaces:
+  - name: source-code
+  - name: docker-credentials
+  tasks:
+
+  # Task 1: Git clone with verification
+  - name: git-clone
+    taskRef:
+      name: git-clone
+      kind: ClusterTask
+    params:
+    - name: url
+      value: $(params.git-url)
+    - name: revision
+      value: $(params.git-revision)
+    - name: deleteExisting
+      value: "true"
+    - name: verbose
+      value: "true"
+    workspaces:
+    - name: output
+      workspace: source-code
+
+  # Task 2: SLSA Provenance Generation
+  - name: generate-build-provenance
+    runAfter: ["git-clone"]
+    taskSpec:
+      params:
+      - name: component-name
+        type: string
+      - name: git-url
+        type: string
+      - name: git-revision
+        type: string
+      workspaces:
+      - name: source
+      steps:
+      - name: generate-provenance
+        image: ghcr.io/slsa-framework/slsa-provenance-generator:v1.7.0
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1001
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+        script: |
+          #!/bin/sh
+          set -e
+
+          echo "Generating SLSA Build Provenance for $(params.component-name)"
+
+          # Create SLSA provenance metadata
+          cat > $(workspaces.source.path)/slsa-provenance.json <<EOF
+          {
+            "_type": "https://in-toto.io/Statement/v0.1",
+            "predicateType": "https://slsa.dev/provenance/v0.2",
+            "subject": [
+              {
+                "name": "$(params.image-registry)/$(params.component-name)",
+                "digest": {
+                  "sha256": ""
+                }
+              }
+            ],
+            "predicate": {
+              "builder": {
+                "id": "https://tekton.dev/chains/v2"
+              },
+              "buildType": "https://tekton.dev/attestations/chains/pipelinerun/v1",
+              "invocation": {
+                "configSource": {
+                  "uri": "$(params.git-url)",
+                  "digest": {
+                    "sha1": "$(params.git-revision)"
+                  },
+                  "entryPoint": "security/slsa/slsa-provenance.yaml"
+                },
+                "parameters": {
+                  "component-name": "$(params.component-name)",
+                  "git-revision": "$(params.git-revision)"
+                },
+                "environment": {
+                  "kubernetes": {
+                    "namespace": "oran-orchestrator",
+                    "serviceAccount": "tekton-pipelines-controller"
+                  }
+                }
+              },
+              "buildConfig": {
+                "steps": [
+                  {
+                    "entryPoint": "build-component",
+                    "arguments": ["$(params.component-name)"],
+                    "environment": {},
+                    "annotations": {}
+                  }
+                ]
+              },
+              "metadata": {
+                "buildInvocationId": "$(context.pipelineRun.uid)",
+                "buildStartedOn": "$(context.pipelineRun.creationTimestamp)",
+                "completeness": {
+                  "parameters": true,
+                  "environment": true,
+                  "materials": true
+                },
+                "reproducible": false
+              },
+              "materials": [
+                {
+                  "uri": "$(params.git-url)",
+                  "digest": {
+                    "sha1": "$(params.git-revision)"
+                  }
+                }
+              ]
+            }
+          }
+          EOF
+
+          echo "SLSA provenance generated at $(workspaces.source.path)/slsa-provenance.json"
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        volumes:
+        - name: tmp
+          emptyDir: {}
+    params:
+    - name: component-name
+      value: $(params.component-name)
+    - name: git-url
+      value: $(params.git-url)
+    - name: git-revision
+      value: $(params.git-revision)
+    workspaces:
+    - name: source
+      workspace: source-code
+
+  # Task 3: Security scanning
+  - name: security-scan
+    runAfter: ["generate-build-provenance"]
+    taskSpec:
+      workspaces:
+      - name: source
+      steps:
+      - name: trivy-scan
+        image: ghcr.io/aquasecurity/trivy:0.48.3
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1001
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+        script: |
+          #!/bin/sh
+          set -e
+
+          echo "Running security scan on source code..."
+          cd $(workspaces.source.path)
+
+          # Scan for vulnerabilities in dependencies
+          trivy fs --format json --output vulnerability-report.json .
+
+          # Scan for secrets
+          trivy fs --scanners secret --format json --output secret-report.json .
+
+          # Scan for misconfigurations
+          trivy fs --scanners config --format json --output config-report.json .
+
+          echo "Security scan completed"
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        volumes:
+        - name: tmp
+          emptyDir: {}
+    workspaces:
+    - name: source
+      workspace: source-code
+
+  # Task 4: Build and sign container image
+  - name: build-and-sign
+    runAfter: ["security-scan"]
+    taskRef:
+      name: buildah
+      kind: ClusterTask
+    params:
+    - name: IMAGE
+      value: $(params.image-registry)/$(params.component-name):$(params.git-revision)
+    - name: DOCKERFILE
+      value: ./$(params.component-name)/Dockerfile
+    - name: CONTEXT
+      value: ./$(params.component-name)
+    - name: FORMAT
+      value: oci
+    - name: BUILD_EXTRA_ARGS
+      value: |
+        --label=org.opencontainers.image.source=$(params.git-url)
+        --label=org.opencontainers.image.revision=$(params.git-revision)
+        --label=org.opencontainers.image.created=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+        --label=app.kubernetes.io/component=$(params.component-name)
+        --label=app.kubernetes.io/part-of=oran-intent-mano
+        --label=slsa.dev/provenance=true
+    workspaces:
+    - name: source
+      workspace: source-code
+    - name: dockerconfig
+      workspace: docker-credentials
+
+  # Task 5: Generate and sign attestations
+  - name: generate-attestations
+    runAfter: ["build-and-sign"]
+    taskSpec:
+      params:
+      - name: image-url
+        type: string
+      - name: component-name
+        type: string
+      workspaces:
+      - name: source
+      steps:
+      - name: cosign-attest
+        image: gcr.io/projectsigstore/cosign:v2.2.1
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1001
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+        env:
+        - name: COSIGN_EXPERIMENTAL
+          value: "1"
+        script: |
+          #!/bin/sh
+          set -e
+
+          echo "Generating and signing attestations for $(params.image-url)"
+
+          # Sign the container image
+          cosign sign --yes $(params.image-url)
+
+          # Generate SBOM attestation
+          syft $(params.image-url) -o spdx-json > $(workspaces.source.path)/sbom.spdx.json
+          cosign attest --yes --predicate $(workspaces.source.path)/sbom.spdx.json $(params.image-url)
+
+          # Generate SLSA provenance attestation
+          cosign attest --yes --predicate $(workspaces.source.path)/slsa-provenance.json $(params.image-url)
+
+          echo "Attestations generated and signed"
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        volumes:
+        - name: tmp
+          emptyDir: {}
+    params:
+    - name: image-url
+      value: $(params.image-registry)/$(params.component-name):$(params.git-revision)
+    - name: component-name
+      value: $(params.component-name)
+    workspaces:
+    - name: source
+      workspace: source-code
+
+---
+# Tekton Chains configuration for SLSA provenance
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: chains-config
+  namespace: tekton-chains
+  labels:
+    app.kubernetes.io/name: tekton-chains
+    app.kubernetes.io/part-of: oran-intent-mano
+data:
+  artifacts.oci.storage: oci
+  artifacts.taskrun.format: in-toto
+  artifacts.taskrun.storage: oci
+  artifacts.pipelinerun.format: in-toto
+  artifacts.pipelinerun.storage: oci
+  transparency.enabled: "true"
+  transparency.url: "https://rekor.sigstore.dev"
+  signers.x509.fulcio.enabled: "true"
+  signers.x509.fulcio.address: "https://fulcio.sigstore.dev"
+  signers.x509.fulcio.issuer: "https://oauth2.sigstore.dev/auth"
+  signers.kms.kmsref: ""
+
+---
+# Policy for SLSA verification
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: verify-slsa-provenance
+  labels:
+    app.kubernetes.io/name: slsa-verification
+    app.kubernetes.io/part-of: oran-intent-mano
+spec:
+  validationFailureAction: enforce
+  background: false
+  webhookTimeoutSeconds: 30
+  rules:
+  - name: verify-oran-image-provenance
+    match:
+      any:
+      - resources:
+          kinds:
+          - Pod
+          namespaces:
+          - oran-nlp
+          - oran-orchestrator
+          - oran-ran
+          - oran-cn
+          - oran-tn
+    verifyImages:
+    - imageReferences:
+      - "ghcr.io/oran-intent-mano/*"
+      attestors:
+      - count: 1
+        entries:
+        - keyless:
+            subject: "https://github.com/oran-intent-mano/*"
+            issuer: "https://token.actions.githubusercontent.com"
+      mutateDigest: true
+      verifyDigest: true
+      required: true
+
+---
+# SLSA compliance monitoring
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: slsa-compliance-config
+  namespace: oran-monitoring
+  labels:
+    app.kubernetes.io/name: slsa-compliance
+    app.kubernetes.io/part-of: oran-intent-mano
+data:
+  compliance-rules.yaml: |
+    rules:
+      - name: slsa_l3_requirements
+        description: "SLSA Level 3 requirements for O-RAN components"
+        checks:
+          - name: provenance_available
+            description: "Build provenance must be available"
+            requirement: "Attestation with SLSA provenance predicate exists"
+          - name: builder_identity
+            description: "Builder identity must be verified"
+            requirement: "Builder ID matches approved list"
+          - name: source_integrity
+            description: "Source code integrity verified"
+            requirement: "Git commit SHA verified in provenance"
+          - name: dependencies_verified
+            description: "All dependencies have provenance"
+            requirement: "SBOM attestation available for all components"
+          - name: reproducible_build
+            description: "Build process is reproducible"
+            requirement: "Build environment documented in provenance"
+
+      - name: supply_chain_security
+        description: "Supply chain security requirements"
+        checks:
+          - name: signed_commits
+            description: "Git commits must be signed"
+            requirement: "All commits have valid GPG signatures"
+          - name: vulnerability_scan
+            description: "No high/critical vulnerabilities"
+            requirement: "Trivy scan shows no HIGH or CRITICAL issues"
+          - name: secret_detection
+            description: "No exposed secrets"
+            requirement: "No secrets detected in source code or images"
+          - name: base_image_verified
+            description: "Base images must be from trusted sources"
+            requirement: "Base images signed and from approved registries"

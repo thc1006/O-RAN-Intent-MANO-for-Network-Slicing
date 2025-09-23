@@ -1,0 +1,23 @@
+apiVersion: tn.oran.io/v1alpha1
+kind: TNSlice
+metadata:
+  name: miot-slice
+  namespace: default
+spec:
+  sliceId: miot-slice-001
+  profile: mIoT
+  bandwidth: 2.77
+  latency: 15.7
+  jitter: 2.5
+  packetLoss: 0.05
+  vxlanId: 1003
+  priority: 3  # Lower priority for mIoT
+  endpoints:
+    - nodeName: kind-worker
+      ip: 172.18.0.3
+      interface: eth0
+      role: source
+    - nodeName: kind-worker2
+      ip: 172.18.0.4
+      interface: eth0
+      role: destination

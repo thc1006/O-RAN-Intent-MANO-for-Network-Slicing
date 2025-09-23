@@ -1,0 +1,35 @@
+apiVersion: configsync.gke.io/v1beta1
+kind: RootSync
+metadata:
+  name: root-sync
+  namespace: config-management-system
+  annotations:
+    config.kubernetes.io/local-config: "true"
+    gitops.oran.io/cluster: edge01
+    gitops.oran.io/component: configsync
+spec:
+  sourceFormat: unstructured
+  git:
+    repo: https://github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing.git
+    branch: main
+    dir: clusters/edge01/config
+    auth: none
+    # For production, use secretRef for authentication
+    # secretRef:
+    #   name: git-creds
+  override:
+    statusMode: enabled
+    reconcileTimeout: 5m
+    apiServerTimeout: 15s
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: git-creds
+  namespace: config-management-system
+  annotations:
+    config.kubernetes.io/local-config: "true"
+type: Opaque
+stringData:
+  username: ""  # Set via external secret management
+  token: ""     # Set via external secret management

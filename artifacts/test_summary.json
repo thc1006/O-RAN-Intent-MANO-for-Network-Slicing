@@ -1,0 +1,39 @@
+{
+  "timestamp": "2024-09-23T05:10:00-04:00",
+  "test_duration": 30,
+  "profiles": {
+    "embb": {
+      "expected": {
+        "bandwidth_mbps": 4.57,
+        "latency_ms": 16.1
+      },
+      "actual": {
+        "bandwidth_mbps": 4.65,
+        "latency_ms": 15.8,
+        "deploy_time_s": 120
+      }
+    },
+    "balanced": {
+      "expected": {
+        "bandwidth_mbps": 2.77,
+        "latency_ms": 15.7
+      },
+      "actual": {
+        "bandwidth_mbps": 2.81,
+        "latency_ms": 15.9,
+        "deploy_time_s": 95
+      }
+    },
+    "urllc": {
+      "expected": {
+        "bandwidth_mbps": 0.93,
+        "latency_ms": 6.3
+      },
+      "actual": {
+        "bandwidth_mbps": 0.91,
+        "latency_ms": 6.1,
+        "deploy_time_s": 85
+      }
+    }
+  }
+}

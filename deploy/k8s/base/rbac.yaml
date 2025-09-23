@@ -1,0 +1,159 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: oran-orchestrator
+  namespace: oran-mano
+  labels:
+    app.kubernetes.io/name: oran-orchestrator
+    app.kubernetes.io/component: orchestrator
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: oran-vnf-operator
+  namespace: oran-mano
+  labels:
+    app.kubernetes.io/name: oran-vnf-operator
+    app.kubernetes.io/component: vnf-operator
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: oran-o2-client
+  namespace: oran-mano
+  labels:
+    app.kubernetes.io/name: oran-o2-client
+    app.kubernetes.io/component: o2-client
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: oran-tn-manager
+  namespace: oran-mano
+  labels:
+    app.kubernetes.io/name: oran-tn-manager
+    app.kubernetes.io/component: tn-manager
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: oran-tn-agent
+  namespace: oran-edge
+  labels:
+    app.kubernetes.io/name: oran-tn-agent
+    app.kubernetes.io/component: tn-agent
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: oran-orchestrator
+rules:
+- apiGroups: [""]
+  resources: ["nodes", "pods", "services", "endpoints", "configmaps", "secrets"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets", "daemonsets", "statefulsets"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["networking.k8s.io"]
+  resources: ["networkpolicies", "ingresses"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["mano.oran.io"]
+  resources: ["vnfs", "networkslices", "intents"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: oran-vnf-operator
+rules:
+- apiGroups: [""]
+  resources: ["pods", "services", "configmaps", "secrets"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["mano.oran.io"]
+  resources: ["vnfs"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["mano.oran.io"]
+  resources: ["vnfs/status", "vnfs/finalizers"]
+  verbs: ["get", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: oran-tn-manager
+rules:
+- apiGroups: [""]
+  resources: ["nodes", "pods"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["networking.k8s.io"]
+  resources: ["networkpolicies"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["mano.oran.io"]
+  resources: ["transportnetworks", "qospolicies"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: oran-tn-agent
+rules:
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["get", "list", "watch", "update", "patch"]
+- apiGroups: ["networking.k8s.io"]
+  resources: ["networkpolicies"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: oran-orchestrator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: oran-orchestrator
+subjects:
+- kind: ServiceAccount
+  name: oran-orchestrator
+  namespace: oran-mano
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: oran-vnf-operator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: oran-vnf-operator
+subjects:
+- kind: ServiceAccount
+  name: oran-vnf-operator
+  namespace: oran-mano
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: oran-tn-manager
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: oran-tn-manager
+subjects:
+- kind: ServiceAccount
+  name: oran-tn-manager
+  namespace: oran-mano
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: oran-tn-agent
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: oran-tn-agent
+subjects:
+- kind: ServiceAccount
+  name: oran-tn-agent
+  namespace: oran-edge

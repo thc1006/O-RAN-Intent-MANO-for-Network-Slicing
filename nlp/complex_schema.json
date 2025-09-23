@@ -1,0 +1,329 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://oran-mano.io/schemas/qos-parameters.json",
+  "title": "Network Slice QoS Parameters Schema",
+  "description": "Comprehensive schema for validating Quality of Service parameters for O-RAN network slices",
+  "type": "object",
+  "required": ["slice_id", "service_type", "qos_parameters"],
+  "properties": {
+    "slice_id": {
+      "type": "string",
+      "description": "Unique identifier for the network slice",
+      "pattern": "^[a-zA-Z0-9-]+$"
+    },
+    "service_type": {
+      "type": "string",
+      "description": "Type of network service",
+      "enum": ["eMBB", "uRLLC", "mMTC", "gaming", "video", "voice", "iot", "critical"]
+    },
+    "qos_parameters": {
+      "type": "object",
+      "required": ["bandwidth", "latency"],
+      "properties": {
+        "bandwidth": {
+          "type": "number",
+          "description": "Bandwidth allocation in Mbps",
+          "minimum": 0.001,
+          "maximum": 10000,
+          "examples": [0.93, 2.77, 4.57, 100, 1000]
+        },
+        "latency": {
+          "type": "number",
+          "description": "Maximum latency in milliseconds",
+          "minimum": 1,
+          "maximum": 1000,
+          "examples": [6.3, 15.7, 16.1, 20, 50]
+        },
+        "jitter": {
+          "type": "number",
+          "description": "Maximum jitter in milliseconds",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 5
+        },
+        "packet_loss": {
+          "type": "number",
+          "description": "Maximum acceptable packet loss rate (0-1)",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 0.001,
+          "examples": [0.00001, 0.0001, 0.001, 0.01]
+        },
+        "reliability": {
+          "type": "number",
+          "description": "Required reliability as percentage",
+          "minimum": 90,
+          "maximum": 99.999,
+          "default": 99.9,
+          "examples": [99, 99.9, 99.99, 99.999]
+        },
+        "priority": {
+          "type": "integer",
+          "description": "Service priority (1-10, higher is more important)",
+          "minimum": 1,
+          "maximum": 10,
+          "default": 5
+        }
+      }
+    },
+    "placement_constraints": {
+      "type": "object",
+      "properties": {
+        "cloud_type": {
+          "type": "string",
+          "enum": ["edge", "regional", "central", "any"],
+          "description": "Preferred cloud deployment type",
+          "default": "any"
+        },
+        "location": {
+          "type": "object",
+          "properties": {
+            "region": {
+              "type": "string",
+              "description": "Geographic region constraint"
+            },
+            "zone": {
+              "type": "string",
+              "description": "Availability zone constraint"
+            },
+            "site": {
+              "type": "string",
+              "description": "Specific site constraint"
+            }
+          }
+        },
+        "affinity_rules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["affinity", "anti-affinity"]
+              },
+              "scope": {
+                "type": "string",
+                "enum": ["host", "rack", "zone", "region"]
+              },
+              "target": {
+                "type": "string",
+                "description": "Target slice or service ID"
+              }
+            }
+          }
+        }
+      }
+    },
+    "network_functions": {
+      "type": "array",
+      "description": "Required network functions for the slice",
+      "items": {
+        "type": "object",
+        "required": ["type"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["UPF", "AMF", "SMF", "PCF", "UDM", "AUSF", "NSSF", "NEF", "NRF", "gNB", "CU", "DU", "RU"]
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 1,
+            "default": 1
+          },
+          "resources": {
+            "type": "object",
+            "properties": {
+              "cpu_cores": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "memory_gb": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "storage_gb": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    "sla": {
+      "type": "object",
+      "description": "Service Level Agreement parameters",
+      "properties": {
+        "availability": {
+          "type": "number",
+          "description": "Required availability percentage",
+          "minimum": 90,
+          "maximum": 99.999,
+          "default": 99.9
+        },
+        "mttr": {
+          "type": "integer",
+          "description": "Mean Time To Repair in minutes",
+          "minimum": 1,
+          "default": 30
+        },
+        "mtbf": {
+          "type": "integer",
+          "description": "Mean Time Between Failures in hours",
+          "minimum": 1,
+          "default": 720
+        }
+      }
+    },
+    "slice_parameters": {
+      "type": "object",
+      "description": "3GPP slice parameters",
+      "properties": {
+        "sst": {
+          "type": "integer",
+          "description": "Slice/Service Type",
+          "minimum": 0,
+          "maximum": 255,
+          "examples": [1, 2, 3, 4]
+        },
+        "sd": {
+          "type": "string",
+          "description": "Slice Differentiator",
+          "pattern": "^[0-9A-Fa-f]{6}$"
+        },
+        "plmn": {
+          "type": "string",
+          "description": "Public Land Mobile Network ID",
+          "pattern": "^[0-9]{5,6}$"
+        }
+      }
+    },
+    "capacity": {
+      "type": "object",
+      "description": "Capacity requirements",
+      "properties": {
+        "max_users": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum concurrent users"
+        },
+        "max_devices": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum connected devices"
+        },
+        "max_sessions": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum concurrent sessions"
+        },
+        "max_throughput_gbps": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Maximum aggregate throughput in Gbps"
+        }
+      }
+    },
+    "lifecycle": {
+      "type": "object",
+      "description": "Slice lifecycle parameters",
+      "properties": {
+        "duration_hours": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Slice duration in hours"
+        },
+        "auto_scale": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable auto-scaling"
+        },
+        "scale_policy": {
+          "type": "object",
+          "properties": {
+            "min_instances": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "max_instances": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "scale_up_threshold": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "scale_down_threshold": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            }
+          }
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Additional metadata",
+      "properties": {
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "owner": {
+          "type": "string"
+        },
+        "tenant": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "description": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "slice_id": "gaming-slice-001",
+      "service_type": "uRLLC",
+      "qos_parameters": {
+        "bandwidth": 0.93,
+        "latency": 6.3,
+        "jitter": 2,
+        "packet_loss": 0.001,
+        "reliability": 99.9,
+        "priority": 8
+      },
+      "placement_constraints": {
+        "cloud_type": "edge"
+      }
+    },
+    {
+      "slice_id": "video-slice-001",
+      "service_type": "eMBB",
+      "qos_parameters": {
+        "bandwidth": 4.57,
+        "latency": 16.1,
+        "jitter": 5,
+        "packet_loss": 0.01,
+        "reliability": 99,
+        "priority": 6
+      },
+      "placement_constraints": {
+        "cloud_type": "regional"
+      }
+    }
+  ]
+}

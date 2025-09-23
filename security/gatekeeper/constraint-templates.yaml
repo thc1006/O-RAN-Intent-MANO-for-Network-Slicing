@@ -1,0 +1,254 @@
+---
+apiVersion: templates.gatekeeper.sh/v1beta1
+kind: ConstraintTemplate
+metadata:
+  name: k8srequiredsecuritycontext
+  annotations:
+    description: "Requires pods to have specified security context settings"
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sRequiredSecurityContext
+      validation:
+        openAPIV3Schema:
+          type: object
+          properties:
+            runAsNonRoot:
+              type: boolean
+            runAsUser:
+              type: integer
+            runAsGroup:
+              type: integer
+            fsGroup:
+              type: integer
+            seLinuxOptions:
+              type: object
+            seccompProfile:
+              type: object
+            supplementalGroups:
+              type: array
+              items:
+                type: integer
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8srequiredsecuritycontext
+
+        violation[{"msg": msg}] {
+            container := input.review.object.spec.containers[_]
+            not container.securityContext.runAsNonRoot
+            msg := sprintf("Container '%v' must set runAsNonRoot to true", [container.name])
+        }
+
+        violation[{"msg": msg}] {
+            container := input.review.object.spec.containers[_]
+            container.securityContext.runAsUser == 0
+            msg := sprintf("Container '%v' must not run as root (UID 0)", [container.name])
+        }
+
+        violation[{"msg": msg}] {
+            container := input.review.object.spec.containers[_]
+            not container.securityContext.allowPrivilegeEscalation == false
+            msg := sprintf("Container '%v' must set allowPrivilegeEscalation to false", [container.name])
+        }
+
+        violation[{"msg": msg}] {
+            container := input.review.object.spec.containers[_]
+            not container.securityContext.readOnlyRootFilesystem
+            msg := sprintf("Container '%v' must set readOnlyRootFilesystem to true", [container.name])
+        }
+
+        violation[{"msg": msg}] {
+            container := input.review.object.spec.containers[_]
+            "ALL" in container.securityContext.capabilities.drop
+            count(container.securityContext.capabilities.drop) > 1
+            msg := sprintf("Container '%v' should only drop 'ALL' capabilities", [container.name])
+        }
+
+        violation[{"msg": msg}] {
+            container := input.review.object.spec.containers[_]
+            not "ALL" in container.securityContext.capabilities.drop
+            msg := sprintf("Container '%v' must drop 'ALL' capabilities", [container.name])
+        }
+---
+apiVersion: templates.gatekeeper.sh/v1beta1
+kind: ConstraintTemplate
+metadata:
+  name: k8srequiredresources
+  annotations:
+    description: "Requires containers to have resource requests and limits"
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sRequiredResources
+      validation:
+        openAPIV3Schema:
+          type: object
+          properties:
+            exemptImages:
+              type: array
+              items:
+                type: string
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8srequiredresources
+
+        violation[{"msg": msg}] {
+            container := input.review.object.spec.containers[_]
+            not is_exempt(container.image)
+            not container.resources.requests.memory
+            msg := sprintf("Container '%v' must specify memory requests", [container.name])
+        }
+
+        violation[{"msg": msg}] {
+            container := input.review.object.spec.containers[_]
+            not is_exempt(container.image)
+            not container.resources.requests.cpu
+            msg := sprintf("Container '%v' must specify CPU requests", [container.name])
+        }
+
+        violation[{"msg": msg}] {
+            container := input.review.object.spec.containers[_]
+            not is_exempt(container.image)
+            not container.resources.limits.memory
+            msg := sprintf("Container '%v' must specify memory limits", [container.name])
+        }
+
+        violation[{"msg": msg}] {
+            container := input.review.object.spec.containers[_]
+            not is_exempt(container.image)
+            not container.resources.limits.cpu
+            msg := sprintf("Container '%v' must specify CPU limits", [container.name])
+        }
+
+        is_exempt(image) {
+            exempt_image := input.parameters.exemptImages[_]
+            startswith(image, exempt_image)
+        }
+---
+apiVersion: templates.gatekeeper.sh/v1beta1
+kind: ConstraintTemplate
+metadata:
+  name: k8sblockprivileged
+  annotations:
+    description: "Blocks privileged containers and host access"
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sBlockPrivileged
+      validation:
+        openAPIV3Schema:
+          type: object
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8sblockprivileged
+
+        violation[{"msg": msg}] {
+            container := input.review.object.spec.containers[_]
+            container.securityContext.privileged
+            msg := sprintf("Container '%v' must not run in privileged mode", [container.name])
+        }
+
+        violation[{"msg": msg}] {
+            input.review.object.spec.hostNetwork
+            msg := "Pod must not use host network"
+        }
+
+        violation[{"msg": msg}] {
+            input.review.object.spec.hostPID
+            msg := "Pod must not use host PID namespace"
+        }
+
+        violation[{"msg": msg}] {
+            input.review.object.spec.hostIPC
+            msg := "Pod must not use host IPC namespace"
+        }
+
+        violation[{"msg": msg}] {
+            volume := input.review.object.spec.volumes[_]
+            volume.hostPath
+            msg := sprintf("Volume '%v' must not use hostPath", [volume.name])
+        }
+---
+apiVersion: templates.gatekeeper.sh/v1beta1
+kind: ConstraintTemplate
+metadata:
+  name: k8srequiredlabels
+  annotations:
+    description: "Requires specific labels on resources"
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sRequiredLabels
+      validation:
+        openAPIV3Schema:
+          type: object
+          properties:
+            labels:
+              type: array
+              items:
+                type: object
+                properties:
+                  key:
+                    type: string
+                  allowedRegex:
+                    type: string
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8srequiredlabels
+
+        violation[{"msg": msg}] {
+            required := input.parameters.labels[_]
+            not input.review.object.metadata.labels[required.key]
+            msg := sprintf("Missing required label: %v", [required.key])
+        }
+
+        violation[{"msg": msg}] {
+            required := input.parameters.labels[_]
+            value := input.review.object.metadata.labels[required.key]
+            not re_match(required.allowedRegex, value)
+            msg := sprintf("Label '%v' value '%v' does not match regex '%v'", [required.key, value, required.allowedRegex])
+        }
+---
+apiVersion: templates.gatekeeper.sh/v1beta1
+kind: ConstraintTemplate
+metadata:
+  name: k8simageallowlist
+  annotations:
+    description: "Restricts container images to allowed registries"
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sImageAllowlist
+      validation:
+        openAPIV3Schema:
+          type: object
+          properties:
+            allowedRegistries:
+              type: array
+              items:
+                type: string
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8simageallowlist
+
+        violation[{"msg": msg}] {
+            container := input.review.object.spec.containers[_]
+            not startswith(container.image, input.parameters.allowedRegistries[_])
+            msg := sprintf("Container image '%v' is not from an allowed registry", [container.image])
+        }
+
+        violation[{"msg": msg}] {
+            container := input.review.object.spec.initContainers[_]
+            not startswith(container.image, input.parameters.allowedRegistries[_])
+            msg := sprintf("Init container image '%v' is not from an allowed registry", [container.image])
+        }

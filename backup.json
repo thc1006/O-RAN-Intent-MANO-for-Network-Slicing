@@ -1,0 +1,10 @@
+{
+  "default": [
+    {
+      "key": "project-context",
+      "value": "An Intent-based MANO Framework for E2E Network Slicing requirements",
+      "namespace": "default",
+      "timestamp": 1758572774583
+    }
+  ]
+}

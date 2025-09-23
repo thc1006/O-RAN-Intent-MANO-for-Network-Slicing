@@ -1,0 +1,46 @@
+apiVersion: mano.oran.io/v1alpha1
+kind: VNF
+metadata:
+  name: vnf-ran-sample
+  namespace: default
+spec:
+  # RAN VNF for radio access network functions
+  type: RAN
+  version: 1.0.0
+
+  # Placement policy for edge deployment
+  placement:
+    cloudType: edge
+    maxLatency: 5
+    preferredZones:
+      - edge-zone-1
+    antiAffinity:
+      - vnf-ran-backup
+
+  # Resource requirements
+  resources:
+    cpu: "2"
+    memory: "4Gi"
+    storage: "20Gi"
+    networkBandwidth: 1000
+
+  # QoS parameters for eMBB slice
+  qos:
+    bandwidth: 5.0  # Max bandwidth for video streaming
+    latency: 9.0    # Relaxed latency acceptable
+    jitter: 2.0
+    packetLoss: 0.01
+    reliability: 99.9
+
+  # Target clusters for deployment
+  targetClusters:
+    - edge01
+    - edge02
+
+  # RAN-specific configuration
+  configData:
+    PLMN_ID: "00101"
+    TAC: "0001"
+    BAND: "n78"
+    SSB_PERIOD: "20"
+    PRACH_CONFIG: "0"

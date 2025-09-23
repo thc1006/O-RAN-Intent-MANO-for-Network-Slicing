@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://oran-mano.io/schemas/qos-parameters.json",
+  "title": "QoS Parameters Schema",
+  "description": "Schema for validating Quality of Service parameters for network slices",
+  "type": "object",
+  "properties": {
+    "bandwidth": {
+      "type": "number",
+      "description": "Bandwidth allocation in Mbps",
+      "minimum": 1,
+      "maximum": 5
+    },
+    "latency": {
+      "type": "number",
+      "description": "Maximum latency in milliseconds",
+      "minimum": 1,
+      "maximum": 10
+    },
+    "jitter": {
+      "type": "number",
+      "description": "Maximum jitter in milliseconds",
+      "minimum": 0,
+      "maximum": 5
+    },
+    "packet_loss": {
+      "type": "number",
+      "description": "Maximum acceptable packet loss rate as percentage",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "reliability": {
+      "type": "number",
+      "description": "Required reliability as percentage (99.9 = 99.9%)",
+      "minimum": 95,
+      "maximum": 99.999
+    },
+    "slice_type": {
+      "type": "string",
+      "description": "Type of network slice based on use case",
+      "enum": ["eMBB", "uRLLC", "mIoT", "balanced"]
+    }
+  },
+  "required": ["bandwidth", "latency"],
+  "additionalProperties": false
+}

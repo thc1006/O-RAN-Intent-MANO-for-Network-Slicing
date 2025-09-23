@@ -1,0 +1,272 @@
+# OVN Central Cluster Configuration
+# Central OVN control plane for multi-site O-RAN deployment
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kube-ovn
+  labels:
+    app: kube-ovn
+    ovn-role: central
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ovn-central-config
+  namespace: kube-ovn
+data:
+  ovn-nb-db-hosts: "ovn-nb.kube-ovn.svc.cluster.local:6641"
+  ovn-sb-db-hosts: "ovn-sb.kube-ovn.svc.cluster.local:6642"
+  cluster-role: "central"
+  enable-interconnect: "true"
+  interconnect-name: "oram-interconnect"
+  # QoS Classes Configuration
+  qos-classes: |
+    high:
+      bandwidth: "100Mbit"
+      priority: 100
+      dscp: 46
+    medium:
+      bandwidth: "50Mbit"
+      priority: 50
+      dscp: 26
+    low:
+      bandwidth: "10Mbit"
+      priority: 10
+      dscp: 10
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ovn-central
+  namespace: kube-ovn
+  labels:
+    app: ovn-central
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: ovn-central
+  template:
+    metadata:
+      labels:
+        app: ovn-central
+    spec:
+      tolerations:
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+        effect: NoSchedule
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                app: ovn-central
+            topologyKey: kubernetes.io/hostname
+      containers:
+      - name: ovn-northd
+        image: kubeovn/kube-ovn:v1.11.5
+        command: ["/kube-ovn/start-db.sh"]
+        env:
+        - name: ENABLE_SSL
+          value: "false"
+        - name: OVN_DB_CLUSTER_ADDR
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: OVN_NORTHD_N_THREADS
+          value: "1"
+        - name: OVN_NB_DAEMON_MODE
+          value: "cluster"
+        - name: OVN_SB_DAEMON_MODE
+          value: "cluster"
+        - name: NODE_IPS
+          value: "$(POD_IP)"
+        volumeMounts:
+        - name: ovn-db
+          mountPath: /etc/ovn
+        - name: ovn-log
+          mountPath: /var/log/ovn
+        readinessProbe:
+          exec:
+            command:
+            - bash
+            - -c
+            - ovn-nbctl --timeout=3 show
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        livenessProbe:
+          exec:
+            command:
+            - bash
+            - -c
+            - ovn-nbctl --timeout=3 show
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        resources:
+          requests:
+            cpu: 500m
+            memory: 1Gi
+          limits:
+            cpu: 1000m
+            memory: 2Gi
+      - name: ovn-northd-monitor
+        image: kubeovn/kube-ovn:v1.11.5
+        command: ["/kube-ovn/start-northd.sh"]
+        env:
+        - name: ENABLE_SSL
+          value: "false"
+        - name: OVN_NB_DAEMON
+          value: "tcp:127.0.0.1:6641"
+        - name: OVN_SB_DAEMON
+          value: "tcp:127.0.0.1:6642"
+        resources:
+          requests:
+            cpu: 200m
+            memory: 300Mi
+          limits:
+            cpu: 500m
+            memory: 500Mi
+      volumes:
+      - name: ovn-db
+        hostPath:
+          path: /var/lib/ovn
+          type: DirectoryOrCreate
+      - name: ovn-log
+        hostPath:
+          path: /var/log/ovn
+          type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ovn-nb
+  namespace: kube-ovn
+  labels:
+    app: ovn-central
+    component: ovn-nb
+spec:
+  type: ClusterIP
+  ports:
+  - port: 6641
+    targetPort: 6641
+    protocol: TCP
+    name: ovn-nb
+  selector:
+    app: ovn-central
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ovn-sb
+  namespace: kube-ovn
+  labels:
+    app: ovn-central
+    component: ovn-sb
+spec:
+  type: ClusterIP
+  ports:
+  - port: 6642
+    targetPort: 6642
+    protocol: TCP
+    name: ovn-sb
+  selector:
+    app: ovn-central
+---
+# External Service for Edge Sites
+apiVersion: v1
+kind: Service
+metadata:
+  name: ovn-central-external
+  namespace: kube-ovn
+  annotations:
+    service.beta.kubernetes.io/external-traffic: OnlyLocal
+spec:
+  type: NodePort
+  ports:
+  - port: 6641
+    targetPort: 6641
+    nodePort: 30641
+    protocol: TCP
+    name: ovn-nb
+  - port: 6642
+    targetPort: 6642
+    nodePort: 30642
+    protocol: TCP
+    name: ovn-sb
+  selector:
+    app: ovn-central
+---
+# OVN Interconnection Gateway Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: ovn-ic
+  namespace: kube-ovn
+  labels:
+    app: ovn-central
+    component: ovn-ic
+spec:
+  type: ClusterIP
+  ports:
+  - port: 6645
+    targetPort: 6645
+    protocol: TCP
+    name: ovn-ic-nb
+  - port: 6646
+    targetPort: 6646
+    protocol: TCP
+    name: ovn-ic-sb
+  selector:
+    app: ovn-central
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: ovn-ic
+  namespace: kube-ovn
+  labels:
+    app: ovn-ic
+spec:
+  selector:
+    matchLabels:
+      app: ovn-ic
+  template:
+    metadata:
+      labels:
+        app: ovn-ic
+    spec:
+      tolerations:
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+        effect: NoSchedule
+      hostNetwork: true
+      nodeSelector:
+        ovn-role: "central"
+      containers:
+      - name: ovn-ic
+        image: kubeovn/kube-ovn:v1.11.5
+        command: ["/kube-ovn/start-ic-db.sh"]
+        env:
+        - name: ENABLE_SSL
+          value: "false"
+        - name: NODE_IPS
+          value: "$(NODE_IP)"
+        - name: OVN_IC_NB_DB
+          value: "tcp:$(NODE_IP):6645"
+        - name: OVN_IC_SB_DB
+          value: "tcp:$(NODE_IP):6646"
+        volumeMounts:
+        - name: ovn-ic-db
+          mountPath: /etc/ovn-ic
+        resources:
+          requests:
+            cpu: 200m
+            memory: 300Mi
+          limits:
+            cpu: 500m
+            memory: 500Mi
+      volumes:
+      - name: ovn-ic-db
+        hostPath:
+          path: /var/lib/ovn-ic
+          type: DirectoryOrCreate

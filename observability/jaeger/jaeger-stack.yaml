@@ -1,0 +1,463 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: jaeger
+  namespace: oran-monitoring
+  labels:
+    app.kubernetes.io/name: jaeger
+    app.kubernetes.io/component: tracing
+    app.kubernetes.io/part-of: oran-intent-mano
+---
+# Jaeger All-in-One for development/testing
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jaeger
+  namespace: oran-monitoring
+  labels:
+    app.kubernetes.io/name: jaeger
+    app.kubernetes.io/component: tracing
+    app.kubernetes.io/part-of: oran-intent-mano
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: jaeger
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: jaeger
+        app.kubernetes.io/component: tracing
+        app.kubernetes.io/part-of: oran-intent-mano
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "14269"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: jaeger
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: jaeger
+        image: jaegertracing/all-in-one:1.51.0
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 10001
+          runAsGroup: 10001
+        env:
+        - name: COLLECTOR_ZIPKIN_HOST_PORT
+          value: ":9411"
+        - name: COLLECTOR_OTLP_ENABLED
+          value: "true"
+        - name: METRICS_STORAGE_TYPE
+          value: "prometheus"
+        - name: PROMETHEUS_SERVER_URL
+          value: "http://prometheus:9090"
+        - name: SPAN_STORAGE_TYPE
+          value: "memory"
+        - name: MEMORY_MAX_TRACES
+          value: "50000"
+        - name: LOG_LEVEL
+          value: "info"
+        ports:
+        # Jaeger UI
+        - containerPort: 16686
+          name: ui
+          protocol: TCP
+        # Jaeger collector gRPC
+        - containerPort: 14250
+          name: grpc
+          protocol: TCP
+        # Jaeger collector HTTP
+        - containerPort: 14268
+          name: http
+          protocol: TCP
+        # Jaeger metrics
+        - containerPort: 14269
+          name: admin
+          protocol: TCP
+        # Zipkin compatible endpoint
+        - containerPort: 9411
+          name: zipkin
+          protocol: TCP
+        # OTLP gRPC receiver
+        - containerPort: 4317
+          name: otlp-grpc
+          protocol: TCP
+        # OTLP HTTP receiver
+        - containerPort: 4318
+          name: otlp-http
+          protocol: TCP
+        # Jaeger agent
+        - containerPort: 6831
+          name: agent-thrift
+          protocol: UDP
+        - containerPort: 6832
+          name: agent-binary
+          protocol: UDP
+        livenessProbe:
+          httpGet:
+            path: /
+            port: admin
+          initialDelaySeconds: 30
+          periodSeconds: 15
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /
+            port: admin
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 4
+          failureThreshold: 3
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 2Gi
+          requests:
+            cpu: 100m
+            memory: 256Mi
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+      volumes:
+      - name: tmp
+        emptyDir: {}
+      nodeSelector:
+        kubernetes.io/os: linux
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jaeger-collector
+  namespace: oran-monitoring
+  labels:
+    app.kubernetes.io/name: jaeger
+    app.kubernetes.io/component: collector
+    app.kubernetes.io/part-of: oran-intent-mano
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "14269"
+spec:
+  type: ClusterIP
+  ports:
+  - name: grpc
+    port: 14250
+    targetPort: grpc
+    protocol: TCP
+  - name: http
+    port: 14268
+    targetPort: http
+    protocol: TCP
+  - name: zipkin
+    port: 9411
+    targetPort: zipkin
+    protocol: TCP
+  - name: otlp-grpc
+    port: 4317
+    targetPort: otlp-grpc
+    protocol: TCP
+  - name: otlp-http
+    port: 4318
+    targetPort: otlp-http
+    protocol: TCP
+  - name: admin
+    port: 14269
+    targetPort: admin
+    protocol: TCP
+  selector:
+    app.kubernetes.io/name: jaeger
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jaeger-agent
+  namespace: oran-monitoring
+  labels:
+    app.kubernetes.io/name: jaeger
+    app.kubernetes.io/component: agent
+    app.kubernetes.io/part-of: oran-intent-mano
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+  - name: agent-thrift
+    port: 6831
+    targetPort: agent-thrift
+    protocol: UDP
+  - name: agent-binary
+    port: 6832
+    targetPort: agent-binary
+    protocol: UDP
+  selector:
+    app.kubernetes.io/name: jaeger
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jaeger-query
+  namespace: oran-monitoring
+  labels:
+    app.kubernetes.io/name: jaeger
+    app.kubernetes.io/component: query
+    app.kubernetes.io/part-of: oran-intent-mano
+spec:
+  type: ClusterIP
+  ports:
+  - name: ui
+    port: 16686
+    targetPort: ui
+    protocol: TCP
+  selector:
+    app.kubernetes.io/name: jaeger
+---
+# ServiceMonitor for Prometheus to scrape Jaeger metrics
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: jaeger
+  namespace: oran-monitoring
+  labels:
+    app.kubernetes.io/name: jaeger
+    app.kubernetes.io/part-of: oran-intent-mano
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: jaeger
+  endpoints:
+  - port: admin
+    interval: 30s
+    path: /metrics
+---
+# ConfigMap for O-RAN tracing configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: oran-tracing-config
+  namespace: oran-monitoring
+  labels:
+    app.kubernetes.io/name: oran-tracing-config
+    app.kubernetes.io/part-of: oran-intent-mano
+data:
+  tracing-config.yaml: |
+    # O-RAN Intent MANO Distributed Tracing Configuration
+
+    # Service definitions for tracing
+    services:
+      nlp-service:
+        endpoint: "http://jaeger-collector:14268/api/traces"
+        service_name: "oran-nlp"
+        sampling_rate: 1.0
+        tags:
+          component: "nlp"
+          oran_service: "intent-processing"
+
+      orchestrator-service:
+        endpoint: "http://jaeger-collector:14268/api/traces"
+        service_name: "oran-orchestrator"
+        sampling_rate: 1.0
+        tags:
+          component: "orchestrator"
+          oran_service: "placement-decision"
+
+      vnf-operator:
+        endpoint: "http://jaeger-collector:14268/api/traces"
+        service_name: "oran-vnf-operator"
+        sampling_rate: 1.0
+        tags:
+          component: "operator"
+          oran_service: "vnf-lifecycle"
+
+      ran-service:
+        endpoint: "http://jaeger-collector:14268/api/traces"
+        service_name: "oran-ran"
+        sampling_rate: 0.5
+        tags:
+          component: "ran"
+          oran_service: "radio-access"
+
+      cn-service:
+        endpoint: "http://jaeger-collector:14268/api/traces"
+        service_name: "oran-cn"
+        sampling_rate: 0.5
+        tags:
+          component: "cn"
+          oran_service: "core-network"
+
+      tn-service:
+        endpoint: "http://jaeger-collector:14268/api/traces"
+        service_name: "oran-tn"
+        sampling_rate: 0.3
+        tags:
+          component: "tn"
+          oran_service: "transport-network"
+
+    # O-RAN specific span attributes
+    span_attributes:
+      intent_id: "oran.intent.id"
+      slice_id: "oran.slice.id"
+      vnf_id: "oran.vnf.id"
+      placement_site: "oran.placement.site"
+      network_slice_type: "oran.slice.type"
+      deployment_phase: "oran.deployment.phase"
+      performance_target: "oran.performance.target"
+      thesis_metric: "oran.thesis.metric"
+
+    # Custom operation names for O-RAN workflows
+    operations:
+      intent_processing:
+        - "parse_natural_language"
+        - "extract_qos_requirements"
+        - "validate_intent"
+        - "convert_to_json_schema"
+
+      slice_deployment:
+        - "analyze_placement_requirements"
+        - "select_deployment_sites"
+        - "generate_vnf_manifests"
+        - "deploy_ran_components"
+        - "deploy_cn_components"
+        - "configure_transport_network"
+        - "validate_e2e_connectivity"
+
+      vnf_lifecycle:
+        - "vnf_instantiation"
+        - "vnf_configuration"
+        - "vnf_scaling"
+        - "vnf_healing"
+        - "vnf_termination"
+
+      network_configuration:
+        - "setup_vxlan_tunnels"
+        - "configure_traffic_shaping"
+        - "establish_inter_site_connectivity"
+        - "apply_qos_policies"
+
+    # Performance thresholds for alerting
+    performance_thresholds:
+      intent_processing_duration_ms: 5000
+      slice_deployment_duration_ms: 600000  # 10 minutes
+      vnf_instantiation_duration_ms: 120000  # 2 minutes
+      network_setup_duration_ms: 60000      # 1 minute
+
+  # Example instrumentation for Go services
+  go-instrumentation.go: |
+    package main
+
+    import (
+        "context"
+        "go.opentelemetry.io/otel"
+        "go.opentelemetry.io/otel/attribute"
+        "go.opentelemetry.io/otel/exporters/jaeger"
+        "go.opentelemetry.io/otel/sdk/resource"
+        "go.opentelemetry.io/otel/sdk/trace"
+        semconv "go.opentelemetry.io/otel/semconv/v1.10.0"
+    )
+
+    func initTracer(serviceName string) func() {
+        exporter, err := jaeger.New(
+            jaeger.WithCollectorEndpoint(
+                jaeger.WithEndpoint("http://jaeger-collector:14268/api/traces"),
+            ),
+        )
+        if err != nil {
+            panic(err)
+        }
+
+        tp := trace.NewTracerProvider(
+            trace.WithBatcher(exporter),
+            trace.WithResource(resource.NewWithAttributes(
+                semconv.SchemaURL,
+                semconv.ServiceNameKey.String(serviceName),
+                semconv.ServiceVersionKey.String("1.0.0"),
+                attribute.String("oran.component", "nlp"),
+                attribute.String("oran.service", "intent-processing"),
+            )),
+        )
+
+        otel.SetTracerProvider(tp)
+
+        return func() {
+            _ = tp.Shutdown(context.Background())
+        }
+    }
+
+    // Example usage in intent processing
+    func processIntent(ctx context.Context, intent string) error {
+        tracer := otel.Tracer("oran-nlp")
+        ctx, span := tracer.Start(ctx, "process_intent")
+        defer span.End()
+
+        span.SetAttributes(
+            attribute.String("oran.intent.text", intent),
+            attribute.String("oran.intent.id", generateIntentID()),
+        )
+
+        // Parse natural language
+        ctx, parseSpan := tracer.Start(ctx, "parse_natural_language")
+        qosRequirements, err := parseNaturalLanguage(intent)
+        if err != nil {
+            parseSpan.RecordError(err)
+            parseSpan.SetStatus(codes.Error, "Failed to parse intent")
+            return err
+        }
+        parseSpan.SetAttributes(
+            attribute.StringSlice("oran.qos.requirements", qosRequirements),
+        )
+        parseSpan.End()
+
+        // Convert to JSON schema
+        ctx, convertSpan := tracer.Start(ctx, "convert_to_json_schema")
+        jsonSchema, err := convertToJSON(qosRequirements)
+        if err != nil {
+            convertSpan.RecordError(err)
+            convertSpan.SetStatus(codes.Error, "Failed to convert to JSON")
+            return err
+        }
+        convertSpan.SetAttributes(
+            attribute.String("oran.json.schema", jsonSchema),
+        )
+        convertSpan.End()
+
+        span.SetStatus(codes.Ok, "Intent processed successfully")
+        return nil
+    }
+
+---
+# Ingress for Jaeger UI (optional, for external access)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: jaeger-ui
+  namespace: oran-monitoring
+  labels:
+    app.kubernetes.io/name: jaeger-ui
+    app.kubernetes.io/part-of: oran-intent-mano
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: jaeger.oran.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: jaeger-query
+            port:
+              number: 16686

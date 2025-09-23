@@ -1,0 +1,411 @@
+# OVN Edge Site Configuration
+# Edge site OVN configuration for O-RAN deployment
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kube-ovn
+  labels:
+    app: kube-ovn
+    ovn-role: edge
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ovn-edge-config
+  namespace: kube-ovn
+data:
+  # Central cluster connection
+  ovn-nb-db-hosts: "${CENTRAL_OVN_NB_HOSTS}"
+  ovn-sb-db-hosts: "${CENTRAL_OVN_SB_HOSTS}"
+  cluster-role: "edge"
+  edge-site-name: "${EDGE_SITE_NAME}"
+  enable-interconnect: "true"
+  interconnect-name: "oram-interconnect"
+
+  # Tunnel configuration
+  tunnel-type: "geneve"
+  encap-checksum: "true"
+
+  # QoS Configuration
+  enable-qos: "true"
+  default-interface-mtu: "1400"
+
+  # Network isolation
+  enable-network-policy: "true"
+  enable-lb-svc: "true"
+
+  # Edge-specific settings
+  edge-gateway-nodes: "${EDGE_GATEWAY_NODES}"
+  external-gateway-config-ns: "kube-ovn"
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: ovs-ovn
+  namespace: kube-ovn
+  labels:
+    app: ovs
+spec:
+  selector:
+    matchLabels:
+      app: ovs
+  updateStrategy:
+    type: OnDelete
+  template:
+    metadata:
+      labels:
+        app: ovs
+        component: network
+        type: infra
+    spec:
+      tolerations:
+      - operator: Exists
+      hostNetwork: true
+      hostPID: true
+      serviceAccountName: ovn
+      containers:
+      - name: openvswitch
+        image: kubeovn/kube-ovn:v1.11.5
+        imagePullPolicy: IfNotPresent
+        command: ["/kube-ovn/start-ovs.sh"]
+        securityContext:
+          runAsUser: 0
+          privileged: true
+        env:
+        - name: ENABLE_SSL
+          value: "false"
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: HW_OFFLOAD
+          value: "false"
+        - name: KUBE_NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: OVN_DB_IPS
+          value: "${CENTRAL_OVN_DB_IPS}"
+        volumeMounts:
+        - mountPath: /var/run/docker.sock
+          name: host-docker-sock
+          readOnly: true
+        - mountPath: /var/run/containerd
+          name: host-containerd
+          readOnly: true
+        - mountPath: /lib/modules
+          name: host-modules
+          readOnly: true
+        - mountPath: /var/run/openvswitch
+          name: host-run-ovs
+        - mountPath: /var/run/ovn
+          name: host-run-ovn
+        - mountPath: /sys
+          name: host-sys
+          readOnly: true
+        - mountPath: /etc/openvswitch
+          name: host-config-ovs
+        - mountPath: /etc/ovn
+          name: host-config-ovn
+        - mountPath: /var/log/openvswitch
+          name: host-log-ovs
+        - mountPath: /var/log/ovn
+          name: host-log-ovn
+        readinessProbe:
+          exec:
+            command:
+            - bash
+            - -c
+            - ovs-vsctl show
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        livenessProbe:
+          exec:
+            command:
+            - bash
+            - -c
+            - ovs-vsctl show && ovn-controller --version
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        resources:
+          requests:
+            cpu: 200m
+            memory: 300Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+      - name: ovn-controller
+        image: kubeovn/kube-ovn:v1.11.5
+        imagePullPolicy: IfNotPresent
+        command: ["/kube-ovn/start-controller.sh"]
+        securityContext:
+          runAsUser: 0
+          privileged: true
+        env:
+        - name: ENABLE_SSL
+          value: "false"
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: KUBE_NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: OVN_REMOTE
+          value: "tcp:${CENTRAL_OVN_SB_HOST}:6642"
+        - name: OVN_REMOTE_PROBE_INTERVAL
+          value: "10000"
+        - name: OVN_OPENFLOW_PROBE_INTERVAL
+          value: "180"
+        - name: OVN_ENCAP_TYPE
+          value: "geneve"
+        volumeMounts:
+        - mountPath: /var/run/openvswitch
+          name: host-run-ovs
+        - mountPath: /var/run/ovn
+          name: host-run-ovn
+        - mountPath: /sys
+          name: host-sys
+          readOnly: true
+        - mountPath: /etc/openvswitch
+          name: host-config-ovs
+        - mountPath: /etc/ovn
+          name: host-config-ovn
+        - mountPath: /var/log/ovn
+          name: host-log-ovn
+        resources:
+          requests:
+            cpu: 200m
+            memory: 300Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+      nodeSelector:
+        kubernetes.io/os: "linux"
+      volumes:
+      - name: host-docker-sock
+        hostPath:
+          path: /var/run/docker.sock
+      - name: host-containerd
+        hostPath:
+          path: /var/run/containerd
+      - name: host-modules
+        hostPath:
+          path: /lib/modules
+      - name: host-run-ovs
+        hostPath:
+          path: /var/run/openvswitch
+      - name: host-run-ovn
+        hostPath:
+          path: /var/run/ovn
+      - name: host-sys
+        hostPath:
+          path: /sys
+      - name: host-config-ovs
+        hostPath:
+          path: /etc/origin/openvswitch
+      - name: host-config-ovn
+        hostPath:
+          path: /etc/origin/ovn
+      - name: host-log-ovs
+        hostPath:
+          path: /var/log/openvswitch
+      - name: host-log-ovn
+        hostPath:
+          path: /var/log/ovn
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kube-ovn-controller
+  namespace: kube-ovn
+  annotations:
+    kubernetes.io/description: |
+      OVN Controller for edge site
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kube-ovn-controller
+  strategy:
+    rollingUpdate:
+      maxSurge: 0%
+      maxUnavailable: 100%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: kube-ovn-controller
+        component: network
+        type: infra
+    spec:
+      tolerations:
+      - operator: Exists
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                app: kube-ovn-controller
+            topologyKey: kubernetes.io/hostname
+      priorityClassName: system-cluster-critical
+      serviceAccountName: ovn
+      hostNetwork: true
+      containers:
+      - name: kube-ovn-controller
+        image: kubeovn/kube-ovn:v1.11.5
+        imagePullPolicy: IfNotPresent
+        command:
+        - /kube-ovn/start-controller.sh
+        args:
+        - --default-cidr=10.16.0.0/16
+        - --default-gateway=10.16.0.1
+        - --default-gateway-check=true
+        - --default-logical-gateway=false
+        - --default-exclude-ips=10.16.0.1
+        - --cluster-router=ovn-cluster
+        - --default-interface-name=eth0
+        - --default-exchange-link-name=false
+        - --default-vlan-name=ovn-vlan
+        - --ls-dnat-mod-dl-dst=true
+        - --ls-ct-skip-dst-lport-ips=true
+        - --pod-nic-type=veth-pair
+        - --enable-lb=true
+        - --enable-np=true
+        - --enable-eip-snat=true
+        - --enable-external-vpc=true
+        - --logtostderr=false
+        - --alsologtostderr=true
+        - --log_file=/var/log/kube-ovn/kube-ovn-controller.log
+        - --log_file_max_size=200
+        - --log_file_max_num=10
+        - --v=3
+        - --ovn-nb-addr=${CENTRAL_OVN_NB_HOST}:6641
+        - --ovn-sb-addr=${CENTRAL_OVN_SB_HOST}:6642
+        - --ovn-timeout=60
+        securityContext:
+          capabilities:
+            add:
+            - SYS_ADMIN
+            - NET_ADMIN
+        env:
+        - name: ENABLE_SSL
+          value: "false"
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: KUBE_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: KUBE_NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: OVN_DB_IPS
+          value: "${CENTRAL_OVN_DB_IPS}"
+        resources:
+          requests:
+            cpu: 200m
+            memory: 300Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+        volumeMounts:
+        - mountPath: /etc/localtime
+          name: localtime
+          readOnly: true
+        - mountPath: /var/log/kube-ovn
+          name: kube-ovn-log
+        - mountPath: /var/run/tls
+          name: kube-ovn-tls
+        readinessProbe:
+          exec:
+            command:
+            - /kube-ovn/kube-ovn-controller-healthcheck.sh
+          periodSeconds: 3
+          timeoutSeconds: 45
+        livenessProbe:
+          exec:
+            command:
+            - /kube-ovn/kube-ovn-controller-healthcheck.sh
+          initialDelaySeconds: 30
+          periodSeconds: 7
+          failureThreshold: 5
+          timeoutSeconds: 45
+      nodeSelector:
+        ovn-role: "controller"
+      volumes:
+      - name: localtime
+        hostPath:
+          path: /etc/localtime
+      - name: kube-ovn-log
+        hostPath:
+          path: /var/log/kube-ovn
+      - name: kube-ovn-tls
+        secret:
+          optional: true
+          secretName: kube-ovn-tls
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  namespace: kube-ovn
+  name: ovn
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  annotations:
+    rbac.authorization.k8s.io/autoupdate: "true"
+  name: system:ovn
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  - nodes
+  - services
+  - endpoints
+  - configmaps
+  - namespaces
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - patch
+  - update
+- apiGroups:
+  - networking.k8s.io
+  resources:
+  - networkpolicies
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - kubeovn.io
+  resources:
+  - "*"
+  verbs:
+  - "*"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: ovn
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:ovn
+subjects:
+- kind: ServiceAccount
+  name: ovn
+  namespace: kube-ovn

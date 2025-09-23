@@ -1,0 +1,414 @@
+# Test Pods for Multi-Cluster Latency Validation
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: network-testing
+---
+# Network Attachment Definitions for Multi-NIC
+apiVersion: "k8s.cni.cncf.io/v1"
+kind: NetworkAttachmentDefinition
+metadata:
+  name: data-network
+  namespace: network-testing
+spec:
+  config: '{
+    "cniVersion": "0.3.1",
+    "type": "kube-ovn",
+    "server_socket": "/run/openvswitch/kube-ovn-daemon.sock",
+    "provider": "data-subnet"
+  }'
+---
+apiVersion: "k8s.cni.cncf.io/v1"
+kind: NetworkAttachmentDefinition
+metadata:
+  name: mgmt-network
+  namespace: network-testing
+spec:
+  config: '{
+    "cniVersion": "0.3.1",
+    "type": "kube-ovn",
+    "server_socket": "/run/openvswitch/kube-ovn-daemon.sock",
+    "provider": "mgmt-subnet"
+  }'
+---
+# Test pod for Central cluster
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-pod-central
+  namespace: network-testing
+  labels:
+    app: latency-test
+    cluster: central
+  annotations:
+    k8s.v1.cni.cncf.io/networks: |
+      [
+        {
+          "name": "data-network",
+          "interface": "eth1"
+        },
+        {
+          "name": "mgmt-network",
+          "interface": "eth2"
+        }
+      ]
+spec:
+  nodeSelector:
+    site: central
+  containers:
+  - name: network-tools
+    image: nicolaka/netshoot:latest
+    command: ["/bin/bash"]
+    args:
+    - -c
+    - |
+      # Start iperf3 server
+      iperf3 -s -D
+      # Start simple HTTP server
+      python3 -m http.server 8080 &
+      # Keep container running
+      sleep infinity
+    ports:
+    - containerPort: 5201
+      name: iperf
+      protocol: TCP
+    - containerPort: 8080
+      name: http
+      protocol: TCP
+    securityContext:
+      capabilities:
+        add:
+        - NET_ADMIN
+        - NET_RAW
+    resources:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "256Mi"
+        cpu: "500m"
+---
+# Test pod for Regional cluster
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-pod-regional
+  namespace: network-testing
+  labels:
+    app: latency-test
+    cluster: regional
+  annotations:
+    k8s.v1.cni.cncf.io/networks: |
+      [
+        {
+          "name": "data-network",
+          "interface": "eth1"
+        },
+        {
+          "name": "mgmt-network",
+          "interface": "eth2"
+        }
+      ]
+spec:
+  nodeSelector:
+    site: regional
+  containers:
+  - name: network-tools
+    image: nicolaka/netshoot:latest
+    command: ["/bin/bash"]
+    args:
+    - -c
+    - |
+      iperf3 -s -D
+      python3 -m http.server 8080 &
+      sleep infinity
+    ports:
+    - containerPort: 5201
+      name: iperf
+      protocol: TCP
+    - containerPort: 8080
+      name: http
+      protocol: TCP
+    securityContext:
+      capabilities:
+        add:
+        - NET_ADMIN
+        - NET_RAW
+    resources:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "256Mi"
+        cpu: "500m"
+---
+# Test pod for Edge-01 cluster
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-pod-edge01
+  namespace: network-testing
+  labels:
+    app: latency-test
+    cluster: edge01
+  annotations:
+    k8s.v1.cni.cncf.io/networks: |
+      [
+        {
+          "name": "data-network",
+          "interface": "eth1"
+        },
+        {
+          "name": "mgmt-network",
+          "interface": "eth2"
+        }
+      ]
+spec:
+  nodeSelector:
+    site: edge01
+  containers:
+  - name: network-tools
+    image: nicolaka/netshoot:latest
+    command: ["/bin/bash"]
+    args:
+    - -c
+    - |
+      iperf3 -s -D
+      python3 -m http.server 8080 &
+      sleep infinity
+    ports:
+    - containerPort: 5201
+      name: iperf
+      protocol: TCP
+    - containerPort: 8080
+      name: http
+      protocol: TCP
+    securityContext:
+      capabilities:
+        add:
+        - NET_ADMIN
+        - NET_RAW
+    resources:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "256Mi"
+        cpu: "500m"
+---
+# Test pod for Edge-02 cluster
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-pod-edge02
+  namespace: network-testing
+  labels:
+    app: latency-test
+    cluster: edge02
+  annotations:
+    k8s.v1.cni.cncf.io/networks: |
+      [
+        {
+          "name": "data-network",
+          "interface": "eth1"
+        },
+        {
+          "name": "mgmt-network",
+          "interface": "eth2"
+        }
+      ]
+spec:
+  nodeSelector:
+    site: edge02
+  containers:
+  - name: network-tools
+    image: nicolaka/netshoot:latest
+    command: ["/bin/bash"]
+    args:
+    - -c
+    - |
+      iperf3 -s -D
+      python3 -m http.server 8080 &
+      sleep infinity
+    ports:
+    - containerPort: 5201
+      name: iperf
+      protocol: TCP
+    - containerPort: 8080
+      name: http
+      protocol: TCP
+    securityContext:
+      capabilities:
+        add:
+        - NET_ADMIN
+        - NET_RAW
+    resources:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "256Mi"
+        cpu: "500m"
+---
+# Service for cross-cluster connectivity testing
+apiVersion: v1
+kind: Service
+metadata:
+  name: latency-test-service
+  namespace: network-testing
+  labels:
+    app: latency-test
+spec:
+  selector:
+    app: latency-test
+  ports:
+  - name: http
+    protocol: TCP
+    port: 8080
+    targetPort: 8080
+  - name: iperf
+    protocol: TCP
+    port: 5201
+    targetPort: 5201
+  type: ClusterIP
+---
+# DaemonSet for continuous monitoring
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: network-monitor
+  namespace: network-testing
+spec:
+  selector:
+    matchLabels:
+      app: network-monitor
+  template:
+    metadata:
+      labels:
+        app: network-monitor
+    spec:
+      hostNetwork: true
+      containers:
+      - name: monitor
+        image: nicolaka/netshoot:latest
+        command: ["/bin/bash"]
+        args:
+        - -c
+        - |
+          # Continuous monitoring script
+          while true; do
+            # Collect network statistics
+            date >> /data/network-stats.log
+
+            # Check VXLAN interfaces
+            ip -s link show | grep vxlan >> /data/network-stats.log
+
+            # Check TC statistics
+            for iface in $(ip link show | grep -o 'vxlan-[a-z0-9]*'); do
+              echo "Interface: $iface" >> /data/network-stats.log
+              tc -s qdisc show dev $iface >> /data/network-stats.log
+            done
+
+            # Sleep for monitoring interval
+            sleep 60
+          done
+        volumeMounts:
+        - name: data
+          mountPath: /data
+        securityContext:
+          capabilities:
+            add:
+            - NET_ADMIN
+            - NET_RAW
+      volumes:
+      - name: data
+        hostPath:
+          path: /var/log/network-monitor
+          type: DirectoryOrCreate
+---
+# Job for automated testing
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: latency-test-job
+  namespace: network-testing
+spec:
+  template:
+    metadata:
+      labels:
+        app: latency-test-job
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: tester
+        image: nicolaka/netshoot:latest
+        command: ["/bin/bash"]
+        args:
+        - -c
+        - |
+          echo "Starting automated latency tests..."
+
+          # Define test targets
+          declare -A TARGETS=(
+            ["central"]="10.0.1.10"
+            ["regional"]="10.1.1.10"
+            ["edge01"]="10.2.1.10"
+            ["edge02"]="10.3.1.10"
+          )
+
+          # Expected delays
+          declare -A EXPECTED=(
+            ["central-regional"]="7"
+            ["central-edge01"]="7"
+            ["central-edge02"]="7"
+            ["regional-edge01"]="5"
+            ["regional-edge02"]="5"
+            ["edge01-edge02"]="5"
+          )
+
+          # Run tests
+          RESULTS_FILE="/tmp/test-results.json"
+          echo "{" > $RESULTS_FILE
+          echo "  \"timestamp\": \"$(date -Iseconds)\"," >> $RESULTS_FILE
+          echo "  \"tests\": {" >> $RESULTS_FILE
+
+          FIRST=true
+          for source in "${!TARGETS[@]}"; do
+            for target in "${!TARGETS[@]}"; do
+              if [ "$source" != "$target" ]; then
+                if [ "$FIRST" != "true" ]; then
+                  echo "," >> $RESULTS_FILE
+                fi
+                FIRST=false
+
+                echo -n "    \"${source}-${target}\": {" >> $RESULTS_FILE
+
+                # Run ping test
+                TARGET_IP=${TARGETS[$target]}
+                PING_RESULT=$(ping -c 20 -i 0.1 -q $TARGET_IP 2>&1 || echo "FAILED")
+
+                if [[ "$PING_RESULT" != "FAILED" ]]; then
+                  AVG_RTT=$(echo "$PING_RESULT" | grep "rtt min/avg/max" | awk -F'/' '{print $5}')
+                  PACKET_LOSS=$(echo "$PING_RESULT" | grep -oP '\d+(?=% packet loss)')
+
+                  echo -n "\"avg_rtt\": \"$AVG_RTT\", " >> $RESULTS_FILE
+                  echo -n "\"packet_loss\": \"$PACKET_LOSS\", " >> $RESULTS_FILE
+                  echo -n "\"status\": \"SUCCESS\"" >> $RESULTS_FILE
+                else
+                  echo -n "\"status\": \"FAILED\"" >> $RESULTS_FILE
+                fi
+
+                echo -n "}" >> $RESULTS_FILE
+              fi
+            done
+          done
+
+          echo "" >> $RESULTS_FILE
+          echo "  }" >> $RESULTS_FILE
+          echo "}" >> $RESULTS_FILE
+
+          # Display results
+          cat $RESULTS_FILE
+
+          echo "Test completed successfully!"

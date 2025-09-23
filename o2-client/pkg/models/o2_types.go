@@ -1,0 +1,288 @@
+package models
+
+import (
+	"time"
+)
+
+// O-RAN O2 Interface Models
+// Based on O-RAN.WG6.O2IMS-INTERFACE-R003-v05.00
+
+// ResourceType represents the type of O-Cloud resource
+type ResourceType string
+
+const (
+	ResourceTypeNode        ResourceType = "Node"
+	ResourceTypeCPU         ResourceType = "CPU"
+	ResourceTypeMemory      ResourceType = "Memory"
+	ResourceTypeStorage     ResourceType = "Storage"
+	ResourceTypeNetwork     ResourceType = "Network"
+	ResourceTypeAccelerator ResourceType = "Accelerator"
+)
+
+// ResourcePoolState represents the operational state of a resource pool
+type ResourcePoolState string
+
+const (
+	ResourcePoolStateEnabled  ResourcePoolState = "enabled"
+	ResourcePoolStateDisabled ResourcePoolState = "disabled"
+)
+
+// DeploymentManagerState represents the state of a deployment manager
+type DeploymentManagerState string
+
+const (
+	DeploymentManagerStateEnabled  DeploymentManagerState = "enabled"
+	DeploymentManagerStateDisabled DeploymentManagerState = "disabled"
+)
+
+// O2IMS Models
+
+// OCloudInfo represents information about an O-Cloud
+type OCloudInfo struct {
+	OCloudID          string                 `json:"oCloudId"`
+	GlobalCloudID     string                 `json:"globalCloudId,omitempty"`
+	Name              string                 `json:"name"`
+	Description       string                 `json:"description,omitempty"`
+	ServiceURI        string                 `json:"serviceUri"`
+	SupportedFeatures []string               `json:"supportedFeatures,omitempty"`
+	Extensions        map[string]interface{} `json:"extensions,omitempty"`
+}
+
+// ResourcePool represents a pool of resources in the O-Cloud
+type ResourcePool struct {
+	ResourcePoolID string                 `json:"resourcePoolId"`
+	OCloudID       string                 `json:"oCloudId"`
+	GlobalCloudID  string                 `json:"globalCloudId,omitempty"`
+	Name           string                 `json:"name"`
+	Description    string                 `json:"description,omitempty"`
+	Location       string                 `json:"location,omitempty"`
+	State          ResourcePoolState      `json:"state"`
+	Resources      []Resource             `json:"resources,omitempty"`
+	Extensions     map[string]interface{} `json:"extensions,omitempty"`
+}
+
+// Resource represents a specific resource within a resource pool
+type Resource struct {
+	ResourceID     string                 `json:"resourceId"`
+	ResourcePoolID string                 `json:"resourcePoolId"`
+	OCloudID       string                 `json:"oCloudId"`
+	GlobalCloudID  string                 `json:"globalCloudId,omitempty"`
+	ResourceTypeID string                 `json:"resourceTypeId"`
+	Name           string                 `json:"name"`
+	Description    string                 `json:"description,omitempty"`
+	Elements       []ResourceElement      `json:"elements,omitempty"`
+	Extensions     map[string]interface{} `json:"extensions,omitempty"`
+}
+
+// ResourceElement represents individual elements of a resource
+type ResourceElement struct {
+	ElementID   string                 `json:"elementId"`
+	ResourceID  string                 `json:"resourceId"`
+	Name        string                 `json:"name"`
+	Description string                 `json:"description,omitempty"`
+	Properties  map[string]interface{} `json:"properties,omitempty"`
+	Extensions  map[string]interface{} `json:"extensions,omitempty"`
+}
+
+// ResourceTypeInfo describes a type of resource
+type ResourceTypeInfo struct {
+	ResourceTypeID   string                 `json:"resourceTypeId"`
+	Name             string                 `json:"name"`
+	Description      string                 `json:"description,omitempty"`
+	Vendor           string                 `json:"vendor,omitempty"`
+	Model            string                 `json:"model,omitempty"`
+	Version          string                 `json:"version,omitempty"`
+	AlarmDictionary  AlarmDictionary        `json:"alarmDictionary,omitempty"`
+	ResourceKind     string                 `json:"resourceKind,omitempty"`
+	ResourceClass    string                 `json:"resourceClass,omitempty"`
+	Extensions       map[string]interface{} `json:"extensions,omitempty"`
+}
+
+// AlarmDictionary defines alarm types for resources
+type AlarmDictionary struct {
+	ID                 string      `json:"id"`
+	Name               string      `json:"name"`
+	EntityType         string      `json:"entityType"`
+	AlarmDefinition    []AlarmDef  `json:"alarmDefinition,omitempty"`
+	AlarmLastChange    string      `json:"alarmLastChange,omitempty"`
+	AlarmChangeType    []string    `json:"alarmChangeType,omitempty"`
+	AlarmDescription   string      `json:"alarmDescription,omitempty"`
+	ProposedRepairActions string   `json:"proposedRepairActions,omitempty"`
+	ClearingType       []string    `json:"clearingType,omitempty"`
+}
+
+// AlarmDef defines an alarm
+type AlarmDef struct {
+	AlarmCode        string `json:"alarmCode"`
+	AlarmName        string `json:"alarmName"`
+	AlarmDescription string `json:"alarmDescription"`
+	ProposedRepairActions string `json:"proposedRepairActions"`
+	ClearingType     string `json:"clearingType"`
+}
+
+// O2DMS Models
+
+// DeploymentManager represents a deployment manager instance
+type DeploymentManager struct {
+	DeploymentManagerID string                 `json:"deploymentManagerId"`
+	OCloudID            string                 `json:"oCloudId"`
+	Name                string                 `json:"name"`
+	Description         string                 `json:"description,omitempty"`
+	DeploymentManagementServiceEndpoint string `json:"deploymentManagementServiceEndpoint"`
+	CapacityInfo        string                 `json:"capacityInfo,omitempty"`
+	State               DeploymentManagerState `json:"state"`
+	SupportedLocations  []string               `json:"supportedLocations,omitempty"`
+	Capabilities        []string               `json:"capabilities,omitempty"`
+	Extensions          map[string]interface{} `json:"extensions,omitempty"`
+}
+
+// NFDeploymentDescriptor describes how to deploy a Network Function
+type NFDeploymentDescriptor struct {
+	ID                  string                 `json:"id"`
+	Name                string                 `json:"name"`
+	Description         string                 `json:"description,omitempty"`
+	InputParams         []Parameter            `json:"inputParams,omitempty"`
+	OutputParams        []Parameter            `json:"outputParams,omitempty"`
+	ArtifactReferences  []ArtifactReference    `json:"artifactReferences,omitempty"`
+	Extensions          map[string]interface{} `json:"extensions,omitempty"`
+}
+
+// Parameter represents input/output parameters
+type Parameter struct {
+	Name        string      `json:"name"`
+	Type        string      `json:"type"`
+	Description string      `json:"description,omitempty"`
+	IsArray     bool        `json:"isArray,omitempty"`
+	Default     interface{} `json:"default,omitempty"`
+}
+
+// ArtifactReference references deployment artifacts
+type ArtifactReference struct {
+	ArtifactName string `json:"artifactName"`
+	ArtifactURI  string `json:"artifactURI"`
+	ArtifactType string `json:"artifactType"`
+	CheckSum     string `json:"checkSum,omitempty"`
+}
+
+// NFDeployment represents a deployed Network Function
+type NFDeployment struct {
+	ID                            string                 `json:"id"`
+	Name                          string                 `json:"name"`
+	Description                   string                 `json:"description,omitempty"`
+	NFDeploymentDescriptorID      string                 `json:"nfDeploymentDescriptorId"`
+	ParentDeploymentID            string                 `json:"parentDeploymentId,omitempty"`
+	DeploymentManagerID           string                 `json:"deploymentManagerId"`
+	Status                        NFDeploymentStatus     `json:"status"`
+	InputParams                   map[string]interface{} `json:"inputParams,omitempty"`
+	OutputParams                  map[string]interface{} `json:"outputParams,omitempty"`
+	CreationTime                  time.Time              `json:"creationTime"`
+	LastUpdateTime                time.Time              `json:"lastUpdateTime"`
+	Extensions                    map[string]interface{} `json:"extensions,omitempty"`
+}
+
+// NFDeploymentStatus represents the status of an NF deployment
+type NFDeploymentStatus string
+
+const (
+	NFDeploymentStatusNotInstantiated NFDeploymentStatus = "NOT_INSTANTIATED"
+	NFDeploymentStatusInstantiated    NFDeploymentStatus = "INSTANTIATED"
+	NFDeploymentStatusFailed          NFDeploymentStatus = "FAILED"
+)
+
+// Subscription Models
+
+// Subscription represents a subscription to O2 notifications
+type Subscription struct {
+	SubscriptionID       string                 `json:"subscriptionId"`
+	Callback             string                 `json:"callback"`
+	ConsumerSubscriptionID string               `json:"consumerSubscriptionId,omitempty"`
+	Filter               string                 `json:"filter,omitempty"`
+	SystemType           []string               `json:"systemType,omitempty"`
+	Extensions           map[string]interface{} `json:"extensions,omitempty"`
+}
+
+// Notification represents an O2 notification
+type Notification struct {
+	NotificationID         string                 `json:"notificationId"`
+	NotificationType       string                 `json:"notificationType"`
+	EventType              string                 `json:"eventType"`
+	ObjectRef              string                 `json:"objectRef"`
+	UpdatedFields          []string               `json:"updatedFields,omitempty"`
+	NotificationEventTime  time.Time              `json:"notificationEventTime"`
+	Extensions             map[string]interface{} `json:"extensions,omitempty"`
+}
+
+// Error Models
+
+// APIError represents an API error response
+type APIError struct {
+	Type      string `json:"type"`
+	Title     string `json:"title"`
+	Status    int    `json:"status"`
+	Detail    string `json:"detail,omitempty"`
+	Instance  string `json:"instance,omitempty"`
+}
+
+// Common Response Types
+
+// APIResponse represents a generic API response
+type APIResponse struct {
+	Data       interface{} `json:"data,omitempty"`
+	Error      *APIError   `json:"error,omitempty"`
+	StatusCode int         `json:"statusCode"`
+	Headers    map[string]string `json:"headers,omitempty"`
+}
+
+// ListResponse represents a paginated list response
+type ListResponse struct {
+	Items        []interface{} `json:"items"`
+	Total        int           `json:"total"`
+	NextMarker   string        `json:"nextMarker,omitempty"`
+	PrevMarker   string        `json:"prevMarker,omitempty"`
+	HasMore      bool          `json:"hasMore"`
+}
+
+// Health Check Models
+
+// HealthInfo represents system health information
+type HealthInfo struct {
+	Status        string                 `json:"status"`
+	Version       string                 `json:"version"`
+	Description   string                 `json:"description,omitempty"`
+	ApiVersions   []string               `json:"apiVersions,omitempty"`
+	UriPrefix     string                 `json:"uriPrefix,omitempty"`
+	Extensions    map[string]interface{} `json:"extensions,omitempty"`
+}
+
+// O-RAN Specific Extensions
+
+// ORanQoSRequirements represents O-RAN specific QoS requirements
+type ORanQoSRequirements struct {
+	Bandwidth        float64 `json:"bandwidth"`         // Mbps
+	Latency          float64 `json:"latency"`           // ms
+	Jitter           float64 `json:"jitter,omitempty"`  // ms
+	PacketLoss       float64 `json:"packetLoss,omitempty"` // percentage
+	Reliability      float64 `json:"reliability,omitempty"` // percentage
+	SliceType        string  `json:"sliceType,omitempty"`   // eMBB, uRLLC, mIoT
+	Priority         int     `json:"priority,omitempty"`    // 1-10
+}
+
+// ORanPlacement represents O-RAN specific placement requirements
+type ORanPlacement struct {
+	CloudType     string   `json:"cloudType"`           // edge, regional, central
+	Region        string   `json:"region,omitempty"`
+	Zone          string   `json:"zone,omitempty"`
+	Site          string   `json:"site,omitempty"`
+	AffinityRules []string `json:"affinityRules,omitempty"`
+}
+
+// ORanSliceInfo represents O-RAN network slice information
+type ORanSliceInfo struct {
+	SliceID       string                 `json:"sliceId"`
+	ServiceType   string                 `json:"serviceType"`
+	QoSRequirements ORanQoSRequirements  `json:"qosRequirements"`
+	Placement     ORanPlacement          `json:"placement"`
+	NetworkFunctions []string            `json:"networkFunctions"`
+	Capacity      map[string]interface{} `json:"capacity,omitempty"`
+	SLA           map[string]interface{} `json:"sla,omitempty"`
+}

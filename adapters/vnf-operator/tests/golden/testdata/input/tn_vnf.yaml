@@ -1,0 +1,30 @@
+apiVersion: mano.oran.io/v1alpha1
+kind: VNF
+metadata:
+  name: tn-urllc
+  namespace: oran-system
+spec:
+  type: TN
+  version: 1.5.0
+  placement:
+    cloudType: edge
+    maxLatency: 1
+    preferredZones:
+      - edge-zone
+  resources:
+    cpu: "500m"
+    memory: "1Gi"
+    networkBandwidth: 100
+  qos:
+    bandwidth: 1.0  # Low bandwidth for uRLLC
+    latency: 1.0    # Ultra-low latency
+    jitter: 0.5
+    packetLoss: 0.001
+    reliability: 99.999
+  targetClusters:
+    - edge01
+    - edge02
+  configData:
+    VXLAN_ID: "1000"
+    TC_QUEUE: "prio"
+    SHAPING_RATE: "1mbit"

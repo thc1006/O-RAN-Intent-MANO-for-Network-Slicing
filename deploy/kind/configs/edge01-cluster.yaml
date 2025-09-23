@@ -1,0 +1,104 @@
+# Kind cluster configuration for Edge 01
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: edge01
+networking:
+  # WARNING: It is _strongly_ recommended that you keep this the default
+  # (127.0.0.1) for security reasons. However it is possible to change this.
+  apiServerAddress: "127.0.0.1"
+  # By default the API server listens on a random open port.
+  # You may choose a specific port but probably don't need to in most cases.
+  # Using a random port makes it easier to spin up multiple clusters.
+  apiServerPort: 6443
+  # Cluster subnet for pods
+  podSubnet: "10.244.0.0/16"
+  # Cluster subnet for services
+  serviceSubnet: "10.96.0.0/12"
+  # Disable default CNI - we'll install Kube-OVN
+  disableDefaultCNI: true
+  # Configure kube-proxy mode
+  kubeProxyMode: "iptables"
+
+# Define cluster nodes
+nodes:
+# Control plane node
+- role: control-plane
+  image: kindest/node:v1.28.0
+  kubeadmConfigPatches:
+  - |
+    kind: InitConfiguration
+    nodeRegistration:
+      kubeletExtraArgs:
+        node-labels: "cluster=edge01,site=edge,zone=edge-zone-1"
+        node-ip: "172.18.0.2"
+  - |
+    kind: ClusterConfiguration
+    metadata:
+      name: config
+    networking:
+      podSubnet: "10.244.0.0/16"
+      serviceSubnet: "10.96.0.0/12"
+    apiServer:
+      extraArgs:
+        runtime-config: "api/all=true"
+        enable-admission-plugins: "NodeRestriction,ResourceQuota,PodSecurityPolicy"
+      certSANs:
+      - "127.0.0.1"
+      - "localhost"
+      - "edge01-control-plane"
+  extraMounts:
+  - hostPath: /tmp/edge01-logs
+    containerPath: /var/log
+  - hostPath: /tmp/edge01-data
+    containerPath: /var/lib/edge01
+  extraPortMappings:
+  - containerPort: 30080
+    hostPort: 30080
+    protocol: TCP
+  - containerPort: 30443
+    hostPort: 30443
+    protocol: TCP
+  # Kube-OVN specific ports
+  - containerPort: 6641
+    hostPort: 6641
+    protocol: TCP
+  - containerPort: 6642
+    hostPort: 6642
+    protocol: TCP
+
+# Worker nodes for edge workloads
+- role: worker
+  image: kindest/node:v1.28.0
+  kubeadmConfigPatches:
+  - |
+    kind: JoinConfiguration
+    nodeRegistration:
+      kubeletExtraArgs:
+        node-labels: "cluster=edge01,site=edge,zone=edge-zone-1,workload=ran"
+        node-ip: "172.18.0.3"
+  extraMounts:
+  - hostPath: /tmp/edge01-worker1-logs
+    containerPath: /var/log
+  - hostPath: /tmp/edge01-worker1-data
+    containerPath: /var/lib/worker
+
+- role: worker
+  image: kindest/node:v1.28.0
+  kubeadmConfigPatches:
+  - |
+    kind: JoinConfiguration
+    nodeRegistration:
+      kubeletExtraArgs:
+        node-labels: "cluster=edge01,site=edge,zone=edge-zone-1,workload=tn"
+        node-ip: "172.18.0.4"
+  extraMounts:
+  - hostPath: /tmp/edge01-worker2-logs
+    containerPath: /var/log
+  - hostPath: /tmp/edge01-worker2-data
+    containerPath: /var/lib/worker
+
+# Feature gates for testing
+featureGates:
+  # Enable feature gates as needed
+  "EphemeralContainers": true
+  "PodSecurity": true

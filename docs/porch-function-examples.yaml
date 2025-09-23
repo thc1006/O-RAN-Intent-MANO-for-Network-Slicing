@@ -1,0 +1,464 @@
+# Porch Function Examples for O-RAN Intent-Based MANO
+# This file contains concrete examples of Porch functions used in the system
+
+---
+# QoS Profile Injection Function
+apiVersion: config.porch.kpt.dev/v1alpha1
+kind: Function
+metadata:
+  name: qos-profile-injector
+  namespace: porch-functions
+  annotations:
+    config.kubernetes.io/function: |
+      container:
+        image: gcr.io/oran-mano/qos-injector:v1.2.0
+        network: false
+spec:
+  image: gcr.io/oran-mano/qos-injector:v1.2.0
+  configPath: qos-config.yaml
+  config:
+    qosProfiles:
+      embb:
+        name: "Enhanced Mobile Broadband"
+        maxBitRateUL: "100Mbps"
+        maxBitRateDL: "1Gbps"
+        latency: "20ms"
+        reliability: "99.9%"
+        priority: 7
+        resourceType: "GBR"
+
+      urllc:
+        name: "Ultra Reliable Low Latency"
+        maxBitRateUL: "10Mbps"
+        maxBitRateDL: "10Mbps"
+        latency: "1ms"
+        reliability: "99.999%"
+        priority: 1
+        resourceType: "GBR"
+
+      miot:
+        name: "Massive IoT"
+        maxBitRateUL: "1Mbps"
+        maxBitRateDL: "1Mbps"
+        latency: "100ms"
+        reliability: "99%"
+        priority: 9
+        resourceType: "Non-GBR"
+
+    mutations:
+      - target: "workload.nephio.org/v1alpha1/NetworkFunction"
+        condition: "spec.qosProfile.sliceType == 'eMBB'"
+        operations:
+          - op: "add"
+            path: "/spec/qos"
+            value:
+              profile: "embb"
+              guaranteedBitRate: "1Gbps"
+              maxBitRate: "1Gbps"
+              allocationRetentionPriority: 7
+
+      - target: "workload.nephio.org/v1alpha1/NetworkFunction"
+        condition: "spec.qosProfile.sliceType == 'uRLLC'"
+        operations:
+          - op: "add"
+            path: "/spec/qos"
+            value:
+              profile: "urllc"
+              guaranteedBitRate: "10Mbps"
+              maxBitRate: "10Mbps"
+              allocationRetentionPriority: 1
+
+          - op: "add"
+            path: "/spec/nodeSelector"
+            value:
+              latency-critical: "true"
+              cpu-isolation: "enabled"
+
+          - op: "add"
+            path: "/spec/tolerations"
+            value:
+            - key: "latency-critical"
+              operator: "Equal"
+              value: "true"
+              effect: "NoSchedule"
+
+---
+# Network Attachment Function
+apiVersion: config.porch.kpt.dev/v1alpha1
+kind: Function
+metadata:
+  name: network-attachment-injector
+  namespace: porch-functions
+spec:
+  image: gcr.io/oran-mano/network-injector:v1.0.0
+  configPath: network-config.yaml
+  config:
+    networks:
+      n2:
+        name: "n2-interface"
+        type: "macvlan"
+        master: "eth1"
+        ipam:
+          type: "static"
+          subnet: "192.168.2.0/24"
+
+      n3:
+        name: "n3-interface"
+        type: "ipvlan"
+        master: "eth2"
+        ipam:
+          type: "dhcp"
+
+      f1:
+        name: "f1-interface"
+        type: "sriov"
+        resourceName: "intel.com/sriov_netdevice"
+
+    attachments:
+      - target: "workload.nephio.org/v1alpha1/RANFunction"
+        condition: "spec.functionType == 'gNB'"
+        networks: ["n2", "n3", "f1"]
+
+      - target: "workload.nephio.org/v1alpha1/CoreFunction"
+        condition: "spec.functionType == 'UPF'"
+        networks: ["n3", "n6"]
+
+      - target: "workload.nephio.org/v1alpha1/CoreFunction"
+        condition: "spec.functionType == 'AMF'"
+        networks: ["n2", "n11"]
+
+---
+# Resource Calculator Function
+apiVersion: config.porch.kpt.dev/v1alpha1
+kind: Function
+metadata:
+  name: resource-calculator
+  namespace: porch-functions
+spec:
+  image: gcr.io/oran-mano/resource-calculator:v1.1.0
+  configPath: resource-config.yaml
+  config:
+    calculations:
+      ran_functions:
+        gnb:
+          base_cpu: "2000m"
+          base_memory: "4Gi"
+          cpu_per_cell: "500m"
+          memory_per_cell: "1Gi"
+          hugepages_base: "2Gi"
+
+        cu:
+          base_cpu: "1000m"
+          base_memory: "2Gi"
+          cpu_per_ue: "10m"
+          memory_per_ue: "50Mi"
+
+        du:
+          base_cpu: "4000m"
+          base_memory: "8Gi"
+          cpu_per_antenna: "1000m"
+          memory_per_antenna: "2Gi"
+          hugepages_required: "4Gi"
+
+      core_functions:
+        amf:
+          base_cpu: "1000m"
+          base_memory: "2Gi"
+          cpu_per_1k_subscribers: "100m"
+          memory_per_1k_subscribers: "200Mi"
+
+        smf:
+          base_cpu: "500m"
+          base_memory: "1Gi"
+          cpu_per_session: "1m"
+          memory_per_session: "10Mi"
+
+        upf:
+          base_cpu: "4000m"
+          base_memory: "8Gi"
+          cpu_per_gbps: "2000m"
+          memory_per_gbps: "4Gi"
+          hugepages_per_gbps: "2Gi"
+
+    multipliers:
+      high_availability: 2.0
+      development: 0.5
+      production: 1.5
+      edge_optimization: 0.8
+
+---
+# Site Placement Function
+apiVersion: config.porch.kpt.dev/v1alpha1
+kind: Function
+metadata:
+  name: site-placement-optimizer
+  namespace: porch-functions
+spec:
+  image: gcr.io/oran-mano/placement-optimizer:v1.0.0
+  configPath: placement-config.yaml
+  config:
+    sites:
+      central:
+        - name: "central-01"
+          type: "management"
+          capabilities: ["management", "orchestration", "analytics"]
+          resources:
+            cpu: "128"
+            memory: "512Gi"
+            storage: "100Ti"
+          latency_zones: ["management"]
+
+      regional:
+        - name: "regional-01"
+          type: "aggregation"
+          capabilities: ["core-network", "edge-orchestration"]
+          resources:
+            cpu: "64"
+            memory: "128Gi"
+            storage: "10Ti"
+          latency_zones: ["regional", "aggregation"]
+
+      edge:
+        - name: "edge-01"
+          type: "access"
+          capabilities: ["ran-functions", "edge-computing"]
+          resources:
+            cpu: "32"
+            memory: "64Gi"
+            storage: "2Ti"
+          latency_zones: ["edge", "access"]
+          location:
+            coordinates: [51.5074, -0.1278]
+            coverage_radius: "5km"
+
+    placement_rules:
+      - function_type: "management"
+        preferred_sites: ["central"]
+        constraints:
+          latency: "none"
+          bandwidth: "high"
+
+      - function_type: "ran"
+        required_sites: ["edge"]
+        constraints:
+          latency: "ultra-low"
+          proximity: "user-equipment"
+
+      - function_type: "core"
+        preferred_sites: ["regional"]
+        fallback_sites: ["central"]
+        constraints:
+          latency: "low"
+          redundancy: "required"
+
+    optimization:
+      objectives:
+        - "minimize_latency"
+        - "maximize_resource_utilization"
+        - "ensure_redundancy"
+      constraints:
+        - "respect_licensing"
+        - "maintain_sla"
+        - "follow_regulations"
+
+---
+# Security Policy Injector Function
+apiVersion: config.porch.kpt.dev/v1alpha1
+kind: Function
+metadata:
+  name: security-policy-injector
+  namespace: porch-functions
+spec:
+  image: gcr.io/oran-mano/security-injector:v1.0.0
+  configPath: security-config.yaml
+  config:
+    policies:
+      network_policies:
+        - name: "slice-isolation"
+          target: "NetworkSlice"
+          rules:
+            - allow_ingress_from: ["same-slice", "management"]
+            - deny_egress_to: ["other-slices"]
+            - allow_egress_to: ["internet", "management"]
+
+      pod_security:
+        - name: "ran-security"
+          target: "RANFunction"
+          rules:
+            - run_as_non_root: true
+            - privileged: false
+            - capabilities:
+                drop: ["ALL"]
+                add: ["NET_ADMIN", "SYS_TIME"]
+            - seccomp_profile: "runtime/default"
+
+      rbac:
+        - name: "function-operator"
+          target: "NetworkFunction"
+          rules:
+            - api_groups: [""]
+              resources: ["pods", "services", "configmaps"]
+              verbs: ["get", "list", "watch", "create", "update", "patch"]
+            - api_groups: ["workload.nephio.org"]
+              resources: ["networkfunctions"]
+              verbs: ["get", "list", "watch", "update", "patch"]
+
+    encryption:
+      data_at_rest:
+        enabled: true
+        algorithm: "AES-256"
+        key_rotation: "90d"
+
+      data_in_transit:
+        enabled: true
+        tls_version: "1.3"
+        certificate_authority: "internal-ca"
+
+    monitoring:
+      security_events: true
+      compliance_scanning: true
+      vulnerability_assessment: true
+
+---
+# Dependency Resolver Function
+apiVersion: config.porch.kpt.dev/v1alpha1
+kind: Function
+metadata:
+  name: dependency-resolver
+  namespace: porch-functions
+spec:
+  image: gcr.io/oran-mano/dependency-resolver:v1.0.0
+  configPath: dependency-config.yaml
+  config:
+    dependencies:
+      ran_functions:
+        gnb:
+          requires:
+            - type: "CoreFunction"
+              name: "AMF"
+              interface: "n2"
+            - type: "CoreFunction"
+              name: "UPF"
+              interface: "n3"
+          provides:
+            - interface: "uu"
+              type: "radio"
+
+        cu:
+          requires:
+            - type: "RANFunction"
+              name: "DU"
+              interface: "f1"
+            - type: "CoreFunction"
+              name: "AMF"
+              interface: "n2"
+          provides:
+            - interface: "f1"
+              type: "fronthaul"
+
+      core_functions:
+        amf:
+          requires:
+            - type: "CoreFunction"
+              name: "AUSF"
+              interface: "n12"
+            - type: "CoreFunction"
+              name: "NRF"
+              interface: "n8"
+          provides:
+            - interface: "n1"
+              type: "nas"
+            - interface: "n2"
+              type: "ngap"
+
+        upf:
+          requires:
+            - type: "CoreFunction"
+              name: "SMF"
+              interface: "n4"
+          provides:
+            - interface: "n3"
+              type: "gtp"
+            - interface: "n6"
+              type: "sgi"
+
+    resolution:
+      strategy: "closest_first"
+      fallback: "any_available"
+      validation: "strict"
+      timeout: "30s"
+
+---
+# Validation Function
+apiVersion: config.porch.kpt.dev/v1alpha1
+kind: Function
+metadata:
+  name: comprehensive-validator
+  namespace: porch-functions
+spec:
+  image: gcr.io/oran-mano/validator:v1.3.0
+  configPath: validation-config.yaml
+  config:
+    validations:
+      resource_limits:
+        enabled: true
+        rules:
+          - name: "cpu_limits"
+            description: "Ensure CPU limits are set"
+            target: "containers"
+            requirement: "spec.resources.limits.cpu must be set"
+
+          - name: "memory_limits"
+            description: "Ensure memory limits are set"
+            target: "containers"
+            requirement: "spec.resources.limits.memory must be set"
+
+      qos_compliance:
+        enabled: true
+        rules:
+          - name: "embb_throughput"
+            description: "eMBB slices must support high throughput"
+            target: "NetworkSlice[sliceType=eMBB]"
+            requirement: "qosProfile.maxBitRateDL >= 1Gbps"
+
+          - name: "urllc_latency"
+            description: "uRLLC slices must have ultra-low latency"
+            target: "NetworkSlice[sliceType=uRLLC]"
+            requirement: "qosProfile.latency <= 5ms"
+
+      security_compliance:
+        enabled: true
+        rules:
+          - name: "no_privileged_containers"
+            description: "Containers should not run as privileged"
+            target: "containers"
+            requirement: "securityContext.privileged != true"
+
+          - name: "network_policies"
+            description: "Network policies must be defined"
+            target: "NetworkSlice"
+            requirement: "networkPolicies must not be empty"
+
+      deployment_readiness:
+        enabled: true
+        rules:
+          - name: "cluster_capacity"
+            description: "Target clusters must have sufficient capacity"
+            target: "placement"
+            requirement: "cluster.available_resources >= required_resources"
+
+          - name: "network_connectivity"
+            description: "Required networks must be available"
+            target: "networkAttachments"
+            requirement: "all networks in cluster.available_networks"
+
+    reporting:
+      format: "json"
+      include_warnings: true
+      include_suggestions: true
+      severity_levels: ["error", "warning", "info"]
+
+    enforcement:
+      fail_on_error: true
+      fail_on_warning: false
+      auto_fix: ["resource_formatting", "label_standardization"]

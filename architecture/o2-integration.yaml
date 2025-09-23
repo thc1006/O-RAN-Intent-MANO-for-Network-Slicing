@@ -1,0 +1,580 @@
+# O2ims/O2dms Integration Configuration
+# This file defines the O-RAN O2 interface integration patterns for Nephio
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: o2-integration-config
+  namespace: nephio-system
+  labels:
+    app.kubernetes.io/name: o2-integration
+    app.kubernetes.io/component: configuration
+data:
+  config.yaml: |
+    o2ims:
+      # O2 Infrastructure Management Service configuration
+      endpoint: "https://o2ims.oran-sc.org"
+      version: "v1.0.0"
+      authentication:
+        type: "oauth2"
+        tokenEndpoint: "https://auth.oran-sc.org/oauth/token"
+        clientId: "${O2IMS_CLIENT_ID}"
+        clientSecret: "${O2IMS_CLIENT_SECRET}"
+        scope: "infrastructure:read infrastructure:write"
+
+      timeout: "30s"
+      retryPolicy:
+        maxRetries: 3
+        backoffStrategy: "exponential"
+        initialInterval: "1s"
+        maxInterval: "30s"
+
+      endpoints:
+        infrastructureInventory: "/o2ims/v1/infrastructureInventory"
+        deploymentManagers: "/o2ims/v1/deploymentManagers"
+        subscriptions: "/o2ims/v1/infrastructureInventory/subscription"
+        alarms: "/o2ims/v1/alarms"
+
+      polling:
+        interval: "30s"
+        enabled: true
+        batchSize: 100
+
+      webhooks:
+        enabled: true
+        endpoint: "https://nephio-webhook.cluster.local/o2ims"
+        secretToken: "${O2IMS_WEBHOOK_SECRET}"
+
+    o2dms:
+      # O2 Deployment Management Service configuration
+      endpoint: "https://o2dms.oran-sc.org"
+      version: "v1.0.0"
+      authentication:
+        type: "oauth2"
+        tokenEndpoint: "https://auth.oran-sc.org/oauth/token"
+        clientId: "${O2DMS_CLIENT_ID}"
+        clientSecret: "${O2DMS_CLIENT_SECRET}"
+        scope: "deployment:read deployment:write"
+
+      timeout: "60s"
+      retryPolicy:
+        maxRetries: 5
+        backoffStrategy: "exponential"
+        initialInterval: "2s"
+        maxInterval: "60s"
+
+      endpoints:
+        deploymentRequests: "/o2dms/v1/deploymentRequests"
+        deploymentStatus: "/o2dms/v1/deploymentRequests/{deploymentRequestId}"
+        deploymentLifecycle: "/o2dms/v1/deploymentRequests/{deploymentRequestId}/deploymentRequest"
+        packages: "/o2dms/v1/packages"
+
+      polling:
+        interval: "15s"
+        enabled: true
+        statusCheckInterval: "10s"
+
+      webhooks:
+        enabled: true
+        endpoint: "https://nephio-webhook.cluster.local/o2dms"
+        secretToken: "${O2DMS_WEBHOOK_SECRET}"
+
+    mapping:
+      # VNF type mapping between MANO and O2
+      vnfTypes:
+        gNB:
+          o2Type: "o-ran-sc/gnb-nf"
+          category: "ran"
+          vendor: "oran-sc"
+        AMF:
+          o2Type: "o-ran-sc/amf-nf"
+          category: "core"
+          vendor: "oran-sc"
+        SMF:
+          o2Type: "o-ran-sc/smf-nf"
+          category: "core"
+          vendor: "oran-sc"
+        UPF:
+          o2Type: "o-ran-sc/upf-nf"
+          category: "core"
+          vendor: "oran-sc"
+        CU:
+          o2Type: "o-ran-sc/cu-nf"
+          category: "ran"
+          vendor: "oran-sc"
+        DU:
+          o2Type: "o-ran-sc/du-nf"
+          category: "ran"
+          vendor: "oran-sc"
+
+      # Site type mapping
+      siteTypes:
+        edge: "o-cloud-edge"
+        regional: "o-cloud-regional"
+        central: "o-cloud-central"
+
+      # Resource mapping
+      resourceTypes:
+        cpu: "processor"
+        memory: "memory"
+        storage: "storage"
+        network: "network"
+        gpu: "accelerator"
+
+    caching:
+      enabled: true
+      ttl:
+        infrastructureInventory: "300s"  # 5 minutes
+        deploymentStatus: "30s"
+        siteMetrics: "60s"
+
+      redis:
+        endpoint: "redis.nephio-system:6379"
+        database: 0
+        password: "${REDIS_PASSWORD}"
+        keyPrefix: "o2-cache:"
+
+    monitoring:
+      metrics:
+        enabled: true
+        port: 8080
+        path: "/metrics"
+
+      healthcheck:
+        enabled: true
+        port: 8081
+        path: "/health"
+        interval: "30s"
+
+      logging:
+        level: "info"
+        format: "json"
+        auditEnabled: true
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: o2-client
+  namespace: nephio-system
+  labels:
+    app.kubernetes.io/name: o2-client
+    app.kubernetes.io/component: integration
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: o2-client
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: o2-client
+        app.kubernetes.io/component: integration
+    spec:
+      serviceAccountName: o2-client
+      containers:
+      - name: o2-client
+        image: oran-mano/o2-client:latest
+        ports:
+        - containerPort: 8080
+          name: metrics
+        - containerPort: 8081
+          name: health
+        - containerPort: 9443
+          name: webhook
+        env:
+        - name: CONFIG_PATH
+          value: "/etc/config/config.yaml"
+        - name: O2IMS_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: o2-credentials
+              key: o2ims-client-id
+        - name: O2IMS_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: o2-credentials
+              key: o2ims-client-secret
+        - name: O2DMS_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: o2-credentials
+              key: o2dms-client-id
+        - name: O2DMS_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: o2-credentials
+              key: o2dms-client-secret
+        - name: O2IMS_WEBHOOK_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: o2-webhook
+              key: o2ims-secret
+        - name: O2DMS_WEBHOOK_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: o2-webhook
+              key: o2dms-secret
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: redis-credentials
+              key: password
+        volumeMounts:
+        - name: config
+          mountPath: /etc/config
+          readOnly: true
+        - name: certs
+          mountPath: /etc/certs
+          readOnly: true
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8081
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8081
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: config
+        configMap:
+          name: o2-integration-config
+      - name: certs
+        secret:
+          secretName: o2-client-certs
+          defaultMode: 420
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: o2-client
+  namespace: nephio-system
+  labels:
+    app.kubernetes.io/name: o2-client
+spec:
+  selector:
+    app.kubernetes.io/name: o2-client
+  ports:
+  - name: metrics
+    port: 8080
+    targetPort: 8080
+  - name: health
+    port: 8081
+    targetPort: 8081
+  - name: webhook
+    port: 9443
+    targetPort: 9443
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: o2-client
+  namespace: nephio-system
+  labels:
+    app.kubernetes.io/name: o2-client
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: o2-client
+  labels:
+    app.kubernetes.io/name: o2-client
+rules:
+- apiGroups: [""]
+  resources: ["nodes", "pods", "services", "configmaps", "secrets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "statefulsets", "daemonsets"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["mano.oran.io"]
+  resources: ["vnfs", "networksliceintents", "networkslicelayouts"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["porch.kpt.dev"]
+  resources: ["packagerevisions", "packages"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["nf.nephio.org"]
+  resources: ["networksliceintents", "nfdeployments"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: o2-client
+  labels:
+    app.kubernetes.io/name: o2-client
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: o2-client
+subjects:
+- kind: ServiceAccount
+  name: o2-client
+  namespace: nephio-system
+
+---
+# O2 Webhook Configuration
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionWebhook
+metadata:
+  name: o2-validation-webhook
+  labels:
+    app.kubernetes.io/name: o2-client
+webhooks:
+- name: vnf-validation.mano.oran.io
+  clientConfig:
+    service:
+      name: o2-client
+      namespace: nephio-system
+      path: "/validate/vnf"
+  rules:
+  - operations: ["CREATE", "UPDATE"]
+    apiGroups: ["mano.oran.io"]
+    apiVersions: ["v1alpha1"]
+    resources: ["vnfs"]
+  admissionReviewVersions: ["v1", "v1beta1"]
+  sideEffects: None
+  failurePolicy: Fail
+
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingAdmissionWebhook
+metadata:
+  name: o2-mutation-webhook
+  labels:
+    app.kubernetes.io/name: o2-client
+webhooks:
+- name: vnf-mutation.mano.oran.io
+  clientConfig:
+    service:
+      name: o2-client
+      namespace: nephio-system
+      path: "/mutate/vnf"
+  rules:
+  - operations: ["CREATE", "UPDATE"]
+    apiGroups: ["mano.oran.io"]
+    apiVersions: ["v1alpha1"]
+    resources: ["vnfs"]
+  admissionReviewVersions: ["v1", "v1beta1"]
+  sideEffects: None
+  failurePolicy: Fail
+
+---
+# O2 Event Stream Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: o2-event-config
+  namespace: nephio-system
+  labels:
+    app.kubernetes.io/name: o2-client
+    app.kubernetes.io/component: events
+data:
+  event-config.yaml: |
+    eventStreaming:
+      enabled: true
+
+      nats:
+        url: "nats://nats.nephio-system:4222"
+        cluster: "nephio-cluster"
+        clientId: "o2-client"
+
+      subjects:
+        o2ims:
+          infrastructureChanges: "o2.ims.infrastructure.>"
+          alarms: "o2.ims.alarms.>"
+          subscriptions: "o2.ims.subscriptions.>"
+
+        o2dms:
+          deploymentEvents: "o2.dms.deployments.>"
+          packageEvents: "o2.dms.packages.>"
+          lifecycleEvents: "o2.dms.lifecycle.>"
+
+      handlers:
+        - subject: "o2.ims.infrastructure.capacity.changed"
+          handler: "infrastructure_capacity_handler"
+          async: true
+
+        - subject: "o2.dms.deployments.status.changed"
+          handler: "deployment_status_handler"
+          async: true
+
+        - subject: "o2.ims.alarms.critical"
+          handler: "critical_alarm_handler"
+          async: false
+          priority: "high"
+
+      publishing:
+        nephio:
+          subjects:
+            placementDecisions: "nephio.placement.decisions"
+            packageGenerated: "nephio.packages.generated"
+            deploymentRequests: "nephio.deployments.requests"
+
+    webhookEndpoints:
+      o2ims:
+        path: "/webhooks/o2ims"
+        methods: ["POST"]
+        authentication:
+          type: "bearer"
+          secretName: "o2ims-webhook-secret"
+
+      o2dms:
+        path: "/webhooks/o2dms"
+        methods: ["POST"]
+        authentication:
+          type: "bearer"
+          secretName: "o2dms-webhook-secret"
+
+---
+# O2 Metrics and Monitoring
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: o2-client-metrics
+  namespace: nephio-system
+  labels:
+    app.kubernetes.io/name: o2-client
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: o2-client
+  endpoints:
+  - port: metrics
+    interval: 30s
+    path: /metrics
+
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: o2-client-alerts
+  namespace: nephio-system
+  labels:
+    app.kubernetes.io/name: o2-client
+spec:
+  groups:
+  - name: o2-client.rules
+    rules:
+    - alert: O2IMSConnectionDown
+      expr: o2_ims_connection_status == 0
+      for: 2m
+      labels:
+        severity: critical
+      annotations:
+        summary: "O2IMS connection is down"
+        description: "O2IMS connection has been down for more than 2 minutes"
+
+    - alert: O2DMSConnectionDown
+      expr: o2_dms_connection_status == 0
+      for: 2m
+      labels:
+        severity: critical
+      annotations:
+        summary: "O2DMS connection is down"
+        description: "O2DMS connection has been down for more than 2 minutes"
+
+    - alert: O2DeploymentFailureRate
+      expr: rate(o2_deployment_failures_total[5m]) > 0.1
+      for: 1m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High O2 deployment failure rate"
+        description: "O2 deployment failure rate is {{ $value }} failures per second"
+
+    - alert: O2ClientMemoryUsage
+      expr: process_resident_memory_bytes{job="o2-client"} > 400000000
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "O2 client high memory usage"
+        description: "O2 client memory usage is {{ $value | humanize }}B"
+
+---
+# O2 Cache Configuration (Redis)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: o2-cache-redis
+  namespace: nephio-system
+  labels:
+    app.kubernetes.io/name: o2-cache
+    app.kubernetes.io/component: redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: o2-cache
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: o2-cache
+        app.kubernetes.io/component: redis
+    spec:
+      containers:
+      - name: redis
+        image: redis:7-alpine
+        ports:
+        - containerPort: 6379
+          name: redis
+        env:
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: redis-credentials
+              key: password
+        command:
+        - redis-server
+        - --requirepass
+        - $(REDIS_PASSWORD)
+        - --maxmemory
+        - 256mb
+        - --maxmemory-policy
+        - allkeys-lru
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        volumeMounts:
+        - name: redis-data
+          mountPath: /data
+      volumes:
+      - name: redis-data
+        emptyDir: {}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: nephio-system
+  labels:
+    app.kubernetes.io/name: o2-cache
+    app.kubernetes.io/component: redis
+spec:
+  selector:
+    app.kubernetes.io/name: o2-cache
+    app.kubernetes.io/component: redis
+  ports:
+  - name: redis
+    port: 6379
+    targetPort: 6379

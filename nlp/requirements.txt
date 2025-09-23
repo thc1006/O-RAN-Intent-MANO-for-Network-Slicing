@@ -1,0 +1,5 @@
+pyyaml>=6.0
+jsonschema>=4.17.3
+pytest>=7.2.0
+pytest-cov>=4.0.0
+redis>=4.5.1

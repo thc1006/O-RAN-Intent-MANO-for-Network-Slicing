@@ -1,0 +1,64 @@
+# mIoT Scenario - Massive IoT (mMTC equivalent)
+# Target deployment time: 257s (fast) or 220s (slow)
+
+intent: "Create balanced slice for massive IoT deployment with moderate bandwidth and latency requirements"
+
+profile: mIoT
+
+requirements:
+  bandwidth: 2.77  # Mbps
+  latency: 15.7    # ms
+  jitter: 2.5      # ms
+  packet_loss: 0.05  # 5%
+  reliability: 99.5  # %
+
+network_functions:
+  ran:
+    - type: gNodeB
+      count: 1
+      placement: edge
+      massive_connectivity: true
+  transport:
+    - type: vxlan_tunnel
+      endpoints: 2
+      efficiency_optimization: true
+  core:
+    - type: UPF
+      count: 1
+      placement: regional
+      connection_multiplexing: true
+    - type: SMF
+      count: 1
+      placement: regional
+      expected_bottleneck: moderate  # Medium bottleneck
+
+placement:
+  strategy: efficient
+  constraints:
+    - cloud_type: regional  # Cost-optimized placement
+    - resource_efficiency: high
+  anti_affinity:
+    - scope: zone
+      target: high_priority_services
+
+resource_requirements:
+  total_cpu: 6  # cores (balanced)
+  total_memory: 12  # GB
+  total_storage: 75  # GB
+
+deployment_sequence:
+  1: RAN  # Deploy RAN first
+  2: CN   # Deploy core network
+  3: TN   # Setup transport last
+
+expected_metrics:
+  smo_cpu_peak: 1.5  # cores
+  smo_memory_peak: 3072  # MB
+  ocloud_memory_avg: 7168  # MB per node
+  smf_init_delay: 60  # seconds (moderate bottleneck)
+
+validation:
+  connectivity_test: iperf3
+  throughput_target: 2.77  # Mbps
+  latency_target: 15.7  # ms
+  tolerance: 8  # %

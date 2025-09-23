@@ -1,0 +1,172 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oran-orchestrator
+  namespace: oran-mano
+  labels:
+    app.kubernetes.io/name: oran-orchestrator
+    app.kubernetes.io/component: orchestrator
+    app.kubernetes.io/version: "v1.0.0"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: oran-orchestrator
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: oran-orchestrator
+        app.kubernetes.io/component: orchestrator
+        app.kubernetes.io/version: "v1.0.0"
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: oran-orchestrator
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        fsGroup: 65532
+      containers:
+      - name: orchestrator
+        image: oran-orchestrator:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 8080
+          protocol: TCP
+        - name: metrics
+          containerPort: 9090
+          protocol: TCP
+        env:
+        - name: LOG_LEVEL
+          value: "info"
+        - name: METRICS_ENABLED
+          value: "true"
+        - name: DMS_ENDPOINT
+          value: "http://oran-ran-dms:8080"
+        - name: PORCH_ENDPOINT
+          value: "http://porch-server.porch-system:7007"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 65532
+          capabilities:
+            drop:
+            - ALL
+        volumeMounts:
+        - name: config
+          mountPath: /config
+          readOnly: true
+        - name: temp
+          mountPath: /tmp
+      volumes:
+      - name: config
+        configMap:
+          name: oran-orchestrator-config
+      - name: temp
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: oran-orchestrator
+  namespace: oran-mano
+  labels:
+    app.kubernetes.io/name: oran-orchestrator
+    app.kubernetes.io/component: orchestrator
+spec:
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 8080
+    targetPort: http
+    protocol: TCP
+  - name: metrics
+    port: 9090
+    targetPort: metrics
+    protocol: TCP
+  selector:
+    app.kubernetes.io/name: oran-orchestrator
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: oran-orchestrator-config
+  namespace: oran-mano
+  labels:
+    app.kubernetes.io/name: oran-orchestrator
+    app.kubernetes.io/component: orchestrator
+data:
+  orchestrator.yaml: |
+    server:
+      port: 8080
+      host: "0.0.0.0"
+
+    metrics:
+      enabled: true
+      port: 9090
+      path: "/metrics"
+
+    logging:
+      level: "info"
+      format: "json"
+
+    orchestration:
+      policy:
+        placement:
+          algorithm: "optimal-fit"
+          constraints:
+            - type: "latency"
+              value: "10ms"
+            - type: "throughput"
+              value: "1Gbps"
+
+      intents:
+        processing:
+          timeout: "30s"
+          retries: 3
+
+        validation:
+          strict: true
+          schema_validation: true
+
+    integrations:
+      o2ims:
+        endpoint: "http://o2ims-server:5005"
+        timeout: "10s"
+
+      o2dms:
+        ran_endpoint: "http://oran-ran-dms:8080"
+        cn_endpoint: "http://oran-cn-dms:8080"
+        timeout: "10s"
+
+      porch:
+        endpoint: "http://porch-server.porch-system:7007"
+        repository: "mano-packages"
+        timeout: "30s"

@@ -1,0 +1,363 @@
+---
+# NLP Service Account and RBAC
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: oran-nlp-service
+  namespace: oran-nlp
+  labels:
+    app.kubernetes.io/name: nlp-service
+    app.kubernetes.io/component: nlp
+    app.kubernetes.io/part-of: oran-intent-mano
+    app.kubernetes.io/managed-by: kustomize
+automountServiceAccountToken: true
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: oran-nlp-role
+  namespace: oran-nlp
+rules:
+- apiGroups: [""]
+  resources: ["configmaps", "secrets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["create", "patch"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["metrics.k8s.io"]
+  resources: ["pods", "nodes"]
+  verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: oran-nlp-binding
+  namespace: oran-nlp
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: oran-nlp-role
+subjects:
+- kind: ServiceAccount
+  name: oran-nlp-service
+  namespace: oran-nlp
+---
+# Orchestrator Service Account and RBAC
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: oran-orchestrator-service
+  namespace: oran-orchestrator
+  labels:
+    app.kubernetes.io/name: orchestrator-service
+    app.kubernetes.io/component: orchestrator
+    app.kubernetes.io/part-of: oran-intent-mano
+    app.kubernetes.io/managed-by: kustomize
+automountServiceAccountToken: true
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: oran-orchestrator-role
+rules:
+# O2 API access
+- apiGroups: ["o2ims.oran.io"]
+  resources: ["*"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+# Nephio/Porch access
+- apiGroups: ["porch.kpt.dev"]
+  resources: ["packagerevisions", "packages", "repositories"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+# VNF CRD access
+- apiGroups: ["mano.oran.io"]
+  resources: ["vnfs"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+# Core resources for placement decisions
+- apiGroups: [""]
+  resources: ["nodes", "namespaces", "pods", "services", "configmaps", "secrets"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets", "statefulsets", "daemonsets"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+# Networking
+- apiGroups: ["networking.k8s.io"]
+  resources: ["networkpolicies", "ingresses"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+# Events and monitoring
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["create", "patch"]
+- apiGroups: ["metrics.k8s.io"]
+  resources: ["nodes", "pods"]
+  verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: oran-orchestrator-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: oran-orchestrator-role
+subjects:
+- kind: ServiceAccount
+  name: oran-orchestrator-service
+  namespace: oran-orchestrator
+---
+# VNF Operator Service Account and RBAC
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: oran-vnf-operator
+  namespace: oran-orchestrator
+  labels:
+    app.kubernetes.io/name: vnf-operator
+    app.kubernetes.io/component: operator
+    app.kubernetes.io/part-of: oran-intent-mano
+    app.kubernetes.io/managed-by: kustomize
+automountServiceAccountToken: true
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: oran-vnf-operator-role
+rules:
+# VNF CRD management
+- apiGroups: ["mano.oran.io"]
+  resources: ["vnfs"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["mano.oran.io"]
+  resources: ["vnfs/status", "vnfs/finalizers"]
+  verbs: ["get", "update", "patch"]
+# Kubernetes core resources
+- apiGroups: [""]
+  resources: ["pods", "services", "endpoints", "persistentvolumeclaims", "events", "configmaps", "secrets"]
+  verbs: ["create", "delete", "get", "list", "patch", "update", "watch"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "daemonsets", "replicasets", "statefulsets"]
+  verbs: ["create", "delete", "get", "list", "patch", "update", "watch"]
+# Networking
+- apiGroups: ["networking.k8s.io"]
+  resources: ["networkpolicies"]
+  verbs: ["create", "delete", "get", "list", "patch", "update", "watch"]
+# Leadership election
+- apiGroups: ["coordination.k8s.io"]
+  resources: ["leases"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: oran-vnf-operator-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: oran-vnf-operator-role
+subjects:
+- kind: ServiceAccount
+  name: oran-vnf-operator
+  namespace: oran-orchestrator
+---
+# RAN Components Service Account and RBAC
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: oran-ran-service
+  namespace: oran-ran
+  labels:
+    app.kubernetes.io/name: ran-service
+    app.kubernetes.io/component: ran
+    app.kubernetes.io/part-of: oran-intent-mano
+    app.kubernetes.io/managed-by: kustomize
+automountServiceAccountToken: true
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: oran-ran-role
+  namespace: oran-ran
+rules:
+- apiGroups: [""]
+  resources: ["configmaps", "secrets", "services", "endpoints"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["create", "patch"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "statefulsets"]
+  verbs: ["get", "list", "watch", "update", "patch"]
+- apiGroups: ["networking.k8s.io"]
+  resources: ["networkpolicies"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: oran-ran-binding
+  namespace: oran-ran
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: oran-ran-role
+subjects:
+- kind: ServiceAccount
+  name: oran-ran-service
+  namespace: oran-ran
+---
+# Core Network Service Account and RBAC
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: oran-cn-service
+  namespace: oran-cn
+  labels:
+    app.kubernetes.io/name: cn-service
+    app.kubernetes.io/component: cn
+    app.kubernetes.io/part-of: oran-intent-mano
+    app.kubernetes.io/managed-by: kustomize
+automountServiceAccountToken: true
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: oran-cn-role
+  namespace: oran-cn
+rules:
+- apiGroups: [""]
+  resources: ["configmaps", "secrets", "services", "endpoints", "persistentvolumeclaims"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["create", "patch"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "statefulsets"]
+  verbs: ["get", "list", "watch", "update", "patch"]
+- apiGroups: ["networking.k8s.io"]
+  resources: ["networkpolicies"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: oran-cn-binding
+  namespace: oran-cn
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: oran-cn-role
+subjects:
+- kind: ServiceAccount
+  name: oran-cn-service
+  namespace: oran-cn
+---
+# Transport Network Service Account and RBAC
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: oran-tn-service
+  namespace: oran-tn
+  labels:
+    app.kubernetes.io/name: tn-service
+    app.kubernetes.io/component: tn
+    app.kubernetes.io/part-of: oran-intent-mano
+    app.kubernetes.io/managed-by: kustomize
+automountServiceAccountToken: true
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: oran-tn-role
+rules:
+# Network management
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["configmaps", "secrets", "services"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["create", "patch"]
+# TN-specific CRDs
+- apiGroups: ["tn.oran.io"]
+  resources: ["*"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+# Network policies
+- apiGroups: ["networking.k8s.io"]
+  resources: ["networkpolicies"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+# OVN networking
+- apiGroups: ["kubeovn.io"]
+  resources: ["*"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: oran-tn-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: oran-tn-role
+subjects:
+- kind: ServiceAccount
+  name: oran-tn-service
+  namespace: oran-tn
+---
+# Monitoring Service Account and RBAC
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: oran-monitoring-service
+  namespace: oran-monitoring
+  labels:
+    app.kubernetes.io/name: monitoring-service
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/part-of: oran-intent-mano
+    app.kubernetes.io/managed-by: kustomize
+automountServiceAccountToken: true
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: oran-monitoring-role
+rules:
+# Prometheus metrics collection
+- apiGroups: [""]
+  resources: ["nodes", "nodes/proxy", "services", "endpoints", "pods"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["configmaps", "secrets"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+- apiGroups: ["extensions", "apps"]
+  resources: ["deployments", "replicasets", "daemonsets", "statefulsets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["networking.k8s.io"]
+  resources: ["ingresses"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["metrics.k8s.io"]
+  resources: ["nodes", "pods"]
+  verbs: ["get", "list"]
+- apiGroups: [""]
+  resources: ["nodes/metrics"]
+  verbs: ["get"]
+# Custom metrics
+- apiGroups: ["custom.metrics.k8s.io"]
+  resources: ["*"]
+  verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: oran-monitoring-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: oran-monitoring-role
+subjects:
+- kind: ServiceAccount
+  name: oran-monitoring-service
+  namespace: oran-monitoring

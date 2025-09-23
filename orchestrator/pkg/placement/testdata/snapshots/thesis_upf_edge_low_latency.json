@@ -1,0 +1,91 @@
+{
+  "scenario_name": "thesis_upf_edge_low_latency",
+  "timestamp": "2025-09-23T04:34:27.5213492+08:00",
+  "network_function": {
+    "id": "upf-thesis-2",
+    "type": "UPF",
+    "requirements": {
+      "min_cpu_cores": 2,
+      "min_memory_gb": 4,
+      "min_storage_gb": 50,
+      "min_bandwidth_mbps": 100
+    },
+    "qos_requirements": {
+      "max_latency_ms": 6.3,
+      "min_throughput_mbps": 0.93,
+      "max_packet_loss_rate": 0.001,
+      "max_jitter_ms": 2
+    }
+  },
+  "decision": {
+    "network_function": {
+      "id": "upf-thesis-2",
+      "type": "UPF",
+      "requirements": {
+        "min_cpu_cores": 2,
+        "min_memory_gb": 4,
+        "min_storage_gb": 50,
+        "min_bandwidth_mbps": 100
+      },
+      "qos_requirements": {
+        "max_latency_ms": 6.3,
+        "min_throughput_mbps": 0.93,
+        "max_packet_loss_rate": 0.001,
+        "max_jitter_ms": 2
+      }
+    },
+    "site": {
+      "id": "edge-thesis-2",
+      "name": "edge-thesis-2",
+      "type": "edge",
+      "location": {
+        "latitude": 0,
+        "longitude": 0,
+        "region": "us-west",
+        "zone": "edge"
+      },
+      "capacity": {
+        "cpu_cores": 16,
+        "memory_gb": 32,
+        "storage_gb": 500,
+        "bandwidth_mbps": 200
+      },
+      "network_profile": {
+        "base_latency_ms": 5,
+        "max_throughput_mbps": 200,
+        "packet_loss_rate": 0.0001,
+        "jitter_ms": 1
+      },
+      "metrics": {
+        "timestamp": "2025-09-23T04:34:27.5213492+08:00",
+        "cpu_utilization": 24.01980788318073,
+        "memory_utilization": 29.700729801249242,
+        "available_bandwidth_mbps": 182.71573395104542,
+        "current_latency_ms": 3.7756059662226202,
+        "active_nfs": 2
+      },
+      "available": true
+    },
+    "score": 76.33838441454174,
+    "reason": "Placed UPF on edge-thesis-2 (edge cloud) for ultra-low latency (3.8ms) [CPU: 24%, Mem: 30%]",
+    "timestamp": "2025-09-23T04:34:27.5213492+08:00"
+  },
+  "site_metrics": {
+    "edge-thesis-2": {
+      "timestamp": "2025-09-23T04:34:27.5213492+08:00",
+      "cpu_utilization": 24.01980788318073,
+      "memory_utilization": 29.700729801249242,
+      "available_bandwidth_mbps": 182.71573395104542,
+      "current_latency_ms": 3.7756059662226202,
+      "active_nfs": 2
+    },
+    "regional-thesis-2": {
+      "timestamp": "2025-09-23T04:34:27.5213492+08:00",
+      "cpu_utilization": 39.715673145388735,
+      "memory_utilization": 49.16268073037091,
+      "available_bandwidth_mbps": 4768.10430603799,
+      "current_latency_ms": 15.545086169917026,
+      "active_nfs": 3
+    }
+  }
+}

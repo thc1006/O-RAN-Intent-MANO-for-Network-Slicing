@@ -1,0 +1,32 @@
+apiVersion: mano.oran.io/v1alpha1
+kind: VNF
+metadata:
+  name: ran-embb
+  namespace: oran-system
+spec:
+  type: RAN
+  version: 1.0.0
+  placement:
+    cloudType: edge
+    maxLatency: 5
+    preferredZones:
+      - zone-a
+      - zone-b
+  resources:
+    cpu: "2"
+    memory: "4Gi"
+    storage: "10Gi"
+    networkBandwidth: 1000
+  qos:
+    bandwidth: 5.0  # High bandwidth for eMBB
+    latency: 9.0    # Relaxed latency
+    jitter: 2.0
+    packetLoss: 0.01
+    reliability: 99.9
+  targetClusters:
+    - edge01
+    - edge02
+  configData:
+    PLMN: "00101"
+    TAC: "0001"
+    BAND: "n78"

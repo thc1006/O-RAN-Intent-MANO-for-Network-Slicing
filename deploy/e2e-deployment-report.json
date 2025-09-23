@@ -1,0 +1,35 @@
+{
+  "timestamp": "2025-09-23T11:36:27+08:00",
+  "status": "deployed",
+  "components": {
+    "o2_interfaces": "ready",
+    "nlp_processor": "ready",
+    "orchestrator": "ready",
+    "tn_manager": "ready",
+    "network": "configured",
+    "monitoring": "active"
+  },
+  "metrics": {
+    "deployment_time_seconds": 58,
+    "target_met": true,
+    "thesis_targets": {
+      "eMBB": {
+        "throughput_mbps": 4.57,
+        "latency_ms": 16.1,
+        "packet_loss": 0.001
+      },
+      "URLLC": {
+        "throughput_mbps": 0.93,
+        "latency_ms": 6.3,
+        "packet_loss": 0.00001
+      },
+      "mMTC": {
+        "throughput_mbps": 2.77,
+        "latency_ms": 15.7,
+        "packet_loss": 0.01
+      }
+    }
+  },
+  "namespace": "oran-mano",
+  "cluster": "docker-desktop"
+}

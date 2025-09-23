@@ -1,0 +1,837 @@
+# Network Slice Package Templates for Porch
+# Comprehensive templates for eMBB, uRLLC, and mIoT network slices
+
+---
+# eMBB Network Slice Package Template
+apiVersion: config.porch.kpt.dev/v1alpha1
+kind: PackageRevision
+metadata:
+  name: embb-network-slice-template
+  namespace: porch-system
+  labels:
+    slice.oran.mano/type: "embb"
+    package.nephio.org/workload: "network-slice"
+    package.nephio.org/layer: "blueprint"
+spec:
+  packageName: embb-network-slice
+  revision: v1.0.0
+  repository: nephio-blueprints
+  lifecycle: Published
+  workspaceName: embb-slice-workspace
+  resources:
+    - name: "kptfile"
+      content: |
+        apiVersion: kpt.dev/v1
+        kind: Kptfile
+        metadata:
+          name: embb-network-slice
+          annotations:
+            config.kubernetes.io/local-config: "true"
+        info:
+          description: "Enhanced Mobile Broadband (eMBB) Network Slice Package"
+          keywords:
+          - "5g"
+          - "embb"
+          - "network-slice"
+          - "high-throughput"
+        pipeline:
+          mutators:
+          - image: gcr.io/oran-mano/qos-injector:v1.2.0
+            configPath: qos-config.yaml
+          - image: gcr.io/oran-mano/site-customizer:v1.0.0
+            configPath: site-config.yaml
+          - image: gcr.io/oran-mano/resource-calculator:v1.1.0
+            configPath: resource-config.yaml
+          validators:
+          - image: gcr.io/oran-mano/slice-validator:v1.0.0
+            configPath: validation-config.yaml
+
+    - name: "network-slice-definition"
+      content: |
+        apiVersion: workload.nephio.org/v1alpha1
+        kind: NetworkSlice
+        metadata:
+          name: embb-slice
+          namespace: slice-embb
+          labels:
+            slice.oran.mano/type: "embb"
+            slice.oran.mano/priority: "standard"
+        spec:
+          # Slice Identification
+          sliceType: eMBB
+          sliceId: "embb-001"
+          plmnId: "12345"
+          nssai:
+            sst: 1
+            sd: "000001"
+
+          # QoS Profile for eMBB
+          qosProfile:
+            name: "embb-high-throughput"
+            5qi: 7
+            maxBitRateUL: "100Mbps"
+            maxBitRateDL: "1Gbps"
+            guaranteedBitRateUL: "50Mbps"
+            guaranteedBitRateDL: "500Mbps"
+            latency: "20ms"
+            packetLossRate: "1e-5"
+            reliability: "99.9%"
+            priority: 70
+            resourceType: "GBR"
+
+          # Coverage and Mobility
+          coverage:
+            areas:
+              - geofence: "central-london"
+                priority: 1
+                bandwidth: "1Gbps"
+              - geofence: "canary-wharf"
+                priority: 2
+                bandwidth: "500Mbps"
+            mobility: "high"
+            handoverOptimization: true
+
+          # SLA Requirements
+          sla:
+            availability: "99.99%"
+            throughput:
+              uplink: "100Mbps"
+              downlink: "1Gbps"
+              burstability: 1.5
+            latency:
+              userPlane: "20ms"
+              controlPlane: "50ms"
+            reliability: "99.9%"
+
+          # Capacity Planning
+          capacity:
+            maxUsers: 10000
+            peakUsage: "80%"
+            scalingPolicy: "auto"
+
+    - name: "ran-function-requirements"
+      content: |
+        apiVersion: workload.nephio.org/v1alpha1
+        kind: RANFunction
+        metadata:
+          name: embb-gnb
+          namespace: slice-embb
+        spec:
+          functionType: gNB
+          vendor: "vendor-a"
+          version: "v1.2.0"
+
+          # Placement Strategy
+          placement:
+            sites: ["edge-01", "edge-02"]
+            strategy: "distributed"
+            antiAffinity: true
+            constraints:
+              latency: "<5ms"
+              bandwidth: ">10Gbps"
+
+          # Resource Requirements
+          resources:
+            cpu: "4000m"
+            memory: "8Gi"
+            storage: "100Gi"
+            hugepages: "2Gi"
+            accelerators:
+              - type: "nvidia.com/gpu"
+                count: 1
+
+          # Network Configuration
+          interfaces:
+            - name: "n2"
+              type: "external"
+              network: "n2-network"
+              ip: "dynamic"
+              vlan: 100
+            - name: "n3"
+              type: "external"
+              network: "n3-network"
+              ip: "dynamic"
+              vlan: 200
+            - name: "uu"
+              type: "radio"
+              frequency: "3.5GHz"
+              bandwidth: "100MHz"
+
+          # Performance Configuration
+          performance:
+            cells:
+              count: 3
+              range: "5km"
+              capacity: "1000users"
+            beamforming: true
+            mimo: "8x8"
+            carrierAggregation: true
+
+          # QoS Mapping
+          qosMapping:
+            - slice: "embb-001"
+              5qi: 7
+              priority: 70
+              scheduler: "proportional-fair"
+
+    - name: "core-function-requirements"
+      content: |
+        apiVersion: workload.nephio.org/v1alpha1
+        kind: CoreFunction
+        metadata:
+          name: embb-amf
+          namespace: slice-embb
+        spec:
+          functionType: AMF
+          vendor: "open5gs"
+          version: "v2.6.0"
+
+          # Placement
+          placement:
+            sites: ["regional-01"]
+            strategy: "active-standby"
+            constraints:
+              latency: "<10ms"
+              redundancy: "required"
+
+          # Resources
+          resources:
+            cpu: "2000m"
+            memory: "4Gi"
+            storage: "50Gi"
+
+          # Configuration
+          configuration:
+            supportedSlices:
+              - sst: 1
+                sd: "000001"
+            capacity:
+              maxSubscribers: 100000
+              maxSessions: 50000
+            interfaces:
+              n2: "192.168.2.0/24"
+              n11: "192.168.11.0/24"
+
+        ---
+        apiVersion: workload.nephio.org/v1alpha1
+        kind: CoreFunction
+        metadata:
+          name: embb-smf
+          namespace: slice-embb
+        spec:
+          functionType: SMF
+          vendor: "open5gs"
+          version: "v2.6.0"
+
+          placement:
+            sites: ["regional-01"]
+            strategy: "active-standby"
+
+          resources:
+            cpu: "1000m"
+            memory: "2Gi"
+            storage: "25Gi"
+
+          configuration:
+            supportedSlices:
+              - sst: 1
+                sd: "000001"
+            dnn: ["internet", "ims"]
+            upfSelection: "closest"
+
+        ---
+        apiVersion: workload.nephio.org/v1alpha1
+        kind: CoreFunction
+        metadata:
+          name: embb-upf
+          namespace: slice-embb
+        spec:
+          functionType: UPF
+          vendor: "free5gc"
+          version: "v3.3.0"
+
+          placement:
+            sites: ["edge-01", "edge-02"]
+            strategy: "distributed"
+            localBreakout: true
+
+          resources:
+            cpu: "8000m"
+            memory: "16Gi"
+            storage: "200Gi"
+            hugepages: "4Gi"
+            accelerators:
+              - type: "intel.com/qat"
+                count: 1
+
+          configuration:
+            dataPlaneAcceleration: true
+            throughputTarget: "10Gbps"
+            interfaces:
+              n3: "192.168.3.0/24"
+              n6: "10.0.0.0/8"
+
+    - name: "kustomization"
+      content: |
+        apiVersion: kustomize.config.k8s.io/v1beta1
+        kind: Kustomization
+        metadata:
+          name: embb-slice-kustomization
+          namespace: slice-embb
+          annotations:
+            config.kubernetes.io/local-config: "true"
+
+        resources:
+        - network-slice-definition.yaml
+        - ran-function-requirements.yaml
+        - core-function-requirements.yaml
+        - network-policies.yaml
+        - monitoring-config.yaml
+
+        namespace: slice-embb
+
+        commonLabels:
+          slice.oran.mano/type: "embb"
+          slice.oran.mano/id: "embb-001"
+
+        patches:
+        - target:
+            group: workload.nephio.org
+            version: v1alpha1
+            kind: NetworkSlice
+          patch: |-
+            - op: replace
+              path: /metadata/labels/config.kubernetes.io~1managed-by
+              value: kpt
+
+---
+# uRLLC Network Slice Package Template
+apiVersion: config.porch.kpt.dev/v1alpha1
+kind: PackageRevision
+metadata:
+  name: urllc-network-slice-template
+  namespace: porch-system
+  labels:
+    slice.oran.mano/type: "urllc"
+    package.nephio.org/workload: "network-slice"
+    package.nephio.org/layer: "blueprint"
+spec:
+  packageName: urllc-network-slice
+  revision: v1.0.0
+  repository: nephio-blueprints
+  lifecycle: Published
+  workspaceName: urllc-slice-workspace
+  resources:
+    - name: "kptfile"
+      content: |
+        apiVersion: kpt.dev/v1
+        kind: Kptfile
+        metadata:
+          name: urllc-network-slice
+          annotations:
+            config.kubernetes.io/local-config: "true"
+        info:
+          description: "Ultra-Reliable Low Latency Communications (uRLLC) Network Slice Package"
+          keywords:
+          - "5g"
+          - "urllc"
+          - "network-slice"
+          - "ultra-low-latency"
+          - "mission-critical"
+        pipeline:
+          mutators:
+          - image: gcr.io/oran-mano/urllc-optimizer:v1.0.0
+            configPath: urllc-config.yaml
+          - image: gcr.io/oran-mano/latency-optimizer:v1.0.0
+            configPath: latency-config.yaml
+          - image: gcr.io/oran-mano/deterministic-scheduler:v1.0.0
+            configPath: scheduling-config.yaml
+          validators:
+          - image: gcr.io/oran-mano/latency-validator:v1.0.0
+            configPath: latency-validation.yaml
+
+    - name: "network-slice-definition"
+      content: |
+        apiVersion: workload.nephio.org/v1alpha1
+        kind: NetworkSlice
+        metadata:
+          name: urllc-slice
+          namespace: slice-urllc
+          labels:
+            slice.oran.mano/type: "urllc"
+            slice.oran.mano/priority: "critical"
+        spec:
+          # Slice Identification
+          sliceType: uRLLC
+          sliceId: "urllc-001"
+          plmnId: "12345"
+          nssai:
+            sst: 1
+            sd: "000002"
+
+          # Ultra-Low Latency QoS Profile
+          qosProfile:
+            name: "urllc-ultra-reliable"
+            5qi: 1
+            maxBitRateUL: "10Mbps"
+            maxBitRateDL: "10Mbps"
+            guaranteedBitRateUL: "10Mbps"
+            guaranteedBitRateDL: "10Mbps"
+            latency: "1ms"
+            jitter: "0.1ms"
+            packetLossRate: "1e-7"
+            reliability: "99.999%"
+            priority: 10
+            resourceType: "GBR"
+            deterministic: true
+
+          # Critical Coverage Requirements
+          coverage:
+            areas:
+              - geofence: "industrial-zone-a"
+                priority: 1
+                latencyBudget: "1ms"
+                dedicatedResources: true
+            mobility: "low"
+            handoverLatency: "0.5ms"
+
+          # Stringent SLA
+          sla:
+            availability: "99.999%"
+            latency:
+              userPlane: "1ms"
+              controlPlane: "10ms"
+              endToEnd: "5ms"
+            reliability: "99.999%"
+            jitter: "0.1ms"
+            packetLoss: "1e-7"
+
+          # Dedicated Resources
+          isolation:
+            level: "complete"
+            dedicatedSpectrum: true
+            dedicatedCompute: true
+            dedicatedNetwork: true
+
+    - name: "urllc-ran-function"
+      content: |
+        apiVersion: workload.nephio.org/v1alpha1
+        kind: RANFunction
+        metadata:
+          name: urllc-gnb
+          namespace: slice-urllc
+        spec:
+          functionType: gNB
+          vendor: "vendor-specialized"
+          version: "v2.0.0"
+
+          # High-Performance Placement
+          placement:
+            sites: ["edge-01"]
+            strategy: "dedicated"
+            nodeSelector:
+              hardware: "high-performance"
+              latency-optimized: "true"
+              cpu-isolation: "enabled"
+
+          # Optimized Resources
+          resources:
+            cpu: "8000m"
+            memory: "16Gi"
+            storage: "200Gi"
+            hugepages: "8Gi"
+            accelerators:
+              - type: "nvidia.com/gpu"
+                count: 2
+              - type: "intel.com/fpga"
+                count: 1
+
+          # Deterministic Scheduling
+          scheduling:
+            policy: "fifo"
+            priority: "system-critical"
+            preemption: "never"
+            cpuSet: "4-7"
+            numa: "single-node"
+
+          # Ultra-Low Latency Configuration
+          performance:
+            latencyMode: "ultra-low"
+            processingTime: "0.1ms"
+            schedulingInterval: "0.5ms"
+            harqRtt: "1ms"
+            preemptiveScheduling: true
+
+          # Dedicated Interfaces
+          interfaces:
+            - name: "n2"
+              type: "dedicated"
+              network: "n2-network-urllc"
+              qos: "guaranteed"
+              latency: "0.1ms"
+            - name: "n3"
+              type: "dedicated"
+              network: "n3-network-urllc"
+              qos: "guaranteed"
+              latency: "0.1ms"
+
+    - name: "urllc-core-functions"
+      content: |
+        apiVersion: workload.nephio.org/v1alpha1
+        kind: CoreFunction
+        metadata:
+          name: urllc-amf
+          namespace: slice-urllc
+        spec:
+          functionType: AMF
+          vendor: "nokia"
+          version: "v1.0.0"
+
+          placement:
+            sites: ["regional-01"]
+            nodeSelector:
+              latency-zone: "ultra-low"
+              cpu-isolation: "enabled"
+
+          resources:
+            cpu: "4000m"
+            memory: "8Gi"
+            storage: "100Gi"
+
+          scheduling:
+            priority: "system-critical"
+            cpuSet: "0-3"
+
+          configuration:
+            processingMode: "deterministic"
+            supportedSlices:
+              - sst: 1
+                sd: "000002"
+            latencyTarget: "1ms"
+
+        ---
+        apiVersion: workload.nephio.org/v1alpha1
+        kind: CoreFunction
+        metadata:
+          name: urllc-upf
+          namespace: slice-urllc
+        spec:
+          functionType: UPF
+          vendor: "ericsson"
+          version: "v1.0.0"
+
+          placement:
+            sites: ["edge-01"]
+            nodeSelector:
+              dpdk-enabled: "true"
+              sr-iov-enabled: "true"
+
+          resources:
+            cpu: "16000m"
+            memory: "32Gi"
+            storage: "500Gi"
+            hugepages: "16Gi"
+            accelerators:
+              - type: "intel.com/qat"
+                count: 2
+
+          configuration:
+            dataPlaneAcceleration: "dpdk"
+            packetProcessing: "zero-copy"
+            queueManagement: "strict-priority"
+            buffering: "minimal"
+
+---
+# mIoT Network Slice Package Template
+apiVersion: config.porch.kpt.dev/v1alpha1
+kind: PackageRevision
+metadata:
+  name: miot-network-slice-template
+  namespace: porch-system
+  labels:
+    slice.oran.mano/type: "miot"
+    package.nephio.org/workload: "network-slice"
+    package.nephio.org/layer: "blueprint"
+spec:
+  packageName: miot-network-slice
+  revision: v1.0.0
+  repository: nephio-blueprints
+  lifecycle: Published
+  workspaceName: miot-slice-workspace
+  resources:
+    - name: "kptfile"
+      content: |
+        apiVersion: kpt.dev/v1
+        kind: Kptfile
+        metadata:
+          name: miot-network-slice
+          annotations:
+            config.kubernetes.io/local-config: "true"
+        info:
+          description: "Massive IoT (mIoT) Network Slice Package"
+          keywords:
+          - "5g"
+          - "miot"
+          - "network-slice"
+          - "massive-connectivity"
+          - "iot"
+        pipeline:
+          mutators:
+          - image: gcr.io/oran-mano/miot-optimizer:v1.0.0
+            configPath: miot-config.yaml
+          - image: gcr.io/oran-mano/connection-optimizer:v1.0.0
+            configPath: connection-config.yaml
+          - image: gcr.io/oran-mano/energy-optimizer:v1.0.0
+            configPath: energy-config.yaml
+
+    - name: "network-slice-definition"
+      content: |
+        apiVersion: workload.nephio.org/v1alpha1
+        kind: NetworkSlice
+        metadata:
+          name: miot-slice
+          namespace: slice-miot
+          labels:
+            slice.oran.mano/type: "miot"
+            slice.oran.mano/priority: "standard"
+        spec:
+          # Slice Identification
+          sliceType: mIoT
+          sliceId: "miot-001"
+          plmnId: "12345"
+          nssai:
+            sst: 2
+            sd: "000003"
+
+          # IoT-Optimized QoS Profile
+          qosProfile:
+            name: "miot-massive-connectivity"
+            5qi: 9
+            maxBitRateUL: "1Mbps"
+            maxBitRateDL: "1Mbps"
+            latency: "100ms"
+            packetLossRate: "1e-3"
+            reliability: "99%"
+            priority: 90
+            resourceType: "Non-GBR"
+            connectionDensity: "1000000/km2"
+
+          # Wide Area Coverage
+          coverage:
+            areas:
+              - geofence: "smart-city-zone"
+                priority: 1
+                connectionDensity: "50000/km2"
+              - geofence: "industrial-park"
+                priority: 2
+                connectionDensity: "100000/km2"
+            mobility: "stationary"
+            energyEfficiency: "optimized"
+
+          # IoT SLA Requirements
+          sla:
+            availability: "99%"
+            connectionDensity: "1000000/km2"
+            batteryLife: "10years"
+            energyEfficiency: "optimized"
+            costEfficiency: "maximum"
+
+          # Massive Connectivity
+          connectivity:
+            maxDevices: 1000000
+            deviceTypes: ["sensors", "actuators", "meters"]
+            trafficPattern: "sporadic"
+            dataSize: "small"
+
+    - name: "miot-ran-function"
+      content: |
+        apiVersion: workload.nephio.org/v1alpha1
+        kind: RANFunction
+        metadata:
+          name: miot-gnb
+          namespace: slice-miot
+        spec:
+          functionType: gNB
+          vendor: "vendor-iot"
+          version: "v1.5.0"
+
+          # Distributed Placement
+          placement:
+            sites: ["edge-01", "edge-02"]
+            strategy: "spread"
+            coverage: "maximum"
+
+          # Efficient Resources
+          resources:
+            cpu: "2000m"
+            memory: "4Gi"
+            storage: "100Gi"
+
+          # Auto-Scaling Configuration
+          scaling:
+            enabled: true
+            minReplicas: 2
+            maxReplicas: 10
+            metric: "connection-count"
+            targetConnections: 100000
+
+          # IoT-Optimized Configuration
+          performance:
+            connectionDensity: "50000/cell"
+            energyEfficiency: "optimized"
+            preambleFormat: "4"
+            randomAccess: "optimized"
+
+          # Shared Interfaces
+          interfaces:
+            - name: "n2"
+              type: "shared"
+              network: "n2-network"
+              qos: "best-effort"
+            - name: "n3"
+              type: "shared"
+              network: "n3-network"
+              qos: "best-effort"
+
+    - name: "miot-core-functions"
+      content: |
+        apiVersion: workload.nephio.org/v1alpha1
+        kind: CoreFunction
+        metadata:
+          name: miot-amf
+          namespace: slice-miot
+        spec:
+          functionType: AMF
+          vendor: "open5gs"
+          version: "v2.6.0"
+
+          placement:
+            sites: ["regional-01"]
+            strategy: "shared"
+
+          resources:
+            cpu: "1000m"
+            memory: "2Gi"
+            storage: "50Gi"
+
+          scaling:
+            enabled: true
+            metric: "registered-devices"
+            targetDevices: 500000
+
+          configuration:
+            supportedSlices:
+              - sst: 2
+                sd: "000003"
+            deviceManagement: "optimized"
+            batteryOptimization: true
+
+        ---
+        apiVersion: workload.nephio.org/v1alpha1
+        kind: CoreFunction
+        metadata:
+          name: miot-smf
+          namespace: slice-miot
+        spec:
+          functionType: SMF
+          vendor: "open5gs"
+          version: "v2.6.0"
+
+          placement:
+            sites: ["regional-01"]
+            strategy: "shared"
+
+          resources:
+            cpu: "500m"
+            memory: "1Gi"
+            storage: "25Gi"
+
+          configuration:
+            sessionManagement: "optimized"
+            dnn: ["iot"]
+            dataOptimization: true
+
+---
+# Slice Configuration Templates
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: slice-configuration-templates
+  namespace: porch-system
+data:
+  qos-config.yaml: |
+    qosProfiles:
+      embb:
+        downloadThroughput: "1Gbps"
+        uploadThroughput: "100Mbps"
+        latency: "20ms"
+        reliability: "99.9%"
+        priority: 7
+
+      urllc:
+        downloadThroughput: "10Mbps"
+        uploadThroughput: "10Mbps"
+        latency: "1ms"
+        reliability: "99.999%"
+        priority: 1
+
+      miot:
+        downloadThroughput: "1Mbps"
+        uploadThroughput: "1Mbps"
+        latency: "100ms"
+        reliability: "99%"
+        priority: 9
+
+  site-config.yaml: |
+    sites:
+      edge:
+        resourceConstraints:
+          cpu: "limited"
+          memory: "limited"
+          storage: "limited"
+        capabilities:
+          - "ran-functions"
+          - "edge-upf"
+          - "local-cache"
+
+      regional:
+        resourceConstraints:
+          cpu: "medium"
+          memory: "medium"
+          storage: "high"
+        capabilities:
+          - "core-functions"
+          - "aggregation"
+          - "analytics"
+
+      central:
+        resourceConstraints:
+          cpu: "high"
+          memory: "high"
+          storage: "very-high"
+        capabilities:
+          - "management"
+          - "orchestration"
+          - "ml-workloads"
+
+  resource-config.yaml: |
+    resourceCalculation:
+      ran:
+        gnb:
+          baseCpu: "2000m"
+          baseMemory: "4Gi"
+          perCellCpu: "500m"
+          perCellMemory: "1Gi"
+
+      core:
+        amf:
+          baseCpu: "1000m"
+          baseMemory: "2Gi"
+          per1kUsersCpu: "100m"
+          per1kUsersMemory: "200Mi"
+
+        upf:
+          baseCpu: "4000m"
+          baseMemory: "8Gi"
+          perGbpsCpu: "2000m"
+          perGbpsMemory: "4Gi"

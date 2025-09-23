@@ -1,0 +1,12 @@
+{
+  "validation_start": "2025-09-23T06:50:15+08:00",
+  "project": "O-RAN Intent-MANO for Network Slicing",
+  "thesis_targets": {
+    "throughput_mbps": [4.57 2.77 0.93],
+    "latency_rtt_ms": [16.1 15.7 6.3],
+    "max_deployment_seconds": 600
+  },
+  "test_results": {},
+  "overall_status": "RUNNING",
+  "access_granted": false
+}

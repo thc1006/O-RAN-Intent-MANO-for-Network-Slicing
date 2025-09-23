@@ -1,0 +1,98 @@
+# Performance thresholds and validation criteria
+
+deployment_times:
+  fast_series:
+    embb:
+      target: 407
+      tolerance: 20
+      min_acceptable: 387
+      max_acceptable: 427
+    urllc:
+      target: 353
+      tolerance: 20
+      min_acceptable: 333
+      max_acceptable: 373
+    miot:
+      target: 257
+      tolerance: 20
+      min_acceptable: 237
+      max_acceptable: 277
+
+  slow_series:
+    embb:
+      target: 532
+      tolerance: 25
+      min_acceptable: 507
+      max_acceptable: 557
+    urllc:
+      target: 292
+      tolerance: 20
+      min_acceptable: 272
+      max_acceptable: 312
+    miot:
+      target: 220
+      tolerance: 15
+      min_acceptable: 205
+      max_acceptable: 235
+
+resource_limits:
+  smo:
+    cpu_max_cores: 2.0
+    memory_max_mb: 4096
+    cpu_warning_threshold: 1.5
+    memory_warning_threshold: 3072
+
+  ocloud:
+    memory_max_mb_per_node: 16384
+    memory_warning_threshold: 12288
+    disk_usage_max_percent: 80
+    network_utilization_max_percent: 70
+
+bottleneck_detection:
+  smf_init_delay:
+    min_detectable: 60  # seconds
+    expected_embb: 120  # seconds
+    expected_urllc: 30  # seconds
+    expected_miot: 60   # seconds
+
+  cpu_spike_threshold: 0.8  # 80% CPU
+  memory_spike_threshold: 0.7  # 70% memory
+
+  timeline_events:
+    - pod_scheduled
+    - container_creating
+    - container_started
+    - cpu_spike_detected
+    - session_db_init
+    - ready_probe_pass
+    - service_available
+
+performance_metrics:
+  iperf3:
+    duration_seconds: 30
+    parallel_streams: 1
+    window_size: "64K"
+
+  ping:
+    count: 1000
+    interval: 0.01
+    packet_size: 64
+
+  tolerance:
+    throughput_percent: 10
+    latency_ms: 2.0
+    jitter_ms: 1.0
+
+validation_criteria:
+  required_checks:
+    - deployment_time_within_tolerance
+    - resource_usage_below_limits
+    - performance_targets_met
+    - smf_bottleneck_detected
+
+  optional_checks:
+    - gitops_sync_time
+    - porch_package_validation
+    - configsync_latency
+
+  pass_threshold: 80  # Percent of checks that must pass

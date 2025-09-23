@@ -1,0 +1,341 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: trivy-system
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+    app.kubernetes.io/name: trivy-operator
+    app.kubernetes.io/part-of: oran-intent-mano
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: trivy-operator
+  namespace: trivy-system
+  labels:
+    app.kubernetes.io/name: trivy-operator
+    app.kubernetes.io/part-of: oran-intent-mano
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: trivy-operator
+  labels:
+    app.kubernetes.io/name: trivy-operator
+    app.kubernetes.io/part-of: oran-intent-mano
+rules:
+- apiGroups: [""]
+  resources: ["pods", "pods/log", "replicationcontrollers", "services", "nodes", "limitranges", "resourcequotas", "configmaps", "secrets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["apps"]
+  resources: ["replicasets", "deployments", "daemonsets", "statefulsets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["batch"]
+  resources: ["jobs", "cronjobs"]
+  verbs: ["get", "list", "watch", "create", "delete"]
+- apiGroups: ["networking.k8s.io"]
+  resources: ["networkpolicies", "ingresses"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["policy"]
+  resources: ["podsecuritypolicies"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["rbac.authorization.k8s.io"]
+  resources: ["roles", "rolebindings", "clusterroles", "clusterrolebindings"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["apiextensions.k8s.io"]
+  resources: ["customresourcedefinitions"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["aquasecurity.github.io"]
+  resources: ["*"]
+  verbs: ["*"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: trivy-operator
+  labels:
+    app.kubernetes.io/name: trivy-operator
+    app.kubernetes.io/part-of: oran-intent-mano
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: trivy-operator
+subjects:
+- kind: ServiceAccount
+  name: trivy-operator
+  namespace: trivy-system
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: trivy-operator
+  namespace: trivy-system
+  labels:
+    app.kubernetes.io/name: trivy-operator
+    app.kubernetes.io/part-of: oran-intent-mano
+data:
+  # Trivy operator configuration
+  trivy.timeout: "10m0s"
+  trivy.mode: "Standalone"
+  trivy.severity: "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"
+  trivy.dbRepository: "ghcr.io/aquasecurity/trivy-db"
+  trivy.javaDbRepository: "ghcr.io/aquasecurity/trivy-java-db"
+  trivy.command: "image"
+  trivy.serverURL: ""
+  trivy.insecure: "false"
+  trivy.nonSslMode: "false"
+  trivy.githubToken: ""
+  trivy.skipUpdate: "false"
+  trivy.offlineScan: "false"
+
+  # Vulnerability scanning configuration
+  vulnerabilityReports.scanner: "Trivy"
+  vulnerabilityReports.reportTTL: "24h"
+
+  # Configuration scanning
+  configAuditReports.scanner: "Trivy"
+
+  # Exposed secrets scanning
+  exposedSecretReports.scanner: "Trivy"
+
+  # RBAC assessment
+  rbacAssessmentReports.scanner: "Trivy"
+
+  # Compliance reports
+  compliance.cron: "0 */6 * * *"  # Every 6 hours
+
+  # O-RAN specific scan policies
+  scan.vulnerabilityReports.scanJobsInSameNamespace: "true"
+  scan.vulnerabilityReports.scanJobTimeout: "10m"
+  scan.configAuditReports.scanJobTimeout: "10m"
+
+  # Node scanning
+  nodeCollector.imageRef: "ghcr.io/aquasecurity/node-collector:0.0.9"
+  nodeCollector.imagePullPolicy: "IfNotPresent"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: trivy-operator
+  namespace: trivy-system
+  labels:
+    app.kubernetes.io/name: trivy-operator
+    app.kubernetes.io/part-of: oran-intent-mano
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: trivy-operator
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: trivy-operator
+        app.kubernetes.io/part-of: oran-intent-mano
+    spec:
+      serviceAccountName: trivy-operator
+      automountServiceAccountToken: true
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: trivy-operator
+        image: ghcr.io/aquasecurity/trivy-operator:0.19.1
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 10001
+          runAsGroup: 10001
+          capabilities:
+            drop:
+            - ALL
+        env:
+        - name: OPERATOR_NAMESPACE
+          value: trivy-system
+        - name: OPERATOR_TARGET_NAMESPACES
+          value: "oran-nlp,oran-orchestrator,oran-ran,oran-cn,oran-tn,oran-monitoring"
+        - name: OPERATOR_LOG_DEV_MODE
+          value: "false"
+        - name: OPERATOR_SCAN_JOB_TIMEOUT
+          value: "10m"
+        - name: OPERATOR_CONCURRENT_SCAN_JOBS_LIMIT
+          value: "3"
+        - name: OPERATOR_SCAN_JOB_RETRY_AFTER
+          value: "30s"
+        - name: OPERATOR_BATCH_DELETE_LIMIT
+          value: "10"
+        - name: OPERATOR_BATCH_DELETE_DELAY
+          value: "10s"
+        - name: OPERATOR_METRICS_BIND_ADDRESS
+          value: ":8080"
+        - name: OPERATOR_HEALTH_PROBE_BIND_ADDRESS
+          value: ":9090"
+        - name: OPERATOR_CIS_KUBERNETES_BENCHMARK_ENABLED
+          value: "true"
+        - name: OPERATOR_VULNERABILITY_SCANNER_ENABLED
+          value: "true"
+        - name: OPERATOR_RBAC_ASSESSMENT_SCANNER_ENABLED
+          value: "true"
+        - name: OPERATOR_CONFIG_AUDIT_SCANNER_ENABLED
+          value: "true"
+        - name: OPERATOR_CLUSTER_COMPLIANCE_ENABLED
+          value: "true"
+        ports:
+        - containerPort: 8080
+          name: metrics
+          protocol: TCP
+        - containerPort: 9090
+          name: probes
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /healthz/
+            port: probes
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          successThreshold: 1
+          failureThreshold: 10
+        readinessProbe:
+          httpGet:
+            path: /readyz/
+            port: probes
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          successThreshold: 1
+          failureThreshold: 3
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
+        volumeMounts:
+        - mountPath: /tmp
+          name: tmp-data
+      volumes:
+      - name: tmp-data
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: trivy-operator-metrics
+  namespace: trivy-system
+  labels:
+    app.kubernetes.io/name: trivy-operator
+    app.kubernetes.io/part-of: oran-intent-mano
+spec:
+  selector:
+    app.kubernetes.io/name: trivy-operator
+  ports:
+  - name: metrics
+    port: 80
+    targetPort: metrics
+    protocol: TCP
+---
+# ServiceMonitor for Prometheus to scrape Trivy metrics
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: trivy-operator
+  namespace: trivy-system
+  labels:
+    app.kubernetes.io/name: trivy-operator
+    app.kubernetes.io/part-of: oran-intent-mano
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: trivy-operator
+  endpoints:
+  - port: metrics
+    interval: 30s
+    path: /metrics
+---
+# Vulnerability scan schedule for O-RAN components
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: oran-vulnerability-scan
+  namespace: trivy-system
+  labels:
+    app.kubernetes.io/name: vulnerability-scan
+    app.kubernetes.io/part-of: oran-intent-mano
+spec:
+  schedule: "0 2 * * *"  # Daily at 2 AM
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: vulnerability-scan
+            app.kubernetes.io/part-of: oran-intent-mano
+        spec:
+          serviceAccountName: trivy-operator
+          restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            fsGroup: 10001
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+          - name: trivy-scan
+            image: ghcr.io/aquasecurity/trivy:0.48.3
+            imagePullPolicy: IfNotPresent
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              runAsNonRoot: true
+              runAsUser: 10001
+              runAsGroup: 10001
+              capabilities:
+                drop:
+                - ALL
+            command:
+            - /bin/sh
+            - -c
+            - |
+              echo "Starting O-RAN vulnerability scan..."
+
+              # Scan O-RAN component images
+              NAMESPACES="oran-nlp oran-orchestrator oran-ran oran-cn oran-tn oran-monitoring"
+
+              for ns in $NAMESPACES; do
+                echo "Scanning namespace: $ns"
+                kubectl get pods -n $ns -o jsonpath='{range .items[*]}{.spec.containers[*].image}{"\n"}{end}' | \
+                while read image; do
+                  if [ ! -z "$image" ]; then
+                    echo "Scanning image: $image"
+                    trivy image --severity HIGH,CRITICAL --format json --output /tmp/scan-$ns-$(echo $image | tr '/' '-' | tr ':' '-').json $image || true
+                  fi
+                done
+              done
+
+              echo "Vulnerability scan completed"
+            resources:
+              limits:
+                cpu: 500m
+                memory: 1Gi
+              requests:
+                cpu: 100m
+                memory: 256Mi
+            volumeMounts:
+            - name: scan-results
+              mountPath: /tmp
+          volumes:
+          - name: scan-results
+            emptyDir: {}

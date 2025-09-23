@@ -1,0 +1,31 @@
+apiVersion: mano.oran.io/v1alpha1
+kind: VNF
+metadata:
+  name: upf-balanced
+  namespace: oran-system
+spec:
+  type: CN
+  version: 2.0.0
+  placement:
+    cloudType: regional
+    maxLatency: 10
+    preferredZones:
+      - regional-dc1
+  resources:
+    cpu: "4"
+    memory: "8Gi"
+    storage: "50Gi"
+    networkBandwidth: 5000
+  qos:
+    bandwidth: 3.0  # Balanced bandwidth
+    latency: 9.0    # Moderate latency
+    jitter: 3.0
+    packetLoss: 0.05
+    reliability: 99.5
+  targetClusters:
+    - regional
+  configData:
+    DNN: "internet"
+    UPF_MODE: "inline"
+    N3_INTERFACE: "eth1"
+    N6_INTERFACE: "eth2"

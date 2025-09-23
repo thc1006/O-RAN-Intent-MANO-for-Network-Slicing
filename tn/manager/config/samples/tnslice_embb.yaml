@@ -1,0 +1,23 @@
+apiVersion: tn.oran.io/v1alpha1
+kind: TNSlice
+metadata:
+  name: embb-slice
+  namespace: default
+spec:
+  sliceId: embb-slice-001
+  profile: eMBB
+  bandwidth: 4.57
+  latency: 16.1
+  jitter: 2.0
+  packetLoss: 0.01
+  vxlanId: 1001
+  priority: 5
+  endpoints:
+    - nodeName: kind-worker
+      ip: 172.18.0.3
+      interface: eth0
+      role: source
+    - nodeName: kind-worker2
+      ip: 172.18.0.4
+      interface: eth0
+      role: destination

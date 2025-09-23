@@ -1,0 +1,346 @@
+# OVN Multi-Site Interconnection Configuration
+# Establishes GENEVE tunnels between central and edge sites
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ovn-interconnect-config
+  namespace: kube-ovn
+data:
+  interconnect-mode: "ic"
+  tunnel-protocol: "geneve"
+
+  # Central site configuration
+  central-site-name: "central"
+  central-availability-zone: "az-central"
+
+  # Edge sites configuration
+  edge-sites: |
+    edge01:
+      az: "az-edge01"
+      gateway-ip: "${EDGE01_GATEWAY_IP}"
+      tunnel-ip: "${EDGE01_TUNNEL_IP}"
+      chassis-name: "edge01-chassis"
+    edge02:
+      az: "az-edge02"
+      gateway-ip: "${EDGE02_GATEWAY_IP}"
+      tunnel-ip: "${EDGE02_TUNNEL_IP}"
+      chassis-name: "edge02-chassis"
+
+  # Transit switch configuration for inter-cluster routing
+  transit-switch-subnet: "172.20.0.0/16"
+  transit-switch-exclude-ips: "172.20.0.1"
+
+  # Cross-cluster network policies
+  allow-cross-cluster: "true"
+  cross-cluster-cidrs: "10.16.0.0/12,10.244.0.0/16"
+
+  # QoS configuration for inter-cluster traffic
+  inter-cluster-qos: |
+    high-priority:
+      bandwidth: "1Gbit"
+      priority: 100
+      queue-id: 1
+    medium-priority:
+      bandwidth: "500Mbit"
+      priority: 50
+      queue-id: 2
+    low-priority:
+      bandwidth: "100Mbit"
+      priority: 10
+      queue-id: 3
+---
+apiVersion: kubeovn.io/v1
+kind: Subnet
+metadata:
+  name: transit-switch
+  namespace: kube-ovn
+spec:
+  cidrBlock: 172.20.0.0/16
+  excludeIps:
+  - 172.20.0.1
+  gateway: 172.20.0.1
+  gatewayType: distributed
+  default: false
+  protocol: IPv4
+  provider: ovn
+  vpc: ovn-cluster
+  vlan: ""
+  underlayGateway: false
+  disableGatewayCheck: false
+  enableDHCP: true
+  dhcpV4Options: ""
+  enableIPv6RA: false
+  ipv6RAConfigs: ""
+  namespaces: []
+---
+apiVersion: kubeovn.io/v1
+kind: Vpc
+metadata:
+  name: ovn-cluster
+spec:
+  namespaces: []
+  staticRoutes:
+  - cidr: 10.16.0.0/16
+    nextHopIP: 172.20.0.1
+    policy: policyDst
+  - cidr: 10.244.0.0/16
+    nextHopIP: 172.20.0.2
+    policy: policyDst
+  enableExternal: true
+  externalEgressGateway: ""
+---
+# OVN Interconnection Gateway Configuration
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ovn-ic-gateway
+  namespace: kube-ovn
+  labels:
+    app: ovn-ic-gateway
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ovn-ic-gateway
+  template:
+    metadata:
+      labels:
+        app: ovn-ic-gateway
+    spec:
+      hostNetwork: true
+      tolerations:
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+        effect: NoSchedule
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: ovn-ic-gateway
+              topologyKey: kubernetes.io/hostname
+      containers:
+      - name: ovn-ic-gateway
+        image: kubeovn/kube-ovn:v1.11.5
+        command: ["/kube-ovn/start-ic-gateway.sh"]
+        env:
+        - name: ENABLE_SSL
+          value: "false"
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: OVN_IC_NB_DB
+          value: "tcp:${OVN_IC_NB_HOST}:6645"
+        - name: OVN_IC_SB_DB
+          value: "tcp:${OVN_IC_SB_HOST}:6646"
+        - name: IC_PROBE_INTERVAL
+          value: "10000"
+        - name: IC_NAME
+          value: "oram-interconnect"
+        - name: AZ_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: ovn-interconnect-config
+              key: central-availability-zone
+        volumeMounts:
+        - name: ovn-ic-config
+          mountPath: /etc/ovn-ic
+        resources:
+          requests:
+            cpu: 200m
+            memory: 200Mi
+          limits:
+            cpu: 500m
+            memory: 500Mi
+        readinessProbe:
+          exec:
+            command:
+            - bash
+            - -c
+            - ovn-ic-nbctl show
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        livenessProbe:
+          exec:
+            command:
+            - bash
+            - -c
+            - ovn-ic-nbctl show
+          initialDelaySeconds: 30
+          periodSeconds: 10
+      volumes:
+      - name: ovn-ic-config
+        configMap:
+          name: ovn-interconnect-config
+      nodeSelector:
+        ovn-gateway: "true"
+---
+# GENEVE Tunnel Configuration DaemonSet
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: ovn-tunnel-agent
+  namespace: kube-ovn
+  labels:
+    app: ovn-tunnel-agent
+spec:
+  selector:
+    matchLabels:
+      app: ovn-tunnel-agent
+  template:
+    metadata:
+      labels:
+        app: ovn-tunnel-agent
+    spec:
+      hostNetwork: true
+      tolerations:
+      - operator: Exists
+      containers:
+      - name: tunnel-agent
+        image: kubeovn/kube-ovn:v1.11.5
+        command: ["/bin/bash"]
+        args:
+        - -c
+        - |
+          set -ex
+          # Configure GENEVE tunnels for each edge site
+          while IFS= read -r line; do
+            if [[ "$line" =~ ^[[:space:]]*([^:]+):[[:space:]]*$ ]]; then
+              site="${BASH_REMATCH[1]}"
+            elif [[ "$line" =~ ^[[:space:]]*tunnel-ip:[[:space:]]*\"(.+)\"[[:space:]]*$ ]]; then
+              tunnel_ip="${BASH_REMATCH[1]}"
+              if [ "$tunnel_ip" != "\${${site^^}_TUNNEL_IP}" ]; then
+                echo "Configuring tunnel to $site at $tunnel_ip"
+                ovs-vsctl --may-exist add-port br-int genev-$site -- \
+                  set interface genev-$site type=geneve \
+                  options:remote_ip=$tunnel_ip \
+                  options:key=flow \
+                  options:dst_port=6081
+              fi
+            fi
+          done <<< "$(cat /etc/interconnect/edge-sites)"
+
+          # Keep container running and monitor tunnels
+          while true; do
+            sleep 60
+            ovs-vsctl show
+          done
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: interconnect-config
+          mountPath: /etc/interconnect
+        - name: openvswitch
+          mountPath: /var/run/openvswitch
+        resources:
+          requests:
+            cpu: 100m
+            memory: 100Mi
+          limits:
+            cpu: 200m
+            memory: 200Mi
+      volumes:
+      - name: interconnect-config
+        configMap:
+          name: ovn-interconnect-config
+      - name: openvswitch
+        hostPath:
+          path: /var/run/openvswitch
+---
+# Transit Switch for Inter-Cluster Communication
+apiVersion: kubeovn.io/v1
+kind: Switch
+metadata:
+  name: transit-switch
+  namespace: kube-ovn
+spec:
+  subnet: 172.20.0.0/16
+  excludeIps: "172.20.0.1"
+  gateway: 172.20.0.1
+  gatewayType: distributed
+  cidrBlock: 172.20.0.0/16
+  default: false
+  protocol: IPv4
+  provider: ovn.kubernetes.io/ovn
+  vpc: ovn-cluster
+---
+# Logical Router Policy for Cross-Cluster Routing
+apiVersion: kubeovn.io/v1
+kind: PolicyRoute
+metadata:
+  name: cross-cluster-route
+  namespace: kube-ovn
+spec:
+  priority: 32768
+  match: "ip4.dst == 10.16.0.0/12 || ip4.dst == 10.244.0.0/16"
+  action: "reroute"
+  nextHopIP: "172.20.0.1"
+---
+# Interconnect Service Monitor for observability
+apiVersion: v1
+kind: Service
+metadata:
+  name: ovn-ic-metrics
+  namespace: kube-ovn
+  labels:
+    app: ovn-ic-gateway
+spec:
+  ports:
+  - name: metrics
+    port: 8080
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    app: ovn-ic-gateway
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: interconnect-monitoring
+  namespace: kube-ovn
+data:
+  monitor.sh: |
+    #!/bin/bash
+    # Monitor interconnect health and connectivity
+    while true; do
+      echo "$(date): Checking OVN IC status..."
+
+      # Check IC databases
+      ovn-ic-nbctl show || echo "IC NB connection failed"
+      ovn-ic-sbctl show || echo "IC SB connection failed"
+
+      # Check tunnel connectivity
+      for site in edge01 edge02; do
+        ping -c 1 -W 2 172.20.0.$((RANDOM % 100 + 10)) > /dev/null 2>&1
+        if [ $? -eq 0 ]; then
+          echo "Tunnel to $site: UP"
+        else
+          echo "Tunnel to $site: DOWN"
+        fi
+      done
+
+      sleep 30
+    done
+---
+# Edge Gateway Node Label Requirement
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gateway-setup
+  namespace: kube-ovn
+data:
+  setup.sh: |
+    #!/bin/bash
+    # Label gateway nodes for OVN interconnect
+    kubectl label nodes --selector='node-role.kubernetes.io/control-plane' ovn-gateway=true --overwrite
+    kubectl label nodes --selector='ovn-role=controller' ovn-gateway=true --overwrite
+
+    # Annotate nodes with tunnel IPs
+    kubectl annotate nodes --all ovn.kubernetes.io/tunnel_interface=eth0 --overwrite

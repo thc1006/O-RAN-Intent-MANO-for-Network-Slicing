@@ -1,0 +1,220 @@
+---
+# Pod Security Standards for O-RAN namespaces
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: oran-nlp
+  labels:
+    # Enforce restricted Pod Security Standards
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+    # Version labels
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/audit-version: latest
+    pod-security.kubernetes.io/warn-version: latest
+    # Application labels
+    app.kubernetes.io/name: nlp
+    app.kubernetes.io/component: nlp
+    app.kubernetes.io/part-of: oran-intent-mano
+    app.kubernetes.io/managed-by: kustomize
+    # Network policy label
+    name: oran-nlp
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: oran-orchestrator
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/audit-version: latest
+    pod-security.kubernetes.io/warn-version: latest
+    app.kubernetes.io/name: orchestrator
+    app.kubernetes.io/component: orchestrator
+    app.kubernetes.io/part-of: oran-intent-mano
+    app.kubernetes.io/managed-by: kustomize
+    name: oran-orchestrator
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: oran-ran
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/audit-version: latest
+    pod-security.kubernetes.io/warn-version: latest
+    app.kubernetes.io/name: ran
+    app.kubernetes.io/component: ran
+    app.kubernetes.io/part-of: oran-intent-mano
+    app.kubernetes.io/managed-by: kustomize
+    name: oran-ran
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: oran-cn
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/audit-version: latest
+    pod-security.kubernetes.io/warn-version: latest
+    app.kubernetes.io/name: cn
+    app.kubernetes.io/component: cn
+    app.kubernetes.io/part-of: oran-intent-mano
+    app.kubernetes.io/managed-by: kustomize
+    name: oran-cn
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: oran-tn
+  labels:
+    # TN components may need privileged access for network configuration
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/audit-version: latest
+    pod-security.kubernetes.io/warn-version: latest
+    app.kubernetes.io/name: tn
+    app.kubernetes.io/component: tn
+    app.kubernetes.io/part-of: oran-intent-mano
+    app.kubernetes.io/managed-by: kustomize
+    name: oran-tn
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: oran-monitoring
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/audit-version: latest
+    pod-security.kubernetes.io/warn-version: latest
+    app.kubernetes.io/name: monitoring
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/part-of: oran-intent-mano
+    app.kubernetes.io/managed-by: kustomize
+    name: oran-monitoring
+---
+# Pod Security Policy replacement using ValidatingAdmissionWebhook
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionWebhook
+metadata:
+  name: oran-pod-security-webhook
+  labels:
+    app.kubernetes.io/name: pod-security-webhook
+    app.kubernetes.io/part-of: oran-intent-mano
+webhooks:
+- name: pod-security.oran.io
+  clientConfig:
+    service:
+      name: oran-pod-security-webhook
+      namespace: oran-monitoring
+      path: "/validate"
+  rules:
+  - operations: ["CREATE", "UPDATE"]
+    apiGroups: [""]
+    apiVersions: ["v1"]
+    resources: ["pods"]
+  admissionReviewVersions: ["v1", "v1beta1"]
+  sideEffects: None
+  failurePolicy: Fail
+  namespaceSelector:
+    matchLabels:
+      app.kubernetes.io/part-of: oran-intent-mano
+---
+# Security Context Constraints for OpenShift (if applicable)
+apiVersion: security.openshift.io/v1
+kind: SecurityContextConstraints
+metadata:
+  name: oran-restricted-scc
+  labels:
+    app.kubernetes.io/name: restricted-scc
+    app.kubernetes.io/part-of: oran-intent-mano
+allowHostDirVolumePlugin: false
+allowHostIPC: false
+allowHostNetwork: false
+allowHostPID: false
+allowHostPorts: false
+allowPrivilegedContainer: false
+allowedCapabilities: []
+defaultAddCapabilities: []
+requiredDropCapabilities:
+- ALL
+runAsUser:
+  type: MustRunAsRange
+  uidRangeMin: 1000
+  uidRangeMax: 65535
+seLinuxContext:
+  type: MustRunAs
+supplementalGroups:
+  type: RunAsAny
+fsGroup:
+  type: RunAsAny
+volumes:
+- configMap
+- downwardAPI
+- emptyDir
+- persistentVolumeClaim
+- projected
+- secret
+users: []
+groups:
+- system:serviceaccounts:oran-nlp
+- system:serviceaccounts:oran-orchestrator
+- system:serviceaccounts:oran-ran
+- system:serviceaccounts:oran-cn
+- system:serviceaccounts:oran-monitoring
+---
+# TN-specific SCC (less restrictive for network operations)
+apiVersion: security.openshift.io/v1
+kind: SecurityContextConstraints
+metadata:
+  name: oran-tn-scc
+  labels:
+    app.kubernetes.io/name: tn-scc
+    app.kubernetes.io/part-of: oran-intent-mano
+allowHostDirVolumePlugin: false
+allowHostIPC: false
+allowHostNetwork: true  # Required for network configuration
+allowHostPID: false
+allowHostPorts: false
+allowPrivilegedContainer: false
+allowedCapabilities:
+- NET_ADMIN  # Required for network configuration
+- NET_RAW    # Required for VXLAN/traffic shaping
+defaultAddCapabilities: []
+requiredDropCapabilities:
+- ALL
+runAsUser:
+  type: MustRunAsRange
+  uidRangeMin: 1000
+  uidRangeMax: 65535
+seLinuxContext:
+  type: MustRunAs
+supplementalGroups:
+  type: RunAsAny
+fsGroup:
+  type: RunAsAny
+volumes:
+- configMap
+- downwardAPI
+- emptyDir
+- hostPath  # Limited hostPath access for network configuration
+- persistentVolumeClaim
+- projected
+- secret
+users: []
+groups:
+- system:serviceaccounts:oran-tn

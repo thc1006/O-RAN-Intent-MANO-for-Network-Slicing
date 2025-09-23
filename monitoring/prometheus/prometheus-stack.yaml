@@ -1,0 +1,510 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: oran-monitoring
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+    app.kubernetes.io/name: monitoring
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/part-of: oran-intent-mano
+    name: oran-monitoring
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus
+  namespace: oran-monitoring
+  labels:
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/part-of: oran-intent-mano
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: prometheus
+  labels:
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/part-of: oran-intent-mano
+rules:
+- apiGroups: [""]
+  resources:
+  - nodes
+  - nodes/proxy
+  - nodes/metrics
+  - services
+  - endpoints
+  - pods
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["extensions", "apps"]
+  resources:
+  - deployments
+  - replicasets
+  - daemonsets
+  - statefulsets
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["networking.k8s.io"]
+  resources:
+  - ingresses
+  verbs: ["get", "list", "watch"]
+- nonResourceURLs: ["/metrics"]
+  verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: prometheus
+  labels:
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/part-of: oran-intent-mano
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: prometheus
+subjects:
+- kind: ServiceAccount
+  name: prometheus
+  namespace: oran-monitoring
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: oran-monitoring
+  labels:
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/part-of: oran-intent-mano
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      scrape_timeout: 10s
+      evaluation_interval: 15s
+      external_labels:
+        cluster: 'oran-intent-mano'
+        replica: '$(POD_NAME)'
+
+    rule_files:
+    - "/etc/prometheus/rules/*.yml"
+
+    alerting:
+      alertmanagers:
+      - static_configs:
+        - targets:
+          - alertmanager:9093
+
+    scrape_configs:
+    # Kubernetes API server
+    - job_name: 'kubernetes-apiservers'
+      kubernetes_sd_configs:
+      - role: endpoints
+      scheme: https
+      tls_config:
+        ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+      relabel_configs:
+      - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
+        action: keep
+        regex: default;kubernetes;https
+
+    # Kubernetes nodes
+    - job_name: 'kubernetes-nodes'
+      kubernetes_sd_configs:
+      - role: node
+      scheme: https
+      tls_config:
+        ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+      relabel_configs:
+      - action: labelmap
+        regex: __meta_kubernetes_node_label_(.+)
+      - target_label: __address__
+        replacement: kubernetes.default.svc:443
+      - source_labels: [__meta_kubernetes_node_name]
+        regex: (.+)
+        target_label: __metrics_path__
+        replacement: /api/v1/nodes/${1}/proxy/metrics
+
+    # Kubernetes node exporter
+    - job_name: 'kubernetes-node-exporter'
+      kubernetes_sd_configs:
+      - role: endpoints
+      relabel_configs:
+      - source_labels: [__meta_kubernetes_endpoints_name]
+        action: keep
+        regex: node-exporter
+      - source_labels: [__meta_kubernetes_endpoint_address_target_name]
+        target_label: node
+
+    # Kubernetes pods
+    - job_name: 'kubernetes-pods'
+      kubernetes_sd_configs:
+      - role: pod
+      relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+        action: keep
+        regex: true
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+        action: replace
+        target_label: __metrics_path__
+        regex: (.+)
+      - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+        action: replace
+        regex: ([^:]+)(?::\d+)?;(\d+)
+        replacement: $1:$2
+        target_label: __address__
+      - action: labelmap
+        regex: __meta_kubernetes_pod_label_(.+)
+      - source_labels: [__meta_kubernetes_namespace]
+        action: replace
+        target_label: kubernetes_namespace
+      - source_labels: [__meta_kubernetes_pod_name]
+        action: replace
+        target_label: kubernetes_pod_name
+
+    # O-RAN NLP Service
+    - job_name: 'oran-nlp'
+      kubernetes_sd_configs:
+      - role: endpoints
+        namespaces:
+          names:
+          - oran-nlp
+      relabel_configs:
+      - source_labels: [__meta_kubernetes_service_name]
+        action: keep
+        regex: nlp-service
+      - source_labels: [__meta_kubernetes_endpoint_port_name]
+        action: keep
+        regex: metrics
+      - target_label: component
+        replacement: nlp
+      - target_label: oran_service
+        replacement: nlp
+
+    # O-RAN Orchestrator
+    - job_name: 'oran-orchestrator'
+      kubernetes_sd_configs:
+      - role: endpoints
+        namespaces:
+          names:
+          - oran-orchestrator
+      relabel_configs:
+      - source_labels: [__meta_kubernetes_service_name]
+        action: keep
+        regex: orchestrator-service
+      - source_labels: [__meta_kubernetes_endpoint_port_name]
+        action: keep
+        regex: metrics
+      - target_label: component
+        replacement: orchestrator
+      - target_label: oran_service
+        replacement: orchestrator
+
+    # O-RAN RAN Components
+    - job_name: 'oran-ran'
+      kubernetes_sd_configs:
+      - role: endpoints
+        namespaces:
+          names:
+          - oran-ran
+      relabel_configs:
+      - source_labels: [__meta_kubernetes_service_name]
+        action: keep
+        regex: '.*-service'
+      - source_labels: [__meta_kubernetes_endpoint_port_name]
+        action: keep
+        regex: metrics
+      - target_label: component
+        replacement: ran
+      - target_label: oran_service
+        replacement: ran
+
+    # O-RAN Core Network
+    - job_name: 'oran-cn'
+      kubernetes_sd_configs:
+      - role: endpoints
+        namespaces:
+          names:
+          - oran-cn
+      relabel_configs:
+      - source_labels: [__meta_kubernetes_service_name]
+        action: keep
+        regex: '.*-service'
+      - source_labels: [__meta_kubernetes_endpoint_port_name]
+        action: keep
+        regex: metrics
+      - target_label: component
+        replacement: cn
+      - target_label: oran_service
+        replacement: cn
+
+    # O-RAN Transport Network
+    - job_name: 'oran-tn'
+      kubernetes_sd_configs:
+      - role: endpoints
+        namespaces:
+          names:
+          - oran-tn
+      relabel_configs:
+      - source_labels: [__meta_kubernetes_service_name]
+        action: keep
+        regex: '.*-service'
+      - source_labels: [__meta_kubernetes_endpoint_port_name]
+        action: keep
+        regex: metrics
+      - target_label: component
+        replacement: tn
+      - target_label: oran_service
+        replacement: tn
+
+    # VNF Operator
+    - job_name: 'oran-vnf-operator'
+      kubernetes_sd_configs:
+      - role: endpoints
+        namespaces:
+          names:
+          - oran-orchestrator
+      relabel_configs:
+      - source_labels: [__meta_kubernetes_service_name]
+        action: keep
+        regex: vnf-operator-metrics
+      - target_label: component
+        replacement: operator
+      - target_label: oran_service
+        replacement: vnf-operator
+
+    # Trivy Operator Security Metrics
+    - job_name: 'trivy-operator'
+      kubernetes_sd_configs:
+      - role: endpoints
+        namespaces:
+          names:
+          - trivy-system
+      relabel_configs:
+      - source_labels: [__meta_kubernetes_service_name]
+        action: keep
+        regex: trivy-operator-metrics
+      - target_label: component
+        replacement: security
+      - target_label: oran_service
+        replacement: trivy-operator
+
+    # Kubernetes services
+    - job_name: 'kubernetes-services'
+      kubernetes_sd_configs:
+      - role: endpoints
+      relabel_configs:
+      - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]
+        action: keep
+        regex: true
+      - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scheme]
+        action: replace
+        target_label: __scheme__
+        regex: (https?)
+      - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_path]
+        action: replace
+        target_label: __metrics_path__
+        regex: (.+)
+      - source_labels: [__address__, __meta_kubernetes_service_annotation_prometheus_io_port]
+        action: replace
+        target_label: __address__
+        regex: ([^:]+)(?::\d+)?;(\d+)
+        replacement: $1:$2
+      - action: labelmap
+        regex: __meta_kubernetes_service_label_(.+)
+      - source_labels: [__meta_kubernetes_namespace]
+        action: replace
+        target_label: kubernetes_namespace
+      - source_labels: [__meta_kubernetes_service_name]
+        action: replace
+        target_label: kubernetes_name
+
+  # O-RAN specific recording rules
+  recording-rules.yml: |
+    groups:
+    - name: oran.rules
+      interval: 30s
+      rules:
+      # Intent processing latency
+      - record: oran:intent_processing_duration_seconds:rate5m
+        expr: rate(oran_intent_processing_duration_seconds_sum[5m]) / rate(oran_intent_processing_duration_seconds_count[5m])
+
+      # E2E slice deployment time
+      - record: oran:slice_deployment_duration_seconds:rate5m
+        expr: rate(oran_slice_deployment_duration_seconds_sum[5m]) / rate(oran_slice_deployment_duration_seconds_count[5m])
+
+      # VNF placement success rate
+      - record: oran:vnf_placement_success_rate:5m
+        expr: rate(oran_vnf_placement_total{status="success"}[5m]) / rate(oran_vnf_placement_total[5m])
+
+      # Network slice throughput
+      - record: oran:network_slice_throughput_mbps:rate5m
+        expr: rate(oran_network_slice_bytes_total[5m]) * 8 / 1000000
+
+      # Ping RTT average
+      - record: oran:ping_rtt_milliseconds:avg5m
+        expr: avg_over_time(oran_ping_rtt_milliseconds[5m])
+
+      # Resource utilization
+      - record: oran:cpu_utilization:avg5m
+        expr: 1 - avg_over_time(rate(node_cpu_seconds_total{mode="idle"}[5m])[5m:])
+
+      - record: oran:memory_utilization:avg5m
+        expr: 1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)
+
+      # Error rates
+      - record: oran:error_rate:5m
+        expr: rate(oran_requests_total{status=~"4..|5.."}[5m]) / rate(oran_requests_total[5m])
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+  namespace: oran-monitoring
+  labels:
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/part-of: oran-intent-mano
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: prometheus
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: prometheus
+        app.kubernetes.io/component: monitoring
+        app.kubernetes.io/part-of: oran-intent-mano
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: prometheus
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: prometheus
+        image: prom/prometheus:v2.48.0
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 65534
+          runAsGroup: 65534
+        args:
+        - '--config.file=/etc/prometheus/prometheus.yml'
+        - '--storage.tsdb.path=/prometheus/'
+        - '--storage.tsdb.retention.time=15d'
+        - '--storage.tsdb.retention.size=50GB'
+        - '--web.console.libraries=/etc/prometheus/console_libraries'
+        - '--web.console.templates=/etc/prometheus/consoles'
+        - '--web.enable-lifecycle'
+        - '--web.enable-admin-api'
+        - '--query.max-concurrency=50'
+        - '--query.max-samples=50000000'
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        ports:
+        - containerPort: 9090
+          name: web
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /-/healthy
+            port: web
+          initialDelaySeconds: 30
+          periodSeconds: 15
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /-/ready
+            port: web
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 4
+          failureThreshold: 3
+        resources:
+          limits:
+            cpu: 2000m
+            memory: 4Gi
+          requests:
+            cpu: 500m
+            memory: 2Gi
+        volumeMounts:
+        - name: prometheus-config
+          mountPath: /etc/prometheus
+        - name: prometheus-storage
+          mountPath: /prometheus
+        - name: tmp
+          mountPath: /tmp
+      volumes:
+      - name: prometheus-config
+        configMap:
+          name: prometheus-config
+      - name: prometheus-storage
+        persistentVolumeClaim:
+          claimName: prometheus-storage
+      - name: tmp
+        emptyDir: {}
+      nodeSelector:
+        kubernetes.io/os: linux
+      tolerations:
+      - effect: NoSchedule
+        operator: Exists
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+  namespace: oran-monitoring
+  labels:
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/part-of: oran-intent-mano
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9090"
+spec:
+  type: ClusterIP
+  ports:
+  - name: web
+    port: 9090
+    targetPort: web
+    protocol: TCP
+  selector:
+    app.kubernetes.io/name: prometheus
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: prometheus-storage
+  namespace: oran-monitoring
+  labels:
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/part-of: oran-intent-mano
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Gi
+  storageClassName: default

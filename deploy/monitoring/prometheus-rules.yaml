@@ -1,0 +1,348 @@
+# O-RAN Intent-MANO Prometheus Alerting Rules
+# Performance monitoring aligned with thesis requirements
+
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: o-ran-mano-alerts
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: o-ran-mano
+    app.kubernetes.io/part-of: monitoring
+spec:
+  groups:
+  - name: o-ran-mano.deployment
+    interval: 30s
+    rules:
+    - alert: DeploymentTimeTooHigh
+      expr: o_ran_mano_deployment_duration_seconds > 600
+      for: 0m
+      labels:
+        severity: warning
+        component: orchestrator
+      annotations:
+        summary: "O-RAN MANO deployment time exceeds target"
+        description: "Deployment took {{ $value }} seconds, exceeding the 600-second (10-minute) target from thesis requirements."
+        runbook_url: "https://docs.o-ran-mano.io/runbooks/deployment-performance"
+    
+    - alert: DeploymentFailed
+      expr: increase(o_ran_mano_deployment_failures_total[5m]) > 0
+      for: 0m
+      labels:
+        severity: critical
+        component: orchestrator
+      annotations:
+        summary: "O-RAN MANO deployment failed"
+        description: "{{ $value }} deployment failures in the last 5 minutes."
+        runbook_url: "https://docs.o-ran-mano.io/runbooks/deployment-failures"
+
+  - name: o-ran-mano.performance
+    interval: 30s
+    rules:
+    # Throughput monitoring aligned with thesis targets
+    - alert: ThroughputBelowThresholdHigh
+      expr: rate(o_ran_mano_throughput_bytes_total{priority="high"}[5m]) * 8 / 1000000 < 4.57
+      for: 2m
+      labels:
+        severity: warning
+        priority: high
+        component: transport-network
+      annotations:
+        summary: "High priority slice throughput below target"
+        description: "High priority slice throughput is {{ $value }} Mbps, below the 4.57 Mbps target."
+        runbook_url: "https://docs.o-ran-mano.io/runbooks/throughput-optimization"
+    
+    - alert: ThroughputBelowThresholdMid
+      expr: rate(o_ran_mano_throughput_bytes_total{priority="mid"}[5m]) * 8 / 1000000 < 2.77
+      for: 2m
+      labels:
+        severity: warning
+        priority: mid
+        component: transport-network
+      annotations:
+        summary: "Mid priority slice throughput below target"
+        description: "Mid priority slice throughput is {{ $value }} Mbps, below the 2.77 Mbps target."
+        runbook_url: "https://docs.o-ran-mano.io/runbooks/throughput-optimization"
+    
+    - alert: ThroughputBelowThresholdLow
+      expr: rate(o_ran_mano_throughput_bytes_total{priority="low"}[5m]) * 8 / 1000000 < 0.93
+      for: 2m
+      labels:
+        severity: info
+        priority: low
+        component: transport-network
+      annotations:
+        summary: "Low priority slice throughput below target"
+        description: "Low priority slice throughput is {{ $value }} Mbps, below the 0.93 Mbps target."
+        runbook_url: "https://docs.o-ran-mano.io/runbooks/throughput-optimization"
+    
+    # RTT monitoring aligned with thesis targets
+    - alert: RTTAboveThresholdHigh
+      expr: histogram_quantile(0.95, rate(o_ran_mano_rtt_seconds_bucket{priority="high"}[5m])) * 1000 > 16.1
+      for: 2m
+      labels:
+        severity: warning
+        priority: high
+        component: transport-network
+      annotations:
+        summary: "High priority slice RTT above target"
+        description: "High priority slice RTT is {{ $value }} ms, above the 16.1 ms target."
+        runbook_url: "https://docs.o-ran-mano.io/runbooks/latency-optimization"
+    
+    - alert: RTTAboveThresholdMid
+      expr: histogram_quantile(0.95, rate(o_ran_mano_rtt_seconds_bucket{priority="mid"}[5m])) * 1000 > 15.7
+      for: 2m
+      labels:
+        severity: warning
+        priority: mid
+        component: transport-network
+      annotations:
+        summary: "Mid priority slice RTT above target"
+        description: "Mid priority slice RTT is {{ $value }} ms, above the 15.7 ms target."
+        runbook_url: "https://docs.o-ran-mano.io/runbooks/latency-optimization"
+    
+    - alert: RTTAboveThresholdLow
+      expr: histogram_quantile(0.95, rate(o_ran_mano_rtt_seconds_bucket{priority="low"}[5m])) * 1000 > 6.3
+      for: 2m
+      labels:
+        severity: info
+        priority: low
+        component: transport-network
+      annotations:
+        summary: "Low priority slice RTT above target"
+        description: "Low priority slice RTT is {{ $value }} ms, above the 6.3 ms target."
+        runbook_url: "https://docs.o-ran-mano.io/runbooks/latency-optimization"
+
+  - name: o-ran-mano.availability
+    interval: 30s
+    rules:
+    - alert: ComponentDown
+      expr: up{job=~"o-ran-mano-.*"} == 0
+      for: 1m
+      labels:
+        severity: critical
+      annotations:
+        summary: "O-RAN MANO component is down"
+        description: "Component {{ $labels.job }} on {{ $labels.instance }} has been down for more than 1 minute."
+        runbook_url: "https://docs.o-ran-mano.io/runbooks/component-recovery"
+    
+    - alert: HighErrorRate
+      expr: rate(http_requests_total{job=~"o-ran-mano-.*",status=~"5.."}[5m]) / rate(http_requests_total{job=~"o-ran-mano-.*"}[5m]) > 0.05
+      for: 2m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High error rate detected"
+        description: "Error rate is {{ $value | humanizePercentage }} for {{ $labels.job }}."
+        runbook_url: "https://docs.o-ran-mano.io/runbooks/error-investigation"
+    
+    - alert: HighMemoryUsage
+      expr: (container_memory_working_set_bytes{namespace="o-ran-mano",container!=""} / container_spec_memory_limit_bytes) > 0.9
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High memory usage"
+        description: "Container {{ $labels.container }} in pod {{ $labels.pod }} is using {{ $value | humanizePercentage }} of its memory limit."
+        runbook_url: "https://docs.o-ran-mano.io/runbooks/resource-optimization"
+    
+    - alert: HighCPUUsage
+      expr: rate(container_cpu_usage_seconds_total{namespace="o-ran-mano",container!=""}[5m]) / (container_spec_cpu_quota / container_spec_cpu_period) > 0.9
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High CPU usage"
+        description: "Container {{ $labels.container }} in pod {{ $labels.pod }} is using {{ $value | humanizePercentage }} of its CPU limit."
+        runbook_url: "https://docs.o-ran-mano.io/runbooks/resource-optimization"
+
+  - name: o-ran-mano.orchestration
+    interval: 30s
+    rules:
+    - alert: SliceCreationFailed
+      expr: increase(o_ran_mano_slice_creation_failures_total[5m]) > 0
+      for: 0m
+      labels:
+        severity: critical
+        component: orchestrator
+      annotations:
+        summary: "Network slice creation failed"
+        description: "{{ $value }} slice creation failures in the last 5 minutes."
+        runbook_url: "https://docs.o-ran-mano.io/runbooks/slice-management"
+    
+    - alert: SliceCreationTimeHigh
+      expr: histogram_quantile(0.95, rate(o_ran_mano_slice_creation_duration_seconds_bucket[5m])) > 300
+      for: 2m
+      labels:
+        severity: warning
+        component: orchestrator
+      annotations:
+        summary: "Slice creation time is high"
+        description: "95th percentile slice creation time is {{ $value }} seconds, exceeding 5-minute target."
+        runbook_url: "https://docs.o-ran-mano.io/runbooks/slice-performance"
+    
+    - alert: O2InterfaceDown
+      expr: o_ran_mano_o2_interface_up == 0
+      for: 1m
+      labels:
+        severity: critical
+        component: o2-client
+      annotations:
+        summary: "O2 interface is down"
+        description: "O2 interface connectivity lost for {{ $labels.interface_type }}."
+        runbook_url: "https://docs.o-ran-mano.io/runbooks/o2-connectivity"
+    
+    - alert: NephioSyncFailed
+      expr: increase(o_ran_mano_nephio_sync_failures_total[5m]) > 0
+      for: 0m
+      labels:
+        severity: warning
+        component: vnf-operator
+      annotations:
+        summary: "Nephio GitOps sync failed"
+        description: "{{ $value }} Nephio sync failures in the last 5 minutes."
+        runbook_url: "https://docs.o-ran-mano.io/runbooks/gitops-sync"
+
+  - name: o-ran-mano.transport-network
+    interval: 30s
+    rules:
+    - alert: TNAgentDown
+      expr: up{job="tn-agent"} == 0
+      for: 1m
+      labels:
+        severity: critical
+        component: tn-agent
+      annotations:
+        summary: "TN Agent is down"
+        description: "TN Agent on {{ $labels.instance }} has been down for more than 1 minute."
+        runbook_url: "https://docs.o-ran-mano.io/runbooks/tn-agent-recovery"
+    
+    - alert: VXLANTunnelDown
+      expr: o_ran_mano_vxlan_tunnel_up == 0
+      for: 2m
+      labels:
+        severity: warning
+        component: tn-agent
+      annotations:
+        summary: "VXLAN tunnel is down"
+        description: "VXLAN tunnel {{ $labels.tunnel_id }} is down between {{ $labels.src_node }} and {{ $labels.dst_node }}."
+        runbook_url: "https://docs.o-ran-mano.io/runbooks/vxlan-troubleshooting"
+    
+    - alert: TrafficShapingFailed
+      expr: increase(o_ran_mano_traffic_shaping_failures_total[5m]) > 0
+      for: 0m
+      labels:
+        severity: warning
+        component: tn-agent
+      annotations:
+        summary: "Traffic shaping configuration failed"
+        description: "{{ $value }} traffic shaping failures in the last 5 minutes."
+        runbook_url: "https://docs.o-ran-mano.io/runbooks/traffic-shaping"
+
+  - name: o-ran-mano.ran-management
+    interval: 30s
+    rules:
+    - alert: RANDMSDown
+      expr: up{job="ran-dms"} == 0
+      for: 1m
+      labels:
+        severity: critical
+        component: ran-dms
+      annotations:
+        summary: "RAN DMS is down"
+        description: "RAN DMS on {{ $labels.instance }} has been down for more than 1 minute."
+        runbook_url: "https://docs.o-ran-mano.io/runbooks/ran-dms-recovery"
+    
+    - alert: CNDMSDown
+      expr: up{job="cn-dms"} == 0
+      for: 1m
+      labels:
+        severity: critical
+        component: cn-dms
+      annotations:
+        summary: "CN DMS is down"
+        description: "CN DMS on {{ $labels.instance }} has been down for more than 1 minute."
+        runbook_url: "https://docs.o-ran-mano.io/runbooks/cn-dms-recovery"
+    
+    - alert: VNFDeploymentFailed
+      expr: increase(o_ran_mano_vnf_deployment_failures_total[5m]) > 0
+      for: 0m
+      labels:
+        severity: warning
+        component: vnf-operator
+      annotations:
+        summary: "VNF deployment failed"
+        description: "{{ $value }} VNF deployment failures in the last 5 minutes."
+        runbook_url: "https://docs.o-ran-mano.io/runbooks/vnf-deployment"
+
+  - name: o-ran-mano.nlp-processing
+    interval: 30s
+    rules:
+    - alert: IntentProcessingFailed
+      expr: increase(o_ran_mano_intent_processing_failures_total[5m]) > 0
+      for: 0m
+      labels:
+        severity: warning
+        component: nlp-processor
+      annotations:
+        summary: "Intent processing failed"
+        description: "{{ $value }} intent processing failures in the last 5 minutes."
+        runbook_url: "https://docs.o-ran-mano.io/runbooks/intent-processing"
+    
+    - alert: QoSMappingFailed
+      expr: increase(o_ran_mano_qos_mapping_failures_total[5m]) > 0
+      for: 0m
+      labels:
+        severity: warning
+        component: nlp-processor
+      annotations:
+        summary: "QoS mapping failed"
+        description: "{{ $value }} QoS mapping failures in the last 5 minutes."
+        runbook_url: "https://docs.o-ran-mano.io/runbooks/qos-mapping"
+    
+    - alert: IntentProcessingTimeHigh
+      expr: histogram_quantile(0.95, rate(o_ran_mano_intent_processing_duration_seconds_bucket[5m])) > 10
+      for: 2m
+      labels:
+        severity: warning
+        component: nlp-processor
+      annotations:
+        summary: "Intent processing time is high"
+        description: "95th percentile intent processing time is {{ $value }} seconds."
+        runbook_url: "https://docs.o-ran-mano.io/runbooks/intent-performance"
+
+  - name: o-ran-mano.sla
+    interval: 60s
+    rules:
+    - alert: SLAViolation
+      expr: |
+        (
+          (rate(o_ran_mano_throughput_bytes_total{priority="high"}[5m]) * 8 / 1000000 < 4.57) or
+          (rate(o_ran_mano_throughput_bytes_total{priority="mid"}[5m]) * 8 / 1000000 < 2.77) or
+          (rate(o_ran_mano_throughput_bytes_total{priority="low"}[5m]) * 8 / 1000000 < 0.93) or
+          (histogram_quantile(0.95, rate(o_ran_mano_rtt_seconds_bucket{priority="high"}[5m])) * 1000 > 16.1) or
+          (histogram_quantile(0.95, rate(o_ran_mano_rtt_seconds_bucket{priority="mid"}[5m])) * 1000 > 15.7) or
+          (histogram_quantile(0.95, rate(o_ran_mano_rtt_seconds_bucket{priority="low"}[5m])) * 1000 > 6.3)
+        )
+      for: 5m
+      labels:
+        severity: critical
+        sla: performance
+      annotations:
+        summary: "SLA performance targets violated"
+        description: "One or more SLA performance targets from thesis requirements are being violated."
+        runbook_url: "https://docs.o-ran-mano.io/runbooks/sla-violation"
+    
+    - alert: AvailabilitySLAViolation
+      expr: |
+        (
+          avg_over_time(up{job=~"o-ran-mano-.*"}[24h]) < 0.999
+        )
+      for: 0m
+      labels:
+        severity: critical
+        sla: availability
+      annotations:
+        summary: "Availability SLA violated"
+        description: "System availability over the last 24 hours is {{ $value | humanizePercentage }}, below 99.9% SLA."
+        runbook_url: "https://docs.o-ran-mano.io/runbooks/availability-sla"

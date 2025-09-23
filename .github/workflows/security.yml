@@ -1,0 +1,471 @@
+name: Security Scanning
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run security scans daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+jobs:
+  # Code security analysis
+  codeql:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'go' ]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v2
+      with:
+        languages: ${{ matrix.language }}
+        queries: security-extended,security-and-quality
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+
+    - name: Build Go modules
+      run: |
+        find . -name "go.mod" -execdir go build -v ./... \;
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v2
+      with:
+        category: "/language:${{matrix.language}}"
+
+  # Dependency vulnerability scanning
+  dependency-scan:
+    name: Dependency Vulnerability Scan
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+
+    - name: Run Nancy (Go dependency scanner)
+      run: |
+        go install github.com/sonatypecommunity/nancy@latest
+        go list -json -m all | nancy sleuth
+
+    - name: Run OSV Scanner
+      uses: google/osv-scanner-action@v1
+      with:
+        scan-args: |-
+          --recursive
+          --skip-git
+          ./
+
+  # Container image security scanning
+  container-scan:
+    name: Container Security Scan
+    runs-on: ubuntu-latest
+    if: github.event_name != 'schedule'
+
+    strategy:
+      matrix:
+        component:
+          - orchestrator
+          - vnf-operator
+          - o2-client
+          - tn-manager
+          - tn-agent
+          - ran-dms
+          - cn-dms
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build image for scanning
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: deploy/docker/${{ matrix.component }}/Dockerfile
+        tags: local/oran-${{ matrix.component }}:scan
+        load: true
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: local/oran-${{ matrix.component }}:scan
+        format: 'sarif'
+        output: 'trivy-results-${{ matrix.component }}.sarif'
+        severity: 'CRITICAL,HIGH,MEDIUM'
+
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-results-${{ matrix.component }}.sarif'
+
+    - name: Run Grype vulnerability scanner
+      uses: anchore/scan-action@v3
+      id: grype-scan
+      with:
+        image: local/oran-${{ matrix.component }}:scan
+        severity-cutoff: medium
+        fail-build: false
+
+    - name: Upload Grype scan results
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: ${{ steps.grype-scan.outputs.sarif }}
+
+    - name: Run Snyk container scan
+      uses: snyk/actions/docker@master
+      env:
+        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      with:
+        image: local/oran-${{ matrix.component }}:scan
+        args: --severity-threshold=medium --file=deploy/docker/${{ matrix.component }}/Dockerfile
+      continue-on-error: true
+
+  # Kubernetes security scanning
+  k8s-security:
+    name: Kubernetes Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run Checkov on Kubernetes manifests
+      uses: bridgecrewio/checkov-action@master
+      with:
+        directory: deploy/k8s
+        framework: kubernetes
+        output_format: sarif
+        output_file_path: checkov-k8s.sarif
+
+    - name: Upload Checkov scan results
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: checkov-k8s.sarif
+
+    - name: Run Kubesec scan
+      run: |
+        curl -sSX POST --data-binary @deploy/k8s/base/orchestrator.yaml \
+          https://v2.kubesec.io/scan > kubesec-orchestrator.json
+
+        curl -sSX POST --data-binary @deploy/k8s/base/vnf-operator.yaml \
+          https://v2.kubesec.io/scan > kubesec-vnf-operator.json
+
+    - name: Upload Kubesec results
+      uses: actions/upload-artifact@v3
+      with:
+        name: kubesec-results
+        path: kubesec-*.json
+
+    - name: Run Polaris security audit
+      run: |
+        curl -L https://github.com/FairwindsOps/polaris/releases/latest/download/polaris_linux_amd64.tar.gz | tar xz
+        ./polaris audit --config deploy/k8s --format=json > polaris-audit.json
+
+    - name: Upload Polaris results
+      uses: actions/upload-artifact@v3
+      with:
+        name: polaris-audit
+        path: polaris-audit.json
+
+  # Infrastructure as Code security
+  iac-security:
+    name: Infrastructure as Code Security
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run Checkov on Dockerfile
+      uses: bridgecrewio/checkov-action@master
+      with:
+        directory: deploy/docker
+        framework: dockerfile
+        output_format: sarif
+        output_file_path: checkov-docker.sarif
+
+    - name: Upload Checkov Docker results
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: checkov-docker.sarif
+
+    - name: Run Checkov on Helm charts
+      uses: bridgecrewio/checkov-action@master
+      with:
+        directory: deploy/helm
+        framework: helm
+        output_format: sarif
+        output_file_path: checkov-helm.sarif
+
+    - name: Upload Checkov Helm results
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: checkov-helm.sarif
+
+    - name: Run Hadolint on Dockerfiles
+      uses: hadolint/hadolint-action@v3.1.0
+      with:
+        dockerfile: deploy/docker/*/Dockerfile
+        format: sarif
+        output-file: hadolint.sarif
+        no-fail: true
+
+    - name: Upload Hadolint results
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: hadolint.sarif
+
+  # Secrets scanning
+  secrets-scan:
+    name: Secrets Scanning
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Run Gitleaks
+      uses: gitleaks/gitleaks-action@v2
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Run TruffleHog
+      uses: trufflesecurity/trufflehog@main
+      with:
+        path: ./
+        base: main
+        head: HEAD
+        extra_args: --debug --only-verified
+
+  # License compliance
+  license-scan:
+    name: License Compliance
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+
+    - name: Install go-licenses
+      run: go install github.com/google/go-licenses@latest
+
+    - name: Check Go module licenses
+      run: |
+        find . -name "go.mod" -execdir go-licenses check ./... \;
+
+    - name: Generate license report
+      run: |
+        mkdir -p license-reports
+        find . -name "go.mod" -exec dirname {} \; | while read dir; do
+          component=$(basename "$dir")
+          go-licenses csv "$dir/..." > "license-reports/$component-licenses.csv" || true
+        done
+
+    - name: Upload license reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: license-reports
+        path: license-reports/
+
+  # Security policy compliance
+  compliance-check:
+    name: Security Policy Compliance
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Check security policy files
+      run: |
+        # Check for required security files
+        files=("SECURITY.md" "deploy/k8s/base/rbac.yaml" ".github/workflows/security.yml")
+
+        for file in "${files[@]}"; do
+          if [ ! -f "$file" ]; then
+            echo "::error::Required security file missing: $file"
+            exit 1
+          fi
+        done
+
+    - name: Validate RBAC policies
+      run: |
+        # Basic RBAC validation
+        if ! grep -q "apiGroups.*verbs" deploy/k8s/base/rbac.yaml; then
+          echo "::error::RBAC policies appear incomplete"
+          exit 1
+        fi
+
+    - name: Check Dockerfile security practices
+      run: |
+        # Check for security best practices in Dockerfiles
+        find deploy/docker -name "Dockerfile" | while read dockerfile; do
+          echo "Checking $dockerfile"
+
+          # Check for non-root user
+          if ! grep -q "USER.*[^0]" "$dockerfile"; then
+            echo "::warning::$dockerfile may not specify non-root user"
+          fi
+
+          # Check for security context
+          if ! grep -q "runAsNonRoot\|runAsUser" "$dockerfile"; then
+            echo "::warning::$dockerfile may not have security context"
+          fi
+        done
+
+  # Generate security report
+  security-report:
+    name: Generate Security Report
+    runs-on: ubuntu-latest
+    needs: [codeql, dependency-scan, container-scan, k8s-security, iac-security, secrets-scan, license-scan, compliance-check]
+    if: always()
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+
+    - name: Generate security summary
+      run: |
+        cat > security-summary.md << 'EOF'
+        # O-RAN Intent-MANO Security Report
+
+        Generated: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+        Commit: ${{ github.sha }}
+
+        ## Security Scan Results
+
+        | Scan Type | Status |
+        |-----------|--------|
+        | CodeQL Analysis | ${{ needs.codeql.result }} |
+        | Dependency Scan | ${{ needs.dependency-scan.result }} |
+        | Container Scan | ${{ needs.container-scan.result }} |
+        | Kubernetes Security | ${{ needs.k8s-security.result }} |
+        | IaC Security | ${{ needs.iac-security.result }} |
+        | Secrets Scan | ${{ needs.secrets-scan.result }} |
+        | License Compliance | ${{ needs.license-scan.result }} |
+        | Compliance Check | ${{ needs.compliance-check.result }} |
+
+        ## Recommendations
+
+        - Review all HIGH and CRITICAL vulnerabilities
+        - Ensure all containers run as non-root users
+        - Regularly update base images and dependencies
+        - Monitor for new CVEs affecting used components
+        - Review and rotate secrets periodically
+
+        ## Artifacts
+
+        Security scan results are available in the workflow artifacts.
+        EOF
+
+    - name: Upload security report
+      uses: actions/upload-artifact@v3
+      with:
+        name: security-report
+        path: security-summary.md
+
+    - name: Post security summary to PR
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          const summary = fs.readFileSync('security-summary.md', 'utf8');
+
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: summary
+          });
+
+  # Security incident response
+  incident-response:
+    name: Security Incident Response
+    runs-on: ubuntu-latest
+    needs: [codeql, dependency-scan, container-scan, secrets-scan]
+    if: failure() && (needs.codeql.result == 'failure' || needs.dependency-scan.result == 'failure' || needs.container-scan.result == 'failure' || needs.secrets-scan.result == 'failure')
+
+    steps:
+    - name: Create security issue
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const title = `🚨 Security Alert: Critical vulnerabilities detected in ${context.sha.substring(0, 7)}`;
+          const body = `
+          ## Security Alert
+
+          Critical security vulnerabilities have been detected in commit ${context.sha}.
+
+          **Affected Scans:**
+          - CodeQL: ${{ needs.codeql.result }}
+          - Dependency Scan: ${{ needs.dependency-scan.result }}
+          - Container Scan: ${{ needs.container-scan.result }}
+          - Secrets Scan: ${{ needs.secrets-scan.result }}
+
+          **Action Required:**
+          1. Review scan results in the [workflow run](${context.payload.repository.html_url}/actions/runs/${context.runId})
+          2. Address critical and high severity issues
+          3. Re-run security scans to verify fixes
+
+          **Security Contact:** @${context.repo.owner}
+          `;
+
+          github.rest.issues.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            title: title,
+            body: body,
+            labels: ['security', 'critical', 'incident']
+          });
+
+    - name: Block deployment on critical issues
+      run: |
+        echo "::error::Critical security vulnerabilities detected. Deployment blocked."
+        echo "Please review and fix security issues before proceeding."
+        exit 1

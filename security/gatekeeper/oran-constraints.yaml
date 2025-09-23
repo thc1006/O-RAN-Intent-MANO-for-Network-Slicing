@@ -1,0 +1,116 @@
+---
+apiVersion: config.gatekeeper.sh/v1alpha1
+kind: Config
+metadata:
+  name: config
+  namespace: gatekeeper-system
+spec:
+  match:
+    - excludedNamespaces: ["gatekeeper-system", "kube-system", "kube-public", "kube-node-lease"]
+      processes: ["*"]
+  validation:
+    traces:
+      - user:
+          kind:
+            group: "*"
+            version: "*"
+            kind: "*"
+        kind:
+          group: "*"
+          version: "*"
+          kind: "*"
+  readiness:
+    statsEnabled: true
+---
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sRequiredSecurityContext
+metadata:
+  name: oran-security-context
+spec:
+  match:
+    kinds:
+      - apiGroups: [""]
+        kinds: ["Pod"]
+    namespaces: ["oran-nlp", "oran-orchestrator", "oran-ran", "oran-cn", "oran-tn", "oran-monitoring"]
+  parameters:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 2000
+---
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sRequiredResources
+metadata:
+  name: oran-resource-requirements
+spec:
+  match:
+    kinds:
+      - apiGroups: [""]
+        kinds: ["Pod"]
+    namespaces: ["oran-nlp", "oran-orchestrator", "oran-ran", "oran-cn", "oran-tn"]
+  parameters:
+    exemptImages:
+      - "gcr.io/distroless/"
+      - "registry.k8s.io/"
+---
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sBlockPrivileged
+metadata:
+  name: oran-block-privileged
+spec:
+  match:
+    kinds:
+      - apiGroups: [""]
+        kinds: ["Pod"]
+    excludedNamespaces: ["kube-system", "gatekeeper-system", "monitoring"]
+---
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sRequiredLabels
+metadata:
+  name: oran-required-labels
+spec:
+  match:
+    kinds:
+      - apiGroups: [""]
+        kinds: ["Pod", "Service", "Deployment", "StatefulSet", "DaemonSet"]
+      - apiGroups: ["apps"]
+        kinds: ["Deployment", "StatefulSet", "DaemonSet", "ReplicaSet"]
+    namespaces: ["oran-nlp", "oran-orchestrator", "oran-ran", "oran-cn", "oran-tn"]
+  parameters:
+    labels:
+      - key: "app.kubernetes.io/name"
+        allowedRegex: "^[a-z0-9-]+$"
+      - key: "app.kubernetes.io/version"
+        allowedRegex: "^v?[0-9]+\\.[0-9]+\\.[0-9]+.*$"
+      - key: "app.kubernetes.io/component"
+        allowedRegex: "^(nlp|orchestrator|ran|cn|tn|monitoring|controller|operator|agent|manager|proxy|gateway|database|cache)$"
+      - key: "app.kubernetes.io/part-of"
+        allowedRegex: "^oran-intent-mano$"
+      - key: "app.kubernetes.io/managed-by"
+        allowedRegex: "^(helm|kustomize|nephio|operator|manual)$"
+---
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sImageAllowlist
+metadata:
+  name: oran-trusted-registries
+spec:
+  match:
+    kinds:
+      - apiGroups: [""]
+        kinds: ["Pod"]
+    namespaces: ["oran-nlp", "oran-orchestrator", "oran-ran", "oran-cn", "oran-tn", "oran-monitoring"]
+  parameters:
+    allowedRegistries:
+      - "gcr.io/"
+      - "registry.k8s.io/"
+      - "docker.io/library/"
+      - "quay.io/"
+      - "ghcr.io/"
+      - "registry.access.redhat.com/"
+      - "docker.elastic.co/"
+      - "prom/"
+      - "grafana/"
+      - "jaegertracing/"
+      - "otel/"
+      - "falcosecurity/"
+      - "aquasec/"
