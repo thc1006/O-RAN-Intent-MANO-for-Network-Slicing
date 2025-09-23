@@ -8,13 +8,9 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
 	manov1alpha1 "github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/adapters/vnf-operator/api/v1alpha1"
@@ -54,12 +50,12 @@ type NetworkProfile struct {
 
 // MultiClusterTestSuite manages multi-cluster testing
 type MultiClusterTestSuite struct {
-	clusters     map[string]*ClusterConfig
-	kubeClients  map[string]kubernetes.Interface
-	dynClients   map[string]dynamic.Interface
-	testContext  context.Context
-	testCancel   context.CancelFunc
-	testResults  *MultiClusterTestResults
+	clusters    map[string]*ClusterConfig
+	kubeClients map[string]kubernetes.Interface
+	dynClients  map[string]dynamic.Interface
+	testContext context.Context
+	testCancel  context.CancelFunc
+	testResults *MultiClusterTestResults
 }
 
 // MultiClusterTestResults stores multi-cluster test results
@@ -76,24 +72,24 @@ type MultiClusterTestResults struct {
 
 // ClusterValidation represents cluster validation results
 type ClusterValidation struct {
-	ClusterName       string        `json:"cluster_name"`
-	Available         bool          `json:"available"`
-	HealthCheck       bool          `json:"health_check"`
-	ResourceCheck     bool          `json:"resource_check"`
-	NetworkCheck      bool          `json:"network_check"`
-	ValidationTime    time.Duration `json:"validation_time_ms"`
-	ErrorMessages     []string      `json:"error_messages"`
+	ClusterName    string        `json:"cluster_name"`
+	Available      bool          `json:"available"`
+	HealthCheck    bool          `json:"health_check"`
+	ResourceCheck  bool          `json:"resource_check"`
+	NetworkCheck   bool          `json:"network_check"`
+	ValidationTime time.Duration `json:"validation_time_ms"`
+	ErrorMessages  []string      `json:"error_messages"`
 }
 
 // ClusterDeploymentResult represents deployment results per cluster
 type ClusterDeploymentResult struct {
-	ClusterName      string                  `json:"cluster_name"`
-	VNFsDeployed     []VNFDeploymentStatus   `json:"vnfs_deployed"`
-	DeploymentTime   time.Duration           `json:"deployment_time_ms"`
-	ReadinessTime    time.Duration           `json:"readiness_time_ms"`
-	ResourceUsage    ClusterResources        `json:"resource_usage"`
-	Success          bool                    `json:"success"`
-	FailureReason    string                  `json:"failure_reason,omitempty"`
+	ClusterName    string                `json:"cluster_name"`
+	VNFsDeployed   []VNFDeploymentStatus `json:"vnfs_deployed"`
+	DeploymentTime time.Duration         `json:"deployment_time_ms"`
+	ReadinessTime  time.Duration         `json:"readiness_time_ms"`
+	ResourceUsage  ClusterResources      `json:"resource_usage"`
+	Success        bool                  `json:"success"`
+	FailureReason  string                `json:"failure_reason,omitempty"`
 }
 
 // FailoverTestResult represents failover test results
@@ -109,13 +105,13 @@ type FailoverTestResult struct {
 
 // CrossClusterTestResult represents cross-cluster communication test results
 type CrossClusterTestResult struct {
-	SourceCluster    string        `json:"source_cluster"`
-	TargetCluster    string        `json:"target_cluster"`
-	LatencyMs        float64       `json:"latency_ms"`
-	ThroughputMbps   float64       `json:"throughput_mbps"`
-	PacketLoss       float64       `json:"packet_loss_percent"`
-	ConnectionTime   time.Duration `json:"connection_time_ms"`
-	Success          bool          `json:"success"`
+	SourceCluster  string        `json:"source_cluster"`
+	TargetCluster  string        `json:"target_cluster"`
+	LatencyMs      float64       `json:"latency_ms"`
+	ThroughputMbps float64       `json:"throughput_mbps"`
+	PacketLoss     float64       `json:"packet_loss_percent"`
+	ConnectionTime time.Duration `json:"connection_time_ms"`
+	Success        bool          `json:"success"`
 }
 
 // Test cluster configurations for different deployment scenarios
@@ -127,11 +123,11 @@ var testClusters = []ClusterConfig{
 		Context:    "kind-edge-01",
 		Available:  true,
 		Resources: ClusterResources{
-			CPUCores:     16,
-			MemoryGB:     32,
-			StorageGB:    500,
+			CPUCores:      16,
+			MemoryGB:      32,
+			StorageGB:     500,
 			BandwidthMbps: 1000,
-			PodsCapacity: 100,
+			PodsCapacity:  100,
 		},
 		Network: NetworkProfile{
 			BaseLatencyMs:     5.0,
@@ -147,11 +143,11 @@ var testClusters = []ClusterConfig{
 		Context:    "kind-edge-02",
 		Available:  true,
 		Resources: ClusterResources{
-			CPUCores:     16,
-			MemoryGB:     32,
-			StorageGB:    500,
+			CPUCores:      16,
+			MemoryGB:      32,
+			StorageGB:     500,
 			BandwidthMbps: 1000,
-			PodsCapacity: 100,
+			PodsCapacity:  100,
 		},
 		Network: NetworkProfile{
 			BaseLatencyMs:     6.0,
@@ -167,11 +163,11 @@ var testClusters = []ClusterConfig{
 		Context:    "kind-regional-01",
 		Available:  true,
 		Resources: ClusterResources{
-			CPUCores:     64,
-			MemoryGB:     128,
-			StorageGB:    2000,
+			CPUCores:      64,
+			MemoryGB:      128,
+			StorageGB:     2000,
 			BandwidthMbps: 5000,
-			PodsCapacity: 500,
+			PodsCapacity:  500,
 		},
 		Network: NetworkProfile{
 			BaseLatencyMs:     15.7,
@@ -187,11 +183,11 @@ var testClusters = []ClusterConfig{
 		Context:    "kind-central-01",
 		Available:  true,
 		Resources: ClusterResources{
-			CPUCores:     256,
-			MemoryGB:     512,
-			StorageGB:    10000,
+			CPUCores:      256,
+			MemoryGB:      512,
+			StorageGB:     10000,
 			BandwidthMbps: 10000,
-			PodsCapacity: 1000,
+			PodsCapacity:  1000,
 		},
 		Network: NetworkProfile{
 			BaseLatencyMs:     25.0,
@@ -204,10 +200,10 @@ var testClusters = []ClusterConfig{
 
 // VNF deployment scenarios for different cluster types
 var deploymentScenarios = []struct {
-	name             string
-	vnfSpecs         []VNFDeploymentSpec
-	targetClusters   []string
-	expectedLatency  float64
+	name              string
+	vnfSpecs          []VNFDeploymentSpec
+	targetClusters    []string
+	expectedLatency   float64
 	expectedBandwidth float64
 	maxDeploymentTime time.Duration
 }{
@@ -426,11 +422,11 @@ var _ = Describe("Multi-Cluster Deployment Integration Tests", func() {
 		It("should validate end-to-end slice performance across clusters", func() {
 			By("Creating cross-cluster network slice")
 			sliceConfig := CrossClusterSliceConfig{
-				Name:           "cross-cluster-test",
-				SourceCluster:  "edge-cluster-01",
-				TargetCluster:  "regional-cluster-01",
-				BandwidthMbps:  100,
-				MaxLatencyMs:   20,
+				Name:          "cross-cluster-test",
+				SourceCluster: "edge-cluster-01",
+				TargetCluster: "regional-cluster-01",
+				BandwidthMbps: 100,
+				MaxLatencyMs:  20,
 			}
 
 			slice := suite.createCrossClusterSlice(sliceConfig)

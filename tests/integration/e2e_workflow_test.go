@@ -12,8 +12,6 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -40,47 +38,47 @@ type E2EWorkflowSuite struct {
 
 // TestResults stores performance metrics and validation results
 type TestResults struct {
-	StartTime       time.Time            `json:"start_time"`
-	EndTime         time.Time            `json:"end_time"`
-	TotalDuration   time.Duration        `json:"total_duration_ms"`
-	Phases          map[string]time.Duration `json:"phases"`
-	QoSValidation   []QoSValidationResult `json:"qos_validation"`
-	LatencyResults  []LatencyMeasurement  `json:"latency_results"`
-	ThroughputResults []ThroughputMeasurement `json:"throughput_results"`
-	VNFStatus       []VNFDeploymentStatus `json:"vnf_status"`
-	Errors          []string             `json:"errors"`
-	Success         bool                 `json:"success"`
+	StartTime         time.Time                `json:"start_time"`
+	EndTime           time.Time                `json:"end_time"`
+	TotalDuration     time.Duration            `json:"total_duration_ms"`
+	Phases            map[string]time.Duration `json:"phases"`
+	QoSValidation     []QoSValidationResult    `json:"qos_validation"`
+	LatencyResults    []LatencyMeasurement     `json:"latency_results"`
+	ThroughputResults []ThroughputMeasurement  `json:"throughput_results"`
+	VNFStatus         []VNFDeploymentStatus    `json:"vnf_status"`
+	Errors            []string                 `json:"errors"`
+	Success           bool                     `json:"success"`
 }
 
 // QoSValidationResult represents QoS parameter validation
 type QoSValidationResult struct {
-	SliceType           string  `json:"slice_type"`
-	ExpectedLatencyMs   float64 `json:"expected_latency_ms"`
-	MeasuredLatencyMs   float64 `json:"measured_latency_ms"`
+	SliceType             string  `json:"slice_type"`
+	ExpectedLatencyMs     float64 `json:"expected_latency_ms"`
+	MeasuredLatencyMs     float64 `json:"measured_latency_ms"`
 	ExpectedBandwidthMbps float64 `json:"expected_bandwidth_mbps"`
 	MeasuredBandwidthMbps float64 `json:"measured_bandwidth_mbps"`
-	ValidationPassed    bool    `json:"validation_passed"`
-	DeviationPercent    float64 `json:"deviation_percent"`
+	ValidationPassed      bool    `json:"validation_passed"`
+	DeviationPercent      float64 `json:"deviation_percent"`
 }
 
 // LatencyMeasurement represents network latency measurements
 type LatencyMeasurement struct {
-	SliceType    string  `json:"slice_type"`
-	SourceNode   string  `json:"source_node"`
-	TargetNode   string  `json:"target_node"`
-	RTTMs        float64 `json:"rtt_ms"`
-	JitterMs     float64 `json:"jitter_ms"`
-	PacketLoss   float64 `json:"packet_loss_percent"`
-	Timestamp    time.Time `json:"timestamp"`
+	SliceType  string    `json:"slice_type"`
+	SourceNode string    `json:"source_node"`
+	TargetNode string    `json:"target_node"`
+	RTTMs      float64   `json:"rtt_ms"`
+	JitterMs   float64   `json:"jitter_ms"`
+	PacketLoss float64   `json:"packet_loss_percent"`
+	Timestamp  time.Time `json:"timestamp"`
 }
 
 // ThroughputMeasurement represents bandwidth measurements
 type ThroughputMeasurement struct {
-	SliceType           string  `json:"slice_type"`
-	SourceNode          string  `json:"source_node"`
-	TargetNode          string  `json:"target_node"`
-	BandwidthMbps       float64 `json:"bandwidth_mbps"`
-	TestDurationSeconds int     `json:"test_duration_seconds"`
+	SliceType           string    `json:"slice_type"`
+	SourceNode          string    `json:"source_node"`
+	TargetNode          string    `json:"target_node"`
+	BandwidthMbps       float64   `json:"bandwidth_mbps"`
+	TestDurationSeconds int       `json:"test_duration_seconds"`
 	Timestamp           time.Time `json:"timestamp"`
 }
 
@@ -98,13 +96,13 @@ type VNFDeploymentStatus struct {
 
 // Intent-to-QoS test scenarios matching thesis examples
 var intentTestScenarios = []struct {
-	name             string
-	intent           string
-	expectedQoS      manov1alpha1.QoSRequirements
-	expectedVNFTypes []manov1alpha1.VNFType
-	targetLatencyMs  float64
+	name                string
+	intent              string
+	expectedQoS         manov1alpha1.QoSRequirements
+	expectedVNFTypes    []manov1alpha1.VNFType
+	targetLatencyMs     float64
 	targetBandwidthMbps float64
-	maxDeploymentMins int
+	maxDeploymentMins   int
 }{
 	{
 		name:   "UltraLowLatency_EdgeComputing",
@@ -411,13 +409,13 @@ func (s *E2EWorkflowSuite) validateE2EPerformance(targetLatencyMs, targetBandwid
 func (s *E2EWorkflowSuite) performLatencyTest() LatencyMeasurement {
 	// TODO: Implement actual latency measurement between nodes
 	return LatencyMeasurement{
-		SliceType:    "test",
-		SourceNode:   "kind-worker",
-		TargetNode:   "kind-worker2",
-		RTTMs:        6.3, // Simulated measurement
-		JitterMs:     0.5,
-		PacketLoss:   0.0001,
-		Timestamp:    time.Now(),
+		SliceType:  "test",
+		SourceNode: "kind-worker",
+		TargetNode: "kind-worker2",
+		RTTMs:      6.3, // Simulated measurement
+		JitterMs:   0.5,
+		PacketLoss: 0.0001,
+		Timestamp:  time.Now(),
 	}
 }
 

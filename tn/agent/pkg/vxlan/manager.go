@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security"
 )
 
 // Manager manages VXLAN tunnel interfaces

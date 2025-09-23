@@ -212,9 +212,8 @@ jobs:
           echo "Installing OSV scanner version: $LATEST_RELEASE"
         fi
 
-        # Remove 'v' prefix for download URL
-        VERSION=${LATEST_RELEASE#v}
-        OSV_URL="https://github.com/google/osv-scanner/releases/download/${LATEST_RELEASE}/osv-scanner_${VERSION}_linux_amd64"
+        # OSV scanner uses a different naming pattern - no version in filename
+        OSV_URL="https://github.com/google/osv-scanner/releases/download/${LATEST_RELEASE}/osv-scanner_linux_amd64"
         echo "Downloading OSV scanner from: $OSV_URL"
 
         # Download with error handling
@@ -222,8 +221,7 @@ jobs:
           echo "Failed to download OSV scanner from primary URL, trying fallback..."
           # Try fallback version
           LATEST_RELEASE="v1.9.0"
-          VERSION="1.9.0"
-          OSV_URL="https://github.com/google/osv-scanner/releases/download/${LATEST_RELEASE}/osv-scanner_${VERSION}_linux_amd64"
+          OSV_URL="https://github.com/google/osv-scanner/releases/download/${LATEST_RELEASE}/osv-scanner_linux_amd64"
           echo "Trying fallback URL: $OSV_URL"
           curl -sSfL "$OSV_URL" -o osv-scanner
         fi
