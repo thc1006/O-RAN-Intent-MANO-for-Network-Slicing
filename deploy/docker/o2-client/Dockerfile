@@ -1,6 +1,6 @@
 # O2 Client Multi-stage Dockerfile
 # Stage 1: Build
-FROM golang:1.21-alpine AS builder
+FROM golang:1.24-alpine AS builder
 
 # Security: Use non-root user for build
 RUN adduser -D -s /bin/sh appuser
@@ -12,21 +12,22 @@ RUN apk update && apk add --no-cache git ca-certificates tzdata && \
 # Set working directory
 WORKDIR /workspace
 
-# Copy go mod files first for better layer caching
-COPY o2-client/go.mod go.mod
-COPY o2-client/go.sum go.sum
+# Copy go mod files from root for better layer caching
+COPY go.mod go.mod
+COPY go.sum go.sum
 
-# Download dependencies
+# Copy necessary source code including pkg directory and o2-client
+COPY pkg/ pkg/
+COPY o2-client/ o2-client/
+
+# Download dependencies (after copying local packages)
 RUN go mod download
-
-# Copy source code
-COPY o2-client/ .
 
 # Build the binary with security flags
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -ldflags='-w -s -extldflags "-static"' \
     -a -installsuffix cgo \
-    -o o2-client cmd/main.go
+    -o o2-client ./o2-client/cmd/main.go
 
 # Stage 2: Runtime
 FROM alpine:3.18
