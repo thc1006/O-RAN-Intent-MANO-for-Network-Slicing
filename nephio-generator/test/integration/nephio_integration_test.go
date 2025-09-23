@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/suite"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
@@ -885,5 +886,3 @@ func (v *MockRenderValidator) ValidateResources(resources []renderer.RenderedRes
 	}, nil
 }
 
-// Required import for resource
-import "k8s.io/apimachinery/pkg/api/resource"
