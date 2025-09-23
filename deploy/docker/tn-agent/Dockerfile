@@ -32,6 +32,9 @@ WORKDIR /workspace
 # Copy go mod files first for better layer caching
 COPY tn/go.mod tn/go.sum ./
 
+# Copy the manager API module (required by replace directive)
+COPY tn/manager/api/v1alpha1/ ./manager/api/v1alpha1/
+
 # Copy pkg/security module before downloading dependencies
 # This is needed because go.mod has a replace directive pointing to ../pkg/security
 COPY pkg/security/ /pkg/security/
@@ -39,7 +42,7 @@ COPY pkg/security/ /pkg/security/
 # Download dependencies
 RUN go mod download
 
-# Copy source code
+# Copy full source code
 COPY tn/ .
 
 # Build the binary with security flags
