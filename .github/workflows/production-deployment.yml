@@ -165,10 +165,10 @@ jobs:
           elif [ -d "deploy/docker/${{ matrix.component }}" ]; then
             COMPONENT_PATH="deploy/docker/${{ matrix.component }}"
           # Check for tn components in tn/ subdirectory
-          elif [ "${{ matrix.component }}" = "tn-agent" ] && [ -d "tn/agent" ]; then
-            COMPONENT_PATH="tn/agent"
-          elif [ "${{ matrix.component }}" = "tn-manager" ] && [ -d "tn/manager" ]; then
-            COMPONENT_PATH="tn/manager"
+          elif [ "${{ matrix.component }}" = "tn-agent" ] && [ -d "tn" ]; then
+            COMPONENT_PATH="tn"
+          elif [ "${{ matrix.component }}" = "tn-manager" ] && [ -d "tn" ]; then
+            COMPONENT_PATH="tn"
           else
             echo "ERROR: Component directory ${{ matrix.component }} not found!"
             exit 1
