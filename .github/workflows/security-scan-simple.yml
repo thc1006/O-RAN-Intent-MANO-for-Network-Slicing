@@ -118,6 +118,7 @@ jobs:
         # Install tools
         echo "Installing security tools..."
         go install github.com/securego/gosec/v2/cmd/gosec@latest
+        export PATH=$PATH:$(go env GOPATH)/bin
         wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
         echo "deb https://aquasecurity.github.io/trivy-repo/deb generic main" | sudo tee /etc/apt/sources.list.d/trivy.list
         sudo apt-get update
