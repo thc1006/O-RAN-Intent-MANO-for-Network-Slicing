@@ -423,7 +423,7 @@ var _ = Describe("Nephio Package Generation and Deployment Tests", func() {
 			}
 
 			By("Validating Config Sync status across clusters")
-			for i, result := range deploymentResults {
+			for i := range deploymentResults {
 				syncResult := suite.validateConfigSync(targetClusters[i])
 				suite.testResults.ConfigSyncResults = append(suite.testResults.ConfigSyncResults, syncResult)
 
@@ -446,7 +446,7 @@ var _ = Describe("Nephio Package Generation and Deployment Tests", func() {
 			problematicVNF.Image.Tag = "v1.0.0-broken"
 
 			v2Package := suite.generatePorchPackage(problematicVNF, targetCluster)
-			v2Deployment := suite.deployPackageViaGitOps(v2Package, targetCluster)
+			_ = suite.deployPackageViaGitOps(v2Package, targetCluster)
 			// This deployment might fail or cause issues
 
 			By("Performing rollback to previous version")

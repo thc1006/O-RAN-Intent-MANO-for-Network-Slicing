@@ -223,11 +223,11 @@ func setupLogging(config LoggingConfig) (*log.Logger, error) {
 	if config.File != "" {
 		// Create log directory if it doesn't exist
 		logDir := filepath.Dir(config.File)
-		if err := os.MkdirAll(logDir, 0700); err != nil {
+		if err := os.MkdirAll(logDir, security.PrivateDirMode); err != nil {
 			return nil, fmt.Errorf("failed to create log directory: %w", err)
 		}
 
-		file, err := os.OpenFile(config.File, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
+		file, err := os.OpenFile(config.File, os.O_CREATE|os.O_WRONLY|os.O_APPEND, security.SecureFileMode)
 		if err != nil {
 			return nil, fmt.Errorf("failed to open log file: %w", err)
 		}
@@ -261,7 +261,7 @@ func startContinuousMetricsExport(ctx context.Context, manager *pkg.TNManager, c
 // exportMetrics exports metrics to file
 func exportMetrics(manager *pkg.TNManager, config MonitoringConfig, logger *log.Logger) error {
 	// Create export directory if it doesn't exist
-	if err := os.MkdirAll(config.ExportDirectory, 0700); err != nil {
+	if err := os.MkdirAll(config.ExportDirectory, security.PrivateDirMode); err != nil {
 		return fmt.Errorf("failed to create export directory: %w", err)
 	}
 
@@ -281,7 +281,7 @@ func exportMetrics(manager *pkg.TNManager, config MonitoringConfig, logger *log.
 // exportFinalMetrics exports final metrics on shutdown
 func exportFinalMetrics(manager *pkg.TNManager, config MonitoringConfig, logger *log.Logger) error {
 	// Create export directory if it doesn't exist
-	if err := os.MkdirAll(config.ExportDirectory, 0700); err != nil {
+	if err := os.MkdirAll(config.ExportDirectory, security.PrivateDirMode); err != nil {
 		return fmt.Errorf("failed to create export directory: %w", err)
 	}
 

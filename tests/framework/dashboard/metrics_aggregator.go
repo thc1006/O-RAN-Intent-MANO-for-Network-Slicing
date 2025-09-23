@@ -104,11 +104,11 @@ func NewMetricsAggregator(configPath string) (*MetricsAggregator, error) {
 
 // loadAggregatorConfig loads aggregator configuration
 func loadAggregatorConfig(configPath string) (*AggregatorConfig, error) {
-	// Default configuration
+	// Default configuration with security-conscious defaults
 	config := &AggregatorConfig{
 		UpdateInterval:  time.Minute * 1,
 		RetentionPeriod: time.Hour * 24,
-		MaxHistorySize:  100,
+		MaxHistorySize:  DefaultHistoryLimit, // Use safe default
 		EnableRealTime:  true,
 		OutputDirectory: "reports/aggregated",
 		Thresholds: map[string]float64{
@@ -149,7 +149,42 @@ func loadAggregatorConfig(configPath string) (*AggregatorConfig, error) {
 		}
 	}
 
+	// Validate and sanitize security-sensitive configuration values
+	if err := validateAggregatorConfig(config); err != nil {
+		return nil, fmt.Errorf("configuration validation failed: %w", err)
+	}
+
 	return config, nil
+}
+
+// validateAggregatorConfig validates and sanitizes configuration values to prevent security issues
+func validateAggregatorConfig(config *AggregatorConfig) error {
+	// Validate MaxHistorySize to prevent memory exhaustion
+	if config.MaxHistorySize <= 0 {
+		log.Printf("Warning: Invalid MaxHistorySize %d, using default %d",
+			config.MaxHistorySize, DefaultHistoryLimit)
+		config.MaxHistorySize = DefaultHistoryLimit
+	} else if config.MaxHistorySize > AbsoluteMaxHistoryLimit {
+		log.Printf("Security warning: MaxHistorySize %d exceeds absolute maximum %d, capping to safe value",
+			config.MaxHistorySize, AbsoluteMaxHistoryLimit)
+		config.MaxHistorySize = AbsoluteMaxHistoryLimit
+	} else if config.MaxHistorySize > MaxHistoryLimit {
+		log.Printf("Warning: MaxHistorySize %d exceeds recommended maximum %d, consider reducing for better performance",
+			config.MaxHistorySize, MaxHistoryLimit)
+	}
+
+	// Validate UpdateInterval to prevent excessive resource usage
+	if config.UpdateInterval < time.Second*10 {
+		log.Printf("Warning: UpdateInterval %v is very frequent, may cause performance issues", config.UpdateInterval)
+		config.UpdateInterval = time.Second * 10
+	}
+
+	// Validate output directory path for security
+	if strings.Contains(config.OutputDirectory, "..") {
+		return fmt.Errorf("output directory contains path traversal sequences: %s", config.OutputDirectory)
+	}
+
+	return nil
 }
 
 // Start starts the metrics aggregation process
@@ -723,28 +758,74 @@ func (ma *MetricsAggregator) GetCurrentMetrics() *TestMetrics {
 	return ma.metrics
 }
 
-// GetMetricsHistory returns the metrics history
+// Security constants for memory allocation protection
+const (
+	// MaxHistoryLimit prevents DoS attacks via excessive memory allocation
+	MaxHistoryLimit = 1000 // Maximum safe limit for history requests
+	// AbsoluteMaxHistoryLimit is the hard upper bound to prevent memory exhaustion
+	AbsoluteMaxHistoryLimit = 10000
+	// DefaultHistoryLimit is used when no limit is specified or invalid limit provided
+	DefaultHistoryLimit = 100
+)
+
+// validateHistoryLimit validates and sanitizes the limit parameter to prevent memory exhaustion attacks
+func validateHistoryLimit(limit int, availableHistory int) int {
+	// Handle negative or zero limits
+	if limit <= 0 {
+		if availableHistory <= DefaultHistoryLimit {
+			return availableHistory
+		}
+		return DefaultHistoryLimit
+	}
+
+	// Enforce absolute maximum to prevent DoS attacks
+	if limit > AbsoluteMaxHistoryLimit {
+		log.Printf("Security warning: History limit %d exceeds absolute maximum %d, capping to safe value",
+			limit, AbsoluteMaxHistoryLimit)
+		return AbsoluteMaxHistoryLimit
+	}
+
+	// Apply reasonable maximum for normal operations (but allow up to absolute max)
+	if limit > MaxHistoryLimit && limit <= AbsoluteMaxHistoryLimit {
+		log.Printf("Warning: History limit %d exceeds recommended maximum %d, consider reducing for better performance",
+			limit, MaxHistoryLimit)
+		return limit // Allow it but log warning
+	}
+
+	// Don't allow requesting more than available
+	if limit > availableHistory {
+		return availableHistory
+	}
+
+	return limit
+}
+
+// GetMetricsHistory returns the metrics history with proper bounds checking to prevent memory exhaustion
 func (ma *MetricsAggregator) GetMetricsHistory(limit int) []*TestMetrics {
 	ma.mutex.RLock()
 	defer ma.mutex.RUnlock()
 
-	// Protect against excessive memory allocation
-	const maxLimit = 10000 // reasonable maximum history size
 	historyLen := len(ma.metricsHistory)
 
-	if limit <= 0 || limit > historyLen {
-		limit = historyLen
-	}
-	if limit > maxLimit {
-		limit = maxLimit
-	}
+	// Validate and sanitize the limit parameter
+	validatedLimit := validateHistoryLimit(limit, historyLen)
 
-	if limit == 0 {
+	// Handle empty history
+	if historyLen == 0 || validatedLimit == 0 {
 		return []*TestMetrics{}
 	}
 
-	history := make([]*TestMetrics, limit)
-	copy(history, ma.metricsHistory[historyLen-limit:])
+	// Pre-allocate slice with validated size
+	history := make([]*TestMetrics, validatedLimit)
+
+	// Calculate the start index for copying
+	startIndex := historyLen - validatedLimit
+	if startIndex < 0 {
+		startIndex = 0
+	}
+
+	// Safely copy the requested portion of history
+	copy(history, ma.metricsHistory[startIndex:startIndex+validatedLimit])
 
 	// Sort by timestamp (newest first)
 	sort.Slice(history, func(i, j int) bool {

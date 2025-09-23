@@ -473,7 +473,6 @@ var _ = Describe("Thesis Performance Validation", func() {
 			samples := int(duration / interval)
 
 			latencyMeasurements := make([]float64, 0, samples)
-			startTime := time.Now()
 
 			for i := 0; i < samples; i++ {
 				latency := suite.measureLatencyWithTC(sliceID, qosClass)
@@ -487,10 +486,14 @@ var _ = Describe("Thesis Performance Validation", func() {
 			}
 
 			// Statistical analysis of latency consistency
+			totalTestDuration := time.Since(startTime)
 			avgLatency := suite.calculateAverage(latencyMeasurements)
 			maxLatency := suite.calculateMax(latencyMeasurements)
 			stdDev := suite.calculateStdDev(latencyMeasurements)
 			p99Latency := suite.calculatePercentile(latencyMeasurements, 0.99)
+
+			// Log test duration for performance analysis
+			log.Printf("Latency consistency test completed in %v", totalTestDuration)
 
 			By(fmt.Sprintf("Latency statistics over %v: avg=%.1fms, max=%.1fms, stddev=%.1fms, p99=%.1fms",
 				duration, avgLatency, maxLatency, stdDev, p99Latency))

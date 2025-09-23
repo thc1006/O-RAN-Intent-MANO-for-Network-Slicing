@@ -50,6 +50,14 @@ jobs:
       with:
         go-version: ${{ env.GO_VERSION }}
 
+    - name: Clean Go module cache before restore
+      run: |
+        mkdir -p ~/.cache/go-build
+        mkdir -p ~/go/pkg/mod
+        # Clean up any problematic files that might cause tar extraction errors
+        find ~/.cache/go-build -name "*.tar*" -delete 2>/dev/null || true
+        find ~/go/pkg/mod -name "golang.org" -type d -exec rm -rf {} + 2>/dev/null || true
+
     - name: Cache Go modules
       uses: actions/cache@v4
       with:
@@ -150,6 +158,14 @@ jobs:
           COMPONENT_PATH="${{ matrix.component }}"
         fi
         echo "COMPONENT_PATH=$COMPONENT_PATH" >> $GITHUB_ENV
+
+    - name: Clean Go module cache before restore
+      run: |
+        mkdir -p ~/.cache/go-build
+        mkdir -p ~/go/pkg/mod
+        # Clean up any problematic files that might cause tar extraction errors
+        find ~/.cache/go-build -name "*.tar*" -delete 2>/dev/null || true
+        find ~/go/pkg/mod -name "golang.org" -type d -exec rm -rf {} + 2>/dev/null || true
 
     - name: Cache Go modules
       uses: actions/cache@v4

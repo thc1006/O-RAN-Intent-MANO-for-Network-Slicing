@@ -136,6 +136,12 @@ func (im *IperfManager) StartServer(port int) error {
 	security.SafeLogf(im.logger, "Starting iperf3 server on port %d", port)
 
 	ctx, cancel := context.WithCancel(context.Background())
+	var serverRegistered bool
+	defer func() {
+		if !serverRegistered {
+			cancel()
+		}
+	}()
 
 	// Validate port argument
 	portStr := strconv.Itoa(port)
@@ -147,7 +153,6 @@ func (im *IperfManager) StartServer(port int) error {
 	cmd := exec.CommandContext(ctx, "iperf3", "-s", "-p", portStr, "-D")
 
 	if err := cmd.Start(); err != nil {
-		cancel()
 		return fmt.Errorf("failed to start iperf3 server: %w", err)
 	}
 
@@ -160,6 +165,7 @@ func (im *IperfManager) StartServer(port int) error {
 	}
 
 	im.servers[serverKey] = server
+	serverRegistered = true
 
 	// Wait a moment to ensure server is ready
 	time.Sleep(1 * time.Second)

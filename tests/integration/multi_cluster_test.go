@@ -631,7 +631,7 @@ func (s *MultiClusterTestSuite) deployVNFsToCluster(clusterName string, vnfSpecs
 		}
 
 		// Create VNF resource
-		vnf := s.createVNFFromSpec(vnfStatus.VNFName, spec, clusterName)
+		_ = s.createVNFFromSpec(vnfStatus.VNFName, spec, clusterName)
 
 		// Simulate deployment
 		time.Sleep(2 * time.Second) // Simulate deployment time

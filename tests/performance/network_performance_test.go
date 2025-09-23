@@ -5,10 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
-	"regexp"
-	"strconv"
-	"strings"
 	"testing"
 	"time"
 

@@ -120,6 +120,85 @@ type AlarmDef struct {
 	ClearingType     string `json:"clearingType"`
 }
 
+// Infrastructure Models
+
+// InfrastructureResource represents infrastructure resource information
+type InfrastructureResource struct {
+	ID       string            `json:"id"`
+	Type     string            `json:"type"`
+	Location string            `json:"location"`
+	Status   string            `json:"status"`
+	Capacity map[string]string `json:"capacity,omitempty"`
+	Properties map[string]interface{} `json:"properties,omitempty"`
+}
+
+// ResourcePoolSpec represents the specification for creating a resource pool
+type ResourcePoolSpec struct {
+	Name        string                `json:"name"`
+	Description string                `json:"description,omitempty"`
+	Location    string                `json:"location,omitempty"`
+	Resources   []ResourceRequirement `json:"resources,omitempty"`
+}
+
+// ResourceRequirement represents a resource requirement
+type ResourceRequirement struct {
+	Type      string `json:"type"`
+	CPU       string `json:"cpu,omitempty"`
+	Memory    string `json:"memory,omitempty"`
+	Storage   string `json:"storage,omitempty"`
+	Bandwidth string `json:"bandwidth,omitempty"`
+	Latency   string `json:"latency,omitempty"`
+}
+
+// ResourcePool represents a created resource pool
+type ResourcePool struct {
+	ID        string            `json:"id"`
+	Spec      ResourcePoolSpec  `json:"spec"`
+	Status    string            `json:"status"`
+	CreatedAt time.Time         `json:"createdAt"`
+}
+
+// VNF Deployment Models
+
+// VNFDeploymentSpec represents the specification for VNF deployment
+type VNFDeploymentSpec struct {
+	Name        string                 `json:"name"`
+	Type        string                 `json:"type"`
+	Version     string                 `json:"version,omitempty"`
+	PackageURI  string                 `json:"packageUri,omitempty"`
+	TargetSite  string                 `json:"targetSite"`
+	Parameters  map[string]interface{} `json:"parameters,omitempty"`
+}
+
+// VNFDeployment represents a VNF deployment instance
+type VNFDeployment struct {
+	ID     string            `json:"id"`
+	Spec   VNFDeploymentSpec `json:"spec"`
+	Status string            `json:"status"`
+	CreatedAt time.Time      `json:"createdAt"`
+}
+
+// CNF Deployment Models
+
+// CNFDeploymentSpec represents the specification for CNF deployment
+type CNFDeploymentSpec struct {
+	Name       string                 `json:"name"`
+	Type       string                 `json:"type"`
+	Version    string                 `json:"version,omitempty"`
+	HelmChart  string                 `json:"helmChart,omitempty"`
+	TargetSite string                 `json:"targetSite"`
+	Namespace  string                 `json:"namespace,omitempty"`
+	Values     map[string]interface{} `json:"values,omitempty"`
+}
+
+// CNFDeployment represents a CNF deployment instance
+type CNFDeployment struct {
+	ID     string            `json:"id"`
+	Spec   CNFDeploymentSpec `json:"spec"`
+	Status string            `json:"status"`
+	CreatedAt time.Time      `json:"createdAt"`
+}
+
 // O2DMS Models
 
 // DeploymentManager represents a deployment manager instance
@@ -191,13 +270,30 @@ const (
 
 // Subscription Models
 
+// SubscriptionSpec represents the specification for creating a subscription
+type SubscriptionSpec struct {
+	Filter      EventFilter `json:"filter"`
+	CallbackURL string      `json:"callbackUrl"`
+	ExpiryTime  time.Time   `json:"expiryTime,omitempty"`
+}
+
+// EventFilter defines the filter criteria for subscription events
+type EventFilter struct {
+	EventTypes []string `json:"eventTypes"`
+	Source     string   `json:"source,omitempty"`
+}
+
 // Subscription represents a subscription to O2 notifications
 type Subscription struct {
+	ID                   string                 `json:"id"`
 	SubscriptionID       string                 `json:"subscriptionId"`
+	Spec                 SubscriptionSpec       `json:"spec"`
+	Status               string                 `json:"status"`
 	Callback             string                 `json:"callback"`
 	ConsumerSubscriptionID string               `json:"consumerSubscriptionId,omitempty"`
 	Filter               string                 `json:"filter,omitempty"`
 	SystemType           []string               `json:"systemType,omitempty"`
+	CreatedAt            time.Time              `json:"createdAt"`
 	Extensions           map[string]interface{} `json:"extensions,omitempty"`
 }
 

@@ -392,7 +392,7 @@ func (d *Dashboard) GenerateHTML(outputPath string) error {
 		return fmt.Errorf("output file path validation failed: %w", err)
 	}
 
-	file, err := os.Create(outputPath)
+	file, err := security.SecureCreateFile(outputPath)
 	if err != nil {
 		return fmt.Errorf("failed to create output file: %w", err)
 	}

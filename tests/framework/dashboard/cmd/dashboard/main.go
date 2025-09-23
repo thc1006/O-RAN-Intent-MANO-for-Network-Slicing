@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security"
 	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tests/framework/dashboard"
 )
 
@@ -205,8 +206,14 @@ func handleDashboard(dashboardInstance *dashboard.Dashboard) http.HandlerFunc {
 		w.Header().Set("Pragma", "no-cache")
 		w.Header().Set("Expires", "0")
 
-		// Create temporary file for HTML output
-		tmpFile := filepath.Join(os.TempDir(), "dashboard.html")
+		// Create secure temporary file for HTML output
+		tmpDir := os.TempDir()
+		tmpFile, err := security.SecureJoinPath(tmpDir, "o-ran-dashboard.html")
+		if err != nil {
+			http.Error(w, fmt.Sprintf("Failed to create secure temp path: %v", err), http.StatusInternalServerError)
+			return
+		}
+
 		if err := dashboardInstance.GenerateHTML(tmpFile); err != nil {
 			http.Error(w, fmt.Sprintf("Failed to generate dashboard: %v", err), http.StatusInternalServerError)
 			return
