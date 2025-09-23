@@ -979,7 +979,7 @@ jobs:
         done
 
         # Calculate averages
-        avg_coverage=$(echo "scale=2; $total_coverage / $component_count" | bc -l)
+        avg_coverage=$(echo "scale=2; $total_coverage / $component_count" | bc -l 2>/dev/null || echo "0")
 
         # Generate aggregate report
         cat > aggregate-quality-report.json << EOF
@@ -987,18 +987,18 @@ jobs:
           "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
           "commit": "${{ github.sha }}",
           "aggregate_metrics": {
-            "average_coverage": $avg_coverage,
-            "total_test_failures": $total_test_failures,
-            "total_critical_vulnerabilities": $total_critical_vulns,
-            "total_high_vulnerabilities": $total_high_vulns,
-            "components_analyzed": $component_count
+            "average_coverage": ${avg_coverage:-0},
+            "total_test_failures": ${total_test_failures:-0},
+            "total_critical_vulnerabilities": ${total_critical_vulns:-0},
+            "total_high_vulnerabilities": ${total_high_vulns:-0},
+            "components_analyzed": ${component_count:-0}
           },
           "quality_gates": {
-            "coverage_gate": "$(echo "$avg_coverage >= ${{ env.MIN_CODE_COVERAGE }}" | bc -l | sed 's/1/passed/;s/0/failed/')",
-            "security_gate": "$([ $total_critical_vulns -le ${{ env.MAX_CRITICAL_VULNERABILITIES }} ] && echo 'passed' || echo 'failed')",
-            "test_gate": "$([ $total_test_failures -eq 0 ] && echo 'passed' || echo 'failed')"
+            "coverage_gate": "$(echo "${avg_coverage:-0} >= ${{ env.MIN_CODE_COVERAGE }}" | bc -l 2>/dev/null | sed 's/1/passed/;s/0/failed/')",
+            "security_gate": "$([ ${total_critical_vulns:-0} -le ${{ env.MAX_CRITICAL_VULNERABILITIES }} ] && echo 'passed' || echo 'failed')",
+            "test_gate": "$([ ${total_test_failures:-0} -eq 0 ] && echo 'passed' || echo 'failed')"
           },
-          "overall_status": "$([ $total_critical_vulns -le ${{ env.MAX_CRITICAL_VULNERABILITIES }} ] && [ $total_test_failures -eq 0 ] && echo "$avg_coverage >= ${{ env.MIN_CODE_COVERAGE }}" | bc -l | sed 's/1/passed/;s/0/failed/' || echo 'failed')"
+          "overall_status": "$([ ${total_critical_vulns:-0} -le ${{ env.MAX_CRITICAL_VULNERABILITIES }} ] && [ ${total_test_failures:-0} -eq 0 ] && echo "${avg_coverage:-0} >= ${{ env.MIN_CODE_COVERAGE }}" | bc -l 2>/dev/null | sed 's/1/passed/;s/0/failed/' || echo 'failed')"
         }
         EOF
 
