@@ -109,7 +109,7 @@ func (m *MockMetricsProvider) Subscribe(siteID string, callback func(*SiteMetric
 
 // generateMetrics creates simulated metrics for a site
 func (m *MockMetricsProvider) generateMetrics(siteID string) *SiteMetrics {
-	rand.Seed(m.randomSeed)
+	// Using crypto/rand, no seed needed
 
 	// Get scenario or use defaults
 	scenario, hasScenario := m.scenarios[siteID]
