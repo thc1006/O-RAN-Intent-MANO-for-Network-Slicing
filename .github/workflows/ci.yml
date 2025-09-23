@@ -21,7 +21,7 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}
-  GO_VERSION: '1.24.0'
+  GO_VERSION: '1.23.4'
   KIND_VERSION: 'v0.20.0'
   KUBECTL_VERSION: 'v1.28.0'
   HELM_VERSION: 'v3.13.0'
@@ -264,6 +264,22 @@ jobs:
           type=ref,event=pr
           type=sha
           type=raw,value=latest,enable={{is_default_branch}}
+
+    - name: Prepare Docker build context for tn-agent
+      if: matrix.component == 'tn-agent'
+      run: |
+        # Special handling for tn-agent to ensure pkg/security is available
+        if [ -d "deploy/docker/tn-agent" ]; then
+          # Copy pkg/security to build context if needed
+          if [ -d "pkg/security" ] && [ ! -d "deploy/docker/tn-agent/pkg/security" ]; then
+            mkdir -p deploy/docker/tn-agent/pkg
+            cp -r pkg/security deploy/docker/tn-agent/pkg/
+          fi
+          # Copy tn module files if not present
+          if [ -d "tn" ] && [ ! -f "deploy/docker/tn-agent/tn/go.mod" ]; then
+            cp -r tn deploy/docker/tn-agent/
+          fi
+        fi
 
     - name: Build and push image
       uses: docker/build-push-action@v5
