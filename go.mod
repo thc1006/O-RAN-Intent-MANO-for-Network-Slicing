@@ -2,11 +2,22 @@ module github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing
 
 go 1.23
 
+replace (
+	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/cn-dms => ./cn-dms
+	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/orchestrator => ./orchestrator
+	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/ran-dms => ./ran-dms
+	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tn/agent => ./tn/agent
+	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tn/manager => ./tn/manager
+)
+
 require (
 	github.com/GoogleContainerTools/kpt/porch/api v0.0.0-20240427025202-5cbd3cbd9237
+	github.com/gin-gonic/gin v1.9.1
 	github.com/go-logr/logr v1.4.1
 	github.com/onsi/ginkgo/v2 v2.14.0
 	github.com/onsi/gomega v1.30.0
+	github.com/prometheus/client_golang v1.19.0
+	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.11.1
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/apimachinery v0.29.0

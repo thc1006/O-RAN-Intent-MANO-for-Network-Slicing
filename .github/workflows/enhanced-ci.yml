@@ -334,8 +334,10 @@ jobs:
             ;;
           "license-check")
             echo "🔧 Installing license checking tools..."
-            go install github.com/fossa-contrib/fossa-cli@latest
-            pip install licensecheck
+            # Install go-licenses for Go dependency license checking
+            go install github.com/google/go-licenses@latest
+            # Install Python license checker
+            pip install licensecheck pip-licenses
             ;;
         esac
 
