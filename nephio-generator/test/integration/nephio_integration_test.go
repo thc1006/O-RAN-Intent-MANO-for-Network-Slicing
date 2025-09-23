@@ -20,11 +20,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 
-	"github.com/o-ran/intent-mano/nephio-generator/pkg/configsync"
-	"github.com/o-ran/intent-mano/nephio-generator/pkg/generator"
-	"github.com/o-ran/intent-mano/nephio-generator/pkg/porch"
-	"github.com/o-ran/intent-mano/nephio-generator/pkg/renderer"
-	"github.com/o-ran/intent-mano/nephio-generator/pkg/validation"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/nephio-generator/pkg/configsync"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/nephio-generator/pkg/generator"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/nephio-generator/pkg/porch"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/nephio-generator/pkg/renderer"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/nephio-generator/pkg/validation"
 )
 
 // NephioIntegrationTestSuite provides comprehensive integration tests for Nephio components

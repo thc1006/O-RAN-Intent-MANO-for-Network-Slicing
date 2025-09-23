@@ -13,7 +13,7 @@ import (
 
 	"gopkg.in/yaml.v2"
 
-	"github.com/o-ran/intent-mano/tn/agent/pkg"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tn/agent/pkg"
 )
 
 var (

@@ -317,7 +317,7 @@ func (g *EnhancedPackageGenerator) generateEnhancedKptfile(spec *VNFSpec, templa
 		Info: KptfileInfo{
 			Title:       fmt.Sprintf("%s %s Package", spec.Name, spec.Type),
 			Description: fmt.Sprintf("Nephio package for %s VNF of type %s with QoS requirements", spec.Name, spec.Type),
-			Site:        "https://github.com/o-ran/intent-mano",
+			Site:        "https://github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing",
 			License:     "Apache-2.0",
 			Keywords:    []string{"oran", "vnf", spec.Type, "nephio", "5g"},
 		},

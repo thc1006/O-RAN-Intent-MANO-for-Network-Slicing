@@ -3,7 +3,7 @@ package translator
 import (
 	"fmt"
 
-	manov1alpha1 "github.com/o-ran/intent-mano/adapters/vnf-operator/api/v1alpha1"
+	manov1alpha1 "github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/adapters/vnf-operator/api/v1alpha1"
 )
 
 // PorchPackage represents a Kpt package for Porch

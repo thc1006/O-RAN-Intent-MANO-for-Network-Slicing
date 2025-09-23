@@ -21,9 +21,9 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	vnfv1alpha1 "github.com/o-ran/intent-mano/adapters/vnf-operator/api/v1alpha1"
-	"github.com/o-ran/intent-mano/adapters/vnf-operator/controllers"
-	"github.com/o-ran/intent-mano/tests/framework/testutils"
+	vnfv1alpha1 "github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/adapters/vnf-operator/api/v1alpha1"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/adapters/vnf-operator/controllers"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tests/framework/testutils"
 )
 
 var (

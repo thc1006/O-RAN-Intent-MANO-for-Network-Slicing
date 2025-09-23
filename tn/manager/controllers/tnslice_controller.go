@@ -17,9 +17,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	tnv1alpha1 "github.com/o-ran/intent-mano/tn/manager/api/v1alpha1"
-	"github.com/o-ran/intent-mano/tn/manager/pkg/tc"
-	"github.com/o-ran/intent-mano/tn/manager/pkg/vxlan"
+	tnv1alpha1 "github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tn/manager/api/v1alpha1"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tn/manager/pkg/tc"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tn/manager/pkg/vxlan"
 )
 
 const (

@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/o-ran/intent-mano/o2-client/pkg/models"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/o2-client/pkg/models"
 )
 
 // Client provides O2IMS (O-RAN Infrastructure Management Service) operations
@@ -91,7 +91,7 @@ func (c *Client) GetOCloudInfo(ctx context.Context) (*models.OCloudInfo, error) 
 // Resource Pool Operations
 
 // ListResourcePools retrieves a list of resource pools
-func (c *Client) ListResourcePools(ctx context.Context, query *ListQuery) ([]*models.ResourcePool, error) {
+func (c *Client) ListResourcePools(ctx context.Context, query *ListQuery) ([]*models.O2CloudResourcePool, error) {
 	var response models.ListResponse
 	endpoint := "/o2ims-infrastructureInventory/v1/resourcePools"
 
@@ -107,14 +107,14 @@ func (c *Client) ListResourcePools(ctx context.Context, query *ListQuery) ([]*mo
 		return nil, fmt.Errorf("failed to list resource pools: %w", err)
 	}
 
-	pools := make([]*models.ResourcePool, len(response.Items))
+	pools := make([]*models.O2CloudResourcePool, len(response.Items))
 	for i, item := range response.Items {
 		poolData, err := json.Marshal(item)
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal resource pool %d: %w", i, err)
 		}
 
-		var pool models.ResourcePool
+		var pool models.O2CloudResourcePool
 		if err := json.Unmarshal(poolData, &pool); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal resource pool %d: %w", i, err)
 		}
@@ -125,8 +125,8 @@ func (c *Client) ListResourcePools(ctx context.Context, query *ListQuery) ([]*mo
 }
 
 // GetResourcePool retrieves a specific resource pool by ID
-func (c *Client) GetResourcePool(ctx context.Context, resourcePoolID string) (*models.ResourcePool, error) {
-	var pool models.ResourcePool
+func (c *Client) GetResourcePool(ctx context.Context, resourcePoolID string) (*models.O2CloudResourcePool, error) {
+	var pool models.O2CloudResourcePool
 	endpoint := fmt.Sprintf("/o2ims-infrastructureInventory/v1/resourcePools/%s", resourcePoolID)
 
 	err := c.doRequest(ctx, "GET", endpoint, nil, &pool)

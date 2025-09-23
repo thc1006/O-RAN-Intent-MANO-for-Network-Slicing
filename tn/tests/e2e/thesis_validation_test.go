@@ -14,8 +14,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
-	agentpkg "github.com/o-ran/intent-mano/tn/agent/pkg"
-	managerpkg "github.com/o-ran/intent-mano/tn/manager/pkg"
+	agentpkg "github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tn/agent/pkg"
+	managerpkg "github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tn/manager/pkg"
 )
 
 // ThesisValidationSuite provides end-to-end thesis validation testing

@@ -64,7 +64,7 @@ func (vm *VXLANManager) CreateTunnel() error {
 
 	// Add FDB entries for remote peers
 	if err := vm.addFDBEntries(); err != nil {
-		vm.logger.Printf("Warning: failed to configure interface", err)
+		vm.logger.Printf("Warning: failed to configure interface: %v", err)
 	}
 
 	return nil
@@ -77,7 +77,7 @@ func (vm *VXLANManager) DeleteTunnel() error {
 	cmd := exec.Command("ip", "link", "delete", vm.config.DeviceName)
 	if _, err := cmd.CombinedOutput(); err != nil {
 		// Don't return error if interface doesn't exist
-		if !strings.Contains("dummy", "Cannot find device") {
+		if !strings.Contains(err.Error(), "Cannot find device") {
 			return fmt.Errorf("failed to configure interface: %v", err)
 		}
 	}

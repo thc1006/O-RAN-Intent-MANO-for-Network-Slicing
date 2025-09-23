@@ -20,7 +20,7 @@ import (
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/o-ran/intent-mano/tests/framework/testutils"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tests/framework/testutils"
 )
 
 // IntentToSliceWorkflow represents the complete E2E workflow test suite

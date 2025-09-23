@@ -15,7 +15,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	manov1alpha1 "github.com/o-ran/intent-mano/adapters/vnf-operator/api/v1alpha1"
+	manov1alpha1 "github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/adapters/vnf-operator/api/v1alpha1"
 )
 
 // DeploymentTimingSuite manages end-to-end deployment timing validation
@@ -661,7 +661,7 @@ func (s *DeploymentTimingSuite) testIntentToDeploymentTiming(scenario Deployment
 
 	// Phase 5: GitOps Workflow
 	phase5Start := time.Now()
-	gitOpsResults := s.executeGitOpsWorkflow(packages)
+	_ = s.executeGitOpsWorkflow(packages)
 	result.PhaseTimings["gitops_workflow"] = time.Since(phase5Start)
 
 	// Phase 6: Config Sync

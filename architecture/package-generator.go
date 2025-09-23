@@ -4,15 +4,10 @@ package nephio
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"path/filepath"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/util/yaml"
-	"sigs.k8s.io/kustomize/api/kustomize/v1beta1"
 
 	manov1alpha1 "github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/adapters/vnf-operator/api/v1alpha1"
 )
@@ -30,7 +25,7 @@ type Package struct {
 	Resources    []unstructured.Unstructured    `json:"resources"`
 	Dependencies []PackageDependency            `json:"dependencies"`
 	Targets      []DeploymentTarget             `json:"targets"`
-	Kustomize    *v1beta1.Kustomization         `json:"kustomize,omitempty"`
+	Kustomize    *Kustomization                 `json:"kustomize,omitempty"`
 }
 
 // PackageMetadata contains package identification and versioning
@@ -488,8 +483,8 @@ func (g *DefaultPackageGenerator) generateNetworkConfig(vnfType string, qos QoSP
 	return config
 }
 
-func (g *DefaultPackageGenerator) generateKustomization(vnfType, intentName string) *v1beta1.Kustomization {
-	return &v1beta1.Kustomization{
+func (g *DefaultPackageGenerator) generateKustomization(vnfType, intentName string) *Kustomization {
+	return &Kustomization{
 		NamePrefix: fmt.Sprintf("%s-%s-", strings.ToLower(vnfType), intentName),
 		CommonLabels: map[string]string{
 			"app.kubernetes.io/name":      strings.ToLower(vnfType),
@@ -497,7 +492,7 @@ func (g *DefaultPackageGenerator) generateKustomization(vnfType, intentName stri
 			"app.kubernetes.io/component": "network-function",
 			"slice-intent":                intentName,
 		},
-		Images: []v1beta1.Image{
+		Images: []Image{
 			{
 				Name:   strings.ToLower(vnfType),
 				NewTag: "latest",

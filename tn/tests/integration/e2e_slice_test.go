@@ -13,8 +13,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
-	managerPkg "github.com/o-ran/intent-mano/tn/manager/pkg"
-	agentPkg "github.com/o-ran/intent-mano/tn/agent/pkg"
+	managerPkg "github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tn/manager/pkg"
+	agentPkg "github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tn/agent/pkg"
 )
 
 // E2ESliceTestSuite tests end-to-end network slice deployment

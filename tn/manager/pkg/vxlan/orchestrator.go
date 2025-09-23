@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net"
 
-	tnv1alpha1 "github.com/o-ran/intent-mano/tn/manager/api/v1alpha1"
+	tnv1alpha1 "github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tn/manager/api/v1alpha1"
 )
 
 // TunnelConfig represents VXLAN tunnel configuration

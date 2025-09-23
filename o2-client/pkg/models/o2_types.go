@@ -48,8 +48,8 @@ type OCloudInfo struct {
 	Extensions        map[string]interface{} `json:"extensions,omitempty"`
 }
 
-// ResourcePool represents a pool of resources in the O-Cloud
-type ResourcePool struct {
+// O2CloudResourcePool represents a pool of resources in the O-Cloud
+type O2CloudResourcePool struct {
 	ResourcePoolID string                 `json:"resourcePoolId"`
 	OCloudID       string                 `json:"oCloudId"`
 	GlobalCloudID  string                 `json:"globalCloudId,omitempty"`

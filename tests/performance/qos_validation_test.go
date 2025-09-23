@@ -16,7 +16,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
-	manov1alpha1 "github.com/o-ran/intent-mano/adapters/vnf-operator/api/v1alpha1"
+	manov1alpha1 "github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/adapters/vnf-operator/api/v1alpha1"
 )
 
 // QoSTestProfile represents a QoS testing configuration based on thesis targets
@@ -689,7 +689,7 @@ type SliceQoSConfig struct {
 	Priority   int
 }
 
-type NetworkSlice struct {
+type QoSNetworkSlice struct {
 	ID         string
 	QoSProfile QoSTestProfile
 	Priority   int

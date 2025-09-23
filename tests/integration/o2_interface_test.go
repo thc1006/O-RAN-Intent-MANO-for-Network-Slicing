@@ -14,7 +14,7 @@ import (
 	. "github.com/onsi/gomega"
 	"k8s.io/client-go/rest"
 
-	o2types "github.com/o-ran/intent-mano/o2-client/pkg/models"
+	o2types "github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/o2-client/pkg/models"
 )
 
 // O2InterfaceTestSuite manages O2 interface integration testing
