@@ -797,22 +797,24 @@ func NewMockFunctionRegistry() *MockFunctionRegistry {
 	return &MockFunctionRegistry{}
 }
 
-func (r *MockFunctionRegistry) GetFunction(name string) (*generator.KptFunction, error) {
-	return &generator.KptFunction{
+func (r *MockFunctionRegistry) GetFunction(name string) (*renderer.KptFunction, error) {
+	return &renderer.KptFunction{
 		Name:        name,
 		Image:       fmt.Sprintf("gcr.io/kpt-fn/%s:v0.2.0", name),
 		Version:     "v0.2.0",
+		Type:        renderer.FunctionTypeMutator,
 		Description: fmt.Sprintf("Mock function: %s", name),
 		ExecTimeout: 30 * time.Second,
 	}, nil
 }
 
-func (r *MockFunctionRegistry) ListFunctions() ([]*generator.KptFunction, error) {
-	return []*generator.KptFunction{
+func (r *MockFunctionRegistry) ListFunctions() ([]*renderer.KptFunction, error) {
+	return []*renderer.KptFunction{
 		{
 			Name:        "set-labels",
 			Image:       "gcr.io/kpt-fn/set-labels:v0.2.0",
 			Version:     "v0.2.0",
+			Type:        renderer.FunctionTypeMutator,
 			Description: "Set labels on resources",
 			ExecTimeout: 30 * time.Second,
 		},
@@ -820,17 +822,18 @@ func (r *MockFunctionRegistry) ListFunctions() ([]*generator.KptFunction, error)
 			Name:        "kubeval",
 			Image:       "gcr.io/kpt-fn/kubeval:v0.3",
 			Version:     "v0.3",
+			Type:        renderer.FunctionTypeValidator,
 			Description: "Validate Kubernetes resources",
 			ExecTimeout: 30 * time.Second,
 		},
 	}, nil
 }
 
-func (r *MockFunctionRegistry) ValidateFunction(fn *generator.KptFunction) error {
+func (r *MockFunctionRegistry) ValidateFunction(fn *renderer.KptFunction) error {
 	return nil
 }
 
-func (r *MockFunctionRegistry) ExecuteFunction(ctx context.Context, fn *generator.KptFunction, packagePath string) error {
+func (r *MockFunctionRegistry) ExecuteFunction(ctx context.Context, fn *renderer.KptFunction, packagePath string) error {
 	// Mock successful execution
 	return nil
 }

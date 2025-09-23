@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security"
 	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tn/agent/pkg/tc"
 	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tn/agent/pkg/vxlan"
 	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tn/agent/pkg/watcher"
@@ -208,6 +209,26 @@ func (a *Agent) executeCommand(cmdStr string) error {
 		return fmt.Errorf("empty command")
 	}
 
+	// Validate command and arguments for security
+	allowedCommands := []string{"ip", "tc", "bridge", "ping", "iperf3"}
+	commandAllowed := false
+	for _, allowed := range allowedCommands {
+		if parts[0] == allowed {
+			commandAllowed = true
+			break
+		}
+	}
+	if !commandAllowed {
+		return fmt.Errorf("command not allowed: %s", parts[0])
+	}
+
+	// Validate each argument
+	for _, arg := range parts[1:] {
+		if err := security.ValidateCommandArgument(arg); err != nil {
+			return fmt.Errorf("invalid command argument %s: %w", arg, err)
+		}
+	}
+
 	cmd := exec.Command(parts[0], parts[1:]...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -223,6 +244,26 @@ func (a *Agent) executeCommandOutput(cmdStr string) (string, error) {
 		return "", fmt.Errorf("empty command")
 	}
 
+	// Validate command and arguments for security
+	allowedCommands := []string{"ip", "tc", "bridge", "ping", "iperf3"}
+	commandAllowed := false
+	for _, allowed := range allowedCommands {
+		if parts[0] == allowed {
+			commandAllowed = true
+			break
+		}
+	}
+	if !commandAllowed {
+		return "", fmt.Errorf("command not allowed: %s", parts[0])
+	}
+
+	// Validate each argument
+	for _, arg := range parts[1:] {
+		if err := security.ValidateCommandArgument(arg); err != nil {
+			return "", fmt.Errorf("invalid command argument %s: %w", arg, err)
+		}
+	}
+
 	cmd := exec.Command(parts[0], parts[1:]...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -233,6 +274,10 @@ func (a *Agent) executeCommandOutput(cmdStr string) (string, error) {
 }
 
 func (a *Agent) interfaceExists(name string) bool {
+	// Validate interface name for security
+	if err := security.ValidateNetworkInterface(name); err != nil {
+		return false
+	}
 	_, err := a.executeCommandOutput(fmt.Sprintf("ip link show %s", name))
 	return err == nil
 }

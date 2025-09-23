@@ -120,7 +120,7 @@ func (bm *BandwidthMonitor) Start(ctx context.Context) error {
 	// Start monitoring goroutine
 	go bm.monitoringLoop()
 
-	bm.logger.Printf("Bandwidth monitor started, monitoring %d interfaces", len(interfaces))
+	security.SafeLogf(bm.logger, "Bandwidth monitor started, monitoring %d interfaces", len(interfaces))
 	return nil
 }
 
@@ -149,7 +149,14 @@ func (bm *BandwidthMonitor) SetInterval(interval time.Duration) {
 
 // discoverInterfaces discovers available network interfaces
 func (bm *BandwidthMonitor) discoverInterfaces() ([]string, error) {
-	cmd := exec.Command("ip", "link", "show")
+	// Validate ip command arguments
+	ipArgs := []string{"link", "show"}
+	for _, arg := range ipArgs {
+		if err := security.ValidateCommandArgument(arg); err != nil {
+			return nil, fmt.Errorf("invalid ip command argument %s: %w", arg, err)
+		}
+	}
+	cmd := exec.Command("ip", ipArgs...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return nil, fmt.Errorf("failed to list interfaces: %w", err)
@@ -168,7 +175,7 @@ func (bm *BandwidthMonitor) discoverInterfaces() ([]string, error) {
 				if ifaceName != "" && ifaceName != "lo" {
 					// Validate interface name for security
 					if err := security.ValidateNetworkInterface(ifaceName); err != nil {
-						bm.logger.Printf("Warning: skipping invalid interface %s: %v", ifaceName, err)
+						security.SafeLogf(bm.logger, "Warning: skipping invalid interface %s: %s", security.SanitizeForLog(ifaceName), security.SanitizeErrorForLog(err))
 						continue
 					}
 					interfaces = append(interfaces, ifaceName)
@@ -203,7 +210,7 @@ func (bm *BandwidthMonitor) collectMetrics() {
 	for ifaceName, collector := range bm.collectors {
 		metrics, err := collector.collectInterfaceMetrics()
 		if err != nil {
-			bm.logger.Printf("Failed to collect metrics for %s: %v", ifaceName, err)
+			security.SafeLogf(bm.logger, "Failed to collect metrics for %s: %s", security.SanitizeForLog(ifaceName), security.SanitizeErrorForLog(err))
 			continue
 		}
 
@@ -244,7 +251,12 @@ func (mc *MetricCollector) collectInterfaceMetrics() (*InterfaceMetrics, error) 
 
 // getInterfaceStats gets basic interface statistics
 func (mc *MetricCollector) getInterfaceStats(metrics *InterfaceMetrics) error {
-	cmd := exec.Command("cat", "/proc/net/dev")
+	// Validate file path for security
+	filePath := "/proc/net/dev"
+	if err := security.ValidateFilePath(filePath); err != nil {
+		return fmt.Errorf("invalid file path: %w", err)
+	}
+	cmd := exec.Command("cat", filePath)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to read /proc/net/dev: %w", err)
@@ -315,11 +327,20 @@ func (mc *MetricCollector) calculateRates(metrics *InterfaceMetrics) {
 func (mc *MetricCollector) getQueueStats(metrics *InterfaceMetrics) {
 	// Validate interface name for security
 	if err := security.ValidateNetworkInterface(mc.interfaceName); err != nil {
-		mc.logger.Printf("Warning: invalid interface name for queue stats: %v", err)
+		security.SafeLogError(mc.logger, "Warning: invalid interface name for queue stats", err)
 		return
 	}
 
-	cmd := exec.Command("tc", "-s", "qdisc", "show", "dev", mc.interfaceName)
+	// Validate all tc command arguments
+	tcArgs := []string{"-s", "qdisc", "show", "dev", mc.interfaceName}
+	for _, arg := range tcArgs {
+		if err := security.ValidateCommandArgument(arg); err != nil {
+			security.SafeLogError(mc.logger, "Warning: invalid tc command argument", err)
+			return
+		}
+	}
+
+	cmd := exec.Command("tc", tcArgs...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		// TC stats not available, skip
@@ -486,14 +507,14 @@ func (bm *BandwidthMonitor) StartContinuousLogging(interval time.Duration) {
 				return
 			case <-ticker.C:
 				stats := bm.GetNetworkStats()
-				bm.logger.Printf("Network Stats: Total=%.2f Mbps (RX=%.2f, TX=%.2f), Avg Util=%.1f%%, Errors=%d, Dropped=%d",
+				security.SafeLogf(bm.logger, "Network Stats: Total=%.2f Mbps (RX=%.2f, TX=%.2f), Avg Util=%.1f%%, Errors=%d, Dropped=%d",
 					stats.TotalMbps, stats.TotalRxMbps, stats.TotalTxMbps, stats.AvgUtilization, stats.TotalErrors, stats.TotalDropped)
 
 				// Log per-interface details
 				for ifaceName, metrics := range stats.Interfaces {
 					if metrics.TotalRateMbps > 0.1 { // Only log active interfaces
-						bm.logger.Printf("  %s: %.2f Mbps (RX=%.2f, TX=%.2f), Util=%.1f%%, Errors=%d, Dropped=%d",
-							ifaceName, metrics.TotalRateMbps, metrics.RxRateMbps, metrics.TxRateMbps,
+						security.SafeLogf(bm.logger, "  %s: %.2f Mbps (RX=%.2f, TX=%.2f), Util=%.1f%%, Errors=%d, Dropped=%d",
+							security.SanitizeForLog(ifaceName), metrics.TotalRateMbps, metrics.RxRateMbps, metrics.TxRateMbps,
 							metrics.Utilization, metrics.RxErrors+metrics.TxErrors, metrics.RxDropped+metrics.TxDropped)
 					}
 				}

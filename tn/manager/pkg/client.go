@@ -9,6 +9,8 @@ import (
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security"
 )
 
 // TNAgentClient represents a client for communicating with TN agents
@@ -33,7 +35,7 @@ func NewTNAgentClient(endpoint string, logger *log.Logger) *TNAgentClient {
 
 // Connect establishes a connection to the TN agent
 func (client *TNAgentClient) Connect() error {
-	client.logger.Printf("Connecting to TN agent at %s", client.baseURL)
+	security.SafeLogf(client.logger, "Connecting to TN agent at %s", security.SanitizeForLog(client.baseURL))
 
 	// Test connectivity with health check
 	resp, err := client.httpClient.Get(client.baseURL + "/health")
@@ -47,14 +49,14 @@ func (client *TNAgentClient) Connect() error {
 	}
 
 	client.connected = true
-	client.logger.Printf("Successfully connected to TN agent at %s", client.baseURL)
+	security.SafeLogf(client.logger, "Successfully connected to TN agent at %s", security.SanitizeForLog(client.baseURL))
 	return nil
 }
 
 // Stop closes the connection to the TN agent
 func (client *TNAgentClient) Stop() error {
 	client.connected = false
-	client.logger.Printf("Disconnected from TN agent at %s", client.baseURL)
+	security.SafeLogf(client.logger, "Disconnected from TN agent at %s", security.SanitizeForLog(client.baseURL))
 	return nil
 }
 
@@ -64,7 +66,7 @@ func (client *TNAgentClient) ConfigureSlice(sliceID string, config *TNConfig) er
 		return fmt.Errorf("client not connected")
 	}
 
-	client.logger.Printf("Configuring slice %s on agent %s", sliceID, client.baseURL)
+	security.SafeLogf(client.logger, "Configuring slice %s on agent %s", security.SanitizeForLog(sliceID), security.SanitizeForLog(client.baseURL))
 
 	payload := map[string]interface{}{
 		"sliceId": sliceID,
@@ -91,7 +93,7 @@ func (client *TNAgentClient) ConfigureSlice(sliceID string, config *TNConfig) er
 		return fmt.Errorf("configuration failed: status %d, body: %s", resp.StatusCode, string(body))
 	}
 
-	client.logger.Printf("Successfully configured slice %s on agent", sliceID)
+	security.SafeLogf(client.logger, "Successfully configured slice %s on agent", security.SanitizeForLog(sliceID))
 	return nil
 }
 
@@ -101,7 +103,7 @@ func (client *TNAgentClient) RunPerformanceTest(config *PerformanceTestConfig) (
 		return nil, fmt.Errorf("client not connected")
 	}
 
-	client.logger.Printf("Running performance test %s on agent %s", config.TestID, client.baseURL)
+	security.SafeLogf(client.logger, "Running performance test %s on agent %s", security.SanitizeForLog(config.TestID), security.SanitizeForLog(client.baseURL))
 
 	data, err := json.Marshal(config)
 	if err != nil {
@@ -133,7 +135,7 @@ func (client *TNAgentClient) RunPerformanceTest(config *PerformanceTestConfig) (
 		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 
-	client.logger.Printf("Performance test completed: %.2f Mbps throughput, %.2f ms latency",
+	security.SafeLogf(client.logger, "Performance test completed: %.2f Mbps throughput, %.2f ms latency",
 		metrics.Throughput.AvgMbps, metrics.Latency.AvgRTTMs)
 
 	return &metrics, nil

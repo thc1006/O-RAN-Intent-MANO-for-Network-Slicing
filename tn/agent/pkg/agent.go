@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security"
 )
 
 // TNAgent represents the Transport Network agent
@@ -41,7 +43,7 @@ func NewTNAgent(config *TNConfig, logger *log.Logger) *TNAgent {
 
 // Start initializes and starts the TN agent
 func (agent *TNAgent) Start() error {
-	agent.logger.Printf("Starting TN Agent for cluster: %s", agent.config.ClusterName)
+	security.SafeLogf(agent.logger, "Starting TN Agent for cluster: %s", security.SanitizeForLog(agent.config.ClusterName))
 
 	// Initialize VXLAN manager
 	if err := agent.initializeVXLAN(); err != nil {
@@ -72,7 +74,7 @@ func (agent *TNAgent) Start() error {
 	go agent.monitoringLoop()
 
 	agent.healthy = true
-	agent.logger.Printf("TN Agent started successfully on port %d", agent.config.MonitoringPort)
+	security.SafeLogf(agent.logger, "TN Agent started successfully on port %d", agent.config.MonitoringPort)
 
 	return nil
 }
@@ -88,32 +90,32 @@ func (agent *TNAgent) Stop() error {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		if err := agent.server.Shutdown(ctx); err != nil {
-			agent.logger.Printf("HTTP server shutdown error: %v", err)
+			security.SafeLogError(agent.logger, "HTTP server shutdown error", err)
 		}
 	}
 
 	// Stop iperf servers
 	if err := agent.iperfManager.StopAllServers(); err != nil {
-		agent.logger.Printf("Error stopping iperf servers: %v", err)
+		security.SafeLogError(agent.logger, "Error stopping iperf servers", err)
 	}
 
 	// Clean TC rules
 	if agent.tcManager != nil {
 		if err := agent.tcManager.CleanRules(); err != nil {
-			agent.logger.Printf("Error cleaning TC rules: %v", err)
+			security.SafeLogError(agent.logger, "Error cleaning TC rules", err)
 		}
 	}
 
 	// Delete VXLAN tunnel
 	if agent.vxlanManager != nil {
 		if err := agent.vxlanManager.DeleteTunnel(); err != nil {
-			agent.logger.Printf("Error deleting VXLAN tunnel: %v", err)
+			security.SafeLogError(agent.logger, "Error deleting VXLAN tunnel", err)
 		}
 	}
 
 	// Stop bandwidth monitoring
 	if err := agent.monitor.Stop(); err != nil {
-		agent.logger.Printf("Error stopping bandwidth monitor: %v", err)
+		security.SafeLogError(agent.logger, "Error stopping bandwidth monitor", err)
 	}
 
 	agent.healthy = false
@@ -185,7 +187,7 @@ func (agent *TNAgent) startIperfServers() error {
 	// Start additional servers for different test types
 	for i, port := range []int{iperfPort + 1, iperfPort + 2} {
 		if err := agent.iperfManager.StartServer(port); err != nil {
-			agent.logger.Printf("Warning: failed to start additional iperf3 server %d: %v", i, err)
+			security.SafeLogf(agent.logger, "Warning: failed to start additional iperf3 server %d: %s", i, security.SanitizeErrorForLog(err))
 		}
 	}
 
@@ -198,7 +200,7 @@ func (agent *TNAgent) ConfigureSlice(sliceID string, config *TNConfig) error {
 	agent.mu.Lock()
 	defer agent.mu.Unlock()
 
-	agent.logger.Printf("Configuring network slice: %s", sliceID)
+	security.SafeLogf(agent.logger, "Configuring network slice: %s", security.SanitizeForLog(sliceID))
 
 	// Update configuration
 	agent.config = config
@@ -206,7 +208,7 @@ func (agent *TNAgent) ConfigureSlice(sliceID string, config *TNConfig) error {
 	// Reconfigure VXLAN if needed
 	if agent.vxlanManager != nil {
 		if err := agent.vxlanManager.UpdatePeers(config.VXLANConfig.RemoteIPs); err != nil {
-			agent.logger.Printf("Warning: failed to update VXLAN peers: %v", err)
+			security.SafeLogError(agent.logger, "Warning: failed to update VXLAN peers", err)
 		}
 	}
 
@@ -217,13 +219,13 @@ func (agent *TNAgent) ConfigureSlice(sliceID string, config *TNConfig) error {
 		}
 	}
 
-	agent.logger.Printf("Network slice %s configured successfully", sliceID)
+	security.SafeLogf(agent.logger, "Network slice %s configured successfully", security.SanitizeForLog(sliceID))
 	return nil
 }
 
 // RunPerformanceTest executes a comprehensive performance test
 func (agent *TNAgent) RunPerformanceTest(config *PerformanceTestConfig) (*PerformanceMetrics, error) {
-	agent.logger.Printf("Running performance test: %s", config.TestID)
+	security.SafeLogf(agent.logger, "Running performance test: %s", security.SanitizeForLog(config.TestID))
 
 	startTime := time.Now()
 
@@ -264,7 +266,7 @@ func (agent *TNAgent) RunPerformanceTest(config *PerformanceTestConfig) (*Perfor
 
 	metrics.Duration = time.Since(startTime)
 
-	agent.logger.Printf("Performance test completed: %.2f Mbps throughput, %.2f ms latency",
+	security.SafeLogf(agent.logger, "Performance test completed: %.2f Mbps throughput, %.2f ms latency",
 		metrics.Throughput.AvgMbps, metrics.Latency.AvgRTTMs)
 
 	return metrics, nil
@@ -367,7 +369,7 @@ func (agent *TNAgent) performHealthCheck() {
 	if agent.vxlanManager != nil {
 		if status, err := agent.vxlanManager.GetTunnelStatus(); err != nil || !status.TunnelUp {
 			healthy = false
-			agent.logger.Printf("VXLAN tunnel unhealthy: %v", err)
+			security.SafeLogError(agent.logger, "VXLAN tunnel unhealthy", err)
 		}
 	}
 
@@ -375,7 +377,7 @@ func (agent *TNAgent) performHealthCheck() {
 	if agent.tcManager != nil {
 		if status, err := agent.tcManager.GetTCStatus(); err != nil || !status.RulesActive {
 			healthy = false
-			agent.logger.Printf("TC rules unhealthy: %v", err)
+			security.SafeLogError(agent.logger, "TC rules unhealthy", err)
 		}
 	}
 

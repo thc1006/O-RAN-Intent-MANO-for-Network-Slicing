@@ -137,8 +137,14 @@ func (im *IperfManager) StartServer(port int) error {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
+	// Validate port argument
+	portStr := strconv.Itoa(port)
+	if err := security.ValidateCommandArgument(portStr); err != nil {
+		return fmt.Errorf("invalid port argument: %w", err)
+	}
+
 	// Start iperf3 server
-	cmd := exec.CommandContext(ctx, "iperf3", "-s", "-p", strconv.Itoa(port), "-D")
+	cmd := exec.CommandContext(ctx, "iperf3", "-s", "-p", portStr, "-D")
 
 	if err := cmd.Start(); err != nil {
 		cancel()
@@ -191,7 +197,18 @@ func (im *IperfManager) StopServer(port int) error {
 	server.Cancel()
 
 	// Kill the process if it's still running
-	cmd := exec.Command("pkill", "-f", fmt.Sprintf("iperf3.*-p %d", port))
+	// Validate port argument
+	portStr := strconv.Itoa(port)
+	if err := security.ValidateCommandArgument(portStr); err != nil {
+		return fmt.Errorf("invalid port argument: %w", err)
+	}
+	pattern := fmt.Sprintf("iperf3.*-p %s", portStr)
+	// Validate pattern for security
+	if err := security.ValidateCommandArgument(pattern); err != nil {
+		security.SafeLogf(im.logger, "Warning: skipping pkill due to invalid pattern: %s", security.SanitizeForLog(pattern))
+		return nil
+	}
+	cmd := exec.Command("pkill", "-f", pattern)
 	if output, err := cmd.CombinedOutput(); err != nil {
 		security.SafeLogf(im.logger, "Warning: failed to kill iperf3 server process: %s, output: %s", security.SanitizeErrorForLog(err), security.SanitizeForLog(string(output)))
 	}
@@ -286,6 +303,13 @@ func (im *IperfManager) RunTest(config *IperfTestConfig) (*IperfResult, error) {
 	// JSON output
 	if config.JSON {
 		args = append(args, "-J")
+	}
+
+	// Validate all arguments for security
+	for _, arg := range args {
+		if err := security.ValidateCommandArgument(arg); err != nil {
+			return nil, fmt.Errorf("invalid iperf3 argument %s: %w", arg, err)
+		}
 	}
 
 	// Execute iperf3 client
@@ -516,8 +540,16 @@ func (im *IperfManager) RunLatencyTest(serverIP string, port int, duration time.
 
 	metrics := &LatencyMetrics{}
 
+	// Validate ping arguments
+	pingArgs := []string{"-c", "10", "-i", "0.1", serverIP}
+	for _, arg := range pingArgs {
+		if err := security.ValidateCommandArgument(arg); err != nil {
+			return metrics, fmt.Errorf("invalid ping argument %s: %w", arg, err)
+		}
+	}
+
 	// Use ping for more accurate latency measurements
-	cmd := exec.Command("ping", "-c", "10", "-i", "0.1", serverIP)
+	cmd := exec.Command("ping", pingArgs...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return metrics, fmt.Errorf("ping test failed: %w", err)

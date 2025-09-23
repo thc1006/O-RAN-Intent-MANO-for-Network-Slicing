@@ -143,9 +143,9 @@ func main() {
 		log.Fatalf("Failed to setup logging: %v", err)
 	}
 
-	logger.Printf("Starting TN Agent version %s (commit: %s)", Version, GitCommit)
-	logger.Printf("Cluster: %s, Local IP: %s, Port: %d",
-		config.Agent.ClusterName, config.VXLAN.LocalIP, config.Agent.MonitoringPort)
+	security.SafeLogf(logger, "Starting TN Agent version %s (commit: %s)", security.SanitizeForLog(Version), security.SanitizeForLog(GitCommit))
+	security.SafeLogf(logger, "Cluster: %s, Local IP: %s, Port: %d",
+		security.SanitizeForLog(config.Agent.ClusterName), security.SanitizeIPForLog(config.VXLAN.LocalIP), config.Agent.MonitoringPort)
 
 	// Create TN configuration
 	tnConfig := convertToTNConfig(config)
@@ -185,12 +185,12 @@ func main() {
 
 	// Export final status
 	if err := exportFinalStatus(agent, config.Monitoring, logger); err != nil {
-		logger.Printf("Failed to export final status: %v", err)
+		security.SafeLogError(logger, "Failed to export final status", err)
 	}
 
 	// Stop agent
 	if err := agent.Stop(); err != nil {
-		logger.Printf("Error stopping agent: %v", err)
+		security.SafeLogError(logger, "Error stopping agent", err)
 	}
 
 	logger.Println("TN Agent stopped")
@@ -346,11 +346,11 @@ func setupLogging(config LoggingConfig) (*log.Logger, error) {
 	if config.File != "" {
 		// Create log directory if it doesn't exist
 		logDir := filepath.Dir(config.File)
-		if err := os.MkdirAll(logDir, 0750); err != nil {
+		if err := os.MkdirAll(logDir, 0700); err != nil {
 			return nil, fmt.Errorf("failed to create log directory: %w", err)
 		}
 
-		file, err := os.OpenFile(config.File, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0640)
+		file, err := os.OpenFile(config.File, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
 		if err != nil {
 			return nil, fmt.Errorf("failed to open log file: %w", err)
 		}
@@ -367,7 +367,7 @@ func startMonitoring(ctx context.Context, agent *pkg.TNAgent, config MonitoringC
 	ticker := time.NewTicker(config.Interval)
 	defer ticker.Stop()
 
-	logger.Printf("Starting monitoring every %v", config.Interval)
+	security.SafeLogf(logger, "Starting monitoring every %v", config.Interval)
 
 	for {
 		select {
@@ -375,7 +375,7 @@ func startMonitoring(ctx context.Context, agent *pkg.TNAgent, config MonitoringC
 			return
 		case <-ticker.C:
 			if err := collectAndExportMetrics(agent, config, logger); err != nil {
-				logger.Printf("Failed to collect metrics: %v", err)
+				security.SafeLogError(logger, "Failed to collect metrics", err)
 			}
 		}
 	}
@@ -390,7 +390,7 @@ func collectAndExportMetrics(agent *pkg.TNAgent, config MonitoringConfig, logger
 	}
 
 	// Log status summary
-	logger.Printf("Agent Status: Healthy=%v, Connections=%d, VXLAN=%v, TC=%v",
+	security.SafeLogf(logger, "Agent Status: Healthy=%v, Connections=%d, VXLAN=%v, TC=%v",
 		status.Healthy, status.ActiveConnections, status.VXLANStatus.TunnelUp, status.TCStatus.RulesActive)
 
 	// Export to file if directory is configured
@@ -406,7 +406,7 @@ func collectAndExportMetrics(agent *pkg.TNAgent, config MonitoringConfig, logger
 // exportStatus exports status to file
 func exportStatus(status *pkg.TNStatus, config MonitoringConfig, logger *log.Logger) error {
 	// Create export directory if it doesn't exist
-	if err := os.MkdirAll(config.ExportDirectory, 0750); err != nil {
+	if err := os.MkdirAll(config.ExportDirectory, 0700); err != nil {
 		return fmt.Errorf("failed to create export directory: %w", err)
 	}
 
@@ -416,7 +416,7 @@ func exportStatus(status *pkg.TNStatus, config MonitoringConfig, logger *log.Log
 
 	// This would export the status to JSON file
 	// For now, just log the export
-	logger.Printf("Status exported to: %s (healthy=%v)", filename, status.Healthy)
+	security.SafeLogf(logger, "Status exported to: %s (healthy=%v)", security.SanitizeForLog(filename), status.Healthy)
 
 	return nil
 }
@@ -430,7 +430,7 @@ func exportFinalStatus(agent *pkg.TNAgent, config MonitoringConfig, logger *log.
 
 	if config.ExportDirectory != "" {
 		// Create export directory if it doesn't exist
-		if err := os.MkdirAll(config.ExportDirectory, 0750); err != nil {
+		if err := os.MkdirAll(config.ExportDirectory, 0700); err != nil {
 			return fmt.Errorf("failed to create export directory: %w", err)
 		}
 
@@ -439,10 +439,10 @@ func exportFinalStatus(agent *pkg.TNAgent, config MonitoringConfig, logger *log.
 		filename := filepath.Join(config.ExportDirectory, fmt.Sprintf("agent_final_status_%s.json", timestamp))
 
 		// This would export the final status to JSON file
-		logger.Printf("Final status exported to: %s", filename)
+		security.SafeLogf(logger, "Final status exported to: %s", security.SanitizeForLog(filename))
 	}
 
-	logger.Printf("Final Status: Healthy=%v, Uptime=%v",
+	security.SafeLogf(logger, "Final Status: Healthy=%v, Uptime=%v",
 		status.Healthy, time.Since(status.LastUpdate))
 
 	return nil
