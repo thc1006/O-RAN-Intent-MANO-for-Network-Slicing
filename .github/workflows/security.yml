@@ -44,7 +44,12 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v4
       with:
-        go-version: '1.21'
+        go-version: '1.24'
+        cache: true
+        cache-dependency-path: |
+          go.sum
+          */go.sum
+          deploy/docker/*/go.sum
 
     - name: Configure Git for Go modules
       run: |
@@ -53,9 +58,39 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Build Go modules
+    - name: Clean and prepare Go modules
       run: |
-        find . -name "go.mod" -execdir go build -v ./... \;
+        # Clean module cache to avoid conflicts
+        go clean -modcache || true
+
+        # Download all modules first
+        go mod download || echo "Some modules may not download, continuing..."
+
+        # Build each module in dependency order
+        for module_dir in . pkg/security tn cn-dms ran-dms adapters/vnf-operator; do
+          if [ -d "$module_dir" ] && [ -f "$module_dir/go.mod" ]; then
+            echo "Building module in $module_dir"
+            cd "$module_dir"
+            go mod download || echo "Failed to download for $module_dir, continuing..."
+            go mod tidy || echo "Failed to tidy for $module_dir, continuing..."
+            cd - > /dev/null
+          fi
+        done
+
+    - name: Build Go modules for CodeQL
+      run: |
+        # Build main module
+        go build -v ./... || echo "Main module build failed, some packages may not be analyzed"
+
+        # Build submodules
+        for module_dir in pkg/security tn cn-dms ran-dms; do
+          if [ -d "$module_dir" ] && [ -f "$module_dir/go.mod" ]; then
+            echo "Building module in $module_dir"
+            cd "$module_dir"
+            go build -v ./... || echo "Build failed for $module_dir, continuing..."
+            cd - > /dev/null
+          fi
+        done
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3

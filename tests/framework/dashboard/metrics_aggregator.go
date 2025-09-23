@@ -16,7 +16,7 @@ import (
 	"github.com/gorilla/websocket"
 	"gopkg.in/yaml.v2"
 
-	"github.com/o-ran-intent-mano/pkg/security"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security"
 )
 
 // MetricsAggregator collects and aggregates test metrics in real-time

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/o-ran-intent-mano/pkg/security"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security"
 )
 
 // TCManager manages Traffic Control (TC) operations for bandwidth shaping

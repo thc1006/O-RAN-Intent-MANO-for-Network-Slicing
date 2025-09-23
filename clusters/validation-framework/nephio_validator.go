@@ -20,7 +20,7 @@ import (
 	"sigs.k8s.io/kustomize/kyaml/filesys"
 	"sigs.k8s.io/yaml"
 
-	"github.com/o-ran-intent-mano/pkg/security"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security"
 )
 
 // NephioValidator provides validation for Nephio/Porch packages
