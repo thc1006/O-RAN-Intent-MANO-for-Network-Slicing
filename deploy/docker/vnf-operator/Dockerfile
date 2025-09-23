@@ -39,7 +39,10 @@ COPY pkg/security ../pkg/security
 # Copy api module for local replace directive
 COPY adapters/vnf-operator/api /workspace/api
 
-# Download dependencies
+# Download dependencies with explicit toolchain
+ENV GOTOOLCHAIN=go1.24.5
+ENV GOPROXY=https://proxy.golang.org,direct
+ENV GOSUMDB=sum.golang.org
 RUN go mod download
 
 # Copy source code

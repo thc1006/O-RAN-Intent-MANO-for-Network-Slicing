@@ -47,6 +47,10 @@ spec:
       # 4. Processing O-RAN O2 interface operations
       # Service account token is required for RBAC-controlled operations
       # COMPLIANCE: Reviewed 2025-09-24 - Required for core functionality
+      #
+      # NOTE: For strict CKV_K8S_38 compliance in non-production environments,
+      # automountServiceAccountToken can be set to false, but this will disable
+      # all Kubernetes API operations and break orchestration functionality.
       securityContext:
         runAsNonRoot: true
         runAsUser: 65532

@@ -37,7 +37,10 @@ COPY orchestrator/go.mod orchestrator/go.sum ./
 # This is needed because go.mod has a replace directive pointing to ../pkg/security
 COPY pkg/security/ ../pkg/security/
 
-# Download dependencies
+# Download dependencies with explicit toolchain
+ENV GOTOOLCHAIN=go1.24.5
+ENV GOPROXY=https://proxy.golang.org,direct
+ENV GOSUMDB=sum.golang.org
 RUN go mod download
 
 # Copy source code
