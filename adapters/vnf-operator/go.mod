@@ -1,16 +1,19 @@
 module github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/adapters/vnf-operator
 
-go 1.24
+go 1.23
 
 require (
 	github.com/onsi/ginkgo/v2 v2.25.3
 	github.com/onsi/gomega v1.38.2
 	github.com/stretchr/testify v1.11.1
+	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/adapters/vnf-operator/api/v1alpha1 v0.0.0-00010101000000-000000000000
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/apimachinery v0.34.1
 	k8s.io/client-go v0.34.1
 	sigs.k8s.io/controller-runtime v0.22.1
 )
+
+replace github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/adapters/vnf-operator/api/v1alpha1 => ./api/v1alpha1
 
 require (
 	github.com/Masterminds/semver/v3 v3.4.0 // indirect

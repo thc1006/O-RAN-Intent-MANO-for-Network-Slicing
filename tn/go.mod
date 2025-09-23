@@ -1,6 +1,6 @@
 module github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tn
 
-go 1.24
+go 1.23
 
 replace (
 	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security => ../pkg/security
