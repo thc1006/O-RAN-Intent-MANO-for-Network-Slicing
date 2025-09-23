@@ -319,7 +319,6 @@ jobs:
             go install honnef.co/go/tools/cmd/staticcheck@latest
             go install github.com/fzipp/gocyclo/cmd/gocyclo@latest
             go install github.com/client9/misspell/cmd/misspell@latest
-            go install github.com/securecodewarrior/scs-community-edition@latest
             ;;
           "python-analysis")
             echo "🔧 Installing Python analysis tools..."

@@ -17,7 +17,7 @@ import (
 	"syscall"
 	"time"
 
-	validation "clusters/validation-framework"
+	validation "github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework"
 )
 
 var (

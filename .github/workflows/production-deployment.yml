@@ -74,13 +74,33 @@ jobs:
         with:
           sarif_file: 'trivy-results.sarif'
 
-      - name: Secret scanning
+      - name: Secret scanning (PR)
+        if: github.event_name == 'pull_request'
         uses: trufflesecurity/trufflehog@main
         with:
           path: ./
-          base: main
-          head: HEAD
+          base: ${{ github.event.pull_request.base.sha }}
+          head: ${{ github.event.pull_request.head.sha }}
           extra_args: --debug --only-verified
+        continue-on-error: true
+
+      - name: Secret scanning (Push)
+        if: github.event_name == 'push'
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.before }}
+          head: ${{ github.event.after }}
+          extra_args: --debug --only-verified
+        continue-on-error: true
+
+      - name: Secret scanning (Manual trigger)
+        if: github.event_name == 'workflow_dispatch'
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          extra_args: --debug --only-verified
+        continue-on-error: true
 
   # Build and test phase
   build-and-test:

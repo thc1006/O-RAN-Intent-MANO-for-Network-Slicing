@@ -403,6 +403,16 @@ jobs:
       uses: trufflesecurity/trufflehog@main
       with:
         path: ./
+        base: ${{ github.event.before }}
+        head: ${{ github.event.after }}
+        extra_args: --debug --only-verified
+      continue-on-error: true
+
+    - name: Run TruffleHog (Other events)
+      if: github.event_name != 'pull_request' && github.event_name != 'push'
+      uses: trufflesecurity/trufflehog@main
+      with:
+        path: ./
         extra_args: --debug --only-verified
       continue-on-error: true
 
