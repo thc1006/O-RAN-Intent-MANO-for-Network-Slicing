@@ -1,4 +1,4 @@
-go 1.24.5
+go 1.23
 
 use (
 	.
@@ -6,9 +6,11 @@ use (
 	./adapters/vnf-operator/api/v1alpha1
 	./api/mano/v1alpha1
 	./cn-dms
+	./nephio-generator
 	./nephio-generator/api/workload/v1alpha1
 	./nephio-generator/pkg/generator
 	./nephio-generator/pkg/renderer
+	./o2-client
 	./orchestrator
 	./pkg/security
 	./ran-dms
