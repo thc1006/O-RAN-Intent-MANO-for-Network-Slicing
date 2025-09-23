@@ -1,6 +1,7 @@
 package pkg
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -81,6 +82,26 @@ func (agent *TNAgent) startHTTPServer() error {
 	return nil
 }
 
+// writeJSONResponse safely writes JSON responses with proper error handling
+func (agent *TNAgent) writeJSONResponse(w http.ResponseWriter, statusCode int, data interface{}) error {
+	// Use buffered approach to avoid writing headers before knowing if encoding succeeds
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(data); err != nil {
+		security.SafeLogError(agent.logger, "Failed to encode JSON response", err)
+		return fmt.Errorf("failed to encode JSON: %w", err)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+
+	if _, err := w.Write(buf.Bytes()); err != nil {
+		security.SafeLogError(agent.logger, "Failed to write JSON response", err)
+		return fmt.Errorf("failed to write response: %w", err)
+	}
+
+	return nil
+}
+
 // Health check handler
 func (agent *TNAgent) handleHealth(w http.ResponseWriter, r *http.Request) {
 	status := map[string]interface{}{
@@ -90,17 +111,13 @@ func (agent *TNAgent) handleHealth(w http.ResponseWriter, r *http.Request) {
 		"cluster":   agent.config.ClusterName,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	if agent.healthy {
-		w.WriteHeader(http.StatusOK)
-	} else {
-		w.WriteHeader(http.StatusServiceUnavailable)
+	statusCode := http.StatusOK
+	if !agent.healthy {
+		statusCode = http.StatusServiceUnavailable
 	}
 
-	if err := json.NewEncoder(w).Encode(status); err != nil {
-		security.SafeLogError(agent.logger, "Failed to encode health status response", err)
-		// Cannot write error response as headers already written
-		return
+	if err := agent.writeJSONResponse(w, statusCode, status); err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }
 
@@ -112,12 +129,8 @@ func (agent *TNAgent) handleStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(status); err != nil {
-		security.SafeLogError(agent.logger, "Failed to encode status response", err)
-		// Cannot write error response as headers already written
-		return
+	if err := agent.writeJSONResponse(w, http.StatusOK, status); err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }
 
@@ -127,12 +140,8 @@ func (agent *TNAgent) handleGetConfig(w http.ResponseWriter, r *http.Request) {
 	config := agent.config
 	agent.mu.RUnlock()
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(config); err != nil {
-		security.SafeLogError(agent.logger, "Failed to encode config response", err)
-		// Cannot write error response as headers already written
-		return
+	if err := agent.writeJSONResponse(w, http.StatusOK, config); err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }
 
@@ -149,12 +158,8 @@ func (agent *TNAgent) handleUpdateConfig(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(map[string]string{"status": "updated"}); err != nil {
-		security.SafeLogError(agent.logger, "Failed to encode update config response", err)
-		// Cannot write error response as headers already written
-		return
+	if err := agent.writeJSONResponse(w, http.StatusOK, map[string]string{"status": "updated"}); err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }
 
@@ -175,17 +180,13 @@ func (agent *TNAgent) handleConfigureSlice(w http.ResponseWriter, r *http.Reques
 	}
 
 	response := map[string]interface{}{
-		"sliceId": sliceID,
-		"status":  "configured",
+		"sliceId":   sliceID,
+		"status":    "configured",
 		"timestamp": time.Now(),
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		security.SafeLogError(agent.logger, "Failed to encode configure slice response", err)
-		// Cannot write error response as headers already written
-		return
+	if err := agent.writeJSONResponse(w, http.StatusOK, response); err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }
 
@@ -198,17 +199,13 @@ func (agent *TNAgent) handleDeleteSlice(w http.ResponseWriter, r *http.Request) 
 	security.SafeLogf(agent.logger, "Deleting slice: %s", security.SanitizeForLog(sliceID))
 
 	response := map[string]interface{}{
-		"sliceId": sliceID,
-		"status":  "deleted",
+		"sliceId":   sliceID,
+		"status":    "deleted",
 		"timestamp": time.Now(),
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		security.SafeLogError(agent.logger, "Failed to encode delete slice response", err)
-		// Cannot write error response as headers already written
-		return
+	if err := agent.writeJSONResponse(w, http.StatusOK, response); err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }
 
@@ -232,12 +229,8 @@ func (agent *TNAgent) handleRunTest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(result); err != nil {
-		security.SafeLogError(agent.logger, "Failed to encode test result response", err)
-		// Cannot write error response as headers already written
-		return
+	if err := agent.writeJSONResponse(w, http.StatusOK, result); err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }
 
@@ -249,17 +242,13 @@ func (agent *TNAgent) handleGetTestResult(w http.ResponseWriter, r *http.Request
 	// In a real implementation, this would retrieve stored test results
 	// For now, return a placeholder response
 	response := map[string]interface{}{
-		"testId": testID,
-		"status": "completed",
+		"testId":  testID,
+		"status":  "completed",
 		"message": "Test result retrieval not yet implemented",
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		security.SafeLogError(agent.logger, "Failed to encode test result response", err)
-		// Cannot write error response as headers already written
-		return
+	if err := agent.writeJSONResponse(w, http.StatusOK, response); err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }
 
@@ -276,12 +265,8 @@ func (agent *TNAgent) handleVXLANStatus(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(status); err != nil {
-		security.SafeLogError(agent.logger, "Failed to encode VXLAN status response", err)
-		// Cannot write error response as headers already written
-		return
+	if err := agent.writeJSONResponse(w, http.StatusOK, status); err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }
 
@@ -304,17 +289,13 @@ func (agent *TNAgent) handleUpdateVXLANPeers(w http.ResponseWriter, r *http.Requ
 	}
 
 	response := map[string]interface{}{
-		"peers": peers,
-		"status": "updated",
+		"peers":     peers,
+		"status":    "updated",
 		"timestamp": time.Now(),
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		security.SafeLogError(agent.logger, "Failed to encode VXLAN peers response", err)
-		// Cannot write error response as headers already written
-		return
+	if err := agent.writeJSONResponse(w, http.StatusOK, response); err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }
 
@@ -329,15 +310,11 @@ func (agent *TNAgent) handleTestVXLANConnectivity(w http.ResponseWriter, r *http
 
 	response := map[string]interface{}{
 		"connectivity": results,
-		"timestamp": time.Now(),
+		"timestamp":    time.Now(),
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		security.SafeLogError(agent.logger, "Failed to encode VXLAN connectivity response", err)
-		// Cannot write error response as headers already written
-		return
+	if err := agent.writeJSONResponse(w, http.StatusOK, response); err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }
 
@@ -354,12 +331,8 @@ func (agent *TNAgent) handleTCStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(status); err != nil {
-		security.SafeLogError(agent.logger, "Failed to encode TC status response", err)
-		// Cannot write error response as headers already written
-		return
+	if err := agent.writeJSONResponse(w, http.StatusOK, status); err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }
 
@@ -382,17 +355,13 @@ func (agent *TNAgent) handleApplyTCRules(w http.ResponseWriter, r *http.Request)
 	}
 
 	response := map[string]interface{}{
-		"status": "applied",
+		"status":    "applied",
 		"timestamp": time.Now(),
-		"policy": policy,
+		"policy":    policy,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		security.SafeLogError(agent.logger, "Failed to encode TC rules response", err)
-		// Cannot write error response as headers already written
-		return
+	if err := agent.writeJSONResponse(w, http.StatusOK, response); err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }
 
@@ -409,16 +378,12 @@ func (agent *TNAgent) handleClearTCRules(w http.ResponseWriter, r *http.Request)
 	}
 
 	response := map[string]interface{}{
-		"status": "cleared",
+		"status":    "cleared",
 		"timestamp": time.Now(),
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		security.SafeLogError(agent.logger, "Failed to encode clear TC rules response", err)
-		// Cannot write error response as headers already written
-		return
+	if err := agent.writeJSONResponse(w, http.StatusOK, response); err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }
 
@@ -431,12 +396,8 @@ func (agent *TNAgent) handleBandwidthMetrics(w http.ResponseWriter, r *http.Requ
 
 	metrics := agent.monitor.GetCurrentMetrics()
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(metrics); err != nil {
-		security.SafeLogError(agent.logger, "Failed to encode bandwidth metrics response", err)
-		// Cannot write error response as headers already written
-		return
+	if err := agent.writeJSONResponse(w, http.StatusOK, metrics); err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }
 
@@ -482,6 +443,7 @@ func (agent *TNAgent) handleBandwidthStream(w http.ResponseWriter, r *http.Reque
 			metrics := agent.monitor.GetCurrentMetrics()
 			data, err := json.Marshal(metrics)
 			if err != nil {
+				security.SafeLogError(agent.logger, "Failed to marshal streaming metrics", err)
 				continue
 			}
 
@@ -501,17 +463,13 @@ func (agent *TNAgent) handleIperfServers(w http.ResponseWriter, r *http.Request)
 	servers := agent.iperfManager.GetActiveServers()
 
 	response := map[string]interface{}{
-		"servers": servers,
-		"count": len(servers),
+		"servers":   servers,
+		"count":     len(servers),
 		"timestamp": time.Now(),
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		security.SafeLogError(agent.logger, "Failed to encode iperf servers response", err)
-		// Cannot write error response as headers already written
-		return
+	if err := agent.writeJSONResponse(w, http.StatusOK, response); err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }
 
@@ -532,17 +490,13 @@ func (agent *TNAgent) handleStartIperfServer(w http.ResponseWriter, r *http.Requ
 	}
 
 	response := map[string]interface{}{
-		"port": port,
-		"status": "started",
+		"port":      port,
+		"status":    "started",
 		"timestamp": time.Now(),
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		security.SafeLogError(agent.logger, "Failed to encode start iperf server response", err)
-		// Cannot write error response as headers already written
-		return
+	if err := agent.writeJSONResponse(w, http.StatusOK, response); err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }
 
@@ -563,17 +517,13 @@ func (agent *TNAgent) handleStopIperfServer(w http.ResponseWriter, r *http.Reque
 	}
 
 	response := map[string]interface{}{
-		"port": port,
-		"status": "stopped",
+		"port":      port,
+		"status":    "stopped",
 		"timestamp": time.Now(),
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		security.SafeLogError(agent.logger, "Failed to encode stop iperf server response", err)
-		// Cannot write error response as headers already written
-		return
+	if err := agent.writeJSONResponse(w, http.StatusOK, response); err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }
 
@@ -581,12 +531,8 @@ func (agent *TNAgent) handleStopIperfServer(w http.ResponseWriter, r *http.Reque
 func (agent *TNAgent) handleGetMetrics(w http.ResponseWriter, r *http.Request) {
 	summary := agent.monitor.GetPerformanceSummary()
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(summary); err != nil {
-		security.SafeLogError(agent.logger, "Failed to encode metrics summary response", err)
-		// Cannot write error response as headers already written
-		return
+	if err := agent.writeJSONResponse(w, http.StatusOK, summary); err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }
 
@@ -601,8 +547,12 @@ func (agent *TNAgent) handleExportMetrics(w http.ResponseWriter, r *http.Request
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=metrics_%s_%d.json",
 		agent.config.ClusterName, time.Now().Unix()))
+	w.WriteHeader(http.StatusOK)
+
 	if _, err := w.Write(data); err != nil {
 		security.SafeLogError(agent.logger, "Failed to write metrics export data", err)
+		// Cannot send error response as headers are already written
+		// Log the error and return to terminate the handler gracefully
 		return
 	}
 }

@@ -32,7 +32,14 @@ spec:
         container.apparmor.security.beta.kubernetes.io/orchestrator: runtime/default
     spec:
       serviceAccountName: oran-orchestrator
-      automountServiceAccountToken: false
+      automountServiceAccountToken: true
+      # SECURITY EXCEPTION JUSTIFICATION:
+      # The orchestrator requires Kubernetes API access for:
+      # 1. Managing VNF deployments and network slices
+      # 2. Reading node information for placement decisions
+      # 3. Creating/updating services for VNF connectivity
+      # 4. Processing O-RAN O2 interface operations
+      # Service account token is required for RBAC-controlled operations
       securityContext:
         runAsNonRoot: true
         runAsUser: 65532
@@ -41,7 +48,11 @@ spec:
           type: RuntimeDefault
       containers:
       - name: orchestrator
-        image: ghcr.io/oran-mano/orchestrator:v1.0.1@sha256:7e92b8c4f3a2d1e9b5c6f4a8d2e7b9c1f5a3d8e2b9c7f1a4d6e3b8c5f2a9d1e4
+        # Using specific versioned tag for security compliance (digest validation in production)
+        # TODO: Replace with actual SHA256 digest when image is built and published
+        image: ghcr.io/oran-mano/orchestrator:v1.0.1
+        # SECURITY NOTE: In production, use full digest:
+        # image: ghcr.io/oran-mano/orchestrator:v1.0.1@sha256:[actual-digest-here]
         imagePullPolicy: Always
         ports:
         - name: http

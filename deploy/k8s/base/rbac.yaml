@@ -6,7 +6,14 @@ metadata:
   labels:
     app.kubernetes.io/name: oran-orchestrator
     app.kubernetes.io/component: orchestrator
-automountServiceAccountToken: false
+  annotations:
+    # Security justification for service account token access
+    security.policy/api-access-reason: "Required for O-RAN orchestration operations"
+automountServiceAccountToken: true
+# SECURITY EXCEPTION: Service account token required for:
+# - Managing VNF deployments and network slices
+# - Reading cluster state for placement decisions
+# - Coordinating with O2 DMS services
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -16,7 +23,14 @@ metadata:
   labels:
     app.kubernetes.io/name: oran-vnf-operator
     app.kubernetes.io/component: vnf-operator
-automountServiceAccountToken: false
+  annotations:
+    # Security justification for service account token access
+    security.policy/api-access-reason: "Required for VNF lifecycle management operations"
+automountServiceAccountToken: true
+# SECURITY EXCEPTION: Service account token required for:
+# - VNF pod lifecycle management (create, update, delete)
+# - Kubernetes controller operations and leader election
+# - Custom resource processing and status updates
 ---
 apiVersion: v1
 kind: ServiceAccount

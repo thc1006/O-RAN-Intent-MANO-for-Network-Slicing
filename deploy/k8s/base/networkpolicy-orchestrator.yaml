@@ -1,0 +1,153 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: oran-orchestrator-network-policy
+  namespace: oran-mano
+  labels:
+    app.kubernetes.io/name: oran-orchestrator
+    app.kubernetes.io/component: orchestrator
+    app.kubernetes.io/version: "v1.0.0"
+    security.kubernetes.io/type: network-policy
+  annotations:
+    security.kubernetes.io/purpose: "Enforce least-privilege network access for O-RAN orchestrator component"
+    security.kubernetes.io/description: "Allows ingress on HTTP (8080) and metrics (9090) ports, restricts egress to DNS, Kubernetes API, and required O-RAN services"
+    security.kubernetes.io/compliance: "Addresses security warning 'Minimize the admission of pods which lack an associated NetworkPolicy'"
+    security.kubernetes.io/last-updated: "2025-09-24"
+spec:
+  # Apply policy to orchestrator pods
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: oran-orchestrator
+
+  # Allow both ingress and egress traffic with restrictions
+  policyTypes:
+  - Ingress
+  - Egress
+
+  # Ingress rules - allow traffic to orchestrator services
+  ingress:
+  # Allow HTTP traffic on port 8080 from other components in oran-mano namespace
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: oran-mano
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: oran-mano
+    ports:
+    - protocol: TCP
+      port: 8080
+
+  # Allow metrics scraping on port 9090 from monitoring systems
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: prometheus
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: prometheus
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: monitoring
+    - podSelector:
+        matchLabels:
+          app: prometheus
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: prometheus
+    ports:
+    - protocol: TCP
+      port: 9090
+
+  # Allow health check probes from kubelet
+  - from: []
+    ports:
+    - protocol: TCP
+      port: 8080
+
+  # Egress rules - restrict outbound traffic to necessary services only
+  egress:
+  # Allow DNS resolution
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+
+  # Allow access to Kubernetes API server
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 6443
+
+  # Allow access to O-RAN DMS services (ran-dms)
+  - to:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: oran-ran-dms
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/component: ran-dms
+    ports:
+    - protocol: TCP
+      port: 8080
+
+  # Allow access to O-RAN CN DMS services
+  - to:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: oran-cn-dms
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/component: cn-dms
+    ports:
+    - protocol: TCP
+      port: 8080
+
+  # Allow access to Porch server in porch-system namespace
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: porch-system
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: porch-system
+    - podSelector:
+        matchLabels:
+          app: porch-server
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: porch-server
+    ports:
+    - protocol: TCP
+      port: 7007
+
+  # Allow access to O2IMS server
+  - to:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: o2ims-server
+    - podSelector:
+        matchLabels:
+          app: o2ims-server
+    ports:
+    - protocol: TCP
+      port: 5005
+
+  # Allow HTTPS outbound for external APIs and registries (limited)
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443

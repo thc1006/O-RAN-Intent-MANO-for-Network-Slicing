@@ -190,8 +190,22 @@ func (m *OptimizedManager) createTunnelOptimized(vxlanID int32, localIP string, 
 		}
 		// Delete existing tunnel if in failed state
 		if err := m.DeleteTunnelOptimized(vxlanID); err != nil {
-			// Log but continue - we'll try to create a new one
+			// Log the deletion failure and assess if we should continue
 			fmt.Printf("Warning: failed to delete existing tunnel %d: %v\n", vxlanID, err)
+
+			// For certain critical errors, we should not continue
+			if strings.Contains(err.Error(), "permission denied") ||
+			   strings.Contains(err.Error(), "operation not permitted") {
+				// Return early for permission-related failures
+				if callback != nil {
+					callback(fmt.Errorf("cannot recreate tunnel: deletion failed due to permissions: %w", err))
+				}
+				return fmt.Errorf("cannot recreate tunnel: deletion failed due to permissions: %w", err)
+			}
+
+			// For other errors (e.g., "device not found"), it's safe to continue
+			// as the interface might not exist anyway, which is what we want
+			fmt.Printf("Info: continuing with tunnel creation despite deletion failure\n")
 		}
 	} else {
 		m.tunnelMutex.Unlock()
@@ -291,9 +305,19 @@ func (m *OptimizedManager) createTunnelIPCommand(vxlanID int32, localIP string, 
 		wg.Wait()
 		close(errChan)
 
-		// Check for errors (but don't fail on FDB errors)
+		// Collect FDB errors for logging (but don't fail on FDB errors)
+		var fdbErrors []error
 		for err := range errChan {
-			fmt.Printf("Warning: FDB entry failed: %v\n", err)
+			fdbErrors = append(fdbErrors, err)
+		}
+
+		// Log all FDB errors if any occurred
+		if len(fdbErrors) > 0 {
+			fmt.Printf("Warning: %d FDB entries failed during tunnel creation:\n", len(fdbErrors))
+			for i, err := range fdbErrors {
+				fmt.Printf("  FDB error %d: %v\n", i+1, err)
+			}
+			// FDB entries are not critical for basic functionality, so we continue
 		}
 	} else if len(remoteIPs) > 0 {
 		// Single remote IP
