@@ -34,12 +34,19 @@ func (tc *TCManager) CleanRules() error {
 		return fmt.Errorf("invalid interface name: %w", err)
 	}
 
-	tc.logger.Printf("Cleaning existing TC rules from interface %s", tc.iface)
-	cmd := exec.Command("tc", "qdisc", "del", "dev", tc.iface, "root")
-	if _, err := cmd.CombinedOutput(); err != nil {
-		tc.logger.Printf("Note: %v", err)
+	security.SafeLogf(tc.logger, "Cleaning existing TC rules from interface %s", security.SanitizeForLog(tc.iface))
+	// Validate tc command arguments
+	tcArgs := []string{"qdisc", "del", "dev", tc.iface, "root"}
+	for _, arg := range tcArgs {
+		if err := security.ValidateCommandArgument(arg); err != nil {
+			return fmt.Errorf("invalid tc command argument %s: %w", arg, err)
+		}
 	}
-	tc.logger.Printf("Cleaned TC rules from interface %s", tc.iface)
+	cmd := exec.Command("tc", tcArgs...)
+	if _, err := cmd.CombinedOutput(); err != nil {
+		security.SafeLogError(tc.logger, "Note", err)
+	}
+	security.SafeLogf(tc.logger, "Cleaned TC rules from interface %s", security.SanitizeForLog(tc.iface))
 	return nil
 }
 
@@ -55,16 +62,23 @@ func (tc *TCManager) ApplyShaping() error {
 		return fmt.Errorf("invalid downlink bandwidth: %.2f Mbps", tc.config.DownlinkMbps)
 	}
 
-	tc.logger.Printf("Applying traffic shaping to interface %s", tc.iface)
+	security.SafeLogf(tc.logger, "Applying traffic shaping to interface %s", security.SanitizeForLog(tc.iface))
 	if err := tc.CleanRules(); err != nil {
-		tc.logger.Printf("Warning: failed to clean existing rules: %v", err)
+		security.SafeLogError(tc.logger, "Warning: failed to clean existing rules", err)
 	}
 	totalKbps := int(tc.config.DownlinkMbps * 1024)
-	cmd := exec.Command("tc", "qdisc", "add", "dev", tc.iface, "root", "handle", "1:", "htb", "default", "30")
+	// Validate tc command arguments
+	tcArgs := []string{"qdisc", "add", "dev", tc.iface, "root", "handle", "1:", "htb", "default", "30"}
+	for _, arg := range tcArgs {
+		if err := security.ValidateCommandArgument(arg); err != nil {
+			return fmt.Errorf("invalid tc command argument %s: %w", arg, err)
+		}
+	}
+	cmd := exec.Command("tc", tcArgs...)
 	if _, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to create root qdisc: %v", err)
 	}
-	tc.logger.Printf("Traffic shaping applied successfully to %s (rate: %d kbps)", tc.iface, totalKbps)
+	security.SafeLogf(tc.logger, "Traffic shaping applied successfully to %s (rate: %d kbps)", security.SanitizeForLog(tc.iface), totalKbps)
 	return nil
 }
 
@@ -78,14 +92,14 @@ func (tc *TCManager) MonitorBandwidth(interval time.Duration, stopCh <-chan stru
 			tc.logger.Println("Stopping bandwidth monitoring")
 			return
 		case <-ticker.C:
-			tc.logger.Printf("Monitoring bandwidth on interface %s", tc.iface)
+			security.SafeLogf(tc.logger, "Monitoring bandwidth on interface %s", security.SanitizeForLog(tc.iface))
 		}
 	}
 }
 
 // UpdateShaping updates the traffic shaping configuration
 func (tc *TCManager) UpdateShaping(newConfig *BandwidthPolicy) error {
-	tc.logger.Printf("Updating traffic shaping configuration")
+	security.SafeLogf(tc.logger, "Updating traffic shaping configuration")
 	if err := tc.CleanRules(); err != nil {
 		return fmt.Errorf("failed to clean existing rules: %w", err)
 	}
@@ -106,7 +120,12 @@ func (tc *TCManager) CalculateTCOverhead() float64 {
 // GetBandwidthUsage returns current bandwidth utilization
 func (tc *TCManager) GetBandwidthUsage() (map[string]float64, error) {
 	usage := make(map[string]float64)
-	cmd := exec.Command("cat", "/proc/net/dev")
+	// Validate file path for security
+	filePath := "/proc/net/dev"
+	if err := security.ValidateFilePath(filePath); err != nil {
+		return usage, fmt.Errorf("invalid file path: %w", err)
+	}
+	cmd := exec.Command("cat", filePath)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return usage, fmt.Errorf("failed to read network statistics: %v", err)
@@ -142,7 +161,14 @@ func (tc *TCManager) GetTCStatus() (*TCStatus, error) {
 		ShapingActive: false,
 		Interfaces:    []string{tc.iface},
 	}
-	cmd := exec.Command("tc", "qdisc", "show", "dev", tc.iface)
+	// Validate tc command arguments
+	tcArgs := []string{"qdisc", "show", "dev", tc.iface}
+	for _, arg := range tcArgs {
+		if err := security.ValidateCommandArgument(arg); err != nil {
+			return status, fmt.Errorf("invalid tc command argument %s: %w", arg, err)
+		}
+	}
+	cmd := exec.Command("tc", tcArgs...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return status, fmt.Errorf("failed to get qdisc info: %v", err)

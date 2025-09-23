@@ -8,6 +8,8 @@ import (
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security"
 )
 
 // MetricsCollector collects and aggregates performance metrics
@@ -232,8 +234,8 @@ func (mc *MetricsCollector) RecordTestResult(result *NetworkSliceMetrics) error 
 		mc.testResults = mc.testResults[1:]
 	}
 
-	mc.logger.Printf("Recorded test result for slice %s: %.2f%% compliance",
-		result.SliceID, result.ThesisValidation.CompliancePercent)
+	security.SafeLogf(mc.logger, "Recorded test result for slice %s: %.2f%% compliance",
+		security.SanitizeForLog(result.SliceID), result.ThesisValidation.CompliancePercent)
 
 	return nil
 }
@@ -272,7 +274,7 @@ func (mc *MetricsCollector) GenerateReport() (*MetricsReport, error) {
 	// Generate recommendations
 	report.Recommendations = mc.generateRecommendations(report)
 
-	mc.logger.Printf("Generated metrics report with %d test results", len(report.NetworkSliceResults))
+	security.SafeLogf(mc.logger, "Generated metrics report with %d test results", len(report.NetworkSliceResults))
 
 	return report, nil
 }

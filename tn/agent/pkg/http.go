@@ -10,6 +10,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security"
 )
 
 // startHTTPServer starts the HTTP API server
@@ -71,9 +72,9 @@ func (agent *TNAgent) startHTTPServer() error {
 	}
 
 	go func() {
-		agent.logger.Printf("Starting HTTP server on port %d", agent.config.MonitoringPort)
+		security.SafeLogf(agent.logger, "Starting HTTP server on port %d", agent.config.MonitoringPort)
 		if err := agent.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			agent.logger.Printf("HTTP server error: %v", err)
+			security.SafeLogError(agent.logger, "HTTP server error", err)
 		}
 	}()
 
@@ -170,7 +171,7 @@ func (agent *TNAgent) handleDeleteSlice(w http.ResponseWriter, r *http.Request) 
 	sliceID := vars["sliceId"]
 
 	// Implementation would remove slice configuration
-	agent.logger.Printf("Deleting slice: %s", sliceID)
+	security.SafeLogf(agent.logger, "Deleting slice: %s", security.SanitizeForLog(sliceID))
 
 	response := map[string]interface{}{
 		"sliceId": sliceID,
@@ -503,7 +504,7 @@ func (agent *TNAgent) updateConfiguration(newConfig *TNConfig) error {
 	agent.mu.Lock()
 	defer agent.mu.Unlock()
 
-	agent.logger.Printf("Updating configuration for cluster: %s", newConfig.ClusterName)
+	security.SafeLogf(agent.logger, "Updating configuration for cluster: %s", security.SanitizeForLog(newConfig.ClusterName))
 
 	// Update VXLAN configuration
 	if agent.vxlanManager != nil {
@@ -554,7 +555,7 @@ func loggingMiddleware(logger *log.Logger) func(http.Handler) http.Handler {
 			next.ServeHTTP(wrapped, r)
 
 			duration := time.Since(start)
-			logger.Printf("%s %s %d %v", r.Method, r.URL.Path, wrapped.statusCode, duration)
+			security.SafeLogf(logger, "%s %s %d %v", security.SanitizeForLog(r.Method), security.SanitizeForLog(r.URL.Path), wrapped.statusCode, duration)
 		})
 	}
 }

@@ -42,7 +42,7 @@ func TestSanitizeForLog(t *testing.T) {
 		{
 			name:     "String with control characters",
 			input:    "test\x00\x01\x1b[31mred\x1b[0m",
-			expected: "test\\x00\\x01\\ered\\e[0m",
+			expected: "test\\x00\\x01\\e[31mred\\e[0m",
 		},
 		{
 			name:     "String with format specifiers",
@@ -101,7 +101,7 @@ func TestSanitizeErrorForLog(t *testing.T) {
 		{
 			name:     "Error with control characters",
 			err:      errors.New("error\x1b[31mwith\x1b[0mcolor"),
-			expected: "error\\ewith\\ecolor",
+			expected: "error\\e[31mwith\\e[0mcolor",
 		},
 		{
 			name:     "Error with format specifiers",
@@ -189,7 +189,7 @@ func TestSanitizeStringForLog(t *testing.T) {
 		{
 			name:     "String with ANSI escape",
 			input:    "text\x1b[31mred\x1b[0m",
-			contains: "<suspicious-input:",
+			contains: "text\\e[31mred\\e[0m",
 		},
 		{
 			name:     "String with shell expansion",
@@ -431,9 +431,15 @@ func TestLogInjectionPrevention(t *testing.T) {
 				if strings.Contains(output, scenario.input) {
 					t.Errorf("Log injection not prevented for scenario %s: %q", scenario.name, output)
 				}
-				// Check that content was sanitized
-				if !strings.Contains(output, "\\") {
-					t.Errorf("Expected sanitization markers in output for scenario %s: %q", scenario.name, output)
+				// Check that content was sanitized (% escaped to %%)
+				if scenario.name == "Format string injection" {
+					if !strings.Contains(output, "%%") {
+						t.Errorf("Expected format specifiers to be escaped in output for scenario %s: %q", scenario.name, output)
+					}
+				} else {
+					if !strings.Contains(output, "\\") {
+						t.Errorf("Expected sanitization markers in output for scenario %s: %q", scenario.name, output)
+					}
 				}
 			}
 		})

@@ -1,0 +1,17 @@
+go 1.24.5
+
+use (
+	.
+	./adapters/vnf-operator
+	./adapters/vnf-operator/api/v1alpha1
+	./api/mano/v1alpha1
+	./cn-dms
+	./nephio-generator/api/workload/v1alpha1
+	./nephio-generator/pkg/generator
+	./nephio-generator/pkg/renderer
+	./orchestrator
+	./pkg/security
+	./ran-dms
+	./tn
+	./tn/manager/api/v1alpha1
+)

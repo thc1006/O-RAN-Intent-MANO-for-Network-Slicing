@@ -301,18 +301,23 @@ jobs:
         python-version: ${{ env.PYTHON_VERSION }}
         cache: 'pip'
 
-    - name: Remove existing Go module cache
+    - name: Clean Go module cache to prevent permission issues
       if: matrix.analysis-type == 'go-analysis' || matrix.analysis-type == 'security-scan' || matrix.analysis-type == 'license-check'
-      run: rm -rf ~/go/pkg/mod
+      run: |
+        sudo rm -rf ~/go/pkg/mod || true
+        sudo rm -rf /home/runner/go/pkg/mod || true
+        sudo rm -rf ~/.cache/go-build || true
 
-    - name: Cache dependencies
-      uses: actions/cache@v3
+    - name: Cache dependencies (excluding Go toolchain)
+      uses: actions/cache@v4
       with:
         path: |
           ~/.cache/go-build
           ~/go/pkg/mod
           ~/.cache/pip
         key: ${{ runner.os }}-deps-${{ matrix.analysis-type }}-${{ hashFiles('**/go.sum', '**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-deps-${{ matrix.analysis-type }}-
 
     - name: Install analysis tools
       run: |
@@ -706,18 +711,23 @@ jobs:
         python-version: ${{ env.PYTHON_VERSION }}
         cache: 'pip'
 
-    - name: Remove existing Go module cache
+    - name: Clean Go module cache to prevent permission issues
       if: matrix.language == 'go'
-      run: rm -rf ~/go/pkg/mod
+      run: |
+        sudo rm -rf ~/go/pkg/mod || true
+        sudo rm -rf /home/runner/go/pkg/mod || true
+        sudo rm -rf ~/.cache/go-build || true
 
-    - name: Cache dependencies
-      uses: actions/cache@v3
+    - name: Cache dependencies (excluding Go toolchain)
+      uses: actions/cache@v4
       with:
         path: |
           ~/.cache/go-build
           ~/go/pkg/mod
           ~/.cache/pip
         key: ${{ runner.os }}-${{ matrix.component }}-${{ hashFiles(format('{0}/**/go.sum', matrix.test-dir), format('{0}/**/requirements.txt', matrix.test-dir)) }}
+        restore-keys: |
+          ${{ runner.os }}-${{ matrix.component }}-
 
     - name: Install dependencies and test tools
       working-directory: ${{ matrix.test-dir }}

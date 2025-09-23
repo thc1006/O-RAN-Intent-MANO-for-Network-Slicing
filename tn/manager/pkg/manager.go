@@ -7,6 +7,8 @@ import (
 	"log"
 	"sync"
 	"time"
+
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security"
 )
 
 // TNManager manages Transport Network configuration and monitoring
@@ -36,7 +38,7 @@ func NewTNManager(config *TNConfig, logger *log.Logger) *TNManager {
 
 // Start initializes and starts the TN manager
 func (tm *TNManager) Start() error {
-	tm.logger.Printf("Starting TN Manager for cluster: %s", tm.config.ClusterName)
+	security.SafeLogf(tm.logger, "Starting TN Manager for cluster: %s", security.SanitizeForLog(tm.config.ClusterName))
 
 	// Start metrics collection
 	if err := tm.metrics.Start(tm.ctx); err != nil {
@@ -62,13 +64,13 @@ func (tm *TNManager) Stop() error {
 	// Stop all agents
 	for name, agent := range tm.agents {
 		if err := agent.Stop(); err != nil {
-			tm.logger.Printf("Error stopping agent %s: %v", name, err)
+			security.SafeLogf(tm.logger, "Error stopping agent %s: %s", security.SanitizeForLog(name), security.SanitizeErrorForLog(err))
 		}
 	}
 
 	// Stop metrics collector
 	if err := tm.metrics.Stop(); err != nil {
-		tm.logger.Printf("Error stopping metrics collector: %v", err)
+		security.SafeLogError(tm.logger, "Error stopping metrics collector", err)
 	}
 
 	tm.logger.Println("TN Manager stopped")
@@ -86,7 +88,7 @@ func (tm *TNManager) RegisterAgent(clusterName, endpoint string) error {
 	}
 
 	tm.agents[clusterName] = agent
-	tm.logger.Printf("Registered TN agent for cluster: %s", clusterName)
+	security.SafeLogf(tm.logger, "Registered TN agent for cluster: %s", security.SanitizeForLog(clusterName))
 
 	return nil
 }
@@ -96,7 +98,7 @@ func (tm *TNManager) ConfigureNetworkSlice(sliceID string, config *TNConfig) err
 	tm.mu.RLock()
 	defer tm.mu.RUnlock()
 
-	tm.logger.Printf("Configuring network slice %s across %d agents", sliceID, len(tm.agents))
+	security.SafeLogf(tm.logger, "Configuring network slice %s across %d agents", security.SanitizeForLog(sliceID), len(tm.agents))
 
 	var wg sync.WaitGroup
 	errChan := make(chan error, len(tm.agents))
@@ -111,7 +113,7 @@ func (tm *TNManager) ConfigureNetworkSlice(sliceID string, config *TNConfig) err
 				return
 			}
 
-			tm.logger.Printf("Successfully configured slice %s on cluster %s", sliceID, name)
+			security.SafeLogf(tm.logger, "Successfully configured slice %s on cluster %s", security.SanitizeForLog(sliceID), security.SanitizeForLog(name))
 		}(clusterName, agent)
 	}
 
@@ -130,7 +132,7 @@ func (tm *TNManager) ConfigureNetworkSlice(sliceID string, config *TNConfig) err
 
 // RunPerformanceTest executes comprehensive performance tests
 func (tm *TNManager) RunPerformanceTest(testConfig *PerformanceTestConfig) (*NetworkSliceMetrics, error) {
-	tm.logger.Printf("Running performance test: %s", testConfig.TestID)
+	security.SafeLogf(tm.logger, "Running performance test: %s", security.SanitizeForLog(testConfig.TestID))
 
 	startTime := time.Now()
 
@@ -159,7 +161,7 @@ func (tm *TNManager) RunPerformanceTest(testConfig *PerformanceTestConfig) (*Net
 
 			metrics, err := a.RunPerformanceTest(testConfig)
 			if err != nil {
-				tm.logger.Printf("Performance test failed on cluster %s: %v", name, err)
+				security.SafeLogf(tm.logger, "Performance test failed on cluster %s: %s", security.SanitizeForLog(name), security.SanitizeErrorForLog(err))
 				return
 			}
 
@@ -187,7 +189,7 @@ func (tm *TNManager) RunPerformanceTest(testConfig *PerformanceTestConfig) (*Net
 	results.ThesisValidation = tm.validateThesisTargets(allMetrics, time.Since(startTime))
 	results.SLACompliance = results.ThesisValidation.CompliancePercent >= 80.0
 
-	tm.logger.Printf("Performance test completed. Compliance: %.2f%%", results.ThesisValidation.CompliancePercent)
+	security.SafeLogf(tm.logger, "Performance test completed. Compliance: %.2f%%", results.ThesisValidation.CompliancePercent)
 
 	return results, nil
 }
@@ -300,7 +302,7 @@ func (tm *TNManager) GetStatus() (map[string]*TNStatus, error) {
 	for clusterName, agent := range tm.agents {
 		agentStatus, err := agent.GetStatus()
 		if err != nil {
-			tm.logger.Printf("Failed to get status from agent %s: %v", clusterName, err)
+			security.SafeLogf(tm.logger, "Failed to get status from agent %s: %s", security.SanitizeForLog(clusterName), security.SanitizeErrorForLog(err))
 			continue
 		}
 		status[clusterName] = agentStatus
@@ -337,13 +339,13 @@ func (tm *TNManager) collectMetrics() {
 		go func(name string, a *TNAgentClient) {
 			status, err := a.GetStatus()
 			if err != nil {
-				tm.logger.Printf("Failed to collect metrics from %s: %v", name, err)
+				security.SafeLogf(tm.logger, "Failed to collect metrics from %s: %s", security.SanitizeForLog(name), security.SanitizeErrorForLog(err))
 				return
 			}
 
 			// Store metrics
 			if err := tm.metrics.RecordStatus(name, status); err != nil {
-				tm.logger.Printf("Failed to record metrics for %s: %v", name, err)
+				security.SafeLogf(tm.logger, "Failed to record metrics for %s: %s", security.SanitizeForLog(name), security.SanitizeErrorForLog(err))
 			}
 		}(clusterName, agent)
 	}
@@ -359,7 +361,7 @@ func (tm *TNManager) ExportMetrics(filename string) error {
 	}
 
 	// Write to file (implementation would write to actual file)
-	tm.logger.Printf("Exported metrics to %s (%d bytes)", filename, len(data))
+	security.SafeLogf(tm.logger, "Exported metrics to %s (%d bytes)", security.SanitizeForLog(filename), len(data))
 
 	return nil
 }

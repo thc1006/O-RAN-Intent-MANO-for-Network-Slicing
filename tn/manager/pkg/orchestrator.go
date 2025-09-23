@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"time"
+
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security"
 )
 
 // OrchestratorClient handles integration with the orchestrator placement API
@@ -185,7 +187,7 @@ func NewOrchestratorClient(endpoint string, logger *log.Logger) *OrchestratorCli
 
 // ImplementPlacement implements a placement decision from the orchestrator
 func (tm *TNManager) ImplementPlacement(ctx context.Context, decision *PlacementDecision) (*SliceImplementation, error) {
-	tm.logger.Printf("Implementing placement decision for slice %s", decision.SliceID)
+	security.SafeLogf(tm.logger, "Implementing placement decision for slice %s", security.SanitizeForLog(decision.SliceID))
 
 	implementation := &SliceImplementation{
 		SliceID:            decision.SliceID,
@@ -274,15 +276,15 @@ func (tm *TNManager) ImplementPlacement(ctx context.Context, decision *Placement
 	implementation.LastUpdated = time.Now()
 
 	deployTime := time.Since(startTime)
-	tm.logger.Printf("Slice %s implementation completed in %v with status: %s",
-		decision.SliceID, deployTime, implementation.Status)
+	security.SafeLogf(tm.logger, "Slice %s implementation completed in %v with status: %s",
+		security.SanitizeForLog(decision.SliceID), deployTime, security.SanitizeForLog(implementation.Status))
 
 	return implementation, nil
 }
 
 // configureClusterTN configures Transport Network for a specific cluster
 func (tm *TNManager) configureClusterTN(ctx context.Context, cluster ClusterPlacement, decision *PlacementDecision) error {
-	tm.logger.Printf("Configuring TN for cluster %s", cluster.ClusterName)
+	security.SafeLogf(tm.logger, "Configuring TN for cluster %s", security.SanitizeForLog(cluster.ClusterName))
 
 	// Build TN configuration
 	tnConfig := &TNConfig{
@@ -314,7 +316,7 @@ func (tm *TNManager) configureClusterTN(ctx context.Context, cluster ClusterPlac
 
 // establishInterClusterConnectivity establishes connectivity between clusters
 func (tm *TNManager) establishInterClusterConnectivity(ctx context.Context, decision *PlacementDecision, implementation *SliceImplementation) error {
-	tm.logger.Printf("Establishing inter-cluster connectivity for slice %s", decision.SliceID)
+	security.SafeLogf(tm.logger, "Establishing inter-cluster connectivity for slice %s", security.SanitizeForLog(decision.SliceID))
 
 	for i, sourceCluster := range decision.Clusters {
 		for j, targetCluster := range decision.Clusters {
@@ -333,8 +335,8 @@ func (tm *TNManager) establishInterClusterConnectivity(ctx context.Context, deci
 			// Test connectivity
 			if err := tm.testClusterConnectivity(sourceCluster.ClusterName, targetCluster.ClusterName); err != nil {
 				connection.VXLANStatus = "failed"
-				tm.logger.Printf("Failed to establish connectivity between %s and %s: %v",
-					sourceCluster.ClusterName, targetCluster.ClusterName, err)
+				security.SafeLogf(tm.logger, "Failed to establish connectivity between %s and %s: %s",
+					security.SanitizeForLog(sourceCluster.ClusterName), security.SanitizeForLog(targetCluster.ClusterName), security.SanitizeErrorForLog(err))
 			} else {
 				connection.VXLANStatus = "established"
 
@@ -354,7 +356,7 @@ func (tm *TNManager) establishInterClusterConnectivity(ctx context.Context, deci
 
 // validateSliceImplementation validates the complete slice implementation
 func (tm *TNManager) validateSliceImplementation(ctx context.Context, decision *PlacementDecision, implementation *SliceImplementation) error {
-	tm.logger.Printf("Validating slice implementation for slice %s", decision.SliceID)
+	security.SafeLogf(tm.logger, "Validating slice implementation for slice %s", security.SanitizeForLog(decision.SliceID))
 
 	// Run comprehensive performance test
 	testConfig := &PerformanceTestConfig{

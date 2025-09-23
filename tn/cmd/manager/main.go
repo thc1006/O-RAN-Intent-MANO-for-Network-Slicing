@@ -94,7 +94,7 @@ func main() {
 		log.Fatalf("Failed to setup logging: %v", err)
 	}
 
-	logger.Printf("Starting TN Manager version %s (commit: %s)", Version, GitCommit)
+	security.SafeLogf(logger, "Starting TN Manager version %s (commit: %s)", security.SanitizeForLog(Version), security.SanitizeForLog(GitCommit))
 
 	// Create TN configuration
 	tnConfig := &pkg.TNConfig{
@@ -119,13 +119,13 @@ func main() {
 	// Register agents
 	for _, agentConfig := range config.Agents {
 		if !agentConfig.Enabled {
-			logger.Printf("Skipping disabled agent: %s", agentConfig.Name)
+			security.SafeLogf(logger, "Skipping disabled agent: %s", security.SanitizeForLog(agentConfig.Name))
 			continue
 		}
 
-		logger.Printf("Registering agent: %s at %s", agentConfig.Name, agentConfig.Endpoint)
+		security.SafeLogf(logger, "Registering agent: %s at %s", security.SanitizeForLog(agentConfig.Name), security.SanitizeForLog(agentConfig.Endpoint))
 		if err := manager.RegisterAgent(agentConfig.Name, agentConfig.Endpoint); err != nil {
-			logger.Printf("Warning: Failed to register agent %s: %v", agentConfig.Name, err)
+			security.SafeLogf(logger, "Warning: Failed to register agent %s: %s", security.SanitizeForLog(agentConfig.Name), security.SanitizeErrorForLog(err))
 		}
 	}
 
@@ -151,12 +151,12 @@ func main() {
 
 	// Export final metrics
 	if err := exportFinalMetrics(manager, config.Monitoring, logger); err != nil {
-		logger.Printf("Failed to export final metrics: %v", err)
+		security.SafeLogError(logger, "Failed to export final metrics", err)
 	}
 
 	// Stop manager
 	if err := manager.Stop(); err != nil {
-		logger.Printf("Error stopping manager: %v", err)
+		security.SafeLogError(logger, "Error stopping manager", err)
 	}
 
 	logger.Println("TN Manager stopped")
@@ -223,11 +223,11 @@ func setupLogging(config LoggingConfig) (*log.Logger, error) {
 	if config.File != "" {
 		// Create log directory if it doesn't exist
 		logDir := filepath.Dir(config.File)
-		if err := os.MkdirAll(logDir, 0750); err != nil {
+		if err := os.MkdirAll(logDir, 0700); err != nil {
 			return nil, fmt.Errorf("failed to create log directory: %w", err)
 		}
 
-		file, err := os.OpenFile(config.File, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0640)
+		file, err := os.OpenFile(config.File, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
 		if err != nil {
 			return nil, fmt.Errorf("failed to open log file: %w", err)
 		}
@@ -244,7 +244,7 @@ func startContinuousMetricsExport(ctx context.Context, manager *pkg.TNManager, c
 	ticker := time.NewTicker(config.MetricsInterval)
 	defer ticker.Stop()
 
-	logger.Printf("Starting continuous metrics export every %v", config.MetricsInterval)
+	security.SafeLogf(logger, "Starting continuous metrics export every %v", config.MetricsInterval)
 
 	for {
 		select {
@@ -252,7 +252,7 @@ func startContinuousMetricsExport(ctx context.Context, manager *pkg.TNManager, c
 			return
 		case <-ticker.C:
 			if err := exportMetrics(manager, config, logger); err != nil {
-				logger.Printf("Failed to export metrics: %v", err)
+				security.SafeLogError(logger, "Failed to export metrics", err)
 			}
 		}
 	}
@@ -261,7 +261,7 @@ func startContinuousMetricsExport(ctx context.Context, manager *pkg.TNManager, c
 // exportMetrics exports metrics to file
 func exportMetrics(manager *pkg.TNManager, config MonitoringConfig, logger *log.Logger) error {
 	// Create export directory if it doesn't exist
-	if err := os.MkdirAll(config.ExportDirectory, 0750); err != nil {
+	if err := os.MkdirAll(config.ExportDirectory, 0700); err != nil {
 		return fmt.Errorf("failed to create export directory: %w", err)
 	}
 
@@ -274,14 +274,14 @@ func exportMetrics(manager *pkg.TNManager, config MonitoringConfig, logger *log.
 		return fmt.Errorf("failed to export metrics: %w", err)
 	}
 
-	logger.Printf("Metrics exported to: %s", filename)
+	security.SafeLogf(logger, "Metrics exported to: %s", security.SanitizeForLog(filename))
 	return nil
 }
 
 // exportFinalMetrics exports final metrics on shutdown
 func exportFinalMetrics(manager *pkg.TNManager, config MonitoringConfig, logger *log.Logger) error {
 	// Create export directory if it doesn't exist
-	if err := os.MkdirAll(config.ExportDirectory, 0750); err != nil {
+	if err := os.MkdirAll(config.ExportDirectory, 0700); err != nil {
 		return fmt.Errorf("failed to create export directory: %w", err)
 	}
 
@@ -294,6 +294,6 @@ func exportFinalMetrics(manager *pkg.TNManager, config MonitoringConfig, logger 
 		return fmt.Errorf("failed to export final metrics: %w", err)
 	}
 
-	logger.Printf("Final metrics exported to: %s", filename)
+	security.SafeLogf(logger, "Final metrics exported to: %s", security.SanitizeForLog(filename))
 	return nil
 }
