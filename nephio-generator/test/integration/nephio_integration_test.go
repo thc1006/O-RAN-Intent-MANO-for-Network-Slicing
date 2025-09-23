@@ -830,7 +830,7 @@ func (r *MockFunctionRegistry) ValidateFunction(fn *generator.KptFunction) error
 	return nil
 }
 
-func (r *MockFunctionRegistry) ExecuteFunction(ctx context.Context, fn *renderer.KptFunction, packagePath string) error {
+func (r *MockFunctionRegistry) ExecuteFunction(ctx context.Context, fn *generator.KptFunction, packagePath string) error {
 	// Mock successful execution
 	return nil
 }
