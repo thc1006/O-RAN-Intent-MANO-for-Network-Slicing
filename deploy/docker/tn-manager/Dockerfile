@@ -37,7 +37,7 @@ RUN go mod download
 
 # Copy source code and pkg/security
 COPY tn/ .
-COPY pkg/security/ ../pkg/security/
+COPY pkg/security/ /workspace/../pkg/security/
 
 # Build the binary with security flags
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
