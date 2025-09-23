@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math"
 	"net"
 	"strconv"
 	"strings"
@@ -137,15 +138,22 @@ func findIperfDaemonPID(port int) (int, error) {
 	pids := strings.Split(pidStr, "\n")
 	if len(pids) > 0 {
 		var pid int
-		if _, err := fmt.Sscanf(pids[0], "%d", &pid); err == nil {
-			return pid, nil
+		if _, err := fmt.Sscanf(pids[0], "%d", &pid); err != nil {
+			return 0, fmt.Errorf("failed to parse PID from first line '%s': %w", pids[0], err)
 		}
+		return pid, nil
 	}
 
 	return 0, fmt.Errorf("failed to parse PID from pgrep output: %s", pidStr)
 }
 
-// StartServer starts an iperf3 server on the specified port
+// StartServer starts an iperf3 server on the specified port with enhanced security validation.
+// This function implements multiple security layers:
+// 1. Port validation to ensure valid port ranges
+// 2. iperf3 argument validation using security.ValidateIPerfArgs
+// 3. Secure subprocess execution with security.SecureExecute
+// 4. Process isolation and monitoring
+// All command execution is protected against injection attacks.
 func (im *IperfManager) StartServer(port int) error {
 	// Validate port for security
 	if err := security.ValidatePort(port); err != nil {
@@ -160,7 +168,14 @@ func (im *IperfManager) StartServer(port int) error {
 	// Check if server is already running
 	if server, exists := im.servers[serverKey]; exists {
 		security.SafeLogf(im.logger, "Iperf3 server already running on port %d (PID: %d)", port, server.PID)
-		return nil
+		// Verify the server is actually still listening
+		if !im.isServerListening(port) {
+			security.SafeLogf(im.logger, "Server on port %d appears to be dead, removing from registry", port)
+			delete(im.servers, serverKey)
+			// Continue with starting a new server
+		} else {
+			return nil
+		}
 	}
 
 	security.SafeLogf(im.logger, "Starting iperf3 server on port %d", port)
@@ -289,7 +304,14 @@ func (im *IperfManager) isServerListening(port int) bool {
 	return true
 }
 
-// RunTest executes an iperf3 client test
+// RunTest executes an iperf3 client test with comprehensive security validation.
+// This function implements multiple security layers:
+// 1. Input validation for all configuration parameters
+// 2. IP address and port validation
+// 3. Bandwidth and timeout limits
+// 4. Individual argument validation for all command parameters
+// 5. Secure subprocess execution with custom iperf3 validators
+// All subprocess execution is protected against command injection attacks.
 func (im *IperfManager) RunTest(config *IperfTestConfig) (*IperfResult, error) {
 	// Validate inputs for security
 	if err := security.ValidateIPAddress(config.ServerIP); err != nil {
@@ -661,7 +683,7 @@ func (im *IperfManager) RunLatencyTest(serverIP string, port int, duration time.
 		for _, rtt := range rtts {
 			variance += (rtt - metrics.AvgRTTMs) * (rtt - metrics.AvgRTTMs)
 		}
-		metrics.StdDevMs = variance / float64(len(rtts))
+		metrics.StdDevMs = math.Sqrt(variance / float64(len(rtts)))
 
 		// Approximate percentiles (simple implementation)
 		if len(rtts) >= 2 {
@@ -698,9 +720,30 @@ func (im *IperfManager) StopAllServers() error {
 	var errors []string
 
 	for serverKey, server := range im.servers {
-		if err := im.StopServer(server.Port); err != nil {
-			errors = append(errors, fmt.Sprintf("Failed to stop server %s: %v", serverKey, err))
+		// Use unlocked version since we already hold the lock
+		server.Cancel()
+
+		// Kill the process if it's still running
+		portStr := strconv.Itoa(server.Port)
+		if err := security.ValidateCommandArgument(portStr); err != nil {
+			errors = append(errors, fmt.Sprintf("Invalid port argument for server %s: %v", serverKey, err))
+			continue
 		}
+
+		pattern := fmt.Sprintf("iperf3.*-p %s", portStr)
+		args := []string{"-f", pattern}
+		killCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+
+		output, err := security.SecureExecute(killCtx, "pkill", args...)
+		cancel() // Properly call cancel to avoid context leak
+
+		if err != nil {
+			security.SafeLogf(im.logger, "Warning: failed to kill iperf3 server process for %s: %s, output: %s",
+				serverKey, security.SanitizeErrorForLog(err), security.SanitizeForLog(string(output)))
+		}
+
+		delete(im.servers, serverKey)
+		security.SafeLogf(im.logger, "Iperf3 server stopped on port %d", server.Port)
 	}
 
 	if len(errors) > 0 {

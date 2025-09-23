@@ -87,6 +87,14 @@ func (v *FilePathValidator) ValidateFilePath(path string) error {
 	return nil
 }
 
+// ValidateFilePathAndClean validates a file path and returns the cleaned path
+func (v *FilePathValidator) ValidateFilePathAndClean(path string) (string, error) {
+	if err := v.ValidateFilePath(path); err != nil {
+		return "", err
+	}
+	return filepath.Clean(path), nil
+}
+
 // ValidateFilePathAndExtension validates both path and file extension
 func (v *FilePathValidator) ValidateFilePathAndExtension(path string, allowedExts []string) error {
 	if err := v.ValidateFilePath(path); err != nil {
@@ -112,12 +120,13 @@ func (v *FilePathValidator) ValidateFilePathAndExtension(path string, allowedExt
 
 // SafeReadFile safely reads a file after validation
 func (v *FilePathValidator) SafeReadFile(path string) ([]byte, error) {
-	if err := v.ValidateFilePath(path); err != nil {
+	cleanPath, err := v.ValidateFilePathAndClean(path)
+	if err != nil {
 		return nil, fmt.Errorf("file path validation failed: %w", err)
 	}
 
 	// Get file info to check size
-	info, err := os.Stat(path)
+	info, err := os.Stat(cleanPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get file info: %w", err)
 	}
@@ -128,19 +137,20 @@ func (v *FilePathValidator) SafeReadFile(path string) ([]byte, error) {
 
 	// Check if it's actually a file
 	if info.IsDir() {
-		return nil, fmt.Errorf("path is a directory, not a file: %s", path)
+		return nil, fmt.Errorf("path is a directory, not a file: %s", cleanPath)
 	}
 
-	return os.ReadFile(path)
+	return os.ReadFile(cleanPath)
 }
 
 // SafeOpenFile safely opens a file after validation
 func (v *FilePathValidator) SafeOpenFile(path string) (*os.File, error) {
-	if err := v.ValidateFilePath(path); err != nil {
+	cleanPath, err := v.ValidateFilePathAndClean(path)
+	if err != nil {
 		return nil, fmt.Errorf("file path validation failed: %w", err)
 	}
 
-	return os.Open(path)
+	return os.Open(cleanPath)
 }
 
 // validateAgainstAllowedDirs checks if the path is within allowed directories
@@ -460,23 +470,25 @@ const SecureFileMode = 0600
 
 // SecureCreateFile creates a file with secure permissions
 func SecureCreateFile(filename string) (*os.File, error) {
-	// Validate file path for security
-	if err := ValidateFilePath(filename); err != nil {
+	// Validate and clean file path for security
+	cleanPath, err := ValidateAndCleanPath(filename, nil)
+	if err != nil {
 		return nil, fmt.Errorf("file path validation failed: %w", err)
 	}
 
-	// Create file with secure permissions
-	return os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, SecureFileMode)
+	// Create file with secure permissions using the validated path
+	return os.OpenFile(cleanPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, SecureFileMode)
 }
 
 // SecureCreateDir creates a directory with secure permissions
 func SecureCreateDir(dirname string) error {
-	// Validate directory path for security
-	if err := ValidateFilePath(dirname); err != nil {
+	// Validate and clean directory path for security
+	cleanPath, err := ValidateAndCleanPath(dirname, nil)
+	if err != nil {
 		return fmt.Errorf("directory path validation failed: %w", err)
 	}
 
-	return os.MkdirAll(dirname, SecureDirMode)
+	return os.MkdirAll(cleanPath, SecureDirMode)
 }
 
 // ValidateGitRef validates a Git reference (commit hash, branch name, tag)

@@ -1,6 +1,6 @@
 # TN Agent Multi-stage Dockerfile
 # Stage 1: Build
-FROM golang:1.24-alpine AS builder
+FROM golang:1.24.7-alpine AS builder
 
 # Security labels and metadata
 LABEL maintainer="O-RAN MANO Team"
@@ -47,24 +47,27 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -o tn-agent cmd/agent/main.go
 
 # Stage 2: Runtime
-FROM alpine:3.20
+FROM alpine:3.20.3
 
 # Security labels
 LABEL org.opencontainers.image.title="TN Agent Runtime"
 LABEL security.scan="trivy,grype,snyk"
 LABEL security.user="non-root"
 LABEL security.capabilities="NET_ADMIN,NET_RAW"
+LABEL security.base.image="alpine:3.20.3"
+LABEL security.go.version="1.24.7"
+LABEL security.scan.date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
-# Install runtime dependencies and security updates for network operations, clean cache
+# Install runtime dependencies with pinned versions for network operations, clean cache
 RUN apk update && apk upgrade && apk add --no-cache \
-    ca-certificates \
-    iproute2 \
-    iptables \
-    bridge-utils \
-    ethtool \
-    iperf3 \
-    curl \
-    dumb-init && \
+    ca-certificates=20240705-r0 \
+    iproute2=6.9.0-r1 \
+    iptables=1.8.10-r3 \
+    bridge-utils=1.7.1-r2 \
+    ethtool=6.9-r0 \
+    iperf3=3.16-r0 \
+    curl=8.9.0-r0 \
+    dumb-init=1.2.5-r3 && \
     update-ca-certificates && \
     adduser -D -s /bin/sh -u 10006 appuser && \
     rm -rf /var/cache/apk/* /tmp/* /var/tmp/*

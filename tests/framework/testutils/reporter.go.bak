@@ -10,6 +10,8 @@ import (
 
 	"github.com/onsi/ginkgo/v2/reporters"
 	"github.com/onsi/ginkgo/v2/types"
+
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security"
 )
 
 // TestReporter provides comprehensive test reporting capabilities
@@ -70,7 +72,7 @@ type PerformanceMetrics struct {
 // NewTestReporter creates a new test reporter
 func NewTestReporter() *TestReporter {
 	outputDir := filepath.Join(".", "test-results")
-	os.MkdirAll(outputDir, 0755)
+	os.MkdirAll(outputDir, security.PrivateDirMode)
 
 	return &TestReporter{
 		StartTime:    time.Now(),

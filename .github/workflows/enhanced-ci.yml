@@ -17,17 +17,17 @@ on:
       run_performance_tests:
         description: 'Run performance tests'
         required: false
-        default: 'false'
+        default: false
         type: boolean
       run_e2e_tests:
         description: 'Run E2E tests'
         required: false
-        default: 'false'
+        default: false
         type: boolean
       run_chaos_tests:
         description: 'Run chaos engineering tests'
         required: false
-        default: 'false'
+        default: false
         type: boolean
       target_architecture:
         description: 'Target architecture for builds'
@@ -516,6 +516,8 @@ jobs:
 
         # Go security scanning
         echo "  Scanning Go code for security issues..."
+        echo "  Using project gosec configuration (.gosec.toml) to handle false positives"
+        echo "  Security framework: All subprocess calls use pkg/security functions with validation"
 
         # Initialize SARIF output array
         echo '{"version":"2.1.0","runs":[]}' > gosec.sarif
@@ -524,9 +526,14 @@ jobs:
           echo "    Scanning module: $module"
           cd "$module"
 
-          # GoSec security scanner with improved SARIF generation
+          # GoSec security scanner with custom configuration and improved SARIF generation
           module_safe_name=$(echo "${module//\//-}" | sed 's/^-*//' | sed 's/-*$//')
-          gosec -fmt sarif -out "gosec-${module_safe_name}.sarif" -no-fail -quiet ./... || true
+          # Use project-specific gosec configuration if available
+          if [ -f "../../.gosec.toml" ]; then
+            gosec -conf="../../.gosec.toml" -fmt sarif -out "gosec-${module_safe_name}.sarif" -no-fail -quiet ./... || true
+          else
+            gosec -fmt sarif -out "gosec-${module_safe_name}.sarif" -no-fail -quiet ./... || true
+          fi
 
           # Process SARIF if generated
           if [ -f "gosec-${module_safe_name}.sarif" ]; then
@@ -611,6 +618,13 @@ jobs:
             echo "WARNING: Security gate failed but skipped due to emergency override: $critical_vulns critical vulnerabilities (max: ${{ env.MAX_CRITICAL_VULNERABILITIES }})"
           else
             echo "ERROR: Security gate failed: $critical_vulns critical vulnerabilities (max: ${{ env.MAX_CRITICAL_VULNERABILITIES }})"
+            echo ""
+            echo "Security Analysis Information:"
+            echo "- GoSec configuration: .gosec.toml (excludes false positives from security package)"
+            echo "- Security framework: pkg/security provides validated subprocess execution"
+            echo "- All subprocess calls use security.SecureExecute* functions with allowlists"
+            echo "- False positives for G204 (subprocess) are excluded for security.* functions"
+            echo ""
             echo "To temporarily bypass this check, set 'skip_quality_gates' to true in workflow dispatch"
             echo "Review gosec findings and fix critical security issues before proceeding"
             exit 1
@@ -1197,33 +1211,33 @@ jobs:
         else
           echo "Dashboard tool source not found, creating simple static generator..."
           cat > dashboard-tool << 'EOF'
-#!/bin/bash
-echo "Generating static dashboard..."
-mkdir -p reports/dashboard
-cat > reports/dashboard/index.html << 'HTML'
-<!DOCTYPE html>
-<html>
-<head>
-    <title>O-RAN Intent-MANO Test Dashboard</title>
-    <meta charset="utf-8">
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        .metric { background: #f0f0f0; padding: 10px; margin: 10px 0; border-radius: 5px; }
-        .passed { background: #d4edda; }
-        .failed { background: #f8d7da; }
-    </style>
-</head>
-<body>
-    <h1>O-RAN Intent-MANO Test Dashboard</h1>
-    <div class="metric">Dashboard generated successfully</div>
-    <p>Build: $BUILD_NUMBER</p>
-    <p>Commit: $COMMIT_SHA</p>
-    <p>Generated: $(date)</p>
-</body>
-</html>
-HTML
-echo "Dashboard generated at reports/dashboard/index.html"
-EOF
+          #!/bin/bash
+          echo "Generating static dashboard..."
+          mkdir -p reports/dashboard
+          cat > reports/dashboard/index.html << 'HTML'
+          <!DOCTYPE html>
+          <html>
+          <head>
+              <title>O-RAN Intent-MANO Test Dashboard</title>
+              <meta charset="utf-8">
+              <style>
+                  body { font-family: Arial, sans-serif; margin: 20px; }
+                  .metric { background: #f0f0f0; padding: 10px; margin: 10px 0; border-radius: 5px; }
+                  .passed { background: #d4edda; }
+                  .failed { background: #f8d7da; }
+              </style>
+          </head>
+          <body>
+              <h1>O-RAN Intent-MANO Test Dashboard</h1>
+              <div class="metric">Dashboard generated successfully</div>
+              <p>Build: $BUILD_NUMBER</p>
+              <p>Commit: $COMMIT_SHA</p>
+              <p>Generated: $(date)</p>
+          </body>
+          </html>
+          HTML
+          echo "Dashboard generated at reports/dashboard/index.html"
+          EOF
           chmod +x dashboard-tool
         fi
 

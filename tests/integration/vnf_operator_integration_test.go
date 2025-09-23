@@ -27,6 +27,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	vnfv1alpha1 "github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/adapters/vnf-operator/api/v1alpha1"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security"
 )
 
 func TestAPIs(t *testing.T) {
@@ -421,10 +422,10 @@ func validateVNFSpec(vnf *vnfv1alpha1.VNF) error {
 // File system helpers for test artifacts
 func writeTestArtifact(filename string, content []byte) error {
 	artifactDir := filepath.Join(".", "test-artifacts")
-	if err := os.MkdirAll(artifactDir, 0755); err != nil {
+	if err := os.MkdirAll(artifactDir, security.PrivateDirMode); err != nil {
 		return err
 	}
 
 	filePath := filepath.Join(artifactDir, filename)
-	return ioutil.WriteFile(filePath, content, 0644)
+	return ioutil.WriteFile(filePath, content, security.SecureFileMode)
 }
