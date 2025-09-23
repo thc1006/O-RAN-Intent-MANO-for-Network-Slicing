@@ -12,9 +12,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/o-ran/intent-mano/tn/agent/pkg/tc"
-	"github.com/o-ran/intent-mano/tn/agent/pkg/vxlan"
-	"github.com/o-ran/intent-mano/tn/agent/pkg/watcher"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tn/agent/pkg/tc"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tn/agent/pkg/vxlan"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tn/agent/pkg/watcher"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/klog/v2"
