@@ -1,0 +1,139 @@
+# O-RAN Intent-MANO Pre-commit Security Configuration
+# This configuration runs security checks on every commit
+repos:
+  # Code quality and formatting
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: ['--allow-multiple-documents']
+      - id: check-added-large-files
+        args: ['--maxkb=500']
+      - id: check-merge-conflict
+      - id: check-executables-have-shebangs
+      - id: check-json
+      - id: detect-private-key
+      - id: detect-aws-credentials
+
+  # Go security scanning
+  - repo: https://github.com/securecodewarrior/sast-scan
+    rev: v1.15.0
+    hooks:
+      - id: sast-scan
+        args: ['--type', 'go', '--config', '.sast-config.json']
+        pass_filenames: false
+
+  # Go code quality
+  - repo: https://github.com/dnephin/pre-commit-golang
+    rev: v0.5.1
+    hooks:
+      - id: go-fmt
+      - id: go-vet-mod
+      - id: go-mod-tidy
+      - id: go-unit-tests
+      - id: golangci-lint
+        args: ['--enable=gosec,gocritic,revive,staticcheck']
+
+  # Dockerfile security
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.12.0
+    hooks:
+      - id: hadolint
+        args: ['--config', '.hadolint.yaml']
+
+  # Secrets detection
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']
+        exclude: ^\.secrets\.baseline$
+
+  # Kubernetes security
+  - repo: https://github.com/bridgecrewio/checkov
+    rev: 3.1.34
+    hooks:
+      - id: checkov
+        args: [
+          '--framework', 'kubernetes,dockerfile,helm',
+          '--skip-check', 'CKV_K8S_8,CKV_K8S_9,CKV_K8S_10',
+          '--compact',
+          '--quiet'
+        ]
+        files: \.(yaml|yml|json|dockerfile|tf)$
+
+  # License compliance
+  - repo: local
+    hooks:
+      - id: license-check
+        name: License Header Check
+        entry: scripts/security/check-license-headers.sh
+        language: script
+        files: \.(go|py|js|ts)$
+
+  # Security configuration validation
+  - repo: local
+    hooks:
+      - id: security-policy-check
+        name: Security Policy Validation
+        entry: scripts/security/validate-security-policies.sh
+        language: script
+        files: ^(security/|deploy/k8s/|\.github/workflows/).*\.(yaml|yml)$
+
+  # Go security best practices
+  - repo: local
+    hooks:
+      - id: gosec-security-scan
+        name: Go Security Scan (gosec)
+        entry: scripts/security/run-gosec.sh
+        language: script
+        files: \.go$
+        exclude: ^(vendor/|\.git/)
+
+  # Container security
+  - repo: local
+    hooks:
+      - id: dockerfile-security
+        name: Dockerfile Security Check
+        entry: scripts/security/check-dockerfile-security.sh
+        language: script
+        files: Dockerfile$
+
+  # Network policy validation
+  - repo: local
+    hooks:
+      - id: network-policy-validation
+        name: Network Policy Validation
+        entry: scripts/security/validate-network-policies.sh
+        language: script
+        files: ^.*network.*policy.*\.(yaml|yml)$
+
+  # RBAC validation
+  - repo: local
+    hooks:
+      - id: rbac-validation
+        name: RBAC Policy Validation
+        entry: scripts/security/validate-rbac.sh
+        language: script
+        files: ^.*rbac.*\.(yaml|yml)$
+
+exclude: |
+  (?x)^(
+    vendor/|
+    node_modules/|
+    \.git/|
+    tests/golden/|
+    .*\.pb\.go$|
+    .*_generated\.go$|
+    zz_generated\.deepcopy\.go$
+  )
+
+# Configuration for individual tools
+default_language_version:
+  python: python3.11
+
+# Global settings
+fail_fast: false
+minimum_pre_commit_version: '3.0.0'

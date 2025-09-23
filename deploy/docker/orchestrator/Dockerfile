@@ -35,7 +35,7 @@ COPY orchestrator/go.mod orchestrator/go.sum ./
 
 # Copy pkg/security dependency (required by orchestrator)
 # This is needed because go.mod has a replace directive pointing to ../pkg/security
-COPY pkg/security/ /pkg/security/
+COPY pkg/security/ ../pkg/security/
 
 # Download dependencies
 RUN go mod download

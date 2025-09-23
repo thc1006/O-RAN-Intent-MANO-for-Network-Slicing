@@ -3,7 +3,6 @@ package vxlan
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"strings"
 	"sync"
 	"time"
@@ -492,27 +491,44 @@ func (m *OptimizedManager) updateTunnelStats(vxlanID int32) {
 		return
 	}
 
-	// Get interface statistics using secure file read
-	statsPath := fmt.Sprintf("/sys/class/net/%s/statistics/tx_bytes", security.SanitizeForLog(ifaceName))
-	if err := security.ValidateFilePath(statsPath); err == nil {
-		// #nosec G304 - Path is validated by security.ValidateFilePath above
-		if data, err := ioutil.ReadFile(statsPath); err == nil {
-			// Parse and update stats (simplified)
-			m.tunnelMutex.Lock()
-			if tunnel, exists := m.tunnels[vxlanID]; exists {
-				tunnel.Stats.LastUpdated = time.Now()
-				// Would parse actual stats from data here
-				_ = data // Acknowledge we got the data but don't use it in this simplified version
-			}
-			m.tunnelMutex.Unlock()
-		} else {
-			// Log the read error but don't fail - statistics are non-critical
-			fmt.Printf("Warning: failed to read interface statistics for %s: %v\n", security.SanitizeForLog(ifaceName), err)
-		}
-	} else {
-		// Log path validation error but don't fail - statistics are non-critical
-		fmt.Printf("Warning: invalid statistics file path for %s: %v\n", ifaceName, err)
+	// Create secure file validator for system statistics
+	validator := security.NewFilePathValidator()
+	validator.AddAllowedDirectory(security.AllowedDirectory{
+		Path:        "/sys/class/net",
+		Extensions:  []string{},  // No extension restrictions for stats files
+		Recursive:   true,
+		Description: "Network interface statistics",
+	})
+
+	// Use secure path joining instead of string formatting
+	statsPath, err := security.SecureJoinPath("/sys/class/net", ifaceName, "statistics", "tx_bytes")
+	if err != nil {
+		fmt.Printf("Warning: failed to construct secure stats path for %s: %v\n", security.SanitizeForLog(ifaceName), err)
+		return
 	}
+
+	// Validate the constructed path
+	if err := validator.ValidateFilePath(statsPath); err != nil {
+		fmt.Printf("Warning: invalid statistics file path for %s: %v\n", security.SanitizeForLog(ifaceName), err)
+		return
+	}
+
+	// Use secure file reading with validation
+	data, err := validator.SafeReadFile(statsPath)
+	if err != nil {
+		// Log the read error but don't fail - statistics are non-critical
+		fmt.Printf("Warning: failed to read interface statistics for %s: %v\n", security.SanitizeForLog(ifaceName), err)
+		return
+	}
+
+	// Parse and update stats (simplified)
+	m.tunnelMutex.Lock()
+	if tunnel, exists := m.tunnels[vxlanID]; exists {
+		tunnel.Stats.LastUpdated = time.Now()
+		// Would parse actual stats from data here
+		_ = data // Acknowledge we got the data but don't use it in this simplified version
+	}
+	m.tunnelMutex.Unlock()
 }
 
 // Batch processing methods

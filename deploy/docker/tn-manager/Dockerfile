@@ -36,7 +36,7 @@ COPY tn/manager/api/v1alpha1/ ./manager/api/v1alpha1/
 
 # Copy pkg/security module before downloading dependencies
 # This is needed because go.mod has a replace directive pointing to ../pkg/security
-COPY pkg/security/ /pkg/security/
+COPY pkg/security/ ../pkg/security/
 
 # Download dependencies
 RUN go mod download

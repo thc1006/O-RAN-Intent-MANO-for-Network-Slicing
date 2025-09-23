@@ -125,12 +125,18 @@ func (v *FilePathValidator) SafeReadFile(path string) ([]byte, error) {
 		return nil, fmt.Errorf("file path validation failed: %w", err)
 	}
 
+	// Additional validation: ensure the cleaned path matches expected structure
+	if err := v.ValidateFilePath(cleanPath); err != nil {
+		return nil, fmt.Errorf("cleaned path validation failed: %w", err)
+	}
+
 	// Get file info to check size
 	info, err := os.Stat(cleanPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get file info: %w", err)
 	}
 
+	// Validate file size before reading
 	if info.Size() > v.maxFilenameSize {
 		return nil, fmt.Errorf("file too large: %d bytes (max: %d)", info.Size(), v.maxFilenameSize)
 	}
@@ -140,7 +146,13 @@ func (v *FilePathValidator) SafeReadFile(path string) ([]byte, error) {
 		return nil, fmt.Errorf("path is a directory, not a file: %s", cleanPath)
 	}
 
-	return os.ReadFile(cleanPath)
+	// Use the original validated path for reading to prevent TOCTOU issues
+	finalPath, err := v.ValidateFilePathAndClean(cleanPath)
+	if err != nil {
+		return nil, fmt.Errorf("final path validation failed: %w", err)
+	}
+
+	return os.ReadFile(finalPath)
 }
 
 // SafeOpenFile safely opens a file after validation
@@ -150,7 +162,18 @@ func (v *FilePathValidator) SafeOpenFile(path string) (*os.File, error) {
 		return nil, fmt.Errorf("file path validation failed: %w", err)
 	}
 
-	return os.Open(cleanPath)
+	// Additional validation to prevent TOCTOU issues
+	if err := v.ValidateFilePath(cleanPath); err != nil {
+		return nil, fmt.Errorf("cleaned path validation failed: %w", err)
+	}
+
+	// Final validation before opening
+	finalPath, err := v.ValidateFilePathAndClean(cleanPath)
+	if err != nil {
+		return nil, fmt.Errorf("final path validation failed: %w", err)
+	}
+
+	return os.Open(finalPath)
 }
 
 // validateAgainstAllowedDirs checks if the path is within allowed directories
