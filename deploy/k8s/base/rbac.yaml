@@ -25,6 +25,34 @@ metadata:
     app.kubernetes.io/name: oran-o2-client
     app.kubernetes.io/component: o2-client
 ---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: oran-o2-client
+rules:
+- apiGroups: [""]
+  resources: ["configmaps", "secrets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["o2ims.oran.io"]
+  resources: ["*"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+- apiGroups: ["porch.kpt.dev"]
+  resources: ["packagerevisions", "packages", "repositories"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: oran-o2-client
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: oran-o2-client
+subjects:
+- kind: ServiceAccount
+  name: oran-o2-client
+  namespace: oran-mano
+---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
