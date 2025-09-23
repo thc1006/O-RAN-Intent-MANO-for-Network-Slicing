@@ -1,9 +1,9 @@
 package vxlan
 
 import (
-	"context"
 	"fmt"
 	"io/ioutil"
+	"os/exec"
 	"strings"
 	"sync"
 	"time"
