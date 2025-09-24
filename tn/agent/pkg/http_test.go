@@ -62,8 +62,9 @@ func setupTestAgent() *TNAgent {
 	}
 
 	agent := &TNAgent{
-		config: config,
-		logger: logger,
+		config:       config,
+		logger:       logger,
+		iperfManager: NewIperfManager(logger),
 	}
 
 	return agent

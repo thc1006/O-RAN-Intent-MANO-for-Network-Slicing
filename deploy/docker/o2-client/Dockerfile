@@ -1,8 +1,8 @@
-# O2 Client Multi-stage Dockerfile
+# O2 Client Multi-stage Dockerfile (2025 Best Practices)
 # Stage 1: Build
-FROM golang:1.24.7-alpine AS builder
+FROM golang:1.22.10-alpine AS builder
 
-# Security labels and metadata
+# Security and metadata labels
 LABEL maintainer="O-RAN MANO Team"
 LABEL org.opencontainers.image.title="O2 Client"
 LABEL org.opencontainers.image.description="O-RAN O2 Interface Client"
@@ -11,92 +11,77 @@ LABEL org.opencontainers.image.vendor="O-RAN Alliance"
 LABEL org.opencontainers.image.licenses="Apache-2.0"
 LABEL org.opencontainers.image.url="https://o-ran.org"
 LABEL security.scan="trivy,grype,snyk"
-LABEL security.distroless="false"
+LABEL security.distroless="true"
 LABEL security.user="non-root"
 
-# Security: Use non-root user for build
-RUN adduser -D -s /bin/sh appuser
-
-# Install security updates and necessary tools, clean cache
-RUN apk update && apk upgrade && apk add --no-cache \
+# Install build dependencies with cache mount
+RUN --mount=type=cache,target=/var/cache/apk \
+    apk add --no-cache \
     git \
     ca-certificates \
     tzdata && \
-    update-ca-certificates && \
-    rm -rf /var/cache/apk/* /tmp/* /var/tmp/*
+    update-ca-certificates
 
 # Set working directory
 WORKDIR /workspace
 
-# Copy go mod files from root for better layer caching
-COPY go.mod go.mod
-COPY go.sum go.sum
+# Copy go mod files from project root for layer caching
+COPY go.mod go.sum ./
 
-# Copy necessary source code including pkg directory and o2-client
+# Copy required source code for o2-client
 COPY pkg/ pkg/
 COPY o2-client/ o2-client/
 COPY adapters/ adapters/
 COPY orchestrator/ orchestrator/
-COPY cn-dms/ cn-dms/
-COPY ran-dms/ ran-dms/
-COPY tn/ tn/
 
-# Download dependencies (after copying local packages) with explicit toolchain
-ENV GOTOOLCHAIN=go1.24.7
-ENV GOPROXY=https://proxy.golang.org,direct
-ENV GOSUMDB=sum.golang.org
+# Set Go environment for reproducible builds
+ENV GO111MODULE=on \
+    GOPROXY=https://proxy.golang.org,direct \
+    GOSUMDB=sum.golang.org \
+    GOWORK=off
 
-# Disable workspace mode for build
-ENV GOWORK=off
+# Download dependencies with cache mount
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    go mod download
 
-# Download dependencies for o2-client
-WORKDIR /workspace/o2-client
-RUN go mod download && go mod tidy
-
-# Build the binary with security flags
-WORKDIR /workspace/o2-client
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
-    -ldflags='-w -s -extldflags "-static"' \
+# Build static binary with optimizations and trimpath
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+    -trimpath \
+    -ldflags="-s -w -extldflags '-static'" \
     -a -installsuffix cgo \
-    -o /workspace/o2-client-binary ./cmd/client/main.go
+    -o /workspace/o2-client ./o2-client/cmd/client/main.go
 
-# Stage 2: Runtime
-FROM alpine:3.22.1
+# Stage 2: Minimal runtime (scratch-based)
+FROM scratch AS runtime
 
-# Security labels
+# Security and runtime labels
 LABEL org.opencontainers.image.title="O2 Client Runtime"
 LABEL security.scan="trivy,grype,snyk"
 LABEL security.user="non-root"
-LABEL security.base.image="alpine:3.22.1"
-LABEL security.go.version="1.24.7"
-LABEL security.scan.date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+LABEL security.base.image="scratch"
+LABEL security.go.version="1.22.10"
 
-# Install runtime dependencies with pinned versions, clean cache
-RUN apk update && apk upgrade && apk add --no-cache \
-    ca-certificates \
-    curl \
-    jq \
-    dumb-init && \
-    update-ca-certificates && \
-    adduser -D -s /bin/sh -u 10002 appuser && \
-    rm -rf /var/cache/apk/* /tmp/* /var/tmp/*
+# Copy CA certificates from builder
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
-# Copy the binary
-COPY --from=builder /workspace/o2-client-binary /usr/local/bin/o2-client
+# Copy timezone data
+COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
 
-# Use non-root user
-USER appuser
+# Copy passwd for nobody user
+COPY --from=builder /etc/passwd /etc/passwd
 
-# Create volume for config and certs
-VOLUME ["/config", "/certs"]
+# Copy the static binary
+COPY --from=builder /workspace/o2-client /usr/local/bin/o2-client
 
-# Expose ports
+# Use nobody user for security
+USER nobody:nobody
+
+# Expose application port
 EXPOSE 8080
 
-# Health check with improved security
-HEALTHCHECK --interval=30s --timeout=10s --start-period=45s --retries=3 \
-    CMD curl -f --max-time 5 --retry 2 --retry-delay 1 http://localhost:8080/health || exit 1
-
-# Security: Run as non-root with dumb-init
-ENTRYPOINT ["/usr/bin/dumb-init", "--"]
-CMD ["/usr/local/bin/o2-client", "--config=/config/o2-client.yaml"]
+# Run the application
+ENTRYPOINT ["/usr/local/bin/o2-client"]
+CMD ["--config=/config/o2-client.yaml"]
