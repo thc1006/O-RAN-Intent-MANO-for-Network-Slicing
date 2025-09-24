@@ -158,7 +158,7 @@ jobs:
       uses: golangci/golangci-lint-action@v8
       with:
         version: v2.5.0
-        args: --timeout=10m --enable=gosec,gocritic,revive,staticcheck,unparam,unused,ineffassign,misspell,goconst,gocyclo --disable=gofmt,goimports
+        args: --timeout=10m --enable=gosec,gocritic,revive,staticcheck,unparam,unused,ineffassign,misspell,goconst,gocyclo
 
     - name: Upload gosec artifacts
       uses: actions/upload-artifact@v4
