@@ -780,10 +780,26 @@ func (rm *RepositoryManager) buildUpstreamRef(upstream UpstreamRef) map[string]i
 func (rm *RepositoryManager) parseRepository(obj *unstructured.Unstructured) (*Repository, error) {
 	repo := &Repository{}
 
-	// Parse metadata
+	if err := rm.parseRepositoryMetadata(obj, repo); err != nil {
+		return nil, err
+	}
+
+	if err := rm.parseRepositorySpec(obj, repo); err != nil {
+		return nil, err
+	}
+
+	if err := rm.parseRepositoryStatusFromObject(obj, repo); err != nil {
+		return nil, err
+	}
+
+	return repo, nil
+}
+
+// parseRepositoryMetadata parses repository metadata
+func (rm *RepositoryManager) parseRepositoryMetadata(obj *unstructured.Unstructured, repo *Repository) error {
 	metadata, found, err := unstructured.NestedMap(obj.Object, "metadata")
 	if err != nil || !found {
-		return nil, fmt.Errorf("failed to get repository metadata: %w", err)
+		return fmt.Errorf("failed to get repository metadata: %w", err)
 	}
 
 	if name, found, err := unstructured.NestedString(metadata, "name"); err == nil && found {
@@ -802,10 +818,14 @@ func (rm *RepositoryManager) parseRepository(obj *unstructured.Unstructured) (*R
 		repo.Annotations = annotations
 	}
 
-	// Parse spec
+	return nil
+}
+
+// parseRepositorySpec parses repository specification
+func (rm *RepositoryManager) parseRepositorySpec(obj *unstructured.Unstructured, repo *Repository) error {
 	spec, found, err := unstructured.NestedMap(obj.Object, "spec")
 	if err != nil || !found {
-		return nil, fmt.Errorf("failed to get repository spec: %w", err)
+		return fmt.Errorf("failed to get repository spec: %w", err)
 	}
 
 	if repoType, found, err := unstructured.NestedString(spec, "type"); err == nil && found {
@@ -816,72 +836,116 @@ func (rm *RepositoryManager) parseRepository(obj *unstructured.Unstructured) (*R
 		repo.Deployment = deployment
 	}
 
-	// Parse Git config
-	if gitConfig, found, err := unstructured.NestedMap(spec, "git"); err == nil && found {
-		repo.GitConfig = &GitConfig{}
-
-		if gitRepo, found, err := unstructured.NestedString(gitConfig, "repo"); err == nil && found {
-			repo.GitConfig.Repo = gitRepo
-		}
-
-		if branch, found, err := unstructured.NestedString(gitConfig, "branch"); err == nil && found {
-			repo.GitConfig.Branch = branch
-		}
-
-		if directory, found, err := unstructured.NestedString(gitConfig, "directory"); err == nil && found {
-			repo.GitConfig.Directory = directory
-		}
-
-		if secretRef, found, err := unstructured.NestedMap(gitConfig, "secretRef"); err == nil && found {
-			repo.GitConfig.SecretRef = &SecretRef{}
-			if name, found, err := unstructured.NestedString(secretRef, "name"); err == nil && found {
-				repo.GitConfig.SecretRef.Name = name
-			}
-			if key, found, err := unstructured.NestedString(secretRef, "key"); err == nil && found {
-				repo.GitConfig.SecretRef.Key = key
-			}
-		}
-
-		if createBranch, found, err := unstructured.NestedBool(gitConfig, "createBranch"); err == nil && found {
-			repo.GitConfig.CreateBranch = createBranch
-		}
+	if err := rm.parseGitConfig(spec, repo); err != nil {
+		return err
 	}
 
-	// Parse OCI config
-	if ociConfig, found, err := unstructured.NestedMap(spec, "oci"); err == nil && found {
-		repo.OciConfig = &OciConfig{}
-
-		if registry, found, err := unstructured.NestedString(ociConfig, "registry"); err == nil && found {
-			repo.OciConfig.Registry = registry
-		}
-
-		if secretRef, found, err := unstructured.NestedMap(ociConfig, "secretRef"); err == nil && found {
-			repo.OciConfig.SecretRef = &SecretRef{}
-			if name, found, err := unstructured.NestedString(secretRef, "name"); err == nil && found {
-				repo.OciConfig.SecretRef.Name = name
-			}
-			if key, found, err := unstructured.NestedString(secretRef, "key"); err == nil && found {
-				repo.OciConfig.SecretRef.Key = key
-			}
-		}
+	if err := rm.parseOciConfig(spec, repo); err != nil {
+		return err
 	}
 
-	// Parse status if available
-	if status, found, err := unstructured.NestedMap(obj.Object, "status"); err == nil && found {
-		repo.Status = rm.parseRepositoryStatus(status)
+	return nil
+}
+
+// parseGitConfig parses Git configuration from spec
+func (rm *RepositoryManager) parseGitConfig(spec map[string]interface{}, repo *Repository) error {
+	gitConfig, found, err := unstructured.NestedMap(spec, "git")
+	if err != nil || !found {
+		return nil // Git config is optional
 	}
 
-	return repo, nil
+	repo.GitConfig = &GitConfig{}
+
+	if gitRepo, found, err := unstructured.NestedString(gitConfig, "repo"); err == nil && found {
+		repo.GitConfig.Repo = gitRepo
+	}
+
+	if branch, found, err := unstructured.NestedString(gitConfig, "branch"); err == nil && found {
+		repo.GitConfig.Branch = branch
+	}
+
+	if directory, found, err := unstructured.NestedString(gitConfig, "directory"); err == nil && found {
+		repo.GitConfig.Directory = directory
+	}
+
+	if createBranch, found, err := unstructured.NestedBool(gitConfig, "createBranch"); err == nil && found {
+		repo.GitConfig.CreateBranch = createBranch
+	}
+
+	return rm.parseSecretRef(gitConfig, &repo.GitConfig.SecretRef)
+}
+
+// parseOciConfig parses OCI configuration from spec
+func (rm *RepositoryManager) parseOciConfig(spec map[string]interface{}, repo *Repository) error {
+	ociConfig, found, err := unstructured.NestedMap(spec, "oci")
+	if err != nil || !found {
+		return nil // OCI config is optional
+	}
+
+	repo.OciConfig = &OciConfig{}
+
+	if registry, found, err := unstructured.NestedString(ociConfig, "registry"); err == nil && found {
+		repo.OciConfig.Registry = registry
+	}
+
+	return rm.parseSecretRef(ociConfig, &repo.OciConfig.SecretRef)
+}
+
+// parseSecretRef parses secret reference from config
+func (rm *RepositoryManager) parseSecretRef(config map[string]interface{}, secretRef **SecretRef) error {
+	secretRefMap, found, err := unstructured.NestedMap(config, "secretRef")
+	if err != nil || !found {
+		return nil // Secret ref is optional
+	}
+
+	*secretRef = &SecretRef{}
+
+	if name, found, err := unstructured.NestedString(secretRefMap, "name"); err == nil && found {
+		(*secretRef).Name = name
+	}
+
+	if key, found, err := unstructured.NestedString(secretRefMap, "key"); err == nil && found {
+		(*secretRef).Key = key
+	}
+
+	return nil
+}
+
+// parseRepositoryStatusFromObject parses repository status from object
+func (rm *RepositoryManager) parseRepositoryStatusFromObject(obj *unstructured.Unstructured, repo *Repository) error {
+	status, found, err := unstructured.NestedMap(obj.Object, "status")
+	if err != nil || !found {
+		return nil // Status is optional
+	}
+
+	repo.Status = rm.parseRepositoryStatus(status)
+	return nil
 }
 
 // parsePackageRevision parses package revision from unstructured
 func (rm *RepositoryManager) parsePackageRevision(obj *unstructured.Unstructured) (*PackageRevision, error) {
 	pr := &PackageRevision{}
 
-	// Parse metadata
+	if err := rm.parsePackageRevisionMetadata(obj, pr); err != nil {
+		return nil, err
+	}
+
+	if err := rm.parsePackageRevisionSpec(obj, pr); err != nil {
+		return nil, err
+	}
+
+	if err := rm.parsePackageRevisionStatusFromObject(obj, pr); err != nil {
+		return nil, err
+	}
+
+	return pr, nil
+}
+
+// parsePackageRevisionMetadata parses package revision metadata
+func (rm *RepositoryManager) parsePackageRevisionMetadata(obj *unstructured.Unstructured, pr *PackageRevision) error {
 	metadata, found, err := unstructured.NestedMap(obj.Object, "metadata")
 	if err != nil || !found {
-		return nil, fmt.Errorf("failed to get package revision metadata: %w", err)
+		return fmt.Errorf("failed to get package revision metadata: %w", err)
 	}
 
 	if name, found, err := unstructured.NestedString(metadata, "name"); err == nil && found {
@@ -892,28 +956,40 @@ func (rm *RepositoryManager) parsePackageRevision(obj *unstructured.Unstructured
 		pr.Namespace = namespace
 	}
 
-	if labels, found, err := unstructured.NestedStringMap(metadata, "labels"); err == nil && found {
-		pr.Labels = labels
-
-		// Extract repository from labels
-		if repo, exists := labels["porch.kpt.dev/repository"]; exists {
-			pr.Repository = repo
-		}
-
-		// Extract package from labels
-		if pkg, exists := labels["porch.kpt.dev/package"]; exists {
-			pr.Package = pkg
-		}
-	}
-
 	if annotations, found, err := unstructured.NestedStringMap(metadata, "annotations"); err == nil && found {
 		pr.Annotations = annotations
 	}
 
-	// Parse spec
+	return rm.parsePackageRevisionLabels(metadata, pr)
+}
+
+// parsePackageRevisionLabels parses package revision labels and extracts repository/package info
+func (rm *RepositoryManager) parsePackageRevisionLabels(metadata map[string]interface{}, pr *PackageRevision) error {
+	labels, found, err := unstructured.NestedStringMap(metadata, "labels")
+	if err != nil || !found {
+		return nil // Labels are optional
+	}
+
+	pr.Labels = labels
+
+	// Extract repository from labels
+	if repo, exists := labels["porch.kpt.dev/repository"]; exists {
+		pr.Repository = repo
+	}
+
+	// Extract package from labels
+	if pkg, exists := labels["porch.kpt.dev/package"]; exists {
+		pr.Package = pkg
+	}
+
+	return nil
+}
+
+// parsePackageRevisionSpec parses package revision specification
+func (rm *RepositoryManager) parsePackageRevisionSpec(obj *unstructured.Unstructured, pr *PackageRevision) error {
 	spec, found, err := unstructured.NestedMap(obj.Object, "spec")
 	if err != nil || !found {
-		return nil, fmt.Errorf("failed to get package revision spec: %w", err)
+		return fmt.Errorf("failed to get package revision spec: %w", err)
 	}
 
 	if packageName, found, err := unstructured.NestedString(spec, "packageName"); err == nil && found {
@@ -942,12 +1018,18 @@ func (rm *RepositoryManager) parsePackageRevision(obj *unstructured.Unstructured
 		pr.Lifecycle = PackageLifecycle(lifecycle)
 	}
 
-	// Parse status if available
-	if status, found, err := unstructured.NestedMap(obj.Object, "status"); err == nil && found {
-		pr.Status = rm.parsePackageRevisionStatus(status)
+	return nil
+}
+
+// parsePackageRevisionStatusFromObject parses package revision status from object
+func (rm *RepositoryManager) parsePackageRevisionStatusFromObject(obj *unstructured.Unstructured, pr *PackageRevision) error {
+	status, found, err := unstructured.NestedMap(obj.Object, "status")
+	if err != nil || !found {
+		return nil // Status is optional
 	}
 
-	return pr, nil
+	pr.Status = rm.parsePackageRevisionStatus(status)
+	return nil
 }
 
 // parseRepositoryStatus parses repository status

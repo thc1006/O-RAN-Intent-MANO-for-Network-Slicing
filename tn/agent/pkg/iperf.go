@@ -115,6 +115,20 @@ func NewIperfManager(logger *log.Logger) *IperfManager {
 	}
 }
 
+// safeLog safely logs a message if logger is not nil
+func (im *IperfManager) safeLog(format string, args ...interface{}) {
+	if im.logger != nil {
+		security.SafeLogf(im.logger, format, args...)
+	}
+}
+
+// safeLogError safely logs an error if logger is not nil
+func (im *IperfManager) safeLogError(message string, err error) {
+	if im.logger != nil {
+		security.SafeLogError(im.logger, message, err)
+	}
+}
+
 // findIperfDaemonPID attempts to find the PID of an iperf3 daemon running on the specified port
 func findIperfDaemonPID(port int) (int, error) {
 	// SECURITY: Validate port before using in process search
@@ -198,10 +212,10 @@ func (im *IperfManager) StartServer(port int) error {
 
 	// Check if server is already running
 	if server, exists := im.servers[serverKey]; exists {
-		security.SafeLogf(im.logger, "Iperf3 server already running on port %d (PID: %d)", port, server.PID)
+		im.safeLog( "Iperf3 server already running on port %d (PID: %d)", port, server.PID)
 		// Verify the server is actually still listening
 		if !im.isServerListening(port) {
-			security.SafeLogf(im.logger, "Server on port %d appears to be dead, removing from registry", port)
+			im.safeLog( "Server on port %d appears to be dead, removing from registry", port)
 			delete(im.servers, serverKey)
 			// Continue with starting a new server
 		} else {
@@ -209,7 +223,7 @@ func (im *IperfManager) StartServer(port int) error {
 		}
 	}
 
-	security.SafeLogf(im.logger, "Starting iperf3 server on port %d", port)
+	im.safeLog( "Starting iperf3 server on port %d", port)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	var serverRegistered bool
@@ -252,7 +266,7 @@ func (im *IperfManager) StartServer(port int) error {
 	} else {
 		// Error is intentionally handled by logging and continuing with serverPID = 0
 		// This is acceptable as the daemon may still be starting up
-		security.SafeLogf(im.logger, "Warning: could not find iperf3 daemon PID: %s", security.SanitizeErrorForLog(err))
+		im.safeLog( "Warning: could not find iperf3 daemon PID: %s", security.SanitizeErrorForLog(err))
 		serverPID = 0 // Unknown PID - this is acceptable for daemon mode
 	}
 
@@ -274,13 +288,13 @@ func (im *IperfManager) StartServer(port int) error {
 	// Verify server is listening
 	if !im.isServerListening(port) {
 		if err := im.StopServer(port); err != nil {
-			security.SafeLogError(im.logger, "Failed to stop failed iperf3 server", err)
+			im.safeLogError( "Failed to stop failed iperf3 server", err)
 			// Continue with the original error
 		}
 		return fmt.Errorf("iperf3 server failed to start listening on port %d", port)
 	}
 
-	security.SafeLogf(im.logger, "Iperf3 server started successfully on port %d (PID: %d)", port, server.PID)
+	im.safeLog( "Iperf3 server started successfully on port %d (PID: %d)", port, server.PID)
 	return nil
 }
 
@@ -303,7 +317,7 @@ func (im *IperfManager) StopServer(port int) error {
 		return fmt.Errorf("no iperf3 server running on port %d", port)
 	}
 
-	security.SafeLogf(im.logger, "Stopping iperf3 server on port %d (PID: %d)", port, server.PID)
+	im.safeLog( "Stopping iperf3 server on port %d (PID: %d)", port, server.PID)
 
 	// Cancel context to stop the server
 	server.Cancel()
@@ -347,12 +361,12 @@ func (im *IperfManager) StopServer(port int) error {
 	// #nosec G204 - Using security.SecureExecute with validated arguments to prevent command injection
 	output, err := security.SecureExecute(killCtx, "pkill", args...)
 	if err != nil {
-		security.SafeLogf(im.logger, "Warning: failed to kill iperf3 server process: %s, output: %s", security.SanitizeErrorForLog(err), security.SanitizeForLog(string(output)))
+		im.safeLog( "Warning: failed to kill iperf3 server process: %s, output: %s", security.SanitizeErrorForLog(err), security.SanitizeForLog(string(output)))
 	}
 
 	delete(im.servers, serverKey)
 
-	security.SafeLogf(im.logger, "Iperf3 server stopped on port %d", port)
+	im.safeLog( "Iperf3 server stopped on port %d", port)
 	return nil
 }
 
@@ -363,7 +377,7 @@ func (im *IperfManager) isServerListening(port int) bool {
 		return false
 	}
 	if err := conn.Close(); err != nil {
-		security.SafeLogError(im.logger, "Failed to close connection during server listening check", err)
+		im.safeLogError( "Failed to close connection during server listening check", err)
 		// Continue since this is just a check, don't fail
 	}
 	return true
@@ -378,93 +392,21 @@ func (im *IperfManager) isServerListening(port int) bool {
 // 5. Secure subprocess execution with custom iperf3 validators
 // All subprocess execution is protected against command injection attacks.
 func (im *IperfManager) RunTest(config *IperfTestConfig) (*IperfResult, error) {
-	// Validate inputs for security
-	if err := security.ValidateIPAddress(config.ServerIP); err != nil {
-		return nil, fmt.Errorf("invalid server IP: %w", err)
-	}
-	if err := security.ValidatePort(config.Port); err != nil {
-		return nil, fmt.Errorf("invalid port: %w", err)
-	}
-	if config.Duration > 3600*time.Second {
-		return nil, fmt.Errorf("duration too long: %v (max: 1 hour)", config.Duration)
-	}
-	if config.Parallel < 1 || config.Parallel > 128 {
-		return nil, fmt.Errorf("invalid parallel streams: %d (must be 1-128)", config.Parallel)
-	}
-	if config.Bandwidth != "" {
-		if err := security.ValidateBandwidth(config.Bandwidth); err != nil {
-			return nil, fmt.Errorf("invalid bandwidth: %w", err)
-		}
+	if err := im.validateTestConfig(config); err != nil {
+		return nil, err
 	}
 
-	security.SafeLogf(im.logger, "Running iperf3 test to %s:%d", security.SanitizeIPForLog(config.ServerIP), config.Port)
+	im.safeLog( "Running iperf3 test to %s:%d", security.SanitizeIPForLog(config.ServerIP), config.Port)
 
 	testID := fmt.Sprintf("test_%d", time.Now().Unix())
 	startTime := time.Now()
 
-	// Build iperf3 command arguments
-	args := []string{"-c", config.ServerIP, "-p", strconv.Itoa(config.Port)}
-
-	// Test duration
-	if config.Duration > 0 {
-		args = append(args, "-t", strconv.Itoa(int(config.Duration.Seconds())))
+	args, err := im.buildIperfArgs(config)
+	if err != nil {
+		return nil, err
 	}
 
-	// Protocol
-	if strings.ToLower(config.Protocol) == "udp" {
-		args = append(args, "-u")
-		if config.Bandwidth != "" {
-			args = append(args, "-b", config.Bandwidth)
-		}
-	}
-
-	// Parallel streams
-	if config.Parallel > 1 {
-		args = append(args, "-P", strconv.Itoa(config.Parallel))
-	}
-
-	// Window size
-	if config.WindowSize != "" {
-		// Validate window size format (e.g., "64K", "1M")
-		if err := security.ValidateCommandArgument(config.WindowSize); err != nil {
-			return nil, fmt.Errorf("invalid window size: %w", err)
-		}
-		args = append(args, "-w", config.WindowSize)
-	}
-
-	// Reporting interval
-	if config.Interval > 0 {
-		args = append(args, "-i", strconv.Itoa(int(config.Interval.Seconds())))
-	}
-
-	// Reverse mode
-	if config.Reverse {
-		args = append(args, "-R")
-	}
-
-	// Bidirectional mode
-	if config.Bidir {
-		args = append(args, "--bidir")
-	}
-
-	// JSON output
-	if config.JSON {
-		args = append(args, "-J")
-	}
-
-	// Validate all arguments for security
-	for _, arg := range args {
-		if err := security.ValidateCommandArgument(arg); err != nil {
-			return nil, fmt.Errorf("invalid iperf3 argument %s: %w", arg, err)
-		}
-	}
-
-	// Execute iperf3 client using secure subprocess execution
-	clientCtx, cancel := context.WithTimeout(context.Background(), config.Duration+30*time.Second)
-	defer cancel()
-
-	// #nosec G204 - Using security.SecureExecuteWithValidation with argument validation to prevent command injection
-	output, err := security.SecureExecuteWithValidation(clientCtx, "iperf3", security.ValidateIPerfArgs, args...)
+	output, err := im.executeIperfCommand(config, args)
 
 	result := &IperfResult{
 		TestID:    testID,
@@ -476,28 +418,130 @@ func (im *IperfManager) RunTest(config *IperfTestConfig) (*IperfResult, error) {
 
 	if err != nil {
 		result.ErrorMessages = append(result.ErrorMessages, fmt.Sprintf("iperf3 command failed: %s", err))
-		security.SafeLogError(im.logger, "Iperf3 test failed", err)
+		im.safeLogError( "Iperf3 test failed", err)
 		return result, fmt.Errorf("iperf3 test failed: %w", err)
 	}
 
-	// Parse results based on output format
-	if config.JSON {
-		if err := im.parseJSONOutput(string(output), result); err != nil {
-			result.ErrorMessages = append(result.ErrorMessages, fmt.Sprintf("Failed to parse JSON output: %s", err))
-			security.SafeLogError(im.logger, "Failed to parse iperf3 JSON output", err)
-		}
-	} else {
-		if err := im.parseTextOutput(string(output), result); err != nil {
-			result.ErrorMessages = append(result.ErrorMessages, fmt.Sprintf("Failed to parse text output: %s", err))
-			security.SafeLogError(im.logger, "Failed to parse iperf3 text output", err)
-		}
+	if err := im.parseIperfOutput(config, string(output), result); err != nil {
+		// Log parsing errors but don't fail the test
+		result.ErrorMessages = append(result.ErrorMessages, fmt.Sprintf("Failed to parse output: %s", err))
+		im.safeLogError( "Failed to parse iperf3 output", err)
 	}
 
-	security.SafeLogf(im.logger, "Iperf3 test completed: %.2f Mbps", result.Summary.Received.MbitsPerSec)
+	im.safeLog( "Iperf3 test completed: %.2f Mbps", result.Summary.Received.MbitsPerSec)
 	return result, nil
 }
 
+// validateTestConfig validates iperf3 test configuration
+func (im *IperfManager) validateTestConfig(config *IperfTestConfig) error {
+	if err := security.ValidateIPAddress(config.ServerIP); err != nil {
+		return fmt.Errorf("invalid server IP: %w", err)
+	}
+	if err := security.ValidatePort(config.Port); err != nil {
+		return fmt.Errorf("invalid port: %w", err)
+	}
+	if config.Duration > 3600*time.Second {
+		return fmt.Errorf("duration too long: %v (max: 1 hour)", config.Duration)
+	}
+	if config.Parallel < 1 || config.Parallel > 128 {
+		return fmt.Errorf("invalid parallel streams: %d (must be 1-128)", config.Parallel)
+	}
+	if config.Bandwidth != "" {
+		if err := security.ValidateBandwidth(config.Bandwidth); err != nil {
+			return fmt.Errorf("invalid bandwidth: %w", err)
+		}
+	}
+	return nil
+}
+
+// buildIperfArgs builds iperf3 command arguments
+func (im *IperfManager) buildIperfArgs(config *IperfTestConfig) ([]string, error) {
+	// Base arguments
+	args := []string{"-c", config.ServerIP, "-p", strconv.Itoa(config.Port)}
+
+	// Add duration
+	if config.Duration > 0 {
+		args = append(args, "-t", strconv.Itoa(int(config.Duration.Seconds())))
+	}
+
+	// Add protocol-specific args
+	args = im.addProtocolArgs(args, config)
+
+	// Add parallel streams
+	if config.Parallel > 1 {
+		args = append(args, "-P", strconv.Itoa(config.Parallel))
+	}
+
+	// Add optional parameters
+	args = im.addOptionalArgs(args, config)
+
+	// Validate all arguments
+	for _, arg := range args {
+		if err := security.ValidateCommandArgument(arg); err != nil {
+			return nil, fmt.Errorf("invalid iperf3 argument %s: %w", arg, err)
+		}
+	}
+
+	return args, nil
+}
+
+// addProtocolArgs adds protocol-specific arguments
+func (im *IperfManager) addProtocolArgs(args []string, config *IperfTestConfig) []string {
+	if strings.ToLower(config.Protocol) == "udp" {
+		args = append(args, "-u")
+		if config.Bandwidth != "" {
+			args = append(args, "-b", config.Bandwidth)
+		}
+	}
+	return args
+}
+
+// addOptionalArgs adds optional iperf3 arguments
+func (im *IperfManager) addOptionalArgs(args []string, config *IperfTestConfig) []string {
+	// Window size
+	if config.WindowSize != "" {
+		// Note: WindowSize validation is done in buildIperfArgs
+		args = append(args, "-w", config.WindowSize)
+	}
+
+	// Reporting interval
+	if config.Interval > 0 {
+		args = append(args, "-i", strconv.Itoa(int(config.Interval.Seconds())))
+	}
+
+	// Mode flags
+	if config.Reverse {
+		args = append(args, "-R")
+	}
+	if config.Bidir {
+		args = append(args, "--bidir")
+	}
+	if config.JSON {
+		args = append(args, "-J")
+	}
+
+	return args
+}
+
+// executeIperfCommand executes the iperf3 command
+func (im *IperfManager) executeIperfCommand(config *IperfTestConfig, args []string) ([]byte, error) {
+	clientCtx, cancel := context.WithTimeout(context.Background(), config.Duration+30*time.Second)
+	defer cancel()
+
+	// #nosec G204 - Using security.SecureExecuteWithValidation with argument validation to prevent command injection
+	return security.SecureExecuteWithValidation(clientCtx, "iperf3", security.ValidateIPerfArgs, args...)
+}
+
+// parseIperfOutput parses iperf3 output based on format
+func (im *IperfManager) parseIperfOutput(config *IperfTestConfig, output string, result *IperfResult) error {
+	if config.JSON {
+		return im.parseJSONOutput(output, result)
+	}
+	return im.parseTextOutput(output, result)
+}
+
 // parseJSONOutput parses iperf3 JSON output
+//gocyclo:ignore
 func (im *IperfManager) parseJSONOutput(output string, result *IperfResult) error {
 	var jsonResult map[string]interface{}
 
@@ -505,135 +549,130 @@ func (im *IperfManager) parseJSONOutput(output string, result *IperfResult) erro
 		return fmt.Errorf("failed to unmarshal JSON: %w", err)
 	}
 
-	// SECURITY: All type assertions use safe comma-ok idiom to prevent panics
-	// Extract summary information
-	if end, ok := jsonResult["end"].(map[string]interface{}); ok {
-		// Sum sent
-		if sumSent, ok := end["sum_sent"].(map[string]interface{}); ok {
-			result.Summary.Sent = IperfStreamSummary{
-				Bytes: func() int64 {
-					if val, ok := sumSent["bytes"].(float64); ok {
-						return int64(val)
-					}
-					return 0
-				}(),
-				BitsPerSec: func() float64 {
-					if val, ok := sumSent["bits_per_second"].(float64); ok {
-						return val
-					}
-					return 0
-				}(),
-				MbitsPerSec: func() float64 {
-					if val, ok := sumSent["bits_per_second"].(float64); ok {
-						return val
-					}
-					return 0
-				}() / 1000000,
-			}
-			if retrans, ok := sumSent["retransmits"]; ok {
-				result.Summary.Sent.Retransmits = int(func() float64 {
-					if val, ok := retrans.(float64); ok {
-						return val
-					}
-					return 0
-				}())
-			}
-		}
-
-		// Sum received
-		if sumReceived, ok := end["sum_received"].(map[string]interface{}); ok {
-			result.Summary.Received = IperfStreamSummary{
-				Bytes: func() int64 {
-					if val, ok := sumReceived["bytes"].(float64); ok {
-						return int64(val)
-					}
-					return 0
-				}(),
-				BitsPerSec: func() float64 {
-					if val, ok := sumReceived["bits_per_second"].(float64); ok {
-						return val
-					}
-					return 0
-				}(),
-				MbitsPerSec: func() float64 {
-					if val, ok := sumReceived["bits_per_second"].(float64); ok {
-						return val
-					}
-					return 0
-				}() / 1000000,
-			}
-		}
-
-		// CPU utilization
-		if cpuUtil, ok := end["cpu_utilization_percent"].(map[string]interface{}); ok {
-			result.Summary.CPUUtil = IperfCPUUtil{
-				HostTotal: func() float64 {
-					if val, ok := cpuUtil["host_total"].(float64); ok {
-						return val
-					}
-					return 0
-				}(),
-				HostUser: func() float64 {
-					if val, ok := cpuUtil["host_user"].(float64); ok {
-						return val
-					}
-					return 0
-				}(),
-				HostSystem: func() float64 {
-					if val, ok := cpuUtil["host_system"].(float64); ok {
-						return val
-					}
-					return 0
-				}(),
-				RemoteTotal: func() float64 {
-					if val, ok := cpuUtil["remote_total"].(float64); ok {
-						return val
-					}
-					return 0
-				}(),
-				RemoteUser: func() float64 {
-					if val, ok := cpuUtil["remote_user"].(float64); ok {
-						return val
-					}
-					return 0
-				}(),
-				RemoteSystem: func() float64 {
-					if val, ok := cpuUtil["remote_system"].(float64); ok {
-						return val
-					}
-					return 0
-				}(),
-			}
-		}
+	if err := im.parseEndSection(jsonResult, result); err != nil {
+		return err
 	}
 
-	// Extract server information
-	if start, ok := jsonResult["start"].(map[string]interface{}); ok {
-		if connecting, ok := start["connecting_to"].(map[string]interface{}); ok {
-			result.ServerInfo.Host = func() string {
-				if val, ok := connecting["host"].(string); ok {
-					return val
-				}
-				return ""
-			}()
-			result.ServerInfo.Port = func() int {
-				if val, ok := connecting["port"].(float64); ok {
-					return int(val)
-				}
-				return 0
-			}()
-		}
-		if version, ok := start["version"]; ok {
-			result.ServerInfo.Version = func() string {
-				if val, ok := version.(string); ok {
-					return val
-				}
-				return ""
-			}()
-		}
+	if err := im.parseStartSection(jsonResult, result); err != nil {
+		return err
 	}
 
 	return nil
+}
+
+// parseEndSection parses the "end" section of iperf3 JSON output
+func (im *IperfManager) parseEndSection(jsonResult map[string]interface{}, result *IperfResult) error {
+	end, ok := jsonResult["end"].(map[string]interface{})
+	if !ok {
+		return nil // End section is optional
+	}
+
+	im.parseSummaries(end, result)
+	im.parseCPUUtilization(end, result)
+
+	return nil
+}
+
+// parseSummaries parses sent and received summaries
+func (im *IperfManager) parseSummaries(end map[string]interface{}, result *IperfResult) {
+	if sumSent, ok := end["sum_sent"].(map[string]interface{}); ok {
+		result.Summary.Sent = im.parseStreamSummary(sumSent, true)
+	}
+
+	if sumReceived, ok := end["sum_received"].(map[string]interface{}); ok {
+		result.Summary.Received = im.parseStreamSummary(sumReceived, false)
+	}
+}
+
+// parseStreamSummary parses a single stream summary
+func (im *IperfManager) parseStreamSummary(summary map[string]interface{}, includeTrans bool) IperfStreamSummary {
+	streamSummary := IperfStreamSummary{
+		Bytes:       im.getFloat64AsInt64(summary, "bytes"),
+		BitsPerSec:  im.getFloat64(summary, "bits_per_second"),
+		MbitsPerSec: im.getFloat64(summary, "bits_per_second") / 1000000,
+	}
+
+	if includeTrans {
+		if retrans, ok := summary["retransmits"]; ok {
+			streamSummary.Retransmits = int(im.safeFloat64(retrans))
+		}
+	}
+
+	return streamSummary
+}
+
+// parseCPUUtilization parses CPU utilization information
+func (im *IperfManager) parseCPUUtilization(end map[string]interface{}, result *IperfResult) {
+	cpuUtil, ok := end["cpu_utilization_percent"].(map[string]interface{})
+	if !ok {
+		return
+	}
+
+	result.Summary.CPUUtil = IperfCPUUtil{
+		HostTotal:    im.getFloat64(cpuUtil, "host_total"),
+		HostUser:     im.getFloat64(cpuUtil, "host_user"),
+		HostSystem:   im.getFloat64(cpuUtil, "host_system"),
+		RemoteTotal:  im.getFloat64(cpuUtil, "remote_total"),
+		RemoteUser:   im.getFloat64(cpuUtil, "remote_user"),
+		RemoteSystem: im.getFloat64(cpuUtil, "remote_system"),
+	}
+}
+
+// parseStartSection parses the "start" section of iperf3 JSON output
+func (im *IperfManager) parseStartSection(jsonResult map[string]interface{}, result *IperfResult) error {
+	start, ok := jsonResult["start"].(map[string]interface{})
+	if !ok {
+		return nil // Start section is optional
+	}
+
+	im.parseServerInfo(start, result)
+
+	return nil
+}
+
+// parseServerInfo parses server information from start section
+func (im *IperfManager) parseServerInfo(start map[string]interface{}, result *IperfResult) {
+	if connecting, ok := start["connecting_to"].(map[string]interface{}); ok {
+		result.ServerInfo.Host = im.getString(connecting, "host")
+		result.ServerInfo.Port = int(im.getFloat64(connecting, "port"))
+	}
+
+	if version, ok := start["version"]; ok {
+		result.ServerInfo.Version = im.safeString(version)
+	}
+}
+
+// Helper functions for safe type conversion
+func (im *IperfManager) getFloat64(m map[string]interface{}, key string) float64 {
+	if val, ok := m[key]; ok {
+		return im.safeFloat64(val)
+	}
+	return 0
+}
+
+func (im *IperfManager) getFloat64AsInt64(m map[string]interface{}, key string) int64 {
+	return int64(im.getFloat64(m, key))
+}
+
+func (im *IperfManager) getString(m map[string]interface{}, key string) string {
+	if val, ok := m[key]; ok {
+		return im.safeString(val)
+	}
+	return ""
+}
+
+func (im *IperfManager) safeFloat64(val interface{}) float64 {
+	if f, ok := val.(float64); ok {
+		return f
+	}
+	return 0
+}
+
+func (im *IperfManager) safeString(val interface{}) string {
+	if s, ok := val.(string); ok {
+		return s
+	}
+	return ""
 }
 
 // parseTextOutput parses iperf3 text output
@@ -697,7 +736,9 @@ func (im *IperfManager) RunThroughputTest(serverIP string, port int, duration ti
 		return nil, fmt.Errorf("duration too long: %v (max: 1 hour)", duration)
 	}
 
-	security.SafeLogf(im.logger, "Running throughput test to %s:%d for %v", security.SanitizeIPForLog(serverIP), port, duration)
+	if im.logger != nil {
+		im.safeLog( "Running throughput test to %s:%d for %v", security.SanitizeIPForLog(serverIP), port, duration)
+	}
 
 	metrics := &ThroughputMetrics{}
 
@@ -722,7 +763,7 @@ func (im *IperfManager) RunThroughputTest(serverIP string, port int, duration ti
 	tcpConfig.Reverse = true
 	tcpUpResult, err := im.RunTest(tcpConfig)
 	if err != nil {
-		security.SafeLogError(im.logger, "TCP upload test failed", err)
+		im.safeLogError( "TCP upload test failed", err)
 	} else {
 		metrics.UplinkMbps = tcpUpResult.Summary.Sent.MbitsPerSec
 	}
@@ -732,7 +773,7 @@ func (im *IperfManager) RunThroughputTest(serverIP string, port int, duration ti
 	tcpConfig.Bidir = true
 	bidirResult, err := im.RunTest(tcpConfig)
 	if err != nil {
-		security.SafeLogError(im.logger, "Bidirectional test failed", err)
+		im.safeLogError( "Bidirectional test failed", err)
 	} else {
 		metrics.BiDirMbps = bidirResult.Summary.Received.MbitsPerSec
 	}
@@ -748,7 +789,7 @@ func (im *IperfManager) RunThroughputTest(serverIP string, port int, duration ti
 		metrics.MinMbps = metrics.UplinkMbps
 	}
 
-	security.SafeLogf(im.logger, "Throughput test completed: DL=%.2f Mbps, UL=%.2f Mbps, Avg=%.2f Mbps",
+	im.safeLog( "Throughput test completed: DL=%.2f Mbps, UL=%.2f Mbps, Avg=%.2f Mbps",
 		metrics.DownlinkMbps, metrics.UplinkMbps, metrics.AvgMbps)
 
 	return metrics, nil
@@ -767,7 +808,7 @@ func (im *IperfManager) RunLatencyTest(serverIP string, port int, duration time.
 		return nil, fmt.Errorf("duration too long: %v (max: 10 minutes)", duration)
 	}
 
-	security.SafeLogf(im.logger, "Running latency test to %s:%d", security.SanitizeIPForLog(serverIP), port)
+	im.safeLog( "Running latency test to %s:%d", security.SanitizeIPForLog(serverIP), port)
 
 	metrics := &LatencyMetrics{}
 
@@ -841,7 +882,7 @@ func (im *IperfManager) RunLatencyTest(serverIP string, port int, duration time.
 		}
 	}
 
-	security.SafeLogf(im.logger, "Latency test completed: Avg=%.2f ms, Min=%.2f ms, Max=%.2f ms",
+	im.safeLog( "Latency test completed: Avg=%.2f ms, Min=%.2f ms, Max=%.2f ms",
 		metrics.AvgRTTMs, metrics.MinRTTMs, metrics.MaxRTTMs)
 
 	return metrics, nil
@@ -916,12 +957,12 @@ func (im *IperfManager) StopAllServers() error {
 		if err != nil {
 			// Error is intentionally handled by logging - pkill failure is not critical
 			// as the server context cancellation should handle cleanup
-			security.SafeLogf(im.logger, "Warning: failed to kill iperf3 server process for %s: %s, output: %s",
+			im.safeLog( "Warning: failed to kill iperf3 server process for %s: %s, output: %s",
 				serverKey, security.SanitizeErrorForLog(err), security.SanitizeForLog(string(output)))
 		}
 
 		delete(im.servers, serverKey)
-		security.SafeLogf(im.logger, "Iperf3 server stopped on port %d", server.Port)
+		im.safeLog( "Iperf3 server stopped on port %d", server.Port)
 	}
 
 	if len(errors) > 0 {

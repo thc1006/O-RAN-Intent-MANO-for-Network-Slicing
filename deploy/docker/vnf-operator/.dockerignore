@@ -1,0 +1,72 @@
+# VNF Operator Docker Build Context Optimization
+# Exclude unnecessary files for faster builds and smaller context
+
+# Version control
+.git
+.gitignore
+.gitattributes
+
+# Development files
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Documentation
+*.md
+README*
+CHANGELOG*
+LICENSE*
+docs/
+
+# Testing
+**/*_test.go
+**/testdata/
+**/tests/golden/
+experiments/
+coverage.out
+
+# Build artifacts
+bin/
+dist/
+build/
+target/
+
+# Other Docker files
+**/Dockerfile*
+**/.dockerignore
+docker-compose*.yml
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+Makefile
+scripts/
+
+# Temporary files
+tmp/
+temp/
+.tmp/
+
+# IDE and editor files
+.DS_Store
+Thumbs.db
+*.log
+
+# Other components (only build VNF operator)
+nlp/
+orchestrator/
+ran-dms/
+cn-dms/
+tn/
+net/
+clusters/
+nephio-generator/
+.devcontainer/
+
+# Keep only necessary files for VNF operator build
+!go.mod
+!go.sum
+!adapters/vnf-operator/
+!pkg/security/
