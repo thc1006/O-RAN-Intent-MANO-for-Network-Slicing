@@ -7,8 +7,6 @@ run:
   tests: true
   build-tags: []
   go: "1.24"
-  # Use issues.exclude-dirs instead of deprecated run.skip-dirs
-  # skip-dirs is deprecated
 
 output:
   # Use formats instead of deprecated format

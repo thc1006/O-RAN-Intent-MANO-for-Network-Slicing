@@ -51,7 +51,7 @@ const (
 	RollbackStatusInProgress RollbackStatus = "in_progress"
 	RollbackStatusCompleted  RollbackStatus = "completed"
 	RollbackStatusFailed     RollbackStatus = "failed"
-	RollbackStatusCancelled  RollbackStatus = "cancelled"
+	RollbackStatusCanceled   RollbackStatus = "canceled"
 )
 
 // RollbackResource represents a resource involved in rollback
@@ -190,7 +190,7 @@ func (rm *RollbackManager) executeRollbackSteps(ctx context.Context, rollbackSta
 }
 
 // validateTargetCommit validates that the target commit exists
-func (rm *RollbackManager) validateTargetCommit(ctx context.Context, targetCommit string) error {
+func (rm *RollbackManager) validateTargetCommit(_ context.Context, targetCommit string) error {
 	// Check if commit exists in repository
 	commits, err := rm.GitRepo.GetCommitHistory(100) // Check last 100 commits
 	if err != nil {
@@ -207,7 +207,7 @@ func (rm *RollbackManager) validateTargetCommit(ctx context.Context, targetCommi
 }
 
 // getChangedResources gets resources changed between two commits
-func (rm *RollbackManager) getChangedResources(ctx context.Context, fromCommit, toCommit string) ([]string, error) {
+func (rm *RollbackManager) getChangedResources(_ context.Context, fromCommit, toCommit string) ([]string, error) {
 	changedFiles, err := rm.GitRepo.GetChangedFiles(fromCommit, toCommit)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get changed files: %w", err)
@@ -327,7 +327,7 @@ func (rm *RollbackManager) planRollbackActions(ctx context.Context, resourceFile
 }
 
 // parseResourceFile parses Kubernetes resources from a file
-func (rm *RollbackManager) parseResourceFile(ctx context.Context, filename, commit string) ([]*unstructured.Unstructured, error) {
+func (rm *RollbackManager) parseResourceFile(_ context.Context, filename, commit string) ([]*unstructured.Unstructured, error) {
 	// Get file content at specific commit
 	var content string
 	var err error
@@ -409,7 +409,7 @@ func (rm *RollbackManager) resourcesMatch(res1, res2 *unstructured.Unstructured)
 }
 
 // executeGitRollback executes the Git rollback
-func (rm *RollbackManager) executeGitRollback(ctx context.Context, targetCommit string) error {
+func (rm *RollbackManager) executeGitRollback(_ context.Context, targetCommit string) error {
 	// Validate target commit for security
 	if err := security.ValidateGitRef(targetCommit); err != nil {
 		return fmt.Errorf("invalid target commit: %w", err)
@@ -653,7 +653,7 @@ func (rm *RollbackManager) shouldTriggerRollback(validationResult *ValidationRes
 }
 
 // getPreviousStableCommit gets the previous stable commit
-func (rm *RollbackManager) getPreviousStableCommit(ctx context.Context) (string, error) {
+func (rm *RollbackManager) getPreviousStableCommit(_ context.Context) (string, error) {
 	commits, err := rm.GitRepo.GetCommitHistory(10)
 	if err != nil {
 		return "", err

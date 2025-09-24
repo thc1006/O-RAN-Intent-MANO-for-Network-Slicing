@@ -421,7 +421,7 @@ func (vf *ValidationFramework) ValidateCluster(ctx context.Context, clusterName 
 }
 
 // validateGitState validates the Git repository state
-func (vf *ValidationFramework) validateGitState(ctx context.Context) (*GitValidationResult, error) {
+func (vf *ValidationFramework) validateGitState(_ context.Context) (*GitValidationResult, error) {
 	if vf.GitRepo == nil {
 		return nil, fmt.Errorf("git repository not initialized")
 	}
@@ -476,7 +476,7 @@ func (vf *ValidationFramework) validateNephioPackages(ctx context.Context, clust
 }
 
 // validateResources validates Kubernetes resources
-func (vf *ValidationFramework) validateResources(ctx context.Context, client *ClusterClient, clusterName string) ([]ResourceValidationResult, error) {
+func (vf *ValidationFramework) validateResources(ctx context.Context, client *ClusterClient, _ string) ([]ResourceValidationResult, error) {
 	var results []ResourceValidationResult
 
 	for _, rule := range vf.Config.Validation.RequiredResources {
@@ -502,7 +502,7 @@ func (vf *ValidationFramework) validateResources(ctx context.Context, client *Cl
 }
 
 // validateResource validates a single Kubernetes resource
-func (vf *ValidationFramework) validateResource(resource *unstructured.Unstructured, rule ResourceRule) ResourceValidationResult {
+func (vf *ValidationFramework) validateResource(resource *unstructured.Unstructured, _ ResourceRule) ResourceValidationResult {
 	result := ResourceValidationResult{
 		Name:       resource.GetName(),
 		Namespace:  resource.GetNamespace(),
@@ -661,11 +661,20 @@ func (vf *ValidationFramework) checkPerformanceThresholds(result *PerformanceRes
 }
 
 // detectDrift detects configuration drift
+// TODO: Implement actual drift detection logic
 func (vf *ValidationFramework) detectDrift(ctx context.Context, client *ClusterClient, clusterName string) error {
 	// Placeholder for drift detection logic
 	// This would compare current cluster state with desired state from Git
 	log.Printf("Drift detection for cluster %s: Not implemented", clusterName)
-	return nil
+
+	// For now, we'll just log that drift detection is not implemented
+	// In a real implementation, this would:
+	// 1. Get desired state from Git repository
+	// 2. Get actual state from Kubernetes cluster
+	// 3. Compare the states
+	// 4. Return error if significant drift is detected
+
+	return nil // No drift detected in placeholder implementation
 }
 
 // findClusterConfig finds cluster configuration by name

@@ -27,7 +27,7 @@ type NephioAdapterReconciler struct {
 
 	PorchClient       PorchClient
 	PackageGenerator  PackageGenerator
-	PlacementEngine   placement.PlacementPolicy
+	PlacementEngine   placement.Policy
 	O2Client         o2client.Client
 	Repository        string
 	Namespace         string
@@ -312,7 +312,7 @@ func (r *NephioAdapterReconciler) handlePlanningPhase(ctx context.Context, inten
 	}
 
 	// Generate placement decisions for each network function
-	placements := make([]*placement.PlacementDecision, 0, len(intent.Spec.NetworkFunctions))
+	placements := make([]*placement.Decision, 0, len(intent.Spec.NetworkFunctions))
 	for _, nfSpec := range intent.Spec.NetworkFunctions {
 		nf := r.convertToNetworkFunction(nfSpec, intent.Spec.QoSProfile)
 		decision, err := r.PlacementEngine.Place(nf, sites)
@@ -520,7 +520,7 @@ func (r *NephioAdapterReconciler) convertToNetworkFunction(nfSpec NetworkFunctio
 	}
 }
 
-func (r *NephioAdapterReconciler) updatePlacementDecisions(intent *NetworkSliceIntent, placements []*placement.PlacementDecision) {
+func (r *NephioAdapterReconciler) updatePlacementDecisions(intent *NetworkSliceIntent, placements []*placement.Decision) {
 	// Update intent with placement decisions
 	for i, placement := range placements {
 		if i < len(intent.Spec.NetworkFunctions) {

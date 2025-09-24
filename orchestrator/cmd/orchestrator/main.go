@@ -30,11 +30,11 @@ type QoSIntent struct {
 
 // SliceAllocation represents the orchestrated slice deployment
 type SliceAllocation struct {
-	SliceID     string                `json:"slice_id"`
-	QoS         QoSIntent            `json:"qos"`
-	Placement   placement.PlacementDecision `json:"placement"`
-	Resources   ResourceAllocation    `json:"resources"`
-	Status      string               `json:"status"`
+	SliceID   string             `json:"slice_id"`
+	QoS       QoSIntent          `json:"qos"`
+	Placement placement.Decision `json:"placement"`
+	Resources ResourceAllocation `json:"resources"`
+	Status    string             `json:"status"`
 }
 
 // ResourceAllocation represents allocated resources
@@ -46,12 +46,12 @@ type ResourceAllocation struct {
 
 // Config holds orchestrator configuration
 type Config struct {
-	PlanMode    bool
-	ApplyMode   bool
-	InputFile   string
-	OutputFile  string
-	Verbose     bool
-	DryRun      bool
+	PlanMode   bool
+	ApplyMode  bool
+	InputFile  string
+	OutputFile string
+	Verbose    bool
+	DryRun     bool
 }
 
 func main() {
@@ -183,7 +183,7 @@ func loadQoSIntents(filename string) ([]QoSIntent, error) {
 		line := scanner.Text()
 
 		// Skip empty lines
-		if len(line) == 0 {
+		if line == "" {
 			continue
 		}
 
@@ -225,7 +225,7 @@ func planSliceOrchestration(intents []QoSIntent, config Config) error {
 
 		// Use mock sites for demonstration
 		sites := generateMockSites()
-		policy := placement.NewLatencyAwarePlacementPolicy(placement.NewMockMetricsProvider())
+		policy := placement.NewLatencyAwarePolicy(placement.NewMockMetricsProvider())
 
 		placementDecision, err := policy.Place(nf, sites)
 		if err != nil {
@@ -285,15 +285,10 @@ func applySliceOrchestration(intents []QoSIntent, config Config) error {
 			log.Printf("DRY RUN: Would deploy slice %s", allocation.SliceID)
 			allocation.Status = "dry-run"
 		} else {
-			err := deploySlice(allocation, config)
-			if err != nil {
-				allocation.Status = "failed"
-				log.Printf("Failed to deploy slice %s: %v", allocation.SliceID, err)
-			} else {
-				allocation.Status = "deployed"
-				if config.Verbose {
-					log.Printf("Successfully deployed slice %s", allocation.SliceID)
-				}
+			deploySlice(allocation, config)
+			allocation.Status = "deployed"
+			if config.Verbose {
+				log.Printf("Successfully deployed slice %s", allocation.SliceID)
 			}
 		}
 	}
@@ -328,17 +323,17 @@ func convertToPlacementQoS(intent QoSIntent) placement.QoSRequirements {
 
 func generateResourceRequirements(intent QoSIntent) placement.ResourceRequirements {
 	// Resource scaling based on QoS requirements - use reasonable minimums
-	cpuCores := int(intent.Bandwidth * 0.1)    // 0.1 cores per Mbps
+	cpuCores := int(intent.Bandwidth * 0.1) // 0.1 cores per Mbps
 	if cpuCores < 1 {
 		cpuCores = 1
 	}
 
-	memory := int(intent.Bandwidth * 0.1)      // 100MB per Mbps
+	memory := int(intent.Bandwidth * 0.1) // 100MB per Mbps
 	if memory < 1 {
 		memory = 1
 	}
 
-	storage := int(intent.Bandwidth * 0.5)     // 500MB per Mbps
+	storage := int(intent.Bandwidth * 0.5) // 500MB per Mbps
 	if storage < 1 {
 		storage = 1
 	}
@@ -354,23 +349,23 @@ func generateResourceRequirements(intent QoSIntent) placement.ResourceRequiremen
 func generateResourceAllocation(intent QoSIntent) ResourceAllocation {
 	// Generate resource allocation based on slice type and QoS
 	ranResources := map[string]interface{}{
-		"cpu_cores":    intent.Bandwidth * 0.3,
-		"memory_mb":    intent.Bandwidth * 128,
-		"antennas":     int(intent.Bandwidth),
+		"cpu_cores":     intent.Bandwidth * 0.3,
+		"memory_mb":     intent.Bandwidth * 128,
+		"antennas":      int(intent.Bandwidth),
 		"frequency_mhz": 3500 + (intent.Bandwidth * 100),
 	}
 
 	cnResources := map[string]interface{}{
-		"cpu_cores":   intent.Bandwidth * 0.4,
-		"memory_mb":   intent.Bandwidth * 256,
-		"storage_gb":  intent.Bandwidth * 2,
+		"cpu_cores":    intent.Bandwidth * 0.4,
+		"memory_mb":    intent.Bandwidth * 256,
+		"storage_gb":   intent.Bandwidth * 2,
 		"upf_capacity": intent.Bandwidth * 10,
 	}
 
 	tnResources := map[string]interface{}{
-		"bandwidth_mbps": intent.Bandwidth,
-		"vlan_id":       1000 + int(intent.Bandwidth*10),
-		"qos_class":     intent.SliceType,
+		"bandwidth_mbps":    intent.Bandwidth,
+		"vlan_id":           1000 + int(intent.Bandwidth*10),
+		"qos_class":         intent.SliceType,
 		"latency_budget_ms": intent.Latency,
 	}
 
@@ -381,7 +376,7 @@ func generateResourceAllocation(intent QoSIntent) ResourceAllocation {
 	}
 }
 
-func deploySlice(allocation *SliceAllocation, config Config) error {
+func deploySlice(allocation *SliceAllocation, config Config) {
 	// Simulated deployment - in real implementation this would:
 	// 1. Deploy RAN components via O-RAN O2 DMS
 	// 2. Deploy CN components via Nephio/GitOps
@@ -397,7 +392,6 @@ func deploySlice(allocation *SliceAllocation, config Config) error {
 
 	// Simulate deployment time
 	// In real implementation, this would orchestrate actual deployments
-	return nil
 }
 
 func saveOrchestrationPlan(allocations []SliceAllocation, filename string, verbose bool) error {

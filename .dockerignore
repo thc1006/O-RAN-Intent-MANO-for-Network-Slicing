@@ -1,0 +1,101 @@
+# Git
+.git
+.github
+.gitignore
+
+# Documentation
+*.md
+LICENSE
+docs/
+
+# Build artifacts
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temporary files
+*.tmp
+tmp/
+
+# Test coverage
+*.cover
+*.coverage
+coverage.html
+coverage.out
+
+# CI/CD
+.drone.yml
+.gitlab-ci.yml
+.travis.yml
+
+# Node modules (if any)
+node_modules/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Kubernetes manifests not needed for build
+deploy/k8s/
+deploy/helm/
+
+# Scripts not needed for build
+scripts/
+deploy/scripts/
+
+# Test data (but keep Go test files for build verification)
+test/
+tests/
+# Note: Not excluding *_test.go to allow go mod verify during build
+
+# Examples
+examples/
+samples/
+
+# Logs
+*.log
+logs/
+
+# Build directories
+bin/
+dist/
+build/
+target/
+
+# OS specific
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Environment files
+.env
+.env.*
+*.env
+
+# Keep only essential Go code for the build
+!pkg/
+!o2-client/
+!adapters/
+!orchestrator/
+!cn-dms/
+!ran-dms/
+!tn/
+!go.mod
+!go.sum
+!go.work
+!go.work.sum

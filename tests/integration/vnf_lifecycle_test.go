@@ -15,111 +15,111 @@ import (
 
 // VNFLifecycleSuite manages VNF operator lifecycle testing
 type VNFLifecycleSuite struct {
-	k8sClient    client.Client              // nolint:unused // TODO: integrate with actual k8s client
-	testContext  context.Context
-	testCancel   context.CancelFunc
-	testResults  *VNFLifecycleTestResults
-	createdVNFs  []string // Track created VNFs for cleanup
+	k8sClient   client.Client // nolint:unused // TODO: integrate with actual k8s client
+	testContext context.Context
+	testCancel  context.CancelFunc
+	testResults *VNFLifecycleTestResults
+	createdVNFs []string // Track created VNFs for cleanup
 }
 
 // VNFLifecycleTestResults aggregates all VNF lifecycle test results
 type VNFLifecycleTestResults struct {
 	TestStartTime      time.Time                      `json:"test_start_time"`
 	TestEndTime        time.Time                      `json:"test_end_time"`
-	LifecycleTests     []VNFLifecycleTestResult      `json:"lifecycle_tests"`
-	OperatorTests      []VNFOperatorTestResult       `json:"operator_tests"`
-	ScaleTests         []VNFScaleTestResult          `json:"scale_tests"`
-	UpgradeTests       []VNFUpgradeTestResult        `json:"upgrade_tests"`
-	FailureTests       []VNFFailureTestResult        `json:"failure_tests"`
+	LifecycleTests     []VNFLifecycleTestResult       `json:"lifecycle_tests"`
+	OperatorTests      []VNFOperatorTestResult        `json:"operator_tests"`
+	ScaleTests         []VNFScaleTestResult           `json:"scale_tests"`
+	UpgradeTests       []VNFUpgradeTestResult         `json:"upgrade_tests"`
+	FailureTests       []VNFFailureTestResult         `json:"failure_tests"`
 	PerformanceMetrics VNFLifecyclePerformanceMetrics `json:"performance_metrics"`
-	OverallSuccess     bool                          `json:"overall_success"`
-	Errors             []string                      `json:"errors"`
+	OverallSuccess     bool                           `json:"overall_success"`
+	Errors             []string                       `json:"errors"`
 }
 
 // VNFLifecycleTestResult represents individual VNF lifecycle test results
 type VNFLifecycleTestResult struct {
-	TestName           string                     `json:"test_name"`
-	VNFName            string                     `json:"vnf_name"`
-	VNFType            manov1alpha1.VNFType      `json:"vnf_type"`
-	LifecyclePhases    []VNFPhaseResult          `json:"lifecycle_phases"`
-	TotalDuration      time.Duration             `json:"total_duration_ms"`
-	CreationTime       time.Duration             `json:"creation_time_ms"`
-	DeploymentTime     time.Duration             `json:"deployment_time_ms"`
-	ReadinessTime      time.Duration             `json:"readiness_time_ms"`
-	TerminationTime    time.Duration             `json:"termination_time_ms"`
-	ValidationResults  []VNFValidationResult     `json:"validation_results"`
-	ResourceUtilization VNFResourceUtilization   `json:"resource_utilization"`
-	Success            bool                      `json:"success"`
-	ErrorMessage       string                    `json:"error_message,omitempty"`
+	TestName            string                 `json:"test_name"`
+	VNFName             string                 `json:"vnf_name"`
+	VNFType             manov1alpha1.VNFType   `json:"vnf_type"`
+	LifecyclePhases     []VNFPhaseResult       `json:"lifecycle_phases"`
+	TotalDuration       time.Duration          `json:"total_duration_ms"`
+	CreationTime        time.Duration          `json:"creation_time_ms"`
+	DeploymentTime      time.Duration          `json:"deployment_time_ms"`
+	ReadinessTime       time.Duration          `json:"readiness_time_ms"`
+	TerminationTime     time.Duration          `json:"termination_time_ms"`
+	ValidationResults   []VNFValidationResult  `json:"validation_results"`
+	ResourceUtilization VNFResourceUtilization `json:"resource_utilization"`
+	Success             bool                   `json:"success"`
+	ErrorMessage        string                 `json:"error_message,omitempty"`
 }
 
 // VNFOperatorTestResult represents VNF operator behavior test results
 type VNFOperatorTestResult struct {
-	TestName          string                 `json:"test_name"`
-	OperatorFunction  string                 `json:"operator_function"`
-	ResponseTime      time.Duration          `json:"response_time_ms"`
-	EventsHandled     int                    `json:"events_handled"`
-	ReconcileLoops    int                    `json:"reconcile_loops"`
-	ResourceEvents    []VNFResourceEvent     `json:"resource_events"`
-	ControllerMetrics VNFControllerMetrics   `json:"controller_metrics"`
-	Success           bool                   `json:"success"`
-	ErrorMessage      string                 `json:"error_message,omitempty"`
+	TestName          string               `json:"test_name"`
+	OperatorFunction  string               `json:"operator_function"`
+	ResponseTime      time.Duration        `json:"response_time_ms"`
+	EventsHandled     int                  `json:"events_handled"`
+	ReconcileLoops    int                  `json:"reconcile_loops"`
+	ResourceEvents    []VNFResourceEvent   `json:"resource_events"`
+	ControllerMetrics VNFControllerMetrics `json:"controller_metrics"`
+	Success           bool                 `json:"success"`
+	ErrorMessage      string               `json:"error_message,omitempty"`
 }
 
 // VNFScaleTestResult represents VNF scaling test results
 type VNFScaleTestResult struct {
-	TestName         string        `json:"test_name"`
-	VNFName          string        `json:"vnf_name"`
-	InitialReplicas  int           `json:"initial_replicas"`
-	TargetReplicas   int           `json:"target_replicas"`
-	ScaleDirection   string        `json:"scale_direction"`
-	ScaleTime        time.Duration `json:"scale_time_ms"`
-	StabilizationTime time.Duration `json:"stabilization_time_ms"`
-	ResourceImpact   ScaleResourceImpact `json:"resource_impact"`
-	Success          bool          `json:"success"`
-	ErrorMessage     string        `json:"error_message,omitempty"`
+	TestName          string              `json:"test_name"`
+	VNFName           string              `json:"vnf_name"`
+	InitialReplicas   int                 `json:"initial_replicas"`
+	TargetReplicas    int                 `json:"target_replicas"`
+	ScaleDirection    string              `json:"scale_direction"`
+	ScaleTime         time.Duration       `json:"scale_time_ms"`
+	StabilizationTime time.Duration       `json:"stabilization_time_ms"`
+	ResourceImpact    ScaleResourceImpact `json:"resource_impact"`
+	Success           bool                `json:"success"`
+	ErrorMessage      string              `json:"error_message,omitempty"`
 }
 
 // VNFUpgradeTestResult represents VNF upgrade test results
 type VNFUpgradeTestResult struct {
-	TestName         string                 `json:"test_name"`
-	VNFName          string                 `json:"vnf_name"`
-	FromVersion      string                 `json:"from_version"`
-	ToVersion        string                 `json:"to_version"`
-	UpgradeStrategy  string                 `json:"upgrade_strategy"`
-	UpgradeTime      time.Duration          `json:"upgrade_time_ms"`
-	DowntimeDuration time.Duration          `json:"downtime_duration_ms"`
-	RollbackCapable  bool                   `json:"rollback_capable"`
-	DataMigration    UpgradeDataMigration   `json:"data_migration"`
-	ValidationResults []UpgradeValidation   `json:"validation_results"`
-	Success          bool                   `json:"success"`
-	ErrorMessage     string                 `json:"error_message,omitempty"`
+	TestName          string               `json:"test_name"`
+	VNFName           string               `json:"vnf_name"`
+	FromVersion       string               `json:"from_version"`
+	ToVersion         string               `json:"to_version"`
+	UpgradeStrategy   string               `json:"upgrade_strategy"`
+	UpgradeTime       time.Duration        `json:"upgrade_time_ms"`
+	DowntimeDuration  time.Duration        `json:"downtime_duration_ms"`
+	RollbackCapable   bool                 `json:"rollback_capable"`
+	DataMigration     UpgradeDataMigration `json:"data_migration"`
+	ValidationResults []UpgradeValidation  `json:"validation_results"`
+	Success           bool                 `json:"success"`
+	ErrorMessage      string               `json:"error_message,omitempty"`
 }
 
 // VNFFailureTestResult represents failure scenario test results
 type VNFFailureTestResult struct {
-	TestName           string                   `json:"test_name"`
-	VNFName            string                   `json:"vnf_name"`
-	FailureType        string                   `json:"failure_type"`
-	FailureInjectionTime time.Time             `json:"failure_injection_time"`
-	DetectionTime      time.Duration           `json:"detection_time_ms"`
-	RecoveryTime       time.Duration           `json:"recovery_time_ms"`
-	AutoRecovery       bool                    `json:"auto_recovery"`
-	RecoveryStrategy   string                  `json:"recovery_strategy"`
-	ServiceImpact      FailureServiceImpact    `json:"service_impact"`
-	ValidationResults  []FailureValidation     `json:"validation_results"`
-	Success            bool                    `json:"success"`
-	ErrorMessage       string                  `json:"error_message,omitempty"`
+	TestName             string               `json:"test_name"`
+	VNFName              string               `json:"vnf_name"`
+	FailureType          string               `json:"failure_type"`
+	FailureInjectionTime time.Time            `json:"failure_injection_time"`
+	DetectionTime        time.Duration        `json:"detection_time_ms"`
+	RecoveryTime         time.Duration        `json:"recovery_time_ms"`
+	AutoRecovery         bool                 `json:"auto_recovery"`
+	RecoveryStrategy     string               `json:"recovery_strategy"`
+	ServiceImpact        FailureServiceImpact `json:"service_impact"`
+	ValidationResults    []FailureValidation  `json:"validation_results"`
+	Success              bool                 `json:"success"`
+	ErrorMessage         string               `json:"error_message,omitempty"`
 }
 
 // Supporting types
 type VNFPhaseResult struct {
-	Phase       string        `json:"phase"`
-	StartTime   time.Time     `json:"start_time"`
-	Duration    time.Duration `json:"duration_ms"`
-	Status      string        `json:"status"`
-	Successful  bool          `json:"successful"`
-	Details     string        `json:"details,omitempty"`
+	Phase      string        `json:"phase"`
+	StartTime  time.Time     `json:"start_time"`
+	Duration   time.Duration `json:"duration_ms"`
+	Status     string        `json:"status"`
+	Successful bool          `json:"successful"`
+	Details    string        `json:"details,omitempty"`
 }
 
 type VNFValidationResult struct {
@@ -158,24 +158,24 @@ type ScaleResourceImpact struct {
 }
 
 type UpgradeDataMigration struct {
-	Required       bool          `json:"required"`
-	MigrationTime  time.Duration `json:"migration_time_ms"`
-	DataIntegrity  bool          `json:"data_integrity"`
-	BackupCreated  bool          `json:"backup_created"`
+	Required      bool          `json:"required"`
+	MigrationTime time.Duration `json:"migration_time_ms"`
+	DataIntegrity bool          `json:"data_integrity"`
+	BackupCreated bool          `json:"backup_created"`
 }
 
 type UpgradeValidation struct {
-	CheckName string `json:"check_name"`
-	PreUpgrade string `json:"pre_upgrade"`
+	CheckName   string `json:"check_name"`
+	PreUpgrade  string `json:"pre_upgrade"`
 	PostUpgrade string `json:"post_upgrade"`
-	Passed    bool   `json:"passed"`
+	Passed      bool   `json:"passed"`
 }
 
 type FailureServiceImpact struct {
-	ServiceDowntime   time.Duration `json:"service_downtime_ms"`
-	RequestsLost      int           `json:"requests_lost"`
-	UserImpactLevel   string        `json:"user_impact_level"`
-	DataLossOccurred  bool          `json:"data_loss_occurred"`
+	ServiceDowntime  time.Duration `json:"service_downtime_ms"`
+	RequestsLost     int           `json:"requests_lost"`
+	UserImpactLevel  string        `json:"user_impact_level"`
+	DataLossOccurred bool          `json:"data_loss_occurred"`
 }
 
 type FailureValidation struct {
@@ -198,9 +198,9 @@ type VNFLifecyclePerformanceMetrics struct {
 
 // VNF test scenarios covering different types and configurations
 var vnfLifecycleScenarios = []struct {
-	name        string
-	vnfSpec     manov1alpha1.VNFSpec
-	description string
+	name          string
+	vnfSpec       manov1alpha1.VNFSpec
+	description   string
 	targetMetrics VNFPerformanceTarget
 }{
 	{
@@ -228,9 +228,9 @@ var vnfLifecycleScenarios = []struct {
 		},
 		description: "Edge UPF with ultra-low latency requirements",
 		targetMetrics: VNFPerformanceTarget{
-			MaxCreationTime:  30 * time.Second,
+			MaxCreationTime:   30 * time.Second,
 			MaxDeploymentTime: 2 * time.Minute,
-			MaxReadinessTime: 1 * time.Minute,
+			MaxReadinessTime:  1 * time.Minute,
 		},
 	},
 	{
@@ -258,9 +258,9 @@ var vnfLifecycleScenarios = []struct {
 		},
 		description: "Regional AMF with balanced requirements",
 		targetMetrics: VNFPerformanceTarget{
-			MaxCreationTime:  45 * time.Second,
+			MaxCreationTime:   45 * time.Second,
 			MaxDeploymentTime: 3 * time.Minute,
-			MaxReadinessTime: 2 * time.Minute,
+			MaxReadinessTime:  2 * time.Minute,
 		},
 	},
 	{
@@ -288,9 +288,9 @@ var vnfLifecycleScenarios = []struct {
 		},
 		description: "Central SMF with high bandwidth requirements",
 		targetMetrics: VNFPerformanceTarget{
-			MaxCreationTime:  60 * time.Second,
+			MaxCreationTime:   60 * time.Second,
 			MaxDeploymentTime: 4 * time.Minute,
-			MaxReadinessTime: 3 * time.Minute,
+			MaxReadinessTime:  3 * time.Minute,
 		},
 	},
 }
@@ -710,13 +710,13 @@ func setupVNFLifecycleSuite() *VNFLifecycleSuite {
 	suite := &VNFLifecycleSuite{
 		createdVNFs: make([]string, 0),
 		testResults: &VNFLifecycleTestResults{
-			TestStartTime:     time.Now(),
-			LifecycleTests:    make([]VNFLifecycleTestResult, 0),
-			OperatorTests:     make([]VNFOperatorTestResult, 0),
-			ScaleTests:        make([]VNFScaleTestResult, 0),
-			UpgradeTests:      make([]VNFUpgradeTestResult, 0),
-			FailureTests:      make([]VNFFailureTestResult, 0),
-			Errors:            make([]string, 0),
+			TestStartTime:  time.Now(),
+			LifecycleTests: make([]VNFLifecycleTestResult, 0),
+			OperatorTests:  make([]VNFOperatorTestResult, 0),
+			ScaleTests:     make([]VNFScaleTestResult, 0),
+			UpgradeTests:   make([]VNFUpgradeTestResult, 0),
+			FailureTests:   make([]VNFFailureTestResult, 0),
+			Errors:         make([]string, 0),
 		},
 	}
 
@@ -956,7 +956,7 @@ func (s *VNFLifecycleSuite) testVNFOperatorCreationHandling() VNFOperatorTestRes
 	result.EventsHandled = 1
 	result.ReconcileLoops = 2
 	result.ControllerMetrics = VNFControllerMetrics{
-		ReconcileRate:        2.0,  // 2 reconciles per second
+		ReconcileRate:        2.0,   // 2 reconciles per second
 		AverageReconcileTime: 500.0, // 500ms average
 		ErrorRate:            0.0,   // 0% error rate
 		QueueDepth:           0,     // No queue backlog
@@ -1024,9 +1024,9 @@ func (s *VNFLifecycleSuite) testVNFScaling(vnfName string, fromReplicas, toRepli
 	result.ScaleTime = time.Since(start)
 	result.StabilizationTime = 15 * time.Second
 	result.ResourceImpact = ScaleResourceImpact{
-		CPUDelta: float64(toReplicas-fromReplicas) * 25.0, // 25% per replica
+		CPUDelta:    float64(toReplicas-fromReplicas) * 25.0, // 25% per replica
 		MemoryDelta: float64(toReplicas-fromReplicas) * 20.0, // 20% per replica
-		CostImpact: float64(toReplicas-fromReplicas) * 15.0, // 15% per replica
+		CostImpact:  float64(toReplicas-fromReplicas) * 15.0, // 15% per replica
 	}
 	result.Success = true
 
@@ -1034,7 +1034,7 @@ func (s *VNFLifecycleSuite) testVNFScaling(vnfName string, fromReplicas, toRepli
 }
 
 func (s *VNFLifecycleSuite) createVNFWithAutoScaling(vnfSpec manov1alpha1.VNFSpec) struct {
-	Success bool
+	Success      bool
 	ErrorMessage string
 } {
 	// TODO: Implement VNF creation with auto-scaling configuration
@@ -1068,11 +1068,11 @@ func (s *VNFLifecycleSuite) validateAutoScaling(vnfName string) VNFScaleTestResu
 
 func (s *VNFLifecycleSuite) testVNFUpgrade(vnfName, fromVersion, toVersion, strategy string) VNFUpgradeTestResult {
 	result := VNFUpgradeTestResult{
-		TestName:        fmt.Sprintf("upgrade_%s_%s_to_%s", vnfName, fromVersion, toVersion),
-		VNFName:         vnfName,
-		FromVersion:     fromVersion,
-		ToVersion:       toVersion,
-		UpgradeStrategy: strategy,
+		TestName:          fmt.Sprintf("upgrade_%s_%s_to_%s", vnfName, fromVersion, toVersion),
+		VNFName:           vnfName,
+		FromVersion:       fromVersion,
+		ToVersion:         toVersion,
+		UpgradeStrategy:   strategy,
 		ValidationResults: make([]UpgradeValidation, 0),
 	}
 
@@ -1102,13 +1102,13 @@ func (s *VNFLifecycleSuite) testVNFUpgrade(vnfName, fromVersion, toVersion, stra
 
 func (s *VNFLifecycleSuite) testVNFUpgradeRollback(vnfName, targetVersion string) VNFUpgradeTestResult {
 	result := VNFUpgradeTestResult{
-		TestName:        fmt.Sprintf("rollback_%s_to_%s", vnfName, targetVersion),
-		VNFName:         vnfName,
-		ToVersion:       targetVersion,
-		UpgradeStrategy: "rollback",
-		UpgradeTime:     90 * time.Second,
+		TestName:         fmt.Sprintf("rollback_%s_to_%s", vnfName, targetVersion),
+		VNFName:          vnfName,
+		ToVersion:        targetVersion,
+		UpgradeStrategy:  "rollback",
+		UpgradeTime:      90 * time.Second,
 		DowntimeDuration: 10 * time.Second,
-		Success:         true,
+		Success:          true,
 	}
 
 	return result

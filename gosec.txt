@@ -1,0 +1,343 @@
+Results:
+
+
+[C:\Users\thc1006\Desktop\dev\O-RAN-Intent-MANO-for-Network-Slicing\pkg\security\filepath.go:503] - G304 (CWE-22): Potential file inclusion via variable (Confidence: HIGH, Severity: MEDIUM)
+    502: 	// Create file with secure permissions using the validated path
+  > 503: 	return os.OpenFile(cleanPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, SecureFileMode)
+    504: }
+
+Autofix: Consider using os.Root to scope file access under a fixed root (Go >=1.24). Prefer root.Open/root.Stat over os.Open/os.Stat to prevent directory traversal.
+
+[C:\Users\thc1006\Desktop\dev\O-RAN-Intent-MANO-for-Network-Slicing\pkg\security\filepath.go:176] - G304 (CWE-22): Potential file inclusion via variable (Confidence: HIGH, Severity: MEDIUM)
+    175: 
+  > 176: 	return os.Open(finalPath)
+    177: }
+
+Autofix: Consider using os.Root to scope file access under a fixed root (Go >=1.24). Prefer root.Open/root.Stat over os.Open/os.Stat to prevent directory traversal.
+
+[C:\Users\thc1006\Desktop\dev\O-RAN-Intent-MANO-for-Network-Slicing\pkg\security\filepath.go:155] - G304 (CWE-22): Potential file inclusion via variable (Confidence: HIGH, Severity: MEDIUM)
+    154: 
+  > 155: 	return os.ReadFile(finalPath)
+    156: }
+
+Autofix: Consider using os.Root to scope file access under a fixed root (Go >=1.24). Prefer root.Open/root.Stat over os.Open/os.Stat to prevent directory traversal.
+
+[C:\Users\thc1006\Desktop\dev\O-RAN-Intent-MANO-for-Network-Slicing\tn\agent\pkg\agent_mock.go:38-43] - G104 (CWE-703): Errors unhandled (Confidence: HIGH, Severity: LOW)
+    37: 			w.WriteHeader(http.StatusOK)
+  > 38: 			w.Write([]byte(`{
+  > 39: 				"healthy": true,
+  > 40: 				"vxlanStatus": {"tunnelUp": true},
+  > 41: 				"tcStatus": {"rulesActive": true, "shapingActive": true},
+  > 42: 				"bandwidthUsage": {"eth0": {"rx": 1000, "tx": 1000}}
+  > 43: 			}`))
+    44: 		default:
+
+Autofix: 
+
+[C:\Users\thc1006\Desktop\dev\O-RAN-Intent-MANO-for-Network-Slicing\tn\agent\pkg\agent_mock.go:32] - G104 (CWE-703): Errors unhandled (Confidence: HIGH, Severity: LOW)
+    31: 				w.WriteHeader(http.StatusOK)
+  > 32: 				w.Write([]byte(`{"status":"healthy"}`))
+    33: 			} else {
+
+Autofix: 
+
+[C:\Users\thc1006\Desktop\dev\O-RAN-Intent-MANO-for-Network-Slicing\tests\framework\testutils\reporter.go:74] - G104 (CWE-703): Errors unhandled (Confidence: HIGH, Severity: LOW)
+    73: 	outputDir := filepath.Join(".", "test-results")
+  > 74: 	os.MkdirAll(outputDir, security.SecureDirMode)
+    75: 
+
+Autofix: 
+
+[C:\Users\thc1006\Desktop\dev\O-RAN-Intent-MANO-for-Network-Slicing\tests\framework\dashboard\metrics_aggregator.go:752] - G104 (CWE-703): Errors unhandled (Confidence: HIGH, Severity: LOW)
+    751: 	if subscriber, exists := ma.subscribers[id]; exists {
+  > 752: 		subscriber.Conn.Close()
+    753: 		delete(ma.subscribers, id)
+
+Autofix: 
+
+[C:\Users\thc1006\Desktop\dev\O-RAN-Intent-MANO-for-Network-Slicing\pkg\security\subprocess.go:604] - G104 (CWE-703): Errors unhandled (Confidence: HIGH, Severity: LOW)
+    603: 	var result uint32
+  > 604: 	fmt.Sscanf(s, "%d", &result)
+    605: 	return result
+
+Autofix: 
+
+[C:\Users\thc1006\Desktop\dev\O-RAN-Intent-MANO-for-Network-Slicing\pkg\security\subprocess.go:597] - G104 (CWE-703): Errors unhandled (Confidence: HIGH, Severity: LOW)
+    596: 	var result int
+  > 597: 	fmt.Sscanf(s, "%d", &result)
+    598: 	return result
+
+Autofix: 
+
+[C:\Users\thc1006\Desktop\dev\O-RAN-Intent-MANO-for-Network-Slicing\pkg\security\subprocess.go:234-246] - G104 (CWE-703): Errors unhandled (Confidence: HIGH, Severity: LOW)
+    233: 	// cp command allowlist (for file copying in validators)
+  > 234: 	se.RegisterCommand(&AllowedCommand{
+  > 235: 		Command: "cp",
+  > 236: 		AllowedArgs: map[string]bool{
+  > 237: 			"-r": true, "-R": true, "-p": true, "-a": true,
+  > 238: 		},
+  > 239: 		ArgPatterns: []string{
+  > 240: 			`^[a-zA-Z0-9\-_\./]+$`,       // File and directory paths
+  > 241: 			`^.*\/\.$`,                   // Copy to directory patterns
+  > 242: 		},
+  > 243: 		MaxArgs:     5,
+  > 244: 		Timeout:     30 * time.Second,
+  > 245: 		Description: "File copy utility (restricted paths)",
+  > 246: 	})
+    247: }
+
+Autofix: 
+
+[C:\Users\thc1006\Desktop\dev\O-RAN-Intent-MANO-for-Network-Slicing\pkg\security\subprocess.go:218-231] - G104 (CWE-703): Errors unhandled (Confidence: HIGH, Severity: LOW)
+    217: 	// kpt command allowlist (for Nephio package management)
+  > 218: 	se.RegisterCommand(&AllowedCommand{
+  > 219: 		Command: "kpt",
+  > 220: 		AllowedArgs: map[string]bool{
+  > 221: 			"fn": true, "render": true, "pkg": true, "get": true, "live": true,
+  > 222: 			"init": true, "apply": true, "status": true, "destroy": true,
+  > 223: 		},
+  > 224: 		ArgPatterns: []string{
+  > 225: 			`^[a-zA-Z0-9\-_\./]+$`,       // Package paths and names
+  > 226: 			`^https?://[a-zA-Z0-9\-\._~/]+$`, // Git URLs
+  > 227: 		},
+  > 228: 		MaxArgs:     10,
+  > 229: 		Timeout:     120 * time.Second,
+  > 230: 		Description: "Kubernetes package tool (restricted operations)",
+  > 231: 	})
+    232: 
+
+Autofix: 
+
+[C:\Users\thc1006\Desktop\dev\O-RAN-Intent-MANO-for-Network-Slicing\pkg\security\subprocess.go:190-215] - G104 (CWE-703): Errors unhandled (Confidence: HIGH, Severity: LOW)
+    189: 	// git command allowlist
+  > 190: 	se.RegisterCommand(&AllowedCommand{
+  > 191: 		Command: "git",
+  > 192: 		AllowedArgs: map[string]bool{
+  > 193: 			"config": true, "rev-parse": true, "log": true, "status": true, "diff": true,
+  > 194: 			"fetch": true, "pull": true, "push": true, "checkout": true, "branch": true,
+  > 195: 			"reset": true, "show": true, "remote": true, "tag": true, "rev-list": true,
+  > 196: 			"diff-tree": true, "--git-dir": true, "--abbrev-ref": true, "--porcelain": true,
+  > 197: 			"--pretty=format:%H|%an|%ae|%ct|%s": true, "--no-commit-id": true, "--name-only": true,
+  > 198: 			"-r": true, "-1": true, "--left-right": true, "--count": true, "get-url": true,
+  > 199: 			"--sort=-version:refname": true, "-v": true, "-b": true, "--hard": true,
+  > 200: 			"--local": true, "credential.helper": true, "store": true, "origin": true,
+  > 201: 			"HEAD": true, "HEAD...@{upstream}": true,
+  > 202: 		},
+  > 203: 		ArgPatterns: []string{
+  > 204: 			`^[a-fA-F0-9]{7,40}$`,                    // Git commit hashes
+  > 205: 			`^[a-zA-Z0-9\-_\./]+$`,                   // Branch names, tag names, file paths
+  > 206: 			`^origin$`,                               // Remote name
+  > 207: 			`^HEAD(\.\.\.\@\{upstream\})?$`,          // HEAD references
+  > 208: 			`^--pretty=format:%[HanectmsSd\|]+$`,     // Pretty format strings
+  > 209: 			`^\d{1,3}$`,                              // Numeric limits
+  > 210: 			`^backup-\d+$`,                           // Backup branch names
+  > 211: 		},
+  > 212: 		MaxArgs:     15,
+  > 213: 		Timeout:     60 * time.Second,
+  > 214: 		Description: "Git version control system (restricted operations)",
+  > 215: 	})
+    216: 
+
+Autofix: 
+
+[C:\Users\thc1006\Desktop\dev\O-RAN-Intent-MANO-for-Network-Slicing\pkg\security\subprocess.go:175-187] - G104 (CWE-703): Errors unhandled (Confidence: HIGH, Severity: LOW)
+    174: 	// pgrep command allowlist (for finding processes)
+  > 175: 	se.RegisterCommand(&AllowedCommand{
+  > 176: 		Command: "pgrep",
+  > 177: 		AllowedArgs: map[string]bool{
+  > 178: 			"-f": true, "-x": true, "-l": true, "-u": true, "-g": true,
+  > 179: 		},
+  > 180: 		ArgPatterns: []string{
+  > 181: 			`^iperf3.*-p.*\d{1,5}$`,       // iperf3 processes with port
+  > 182: 			`^[a-zA-Z0-9\-_\.\s]+$`,       // Simple process names/patterns
+  > 183: 		},
+  > 184: 		MaxArgs:     5,
+  > 185: 		Timeout:     5 * time.Second,
+  > 186: 		Description: "Process finding utility (restricted patterns)",
+  > 187: 	})
+    188: 
+
+Autofix: 
+
+[C:\Users\thc1006\Desktop\dev\O-RAN-Intent-MANO-for-Network-Slicing\pkg\security\subprocess.go:161-172] - G104 (CWE-703): Errors unhandled (Confidence: HIGH, Severity: LOW)
+    160: 	// cat command allowlist (for safe file reading)
+  > 161: 	se.RegisterCommand(&AllowedCommand{
+  > 162: 		Command: "cat",
+  > 163: 		AllowedArgs: map[string]bool{},
+  > 164: 		ArgPatterns: []string{
+  > 165: 			`^/proc/net/dev$`,             // Network device statistics
+  > 166: 			`^/proc/[0-9]+/stat$`,         // Process statistics
+  > 167: 			`^/sys/class/net/[a-zA-Z0-9\-_\.]+/statistics/.*$`, // Network interface statistics
+  > 168: 		},
+  > 169: 		MaxArgs:     3,
+  > 170: 		Timeout:     5 * time.Second,
+  > 171: 		Description: "File reading utility (restricted paths)",
+  > 172: 	})
+    173: 
+
+Autofix: 
+
+[C:\Users\thc1006\Desktop\dev\O-RAN-Intent-MANO-for-Network-Slicing\pkg\security\subprocess.go:146-158] - G104 (CWE-703): Errors unhandled (Confidence: HIGH, Severity: LOW)
+    145: 	// pkill command allowlist (limited to specific patterns)
+  > 146: 	se.RegisterCommand(&AllowedCommand{
+  > 147: 		Command: "pkill",
+  > 148: 		AllowedArgs: map[string]bool{
+  > 149: 			"-f": true, "-x": true, "-u": true, "-g": true,
+  > 150: 		},
+  > 151: 		ArgPatterns: []string{
+  > 152: 			`^iperf3.*-p \d{1,5}$`,        // iperf3 processes with specific port
+  > 153: 			`^[a-zA-Z0-9\-_\.\s]+$`,       // Simple process names/patterns
+  > 154: 		},
+  > 155: 		MaxArgs:     5,
+  > 156: 		Timeout:     5 * time.Second,
+  > 157: 		Description: "Process killing utility (restricted patterns)",
+  > 158: 	})
+    159: 
+
+Autofix: 
+
+[C:\Users\thc1006\Desktop\dev\O-RAN-Intent-MANO-for-Network-Slicing\pkg\security\subprocess.go:127-143] - G104 (CWE-703): Errors unhandled (Confidence: HIGH, Severity: LOW)
+    126: 	// ping command allowlist
+  > 127: 	se.RegisterCommand(&AllowedCommand{
+  > 128: 		Command: "ping",
+  > 129: 		AllowedArgs: map[string]bool{
+  > 130: 			"-c": true, "-i": true, "-W": true, "-w": true, "-s": true,
+  > 131: 			"-I": true, "-t": true, "-q": true, "-n": true,
+  > 132: 		},
+  > 133: 		ArgPatterns: []string{
+  > 134: 			`^\d{1,3}$`,                   // Count, interval, timeout values
+  > 135: 			`^\d{1,4}$`,                   // Packet size
+  > 136: 			`^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$`, // IPv4 addresses
+  > 137: 			`^[0-9a-fA-F:]+$`,             // IPv6 addresses
+  > 138: 			`^[a-zA-Z0-9\-_\.]+$`,         // Interface names and hostnames
+  > 139: 		},
+  > 140: 		MaxArgs:     15,
+  > 141: 		Timeout:     30 * time.Second,
+  > 142: 		Description: "Ping utility for connectivity testing",
+  > 143: 	})
+    144: 
+
+Autofix: 
+
+[C:\Users\thc1006\Desktop\dev\O-RAN-Intent-MANO-for-Network-Slicing\pkg\security\subprocess.go:110-124] - G104 (CWE-703): Errors unhandled (Confidence: HIGH, Severity: LOW)
+    109: 	// bridge command allowlist (for VXLAN FDB management)
+  > 110: 	se.RegisterCommand(&AllowedCommand{
+  > 111: 		Command: "bridge",
+  > 112: 		AllowedArgs: map[string]bool{
+  > 113: 			"fdb": true, "add": true, "del": true, "append": true, "show": true,
+  > 114: 			"dev": true, "dst": true, "permanent": true, "temp": true,
+  > 115: 		},
+  > 116: 		ArgPatterns: []string{
+  > 117: 			`^[a-fA-F0-9]{2}:[a-fA-F0-9]{2}:[a-fA-F0-9]{2}:[a-fA-F0-9]{2}:[a-fA-F0-9]{2}:[a-fA-F0-9]{2}$`, // MAC addresses
+  > 118: 			`^[a-zA-Z0-9\-_\.]+$`,         // Interface names
+  > 119: 			`^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$`, // IPv4 addresses
+  > 120: 		},
+  > 121: 		MaxArgs:     10,
+  > 122: 		Timeout:     5 * time.Second,
+  > 123: 		Description: "Bridge utility for FDB management",
+  > 124: 	})
+    125: 
+
+Autofix: 
+
+[C:\Users\thc1006\Desktop\dev\O-RAN-Intent-MANO-for-Network-Slicing\pkg\security\subprocess.go:89-107] - G104 (CWE-703): Errors unhandled (Confidence: HIGH, Severity: LOW)
+    88: 	// ip command allowlist
+  > 89: 	se.RegisterCommand(&AllowedCommand{
+  > 90: 		Command: "ip",
+  > 91: 		AllowedArgs: map[string]bool{
+  > 92: 			"link": true, "addr": true, "add": true, "del": true, "set": true, "show": true,
+  > 93: 			"type": true, "vxlan": true, "id": true, "dstport": true, "local": true,
+  > 94: 			"learning": true, "nolearning": true, "mtu": true, "up": true, "down": true,
+  > 95: 			"dev": true, "delete": true, "-s": true, "-d": true,
+  > 96: 		},
+  > 97: 		ArgPatterns: []string{
+  > 98: 			`^[a-zA-Z0-9\-_\.]+$`,         // Interface names and device names
+  > 99: 			`^\d{1,5}$`,                   // Port numbers and VNI values
+  > 100: 			`^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$`, // IPv4 addresses
+  > 101: 			`^(?:[0-9]{1,3}\.){3}[0-9]{1,3}/\d{1,2}$`, // IPv4 CIDR notation
+  > 102: 			`^\d{1,4}$`,                   // MTU values
+  > 103: 		},
+  > 104: 		MaxArgs:     15,
+  > 105: 		Timeout:     10 * time.Second,
+  > 106: 		Description: "IP utility for network interface management",
+  > 107: 	})
+    108: 
+
+Autofix: 
+
+[C:\Users\thc1006\Desktop\dev\O-RAN-Intent-MANO-for-Network-Slicing\pkg\security\subprocess.go:68-86] - G104 (CWE-703): Errors unhandled (Confidence: HIGH, Severity: LOW)
+    67: 	// tc (traffic control) command allowlist
+  > 68: 	se.RegisterCommand(&AllowedCommand{
+  > 69: 		Command: "tc",
+  > 70: 		AllowedArgs: map[string]bool{
+  > 71: 			"qdisc": true, "add": true, "del": true, "show": true, "replace": true,
+  > 72: 			"dev": true, "root": true, "handle": true, "htb": true, "default": true,
+  > 73: 			"class": true, "rate": true, "ceil": true, "burst": true, "cburst": true,
+  > 74: 			"prio": true, "-s": true, "-d": true,
+  > 75: 		},
+  > 76: 		ArgPatterns: []string{
+  > 77: 			`^[a-zA-Z0-9\-_\.]+$`,         // Interface names
+  > 78: 			`^\d+:?$`,                     // Handle IDs (1:, 10:0)
+  > 79: 			`^\d+(\.\d+)?[KMG]?bit$`,      // Rate values (10Mbit, 1Gbit)
+  > 80: 			`^\d+[KMG]?b$`,                // Burst values (1Kb, 10Mb)
+  > 81: 			`^\d+$`,                       // Numeric values
+  > 82: 		},
+  > 83: 		MaxArgs:     15,
+  > 84: 		Timeout:     10 * time.Second,
+  > 85: 		Description: "Traffic control utility for bandwidth shaping",
+  > 86: 	})
+    87: 
+
+Autofix: 
+
+[C:\Users\thc1006\Desktop\dev\O-RAN-Intent-MANO-for-Network-Slicing\pkg\security\subprocess.go:49-65] - G104 (CWE-703): Errors unhandled (Confidence: HIGH, Severity: LOW)
+    48: 	// iperf3 command allowlist
+  > 49: 	se.RegisterCommand(&AllowedCommand{
+  > 50: 		Command: "iperf3",
+  > 51: 		AllowedArgs: map[string]bool{
+  > 52: 			"-s": true, "-c": true, "-p": true, "-t": true, "-u": true,
+  > 53: 			"-b": true, "-P": true, "-w": true, "-i": true, "-R": true,
+  > 54: 			"--bidir": true, "-J": true, "-D": true, "-V": true, "-h": true,
+  > 55: 		},
+  > 56: 		ArgPatterns: []string{
+  > 57: 			`^\d{1,5}$`,                    // Port numbers (1-65535)
+  > 58: 			`^\d+(\.\d+)?[KMG]?$`,         // Bandwidth values (e.g., 10M, 1G)
+  > 59: 			`^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$`, // IPv4 addresses
+  > 60: 			`^[0-9a-fA-F:]+$`,             // IPv6 addresses
+  > 61: 		},
+  > 62: 		MaxArgs:     20,
+  > 63: 		Timeout:     300 * time.Second, // 5 minutes for network tests
+  > 64: 		Description: "iperf3 network performance testing tool",
+  > 65: 	})
+    66: 
+
+Autofix: 
+
+[C:\Users\thc1006\Desktop\dev\O-RAN-Intent-MANO-for-Network-Slicing\pkg\security\logging.go:48] - G104 (CWE-703): Errors unhandled (Confidence: HIGH, Severity: LOW)
+    47: 	bytes := make([]byte, 4)
+  > 48: 	rand.Read(bytes)
+    49: 	return hex.EncodeToString(bytes)
+
+Autofix: 
+
+[C:\Users\thc1006\Desktop\dev\O-RAN-Intent-MANO-for-Network-Slicing\clusters\validation-framework\git_repository.go:159] - G104 (CWE-703): Errors unhandled (Confidence: HIGH, Severity: LOW)
+    158: 	}
+  > 159: 	os.Setenv("GIT_SSH_COMMAND", sshCmd)
+    160: 
+
+Autofix: 
+
+[C:\Users\thc1006\Desktop\dev\O-RAN-Intent-MANO-for-Network-Slicing\architecture\nephio-adapter-controller.go:544] - G104 (CWE-703): Errors unhandled (Confidence: HIGH, Severity: LOW)
+    543: 	intent.Status.Message = message
+  > 544: 	r.Status().Update(ctx, intent)
+    545: }
+
+Autofix: 
+
+Summary:
+  Gosec  : dev
+  Files  : 85
+  Lines  : 41167
+  Nosec  : 28
+  Issues : 23
+

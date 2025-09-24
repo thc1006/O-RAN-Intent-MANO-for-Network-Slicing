@@ -14,20 +14,20 @@ import (
 
 // MockMetricsProvider is provided by metrics_mock.go - removed duplicate implementation
 
-// IntelligentPlacementPolicy is a mock implementation for testing
-type IntelligentPlacementPolicy struct {
+// IntelligentPolicy is a mock implementation for testing
+type IntelligentPolicy struct {
 	metricsProvider MetricsProvider
 }
 
-func NewIntelligentPlacementPolicy(provider MetricsProvider) *IntelligentPlacementPolicy {
-	return &IntelligentPlacementPolicy{
+func NewIntelligentPolicy(provider MetricsProvider) *IntelligentPolicy {
+	return &IntelligentPolicy{
 		metricsProvider: provider,
 	}
 }
 
-func (p *IntelligentPlacementPolicy) Place(nf *NetworkFunction, sites []*Site) (*PlacementDecision, error) {
+func (p *IntelligentPolicy) Place(nf *NetworkFunction, sites []*Site) (*Decision, error) {
 	if len(sites) == 0 {
-		return nil, &PlacementError{
+		return nil, &Error{
 			Code:    ErrNoSuitableSite,
 			Message: "No sites available for placement",
 		}
@@ -52,7 +52,7 @@ func (p *IntelligentPlacementPolicy) Place(nf *NetworkFunction, sites []*Site) (
 	}
 
 	if bestSite == nil {
-		return nil, &PlacementError{
+		return nil, &Error{
 			Code:    ErrNoSuitableSite,
 			Message: "No suitable site found for placement",
 		}
@@ -63,18 +63,18 @@ func (p *IntelligentPlacementPolicy) Place(nf *NetworkFunction, sites []*Site) (
 		return alternatives[i].Score > alternatives[j].Score
 	})
 
-	return &PlacementDecision{
+	return &Decision{
 		NetworkFunction: nf,
-		Site:           bestSite,
-		Score:          bestScore,
-		Reason:         fmt.Sprintf("Selected site %s with score %.2f", bestSite.Name, bestScore),
-		Alternatives:   alternatives,
-		Timestamp:      time.Now(),
+		Site:            bestSite,
+		Score:           bestScore,
+		Reason:          fmt.Sprintf("Selected site %s with score %.2f", bestSite.Name, bestScore),
+		Alternatives:    alternatives,
+		Timestamp:       time.Now(),
 	}, nil
 }
 
-func (p *IntelligentPlacementPolicy) PlaceMultiple(nfs []*NetworkFunction, sites []*Site) ([]*PlacementDecision, error) {
-	decisions := make([]*PlacementDecision, 0, len(nfs))
+func (p *IntelligentPolicy) PlaceMultiple(nfs []*NetworkFunction, sites []*Site) ([]*Decision, error) {
+	decisions := make([]*Decision, 0, len(nfs))
 
 	for _, nf := range nfs {
 		decision, err := p.Place(nf, sites)
@@ -87,12 +87,12 @@ func (p *IntelligentPlacementPolicy) PlaceMultiple(nfs []*NetworkFunction, sites
 	return decisions, nil
 }
 
-func (p *IntelligentPlacementPolicy) Rebalance(decisions []*PlacementDecision, sites []*Site) ([]*PlacementDecision, error) {
+func (p *IntelligentPolicy) Rebalance(decisions []*Decision, _ []*Site) ([]*Decision, error) {
 	// Mock rebalancing logic
 	return decisions, nil
 }
 
-func (p *IntelligentPlacementPolicy) calculatePlacementScore(nf *NetworkFunction, site *Site) float64 {
+func (p *IntelligentPolicy) calculatePlacementScore(nf *NetworkFunction, site *Site) float64 {
 	score := 0.0
 
 	// Resource availability score (0-30 points)
@@ -119,7 +119,7 @@ func (p *IntelligentPlacementPolicy) calculatePlacementScore(nf *NetworkFunction
 	return score
 }
 
-func (p *IntelligentPlacementPolicy) calculateResourceScore(nf *NetworkFunction, site *Site) float64 {
+func (p *IntelligentPolicy) calculateResourceScore(nf *NetworkFunction, site *Site) float64 {
 	// Check if site has sufficient resources
 	if site.Capacity.CPUCores < nf.Requirements.MinCPUCores ||
 		site.Capacity.MemoryGB < nf.Requirements.MinMemoryGB ||
@@ -141,7 +141,7 @@ func (p *IntelligentPlacementPolicy) calculateResourceScore(nf *NetworkFunction,
 	return (cpuScore + memoryScore) / 2.0
 }
 
-func (p *IntelligentPlacementPolicy) calculateQoSScore(nf *NetworkFunction, site *Site) float64 {
+func (p *IntelligentPolicy) calculateQoSScore(nf *NetworkFunction, site *Site) float64 {
 	score := 0.0
 
 	// Latency score
@@ -169,11 +169,11 @@ func (p *IntelligentPlacementPolicy) calculateQoSScore(nf *NetworkFunction, site
 	return score
 }
 
-func (p *IntelligentPlacementPolicy) calculateHintsScore(nf *NetworkFunction, site *Site) float64 {
+func (p *IntelligentPolicy) calculateHintsScore(nf *NetworkFunction, site *Site) float64 {
 	score := 0.0
 	totalWeight := 0
 
-	for _, hint := range nf.PlacementHints {
+	for _, hint := range nf.Hints {
 		totalWeight += hint.Weight
 
 		switch hint.Type {
@@ -195,7 +195,7 @@ func (p *IntelligentPlacementPolicy) calculateHintsScore(nf *NetworkFunction, si
 	return 50.0 // Default score if no hints
 }
 
-func (p *IntelligentPlacementPolicy) calculateEfficiencyScore(site *Site) float64 {
+func (p *IntelligentPolicy) calculateEfficiencyScore(site *Site) float64 {
 	metrics, _ := p.metricsProvider.GetMetrics(site.ID)
 	if metrics == nil {
 		return 50.0
@@ -207,11 +207,11 @@ func (p *IntelligentPlacementPolicy) calculateEfficiencyScore(site *Site) float6
 	// Optimal utilization range: 30-70%
 	if avgUtilization >= 30.0 && avgUtilization <= 70.0 {
 		return 100.0
-	} else if avgUtilization < 30.0 {
-		return 50.0 + (avgUtilization / 30.0) * 50.0
-	} else {
-		return 100.0 - ((avgUtilization - 70.0) / 30.0) * 50.0
 	}
+	if avgUtilization < 30.0 {
+		return 50.0 + (avgUtilization/30.0)*50.0
+	}
+	return 100.0 - ((avgUtilization-70.0)/30.0)*50.0
 }
 
 // PlacementTestSuite provides comprehensive test suite for placement policies
@@ -219,7 +219,7 @@ type PlacementTestSuite struct {
 	suite.Suite
 	ctx             context.Context
 	cancel          context.CancelFunc
-	placement       PlacementPolicy
+	placement       Policy
 	testSites       []*Site
 	testNFs         []*NetworkFunction
 	metricsProvider *MockMetricsProvider
@@ -229,7 +229,7 @@ type PlacementTestSuite struct {
 func (suite *PlacementTestSuite) SetupSuite() {
 	suite.ctx, suite.cancel = context.WithTimeout(context.Background(), 30*time.Second)
 	suite.metricsProvider = NewMockMetricsProvider()
-	suite.placement = NewIntelligentPlacementPolicy(suite.metricsProvider)
+	suite.placement = NewIntelligentPolicy(suite.metricsProvider)
 	suite.setupTestData()
 }
 
@@ -365,12 +365,12 @@ func (suite *PlacementTestSuite) setupTestData() {
 				MinBandwidthMbps: 1000,
 			},
 			QoSRequirements: QoSRequirements{
-				MaxLatencyMs:      6.3, // Thesis target for emergency services
-				MinThroughputMbps: 4.57, // Thesis target for emergency services
+				MaxLatencyMs:      6.3,   // Thesis target for emergency services
+				MinThroughputMbps: 4.57,  // Thesis target for emergency services
 				MaxPacketLossRate: 0.001, // 99.9% reliability
 				MaxJitterMs:       0.5,
 			},
-			PlacementHints: []PlacementHint{
+			Hints: []Hint{
 				{
 					Type:   HintTypeLocation,
 					Value:  "us-east-1",
@@ -398,7 +398,7 @@ func (suite *PlacementTestSuite) setupTestData() {
 				MaxPacketLossRate: 0.001,
 				MaxJitterMs:       2.0,
 			},
-			PlacementHints: []PlacementHint{
+			Hints: []Hint{
 				{
 					Type:   HintTypeCloudType,
 					Value:  string(CloudTypeRegional),
@@ -418,10 +418,10 @@ func (suite *PlacementTestSuite) setupTestData() {
 			QoSRequirements: QoSRequirements{
 				MaxLatencyMs:      16.1, // Thesis target for IoT
 				MinThroughputMbps: 0.93, // Thesis target
-				MaxPacketLossRate: 0.01,  // 99% reliability
+				MaxPacketLossRate: 0.01, // 99% reliability
 				MaxJitterMs:       5.0,
 			},
-			PlacementHints: []PlacementHint{
+			Hints: []Hint{
 				{
 					Type:   HintTypeCloudType,
 					Value:  string(CloudTypeCentral),
@@ -433,7 +433,7 @@ func (suite *PlacementTestSuite) setupTestData() {
 }
 
 // Test Placement Policy initialization
-func (suite *PlacementTestSuite) TestPlacementPolicyInitialization() {
+func (suite *PlacementTestSuite) TestPolicyInitialization() {
 	assert.NotNil(suite.T(), suite.placement)
 	assert.NotNil(suite.T(), suite.metricsProvider)
 	assert.NotEmpty(suite.T(), suite.testSites)
@@ -441,7 +441,7 @@ func (suite *PlacementTestSuite) TestPlacementPolicyInitialization() {
 }
 
 // Test basic placement policy execution
-func (suite *PlacementTestSuite) TestBasicPlacementPolicy() {
+func (suite *PlacementTestSuite) TestBasicPolicy() {
 	nf := suite.testNFs[0] // emergency-upf
 	sites := suite.testSites
 
@@ -520,7 +520,7 @@ func (suite *PlacementTestSuite) TestResourceBasedPlacement() {
 		ID:   "resource-intensive",
 		Type: "UPF",
 		Requirements: ResourceRequirements{
-			MinCPUCores:      600, // High CPU requirement
+			MinCPUCores:      600,  // High CPU requirement
 			MinMemoryGB:      2400, // High memory requirement
 			MinStorageGB:     6000,
 			MinBandwidthMbps: 3000,
@@ -561,7 +561,7 @@ func (suite *PlacementTestSuite) TestConstraintBasedPlacement() {
 			MaxPacketLossRate: 0.0005,
 			MaxJitterMs:       1.0,
 		},
-		PlacementHints: []PlacementHint{
+		Hints: []Hint{
 			{
 				Type:   HintTypeLocation,
 				Value:  "us-east-1",
@@ -638,7 +638,7 @@ func (suite *PlacementTestSuite) TestPlacementFailureScenarios() {
 			MinBandwidthMbps: 50000,
 		},
 		QoSRequirements: QoSRequirements{
-			MaxLatencyMs:      0.1, // Impossible latency
+			MaxLatencyMs:      0.1,   // Impossible latency
 			MinThroughputMbps: 50000, // Impossible throughput
 			MaxPacketLossRate: 0.00001,
 			MaxJitterMs:       0.1,
@@ -666,7 +666,7 @@ func (suite *PlacementTestSuite) TestPlacementWithEmptySites() {
 	assert.Error(suite.T(), err)
 	assert.Nil(suite.T(), result)
 
-	placementErr, ok := err.(*PlacementError)
+	placementErr, ok := err.(*Error)
 	assert.True(suite.T(), ok)
 	assert.Equal(suite.T(), ErrNoSuitableSite, placementErr.Code)
 }
@@ -695,7 +695,7 @@ func (suite *PlacementTestSuite) TestConcurrentPlacement() {
 	numConcurrent := 10
 	nf := suite.testNFs[2] // iot-aggregator
 
-	resultChan := make(chan *PlacementDecision, numConcurrent)
+	resultChan := make(chan *Decision, numConcurrent)
 	errorChan := make(chan error, numConcurrent)
 
 	// Launch concurrent placement requests
@@ -711,7 +711,7 @@ func (suite *PlacementTestSuite) TestConcurrentPlacement() {
 	}
 
 	// Collect results
-	results := make([]*PlacementDecision, 0, numConcurrent)
+	results := make([]*Decision, 0, numConcurrent)
 	errors := make([]error, 0, numConcurrent)
 
 	for i := 0; i < numConcurrent; i++ {
@@ -774,13 +774,13 @@ func (suite *PlacementTestSuite) TestThesisPerformanceTargets() {
 
 	// Verify QoS targets are met for thesis scenarios
 	testCases := []struct {
-		nfIndex          int
-		maxLatencyTarget float64
+		nfIndex             int
+		maxLatencyTarget    float64
 		minThroughputTarget float64
 	}{
-		{0, 6.3, 4.57},   // emergency-upf: critical latency and throughput
-		{1, 15.7, 2.77},  // video-streaming-upf: video streaming targets
-		{2, 16.1, 0.93},  // iot-aggregator: IoT targets
+		{0, 6.3, 4.57},  // emergency-upf: critical latency and throughput
+		{1, 15.7, 2.77}, // video-streaming-upf: video streaming targets
+		{2, 16.1, 0.93}, // iot-aggregator: IoT targets
 	}
 
 	for _, tc := range testCases {
@@ -858,7 +858,7 @@ func TestPlacementScenarios(t *testing.T) {
 		name        string
 		nf          *NetworkFunction
 		expectedErr bool
-		assertions  func(t *testing.T, result *PlacementDecision)
+		assertions  func(t *testing.T, result *Decision)
 	}{
 		{
 			name: "Emergency URLLC Service",
@@ -879,7 +879,7 @@ func TestPlacementScenarios(t *testing.T) {
 				},
 			},
 			expectedErr: false,
-			assertions: func(t *testing.T, result *PlacementDecision) {
+			assertions: func(t *testing.T, result *Decision) {
 				assert.NotNil(t, result.Site)
 				assert.LessOrEqual(t, result.Site.NetworkProfile.BaseLatencyMs, 1.0)
 				assert.GreaterOrEqual(t, result.Site.NetworkProfile.MaxThroughputMbps, 100.0)
@@ -904,7 +904,7 @@ func TestPlacementScenarios(t *testing.T) {
 				},
 			},
 			expectedErr: false,
-			assertions: func(t *testing.T, result *PlacementDecision) {
+			assertions: func(t *testing.T, result *Decision) {
 				assert.NotNil(t, result.Site)
 				assert.GreaterOrEqual(t, result.Site.NetworkProfile.MaxThroughputMbps, 200.0)
 			},
@@ -928,7 +928,7 @@ func TestPlacementScenarios(t *testing.T) {
 				},
 			},
 			expectedErr: false,
-			assertions: func(t *testing.T, result *PlacementDecision) {
+			assertions: func(t *testing.T, result *Decision) {
 				assert.NotNil(t, result.Site)
 				// Any site should be able to handle low-priority IoT workloads
 			},
@@ -938,14 +938,14 @@ func TestPlacementScenarios(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			metricsProvider := NewMockMetricsProvider()
-			placement := NewIntelligentPlacementPolicy(metricsProvider)
+			placement := NewIntelligentPolicy(metricsProvider)
 
 			// Setup test sites
 			testSites := []*Site{
 				{
-					ID:   "test-edge",
-					Name: "Test Edge Site",
-					Type: CloudTypeEdge,
+					ID:       "test-edge",
+					Name:     "Test Edge Site",
+					Type:     CloudTypeEdge,
 					Location: Location{Region: "us-east-1"},
 					Capacity: ResourceCapacity{
 						CPUCores: 500, MemoryGB: 2000, StorageGB: 5000, BandwidthMbps: 5000,
@@ -956,9 +956,9 @@ func TestPlacementScenarios(t *testing.T) {
 					Available: true,
 				},
 				{
-					ID:   "test-central",
-					Name: "Test Central Site",
-					Type: CloudTypeCentral,
+					ID:       "test-central",
+					Name:     "Test Central Site",
+					Type:     CloudTypeCentral,
 					Location: Location{Region: "us-east-1"},
 					Capacity: ResourceCapacity{
 						CPUCores: 1000, MemoryGB: 4000, StorageGB: 10000, BandwidthMbps: 10000,
@@ -975,7 +975,7 @@ func TestPlacementScenarios(t *testing.T) {
 				metrics := &SiteMetrics{
 					Timestamp: time.Now(), CPUUtilization: 20.0, MemoryUtilization: 25.0,
 					AvailableBandwidthMbps: site.Capacity.BandwidthMbps * 0.8,
-					CurrentLatencyMs: site.NetworkProfile.BaseLatencyMs, ActiveNFs: 2,
+					CurrentLatencyMs:       site.NetworkProfile.BaseLatencyMs, ActiveNFs: 2,
 				}
 				metricsProvider.SetMetrics(site.ID, metrics)
 			}

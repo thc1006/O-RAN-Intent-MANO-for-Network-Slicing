@@ -461,7 +461,7 @@ func (se *StageExecutor) executeStageType(ctx context.Context, stage E2EStage, r
 }
 
 // executeGitSync executes Git synchronization
-func (se *StageExecutor) executeGitSync(ctx context.Context, stage E2EStage, result *E2EStageResult) error {
+func (se *StageExecutor) executeGitSync(ctx context.Context, _ E2EStage, result *E2EStageResult) error {
 	if se.pipeline.ValidationFramework.GitRepo == nil {
 		return fmt.Errorf("git repository not initialized")
 	}
@@ -512,9 +512,13 @@ func (se *StageExecutor) executePackageValidation(ctx context.Context, stage E2E
 }
 
 // executePackageSync executes package synchronization
-func (se *StageExecutor) executePackageSync(ctx context.Context, stage E2EStage, result *E2EStageResult) error {
-	// TODO: Implement package synchronization
+// TODO: Implement actual package synchronization logic
+func (se *StageExecutor) executePackageSync(_ context.Context, stage E2EStage, result *E2EStageResult) error {
+	// This is a placeholder implementation
+	// Actual implementation would sync packages across clusters
 	log.Printf("Package synchronization stage executed for stage: %s", stage.Name)
+
+	// Set success status (placeholder)
 	result.Success = true
 	return nil
 }
@@ -560,7 +564,7 @@ func (se *StageExecutor) executeDeployment(ctx context.Context, stage E2EStage, 
 }
 
 // executeHealthCheck executes health checks
-func (se *StageExecutor) executeHealthCheck(ctx context.Context, stage E2EStage, result *E2EStageResult) error {
+func (se *StageExecutor) executeHealthCheck(_ context.Context, stage E2EStage, result *E2EStageResult) error {
 	// Placeholder for health check implementation
 	log.Printf("Executing health checks...")
 	time.Sleep(2 * time.Second) // Simulate health check
@@ -601,7 +605,7 @@ func (se *StageExecutor) executePerformanceTest(ctx context.Context, stage E2ESt
 }
 
 // executeE2ETest executes end-to-end tests
-func (se *StageExecutor) executeE2ETest(ctx context.Context, stage E2EStage, result *E2EStageResult) error {
+func (se *StageExecutor) executeE2ETest(_ context.Context, stage E2EStage, result *E2EStageResult) error {
 	// Placeholder for E2E test implementation
 	log.Printf("Executing E2E tests...")
 	time.Sleep(5 * time.Second) // Simulate E2E tests
@@ -609,9 +613,13 @@ func (se *StageExecutor) executeE2ETest(ctx context.Context, stage E2EStage, res
 }
 
 // executeDriftCheck executes drift detection
-func (se *StageExecutor) executeDriftCheck(ctx context.Context, stage E2EStage, result *E2EStageResult) error {
-	// TODO: Implement drift detection
+// TODO: Implement actual drift detection logic
+func (se *StageExecutor) executeDriftCheck(_ context.Context, stage E2EStage, result *E2EStageResult) error {
+	// This is a placeholder implementation
+	// Actual implementation would check for configuration drift
 	log.Printf("Drift check stage executed for stage: %s", stage.Name)
+
+	// Set success status (placeholder)
 	result.Success = true
 	return nil
 }
@@ -761,21 +769,21 @@ func (e2e *E2EPipeline) generateReport(result *E2EResult) error {
 }
 
 // generateJSONReport generates a JSON report
-func (e2e *E2EPipeline) generateJSONReport(result *E2EResult) error {
+func (e2e *E2EPipeline) generateJSONReport(_ *E2EResult) error {
 	// Placeholder for JSON report generation
 	log.Printf("JSON report would be generated at: %s", e2e.Config.ReportConfig.OutputPath)
 	return nil
 }
 
 // generateYAMLReport generates a YAML report
-func (e2e *E2EPipeline) generateYAMLReport(result *E2EResult) error {
+func (e2e *E2EPipeline) generateYAMLReport(_ *E2EResult) error {
 	// Placeholder for YAML report generation
 	log.Printf("YAML report would be generated at: %s", e2e.Config.ReportConfig.OutputPath)
 	return nil
 }
 
 // generateHTMLReport generates an HTML report
-func (e2e *E2EPipeline) generateHTMLReport(result *E2EResult) error {
+func (e2e *E2EPipeline) generateHTMLReport(_ *E2EResult) error {
 	// Placeholder for HTML report generation
 	log.Printf("HTML report would be generated at: %s", e2e.Config.ReportConfig.OutputPath)
 	return nil

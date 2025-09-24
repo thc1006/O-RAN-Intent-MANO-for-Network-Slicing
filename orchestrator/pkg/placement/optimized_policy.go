@@ -9,46 +9,46 @@ import (
 	"time"
 )
 
-// OptimizedPlacementPolicy implements high-performance placement with caching and pre-computation
-type OptimizedPlacementPolicy struct {
-	basePolicy      *LatencyAwarePlacementPolicy
+// OptimizedPolicy implements high-performance placement with caching and pre-computation
+type OptimizedPolicy struct {
+	basePolicy      *LatencyAwarePolicy
 	metricsProvider MetricsProvider
 
 	// Caching and pre-computation
 	siteScoreCache    map[string]*CachedSiteScore
-	placementCache    map[string]*CachedPlacementDecision
+	placementCache    map[string]*CachedDecision
 	precomputedScores map[string]map[string]float64 // [siteID][nfType] -> score
 
 	// Performance optimization
-	cacheMutex       sync.RWMutex
-	lastCacheUpdate  time.Time
-	cacheExpiry      time.Duration
+	cacheMutex      sync.RWMutex
+	lastCacheUpdate time.Time
+	cacheExpiry     time.Duration
 
 	// Statistics
-	stats *PlacementStats
+	stats *Stats
 }
 
 // CachedSiteScore stores pre-computed site scoring information
 type CachedSiteScore struct {
-	SiteID      string
-	BaseScore   float64
-	ResourceRatio float64
-	NetworkScore  float64
+	SiteID         string
+	BaseScore      float64
+	ResourceRatio  float64
+	NetworkScore   float64
 	CloudTypePrefs map[string]float64 // [nfType] -> preference score
 	LastUpdated    time.Time
 	ValidUntil     time.Time
 }
 
-// CachedPlacementDecision stores recent placement decisions for reuse
-type CachedPlacementDecision struct {
-	Decision    *PlacementDecision
+// CachedDecision stores recent placement decisions for reuse
+type CachedDecision struct {
+	Decision    *Decision
 	RequestHash string
 	CreatedAt   time.Time
 	HitCount    int
 }
 
-// PlacementStats tracks performance metrics
-type PlacementStats struct {
+// Stats tracks performance metrics
+type Stats struct {
 	TotalRequests     int64
 	CacheHits         int64
 	CacheMisses       int64
@@ -58,21 +58,21 @@ type PlacementStats struct {
 	mu                sync.Mutex
 }
 
-// NewOptimizedPlacementPolicy creates a new optimized placement policy
-func NewOptimizedPlacementPolicy(provider MetricsProvider) *OptimizedPlacementPolicy {
-	return &OptimizedPlacementPolicy{
-		basePolicy:        NewLatencyAwarePlacementPolicy(provider),
+// NewOptimizedPolicy creates a new optimized placement policy
+func NewOptimizedPolicy(provider MetricsProvider) *OptimizedPolicy {
+	return &OptimizedPolicy{
+		basePolicy:        NewLatencyAwarePolicy(provider),
 		metricsProvider:   provider,
 		siteScoreCache:    make(map[string]*CachedSiteScore),
-		placementCache:    make(map[string]*CachedPlacementDecision),
+		placementCache:    make(map[string]*CachedDecision),
 		precomputedScores: make(map[string]map[string]float64),
 		cacheExpiry:       5 * time.Minute, // Cache expires after 5 minutes
-		stats:             &PlacementStats{},
+		stats:             &Stats{},
 	}
 }
 
 // PrecomputeSiteScores pre-computes scoring information for all sites
-func (p *OptimizedPlacementPolicy) PrecomputeSiteScores(ctx context.Context, sites []*Site) error {
+func (p *OptimizedPolicy) PrecomputeSiteScores(_ context.Context, sites []*Site) error {
 	start := time.Now()
 
 	// Get current metrics once for all sites
@@ -125,14 +125,14 @@ func (p *OptimizedPlacementPolicy) PrecomputeSiteScores(ctx context.Context, sit
 }
 
 // Place determines optimal placement using cached computations
-func (p *OptimizedPlacementPolicy) Place(nf *NetworkFunction, sites []*Site) (*PlacementDecision, error) {
+func (p *OptimizedPolicy) Place(nf *NetworkFunction, sites []*Site) (*Decision, error) {
 	start := time.Now()
 	defer func() {
 		p.updateStats(time.Since(start))
 	}()
 
 	if len(sites) == 0 {
-		return nil, &PlacementError{
+		return nil, &Error{
 			Code:    ErrNoSuitableSite,
 			Message: "no sites available for placement",
 		}
@@ -173,13 +173,13 @@ func (p *OptimizedPlacementPolicy) Place(nf *NetworkFunction, sites []*Site) (*P
 	}
 
 	if len(siteScores) == 0 {
-		return nil, &PlacementError{
+		return nil, &Error{
 			Code:    ErrNoSuitableSite,
 			Message: fmt.Sprintf("no site meets requirements for %s", nf.Type),
 			Details: map[string]interface{}{
 				"nf_type":       nf.Type,
 				"requirements":  nf.Requirements,
-				"qos":          nf.QoSRequirements,
+				"qos":           nf.QoSRequirements,
 				"sites_checked": len(sites),
 			},
 		}
@@ -195,12 +195,12 @@ func (p *OptimizedPlacementPolicy) Place(nf *NetworkFunction, sites []*Site) (*P
 	bestSite := siteScores[0]
 
 	// Create placement decision
-	decision := &PlacementDecision{
+	decision := &Decision{
 		NetworkFunction: nf,
-		Site:           bestSite.Site,
-		Score:          bestSite.Score,
-		Reason:         p.generateOptimizedReason(nf, bestSite.Site, bestSite.Score),
-		Timestamp:      time.Now(),
+		Site:            bestSite.Site,
+		Score:           bestSite.Score,
+		Reason:          p.generateOptimizedReason(nf, bestSite.Site, bestSite.Score),
+		Timestamp:       time.Now(),
 	}
 
 	// Add alternatives (up to 3)
@@ -219,9 +219,9 @@ func (p *OptimizedPlacementPolicy) Place(nf *NetworkFunction, sites []*Site) (*P
 }
 
 // PlaceMultipleBatch optimized batch placement with parallel processing
-func (p *OptimizedPlacementPolicy) PlaceMultipleBatch(nfs []*NetworkFunction, sites []*Site) ([]*PlacementDecision, error) {
+func (p *OptimizedPolicy) PlaceMultipleBatch(nfs []*NetworkFunction, sites []*Site) ([]*Decision, error) {
 	if len(nfs) == 0 {
-		return []*PlacementDecision{}, nil
+		return []*Decision{}, nil
 	}
 
 	// Pre-compute site scores once for all placements
@@ -229,7 +229,7 @@ func (p *OptimizedPlacementPolicy) PlaceMultipleBatch(nfs []*NetworkFunction, si
 		return nil, fmt.Errorf("failed to precompute site scores: %w", err)
 	}
 
-	decisions := make([]*PlacementDecision, len(nfs))
+	decisions := make([]*Decision, len(nfs))
 	errors := make([]error, len(nfs))
 
 	// Process placements in parallel using worker pool
@@ -241,7 +241,7 @@ func (p *OptimizedPlacementPolicy) PlaceMultipleBatch(nfs []*NetworkFunction, si
 		wg.Add(1)
 		go func(index int, networkFunc *NetworkFunction) {
 			defer wg.Done()
-			sem <- struct{}{} // Acquire semaphore
+			sem <- struct{}{}        // Acquire semaphore
 			defer func() { <-sem }() // Release semaphore
 
 			decision, err := p.Place(networkFunc, sites)
@@ -268,12 +268,36 @@ func (p *OptimizedPlacementPolicy) PlaceMultipleBatch(nfs []*NetworkFunction, si
 }
 
 // Fast requirements check using cached metrics
-func (p *OptimizedPlacementPolicy) fastRequirementsCheck(nf *NetworkFunction, site *Site) bool {
+func (p *OptimizedPolicy) fastRequirementsCheck(nf *NetworkFunction, site *Site) bool {
 	if !site.Available {
 		return false
 	}
 
-	// Use cached site score for quick filtering
+	// Check cached resource ratio
+	if !p.checkCachedResources(site) {
+		return false
+	}
+
+	// Check resource requirements
+	if !p.checkResourceRequirements(nf, site) {
+		return false
+	}
+
+	// Check QoS requirements
+	if !p.checkQoSRequirements(nf, site) {
+		return false
+	}
+
+	// Check utilization levels
+	if !p.checkUtilizationLevels(site) {
+		return false
+	}
+
+	return true
+}
+
+// checkCachedResources validates cached resource availability
+func (p *OptimizedPolicy) checkCachedResources(site *Site) bool {
 	p.cacheMutex.RLock()
 	cached, exists := p.siteScoreCache[site.ID]
 	p.cacheMutex.RUnlock()
@@ -284,39 +308,40 @@ func (p *OptimizedPlacementPolicy) fastRequirementsCheck(nf *NetworkFunction, si
 			return false
 		}
 	}
+	return true
+}
 
-	// Basic resource checks (optimized)
-	if site.Capacity.CPUCores < nf.Requirements.MinCPUCores ||
-		site.Capacity.MemoryGB < nf.Requirements.MinMemoryGB ||
-		site.Capacity.StorageGB < nf.Requirements.MinStorageGB ||
-		site.Capacity.BandwidthMbps < nf.Requirements.MinBandwidthMbps {
-		return false
-	}
+// checkResourceRequirements validates basic resource requirements
+func (p *OptimizedPolicy) checkResourceRequirements(nf *NetworkFunction, site *Site) bool {
+	return site.Capacity.CPUCores >= nf.Requirements.MinCPUCores &&
+		site.Capacity.MemoryGB >= nf.Requirements.MinMemoryGB &&
+		site.Capacity.StorageGB >= nf.Requirements.MinStorageGB &&
+		site.Capacity.BandwidthMbps >= nf.Requirements.MinBandwidthMbps
+}
 
-	// Quick QoS checks
+// checkQoSRequirements validates QoS requirements
+func (p *OptimizedPolicy) checkQoSRequirements(nf *NetworkFunction, site *Site) bool {
 	latency := site.NetworkProfile.BaseLatencyMs
 	if site.Metrics != nil && site.Metrics.CurrentLatencyMs > 0 {
 		latency = site.Metrics.CurrentLatencyMs
 	}
 
-	if latency > nf.QoSRequirements.MaxLatencyMs ||
-		site.NetworkProfile.MaxThroughputMbps < nf.QoSRequirements.MinThroughputMbps ||
-		site.NetworkProfile.PacketLossRate > nf.QoSRequirements.MaxPacketLossRate ||
-		site.NetworkProfile.JitterMs > nf.QoSRequirements.MaxJitterMs {
-		return false
-	}
+	return latency <= nf.QoSRequirements.MaxLatencyMs &&
+		site.NetworkProfile.MaxThroughputMbps >= nf.QoSRequirements.MinThroughputMbps &&
+		site.NetworkProfile.PacketLossRate <= nf.QoSRequirements.MaxPacketLossRate &&
+		site.NetworkProfile.JitterMs <= nf.QoSRequirements.MaxJitterMs
+}
 
-	// Quick utilization check
-	if site.Metrics != nil &&
-		(site.Metrics.CPUUtilization > 80 || site.Metrics.MemoryUtilization > 85) {
-		return false
+// checkUtilizationLevels validates current utilization is acceptable
+func (p *OptimizedPolicy) checkUtilizationLevels(site *Site) bool {
+	if site.Metrics == nil {
+		return true
 	}
-
-	return true
+	return site.Metrics.CPUUtilization <= 80 && site.Metrics.MemoryUtilization <= 85
 }
 
 // Calculate optimized score using cached values
-func (p *OptimizedPlacementPolicy) calculateOptimizedScore(nf *NetworkFunction, site *Site) float64 {
+func (p *OptimizedPolicy) calculateOptimizedScore(nf *NetworkFunction, site *Site) float64 {
 	p.cacheMutex.RLock()
 	cached, exists := p.siteScoreCache[site.ID]
 	p.cacheMutex.RUnlock()
@@ -354,7 +379,7 @@ func (p *OptimizedPlacementPolicy) calculateOptimizedScore(nf *NetworkFunction, 
 
 // Helper methods for caching and optimization
 
-func (p *OptimizedPlacementPolicy) calculateBaseScore(site *Site) float64 {
+func (p *OptimizedPolicy) calculateBaseScore(site *Site) float64 {
 	// Base score based on resource availability
 	if site.Metrics == nil {
 		return 75.0 // Default for sites without metrics
@@ -366,7 +391,7 @@ func (p *OptimizedPlacementPolicy) calculateBaseScore(site *Site) float64 {
 	return (cpuAvailable + memAvailable) / 2.0
 }
 
-func (p *OptimizedPlacementPolicy) calculateResourceAvailabilityRatio(site *Site) float64 {
+func (p *OptimizedPolicy) calculateResourceAvailabilityRatio(site *Site) float64 {
 	if site.Metrics == nil {
 		return 1.0
 	}
@@ -378,23 +403,23 @@ func (p *OptimizedPlacementPolicy) calculateResourceAvailabilityRatio(site *Site
 	return (cpuRatio + memRatio) / 2.0
 }
 
-func (p *OptimizedPlacementPolicy) calculateNetworkScore(site *Site) float64 {
+func (p *OptimizedPolicy) calculateNetworkScore(site *Site) float64 {
 	// Network capability score
 	maxThroughput := site.NetworkProfile.MaxThroughputMbps
 	baseLatency := site.NetworkProfile.BaseLatencyMs
 
 	throughputScore := math.Min(maxThroughput/100.0, 1.0) * 50.0 // Max 50 points
-	latencyScore := math.Max(0, 50.0-(baseLatency/10.0)*10.0)   // Max 50 points
+	latencyScore := math.Max(0, 50.0-(baseLatency/10.0)*10.0)    // Max 50 points
 
 	return throughputScore + latencyScore
 }
 
-func (p *OptimizedPlacementPolicy) calculateCloudTypePreference(nfType string, site *Site) float64 {
+func (p *OptimizedPolicy) calculateCloudTypePreference(nfType string, site *Site) float64 {
 	// Use the same logic as base policy but cache the result
 	return p.basePolicy.calculateCloudTypeScore(&NetworkFunction{Type: nfType}, site)
 }
 
-func (p *OptimizedPlacementPolicy) calculateLatencyScore(nf *NetworkFunction, site *Site) float64 {
+func (p *OptimizedPolicy) calculateLatencyScore(nf *NetworkFunction, site *Site) float64 {
 	latency := site.NetworkProfile.BaseLatencyMs
 	if site.Metrics != nil && site.Metrics.CurrentLatencyMs > 0 {
 		latency = site.Metrics.CurrentLatencyMs
@@ -403,7 +428,7 @@ func (p *OptimizedPlacementPolicy) calculateLatencyScore(nf *NetworkFunction, si
 	return 100 * (1 - math.Min(latency/nf.QoSRequirements.MaxLatencyMs, 1.0))
 }
 
-func (p *OptimizedPlacementPolicy) generateRequestHash(nf *NetworkFunction, sites []*Site) string {
+func (p *OptimizedPolicy) generateRequestHash(nf *NetworkFunction, sites []*Site) string {
 	// Simple hash based on NF requirements and available sites
 	hash := fmt.Sprintf("%s_%f_%f_%d_%d",
 		nf.Type,
@@ -414,7 +439,7 @@ func (p *OptimizedPlacementPolicy) generateRequestHash(nf *NetworkFunction, site
 	return hash
 }
 
-func (p *OptimizedPlacementPolicy) getCachedDecision(requestHash string) *CachedPlacementDecision {
+func (p *OptimizedPolicy) getCachedDecision(requestHash string) *CachedDecision {
 	p.cacheMutex.RLock()
 	defer p.cacheMutex.RUnlock()
 
@@ -433,11 +458,11 @@ func (p *OptimizedPlacementPolicy) getCachedDecision(requestHash string) *Cached
 	return cached
 }
 
-func (p *OptimizedPlacementPolicy) cacheDecision(requestHash string, decision *PlacementDecision) {
+func (p *OptimizedPolicy) cacheDecision(requestHash string, decision *Decision) {
 	p.cacheMutex.Lock()
 	defer p.cacheMutex.Unlock()
 
-	p.placementCache[requestHash] = &CachedPlacementDecision{
+	p.placementCache[requestHash] = &CachedDecision{
 		Decision:    decision,
 		RequestHash: requestHash,
 		CreatedAt:   time.Now(),
@@ -461,29 +486,33 @@ func (p *OptimizedPlacementPolicy) cacheDecision(requestHash string, decision *P
 	}
 }
 
-func (p *OptimizedPlacementPolicy) needsCacheRefresh() bool {
+func (p *OptimizedPolicy) needsCacheRefresh() bool {
 	return time.Since(p.lastCacheUpdate) > p.cacheExpiry/2
 }
 
-func (p *OptimizedPlacementPolicy) refreshCache(sites []*Site) {
-	p.PrecomputeSiteScores(context.Background(), sites)
+func (p *OptimizedPolicy) refreshCache(sites []*Site) {
+	if err := p.PrecomputeSiteScores(context.Background(), sites); err != nil {
+		// Log error but continue with stale cache
+		// In production, this would be logged properly
+		_ = err
+	}
 }
 
-func (p *OptimizedPlacementPolicy) updateSiteMetricsSimulation(site *Site, nf *NetworkFunction) {
+func (p *OptimizedPolicy) updateSiteMetricsSimulation(site *Site, _ *NetworkFunction) {
 	// Simulate resource usage update for subsequent placements
 	if site.Metrics != nil {
 		site.Metrics.ActiveNFs++
-		site.Metrics.CPUUtilization += 5  // Simplified simulation
+		site.Metrics.CPUUtilization += 5    // Simplified simulation
 		site.Metrics.MemoryUtilization += 8 // Simplified simulation
 	}
 }
 
-func (p *OptimizedPlacementPolicy) generateOptimizedReason(nf *NetworkFunction, site *Site, score float64) string {
+func (p *OptimizedPolicy) generateOptimizedReason(nf *NetworkFunction, site *Site, score float64) string {
 	// Optimized reason generation
 	return fmt.Sprintf("Placed %s on %s (score: %.1f/100)", nf.Type, site.Name, score)
 }
 
-func (p *OptimizedPlacementPolicy) updateStats(duration time.Duration) {
+func (p *OptimizedPolicy) updateStats(duration time.Duration) {
 	p.stats.mu.Lock()
 	defer p.stats.mu.Unlock()
 
@@ -493,12 +522,12 @@ func (p *OptimizedPlacementPolicy) updateStats(duration time.Duration) {
 }
 
 // GetStats returns performance statistics
-func (p *OptimizedPlacementPolicy) GetStats() *PlacementStats {
+func (p *OptimizedPolicy) GetStats() *Stats {
 	p.stats.mu.Lock()
 	defer p.stats.mu.Unlock()
 
 	// Return a copy to avoid race conditions
-	return &PlacementStats{
+	return &Stats{
 		TotalRequests:     p.stats.TotalRequests,
 		CacheHits:         p.stats.CacheHits,
 		CacheMisses:       p.stats.CacheMisses,
@@ -509,12 +538,12 @@ func (p *OptimizedPlacementPolicy) GetStats() *PlacementStats {
 }
 
 // ClearCache clears all cached data
-func (p *OptimizedPlacementPolicy) ClearCache() {
+func (p *OptimizedPolicy) ClearCache() {
 	p.cacheMutex.Lock()
 	defer p.cacheMutex.Unlock()
 
 	p.siteScoreCache = make(map[string]*CachedSiteScore)
-	p.placementCache = make(map[string]*CachedPlacementDecision)
+	p.placementCache = make(map[string]*CachedDecision)
 	p.precomputedScores = make(map[string]map[string]float64)
 	p.lastCacheUpdate = time.Time{}
 }

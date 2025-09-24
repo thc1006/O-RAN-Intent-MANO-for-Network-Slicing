@@ -213,7 +213,7 @@ func (mc *MetricsCollector) collectPerformanceMetrics(ctx context.Context, metri
 // collectClusterMetrics collects cluster-level metrics from Prometheus
 func (mc *MetricsCollector) collectClusterMetrics(ctx context.Context, metrics *MetricsData, clusterName string) error {
 	// Collect CPU utilization
-	cpuUsage, err := mc.queryPrometheus(ctx, fmt.Sprintf(`100 - (avg(irate(node_cpu_seconds_total{mode="idle",cluster="%s"}[5m])) * 100)`, clusterName))
+	cpuUsage, err := mc.queryPrometheus(ctx, fmt.Sprintf(`100 - (avg(irate(node_cpu_seconds_total{mode="idle",cluster=%q}[5m])) * 100)`, clusterName))
 	if err == nil && len(cpuUsage.Data.Result) > 0 {
 		if value, err := mc.parsePrometheusValue(cpuUsage.Data.Result[0].Value); err == nil {
 			metrics.CPUUtilization = value
@@ -221,7 +221,7 @@ func (mc *MetricsCollector) collectClusterMetrics(ctx context.Context, metrics *
 	}
 
 	// Collect memory utilization
-	memUsage, err := mc.queryPrometheus(ctx, fmt.Sprintf(`100 * (1 - ((node_memory_MemAvailable_bytes{cluster="%s"} or node_memory_MemFree_bytes{cluster="%s"}) / node_memory_MemTotal_bytes{cluster="%s"}))`, clusterName, clusterName, clusterName))
+	memUsage, err := mc.queryPrometheus(ctx, fmt.Sprintf(`100 * (1 - ((node_memory_MemAvailable_bytes{cluster=%q} or node_memory_MemFree_bytes{cluster=%q}) / node_memory_MemTotal_bytes{cluster=%q}))`, clusterName, clusterName, clusterName))
 	if err == nil && len(memUsage.Data.Result) > 0 {
 		if value, err := mc.parsePrometheusValue(memUsage.Data.Result[0].Value); err == nil {
 			metrics.MemoryUtilization = value
@@ -244,7 +244,7 @@ func (mc *MetricsCollector) collectClusterMetrics(ctx context.Context, metrics *
 // collectClusterResourceMetrics collects cluster resource usage metrics
 func (mc *MetricsCollector) collectClusterResourceMetrics(ctx context.Context, clusterMetrics *ClusterMetrics, clusterName string) error {
 	// Collect node count
-	nodeCountResp, err := mc.queryPrometheus(ctx, fmt.Sprintf(`count(kube_node_info{cluster="%s"})`, clusterName))
+	nodeCountResp, err := mc.queryPrometheus(ctx, fmt.Sprintf(`count(kube_node_info{cluster=%q})`, clusterName))
 	if err == nil && len(nodeCountResp.Data.Result) > 0 {
 		if value, err := mc.parsePrometheusValue(nodeCountResp.Data.Result[0].Value); err == nil {
 			clusterMetrics.NodeCount = int(value)
@@ -252,7 +252,7 @@ func (mc *MetricsCollector) collectClusterResourceMetrics(ctx context.Context, c
 	}
 
 	// Collect pod count
-	podCountResp, err := mc.queryPrometheus(ctx, fmt.Sprintf(`count(kube_pod_info{cluster="%s"})`, clusterName))
+	podCountResp, err := mc.queryPrometheus(ctx, fmt.Sprintf(`count(kube_pod_info{cluster=%q})`, clusterName))
 	if err == nil && len(podCountResp.Data.Result) > 0 {
 		if value, err := mc.parsePrometheusValue(podCountResp.Data.Result[0].Value); err == nil {
 			clusterMetrics.PodCount = int(value)
@@ -260,7 +260,7 @@ func (mc *MetricsCollector) collectClusterResourceMetrics(ctx context.Context, c
 	}
 
 	// Collect service count
-	serviceCountResp, err := mc.queryPrometheus(ctx, fmt.Sprintf(`count(kube_service_info{cluster="%s"})`, clusterName))
+	serviceCountResp, err := mc.queryPrometheus(ctx, fmt.Sprintf(`count(kube_service_info{cluster=%q})`, clusterName))
 	if err == nil && len(serviceCountResp.Data.Result) > 0 {
 		if value, err := mc.parsePrometheusValue(serviceCountResp.Data.Result[0].Value); err == nil {
 			clusterMetrics.ServiceCount = int(value)
@@ -281,8 +281,8 @@ func (mc *MetricsCollector) collectResourceUsage(ctx context.Context, clusterNam
 	usage := ResourceUsageMetrics{}
 
 	// CPU usage
-	cpuUsedResp, _ := mc.queryPrometheus(ctx, fmt.Sprintf(`sum(rate(container_cpu_usage_seconds_total{cluster="%s"}[5m]))`, clusterName))
-	cpuTotalResp, _ := mc.queryPrometheus(ctx, fmt.Sprintf(`sum(kube_node_status_allocatable{resource="cpu",cluster="%s"})`, clusterName))
+	cpuUsedResp, _ := mc.queryPrometheus(ctx, fmt.Sprintf(`sum(rate(container_cpu_usage_seconds_total{cluster=%q}[5m]))`, clusterName))
+	cpuTotalResp, _ := mc.queryPrometheus(ctx, fmt.Sprintf(`sum(kube_node_status_allocatable{resource="cpu",cluster=%q})`, clusterName))
 
 	if len(cpuUsedResp.Data.Result) > 0 && len(cpuTotalResp.Data.Result) > 0 {
 		if used, err := mc.parsePrometheusValue(cpuUsedResp.Data.Result[0].Value); err == nil {
@@ -298,8 +298,8 @@ func (mc *MetricsCollector) collectResourceUsage(ctx context.Context, clusterNam
 	}
 
 	// Memory usage
-	memUsedResp, _ := mc.queryPrometheus(ctx, fmt.Sprintf(`sum(container_memory_usage_bytes{cluster="%s"})`, clusterName))
-	memTotalResp, _ := mc.queryPrometheus(ctx, fmt.Sprintf(`sum(kube_node_status_allocatable{resource="memory",cluster="%s"})`, clusterName))
+	memUsedResp, _ := mc.queryPrometheus(ctx, fmt.Sprintf(`sum(container_memory_usage_bytes{cluster=%q})`, clusterName))
+	memTotalResp, _ := mc.queryPrometheus(ctx, fmt.Sprintf(`sum(kube_node_status_allocatable{resource="memory",cluster=%q})`, clusterName))
 
 	if len(memUsedResp.Data.Result) > 0 && len(memTotalResp.Data.Result) > 0 {
 		if used, err := mc.parsePrometheusValue(memUsedResp.Data.Result[0].Value); err == nil {
@@ -322,7 +322,7 @@ func (mc *MetricsCollector) collectNetworkMetrics(ctx context.Context, clusterNa
 	metrics := NetworkMetrics{}
 
 	// Bytes in
-	bytesInResp, _ := mc.queryPrometheus(ctx, fmt.Sprintf(`sum(rate(node_network_receive_bytes_total{cluster="%s"}[5m]))`, clusterName))
+	bytesInResp, _ := mc.queryPrometheus(ctx, fmt.Sprintf(`sum(rate(node_network_receive_bytes_total{cluster=%q}[5m]))`, clusterName))
 	if len(bytesInResp.Data.Result) > 0 {
 		if value, err := mc.parsePrometheusValue(bytesInResp.Data.Result[0].Value); err == nil {
 			metrics.BytesIn = value
@@ -330,7 +330,7 @@ func (mc *MetricsCollector) collectNetworkMetrics(ctx context.Context, clusterNa
 	}
 
 	// Bytes out
-	bytesOutResp, _ := mc.queryPrometheus(ctx, fmt.Sprintf(`sum(rate(node_network_transmit_bytes_total{cluster="%s"}[5m]))`, clusterName))
+	bytesOutResp, _ := mc.queryPrometheus(ctx, fmt.Sprintf(`sum(rate(node_network_transmit_bytes_total{cluster=%q}[5m]))`, clusterName))
 	if len(bytesOutResp.Data.Result) > 0 {
 		if value, err := mc.parsePrometheusValue(bytesOutResp.Data.Result[0].Value); err == nil {
 			metrics.BytesOut = value
@@ -338,7 +338,7 @@ func (mc *MetricsCollector) collectNetworkMetrics(ctx context.Context, clusterNa
 	}
 
 	// Packets in
-	packetsInResp, _ := mc.queryPrometheus(ctx, fmt.Sprintf(`sum(rate(node_network_receive_packets_total{cluster="%s"}[5m]))`, clusterName))
+	packetsInResp, _ := mc.queryPrometheus(ctx, fmt.Sprintf(`sum(rate(node_network_receive_packets_total{cluster=%q}[5m]))`, clusterName))
 	if len(packetsInResp.Data.Result) > 0 {
 		if value, err := mc.parsePrometheusValue(packetsInResp.Data.Result[0].Value); err == nil {
 			metrics.PacketsIn = value
@@ -346,7 +346,7 @@ func (mc *MetricsCollector) collectNetworkMetrics(ctx context.Context, clusterNa
 	}
 
 	// Packets out
-	packetsOutResp, _ := mc.queryPrometheus(ctx, fmt.Sprintf(`sum(rate(node_network_transmit_packets_total{cluster="%s"}[5m]))`, clusterName))
+	packetsOutResp, _ := mc.queryPrometheus(ctx, fmt.Sprintf(`sum(rate(node_network_transmit_packets_total{cluster=%q}[5m]))`, clusterName))
 	if len(packetsOutResp.Data.Result) > 0 {
 		if value, err := mc.parsePrometheusValue(packetsOutResp.Data.Result[0].Value); err == nil {
 			metrics.PacketsOut = value
@@ -377,7 +377,7 @@ func (mc *MetricsCollector) collectAppTypeMetrics(ctx context.Context, clusterNa
 	var apps []ApplicationMetrics
 
 	// Query for deployments with specific labels
-	deploymentsResp, err := mc.queryPrometheus(ctx, fmt.Sprintf(`kube_deployment_status_replicas{cluster="%s",app_type="%s"}`, clusterName, appType))
+	deploymentsResp, err := mc.queryPrometheus(ctx, fmt.Sprintf(`kube_deployment_status_replicas{cluster=%q,app_type=%q}`, clusterName, appType))
 	if err != nil {
 		return apps, err
 	}
@@ -398,7 +398,7 @@ func (mc *MetricsCollector) collectAppTypeMetrics(ctx context.Context, clusterNa
 		}
 
 		// Get ready replicas
-		readyResp, _ := mc.queryPrometheus(ctx, fmt.Sprintf(`kube_deployment_status_replicas_ready{cluster="%s",deployment="%s",namespace="%s"}`, clusterName, appName, namespace))
+		readyResp, _ := mc.queryPrometheus(ctx, fmt.Sprintf(`kube_deployment_status_replicas_ready{cluster=%q,deployment=%q,namespace=%q}`, clusterName, appName, namespace))
 		if len(readyResp.Data.Result) > 0 {
 			if value, err := mc.parsePrometheusValue(readyResp.Data.Result[0].Value); err == nil {
 				app.ReadyReplicas = int(value)
@@ -406,7 +406,7 @@ func (mc *MetricsCollector) collectAppTypeMetrics(ctx context.Context, clusterNa
 		}
 
 		// Get CPU usage
-		cpuResp, _ := mc.queryPrometheus(ctx, fmt.Sprintf(`sum(rate(container_cpu_usage_seconds_total{cluster="%s",pod=~"%s-.*"}[5m]))`, clusterName, appName))
+		cpuResp, _ := mc.queryPrometheus(ctx, fmt.Sprintf(`sum(rate(container_cpu_usage_seconds_total{cluster=%q,pod=~%q}[5m]))`, clusterName, appName+"-.*"))
 		if len(cpuResp.Data.Result) > 0 {
 			if value, err := mc.parsePrometheusValue(cpuResp.Data.Result[0].Value); err == nil {
 				app.CPU = value
@@ -414,7 +414,7 @@ func (mc *MetricsCollector) collectAppTypeMetrics(ctx context.Context, clusterNa
 		}
 
 		// Get memory usage
-		memResp, _ := mc.queryPrometheus(ctx, fmt.Sprintf(`sum(container_memory_usage_bytes{cluster="%s",pod=~"%s-.*"})`, clusterName, appName))
+		memResp, _ := mc.queryPrometheus(ctx, fmt.Sprintf(`sum(container_memory_usage_bytes{cluster=%q,pod=~%q})`, clusterName, appName+"-.*"))
 		if len(memResp.Data.Result) > 0 {
 			if value, err := mc.parsePrometheusValue(memResp.Data.Result[0].Value); err == nil {
 				app.Memory = value / (1024 * 1024) // Convert to MB
@@ -437,7 +437,7 @@ func (mc *MetricsCollector) collectRTTMetrics(ctx context.Context, clusterName s
 // collectNetworkLatency collects network latency metrics
 func (mc *MetricsCollector) collectNetworkLatency(ctx context.Context, clusterName string) (time.Duration, error) {
 	// Query Prometheus for network latency metrics
-	latencyResp, err := mc.queryPrometheus(ctx, fmt.Sprintf(`histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{cluster="%s"}[5m]))`, clusterName))
+	latencyResp, err := mc.queryPrometheus(ctx, fmt.Sprintf(`histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{cluster=%q}[5m]))`, clusterName))
 	if err == nil && len(latencyResp.Data.Result) > 0 {
 		if value, err := mc.parsePrometheusValue(latencyResp.Data.Result[0].Value); err == nil {
 			return time.Duration(value * float64(time.Second)), nil
@@ -450,7 +450,7 @@ func (mc *MetricsCollector) collectNetworkLatency(ctx context.Context, clusterNa
 // collectPacketLoss collects packet loss metrics
 func (mc *MetricsCollector) collectPacketLoss(ctx context.Context, clusterName string) (float64, error) {
 	// Query for packet loss metrics
-	lossResp, err := mc.queryPrometheus(ctx, fmt.Sprintf(`rate(node_network_receive_drop_total{cluster="%s"}[5m]) / rate(node_network_receive_packets_total{cluster="%s"}[5m]) * 100`, clusterName, clusterName))
+	lossResp, err := mc.queryPrometheus(ctx, fmt.Sprintf(`rate(node_network_receive_drop_total{cluster=%q}[5m]) / rate(node_network_receive_packets_total{cluster=%q}[5m]) * 100`, clusterName, clusterName))
 	if err == nil && len(lossResp.Data.Result) > 0 {
 		if value, err := mc.parsePrometheusValue(lossResp.Data.Result[0].Value); err == nil {
 			return value, nil

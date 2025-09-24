@@ -623,7 +623,7 @@ func (ba *BottleneckAnalyzer) metricWorker(ctx context.Context) {
 	}
 }
 
-func (ba *BottleneckAnalyzer) processMetricSample(sample *MetricSample) {
+func (ba *BottleneckAnalyzer) processMetricSample(_ *MetricSample) {
 	// Real-time metric processing logic would go here
 	// For now, we'll just track it
 }

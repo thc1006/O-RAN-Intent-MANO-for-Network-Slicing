@@ -13,146 +13,146 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // DeploymentTimingSuite manages end-to-end deployment timing validation
 type DeploymentTimingSuite struct {
-	k8sClient    client.Client              // nolint:unused // TODO: integrate with actual k8s client
-	testContext  context.Context
-	testCancel   context.CancelFunc
-	testResults  *DeploymentTimingResults
+	k8sClient   client.Client // nolint:unused // TODO: integrate with actual k8s client
+	testContext context.Context
+	testCancel  context.CancelFunc
+	testResults *DeploymentTimingResults
 }
 
 // DeploymentTimingResults aggregates all deployment timing test results
 type DeploymentTimingResults struct {
-	TestStartTime       time.Time                       `json:"test_start_time"`
-	TestEndTime         time.Time                       `json:"test_end_time"`
-	IntentToDeployment  []IntentToDeploymentResult     `json:"intent_to_deployment"`
-	ScenarioResults     []DeploymentScenarioResult     `json:"scenario_results"`
-	PerformanceMetrics  DeploymentPerformanceMetrics   `json:"performance_metrics"`
-	TimingBreakdown     TimingBreakdownAnalysis        `json:"timing_breakdown"`
-	ComplianceReport    TimingComplianceReport         `json:"compliance_report"`
-	OverallSuccess      bool                           `json:"overall_success"`
-	Errors              []string                       `json:"errors"`
+	TestStartTime      time.Time                    `json:"test_start_time"`
+	TestEndTime        time.Time                    `json:"test_end_time"`
+	IntentToDeployment []IntentToDeploymentResult   `json:"intent_to_deployment"`
+	ScenarioResults    []DeploymentScenarioResult   `json:"scenario_results"`
+	PerformanceMetrics DeploymentPerformanceMetrics `json:"performance_metrics"`
+	TimingBreakdown    TimingBreakdownAnalysis      `json:"timing_breakdown"`
+	ComplianceReport   TimingComplianceReport       `json:"compliance_report"`
+	OverallSuccess     bool                         `json:"overall_success"`
+	Errors             []string                     `json:"errors"`
 }
 
 // IntentToDeploymentResult represents complete intent-to-deployment timing
 type IntentToDeploymentResult struct {
-	TestName              string                    `json:"test_name"`
-	Intent                string                    `json:"intent"`
-	SliceType             string                    `json:"slice_type"`
-	TargetClusters        []string                  `json:"target_clusters"`
-	PhaseTimings          map[string]time.Duration  `json:"phase_timings"`
-	TotalDeploymentTime   time.Duration             `json:"total_deployment_time_ms"`
-	VNFDeploymentResults  []VNFDeploymentTiming     `json:"vnf_deployment_results"`
-	ComplianceStatus      string                    `json:"compliance_status"`
-	BottleneckPhase       string                    `json:"bottleneck_phase"`
-	OptimizationSuggestions []string               `json:"optimization_suggestions"`
-	Success               bool                      `json:"success"`
-	ErrorMessage          string                    `json:"error_message,omitempty"`
+	TestName                string                   `json:"test_name"`
+	Intent                  string                   `json:"intent"`
+	SliceType               string                   `json:"slice_type"`
+	TargetClusters          []string                 `json:"target_clusters"`
+	PhaseTimings            map[string]time.Duration `json:"phase_timings"`
+	TotalDeploymentTime     time.Duration            `json:"total_deployment_time_ms"`
+	VNFDeploymentResults    []VNFDeploymentTiming    `json:"vnf_deployment_results"`
+	ComplianceStatus        string                   `json:"compliance_status"`
+	BottleneckPhase         string                   `json:"bottleneck_phase"`
+	OptimizationSuggestions []string                 `json:"optimization_suggestions"`
+	Success                 bool                     `json:"success"`
+	ErrorMessage            string                   `json:"error_message,omitempty"`
 }
 
 // DeploymentScenarioResult represents scenario-specific deployment results
 type DeploymentScenarioResult struct {
-	ScenarioName        string                  `json:"scenario_name"`
-	Description         string                  `json:"description"`
-	VNFCount            int                     `json:"vnf_count"`
-	ClusterCount        int                     `json:"cluster_count"`
-	DeploymentStrategy  string                  `json:"deployment_strategy"`
-	ParallelDeployment  bool                    `json:"parallel_deployment"`
-	TotalTime           time.Duration           `json:"total_time_ms"`
-	CriticalPath        []string                `json:"critical_path"`
-	ResourceUtilization ScenarioResourceUsage   `json:"resource_utilization"`
-	ComplianceCheck     bool                    `json:"compliance_check"`
-	PerformanceGrade    string                  `json:"performance_grade"`
-	Success             bool                    `json:"success"`
+	ScenarioName        string                `json:"scenario_name"`
+	Description         string                `json:"description"`
+	VNFCount            int                   `json:"vnf_count"`
+	ClusterCount        int                   `json:"cluster_count"`
+	DeploymentStrategy  string                `json:"deployment_strategy"`
+	ParallelDeployment  bool                  `json:"parallel_deployment"`
+	TotalTime           time.Duration         `json:"total_time_ms"`
+	CriticalPath        []string              `json:"critical_path"`
+	ResourceUtilization ScenarioResourceUsage `json:"resource_utilization"`
+	ComplianceCheck     bool                  `json:"compliance_check"`
+	PerformanceGrade    string                `json:"performance_grade"`
+	Success             bool                  `json:"success"`
 }
 
 // VNFDeploymentTiming represents individual VNF deployment timing
 type VNFDeploymentTiming struct {
-	VNFName           string                  `json:"vnf_name"`
-	VNFType           string                  `json:"vnf_type"`
-	TargetCluster     string                  `json:"target_cluster"`
-	CreationTime      time.Duration           `json:"creation_time_ms"`
-	PorchGenTime      time.Duration           `json:"porch_generation_time_ms"`
-	GitOpsTime        time.Duration           `json:"gitops_time_ms"`
-	ConfigSyncTime    time.Duration           `json:"config_sync_time_ms"`
-	PodStartupTime    time.Duration           `json:"pod_startup_time_ms"`
-	ReadinessTime     time.Duration           `json:"readiness_time_ms"`
-	TotalTime         time.Duration           `json:"total_time_ms"`
-	DependencyWaitTime time.Duration          `json:"dependency_wait_time_ms"`
-	Success           bool                    `json:"success"`
+	VNFName            string        `json:"vnf_name"`
+	VNFType            string        `json:"vnf_type"`
+	TargetCluster      string        `json:"target_cluster"`
+	CreationTime       time.Duration `json:"creation_time_ms"`
+	PorchGenTime       time.Duration `json:"porch_generation_time_ms"`
+	GitOpsTime         time.Duration `json:"gitops_time_ms"`
+	ConfigSyncTime     time.Duration `json:"config_sync_time_ms"`
+	PodStartupTime     time.Duration `json:"pod_startup_time_ms"`
+	ReadinessTime      time.Duration `json:"readiness_time_ms"`
+	TotalTime          time.Duration `json:"total_time_ms"`
+	DependencyWaitTime time.Duration `json:"dependency_wait_time_ms"`
+	Success            bool          `json:"success"`
 }
 
 // Performance metrics and analysis types
 type DeploymentPerformanceMetrics struct {
-	AverageE2ETime          float64                    `json:"average_e2e_time_ms"`
-	P95DeploymentTime       float64                    `json:"p95_deployment_time_ms"`
-	P99DeploymentTime       float64                    `json:"p99_deployment_time_ms"`
-	FastestDeployment       float64                    `json:"fastest_deployment_ms"`
-	SlowestDeployment       float64                    `json:"slowest_deployment_ms"`
-	TenMinuteCompliance     float64                    `json:"ten_minute_compliance_rate"`
-	PhaseEfficiency         map[string]float64         `json:"phase_efficiency"`
-	ThroughputVNFsPerMin    float64                    `json:"throughput_vnfs_per_minute"`
-	ResourceEfficiency      float64                    `json:"resource_efficiency_percent"`
+	AverageE2ETime       float64            `json:"average_e2e_time_ms"`
+	P95DeploymentTime    float64            `json:"p95_deployment_time_ms"`
+	P99DeploymentTime    float64            `json:"p99_deployment_time_ms"`
+	FastestDeployment    float64            `json:"fastest_deployment_ms"`
+	SlowestDeployment    float64            `json:"slowest_deployment_ms"`
+	TenMinuteCompliance  float64            `json:"ten_minute_compliance_rate"`
+	PhaseEfficiency      map[string]float64 `json:"phase_efficiency"`
+	ThroughputVNFsPerMin float64            `json:"throughput_vnfs_per_minute"`
+	ResourceEfficiency   float64            `json:"resource_efficiency_percent"`
 }
 
 type TimingBreakdownAnalysis struct {
-	IntentProcessing       TimingPhaseAnalysis        `json:"intent_processing"`
-	QoSTranslation         TimingPhaseAnalysis        `json:"qos_translation"`
-	PlacementDecision      TimingPhaseAnalysis        `json:"placement_decision"`
-	PorchGeneration        TimingPhaseAnalysis        `json:"porch_generation"`
-	GitOpsWorkflow         TimingPhaseAnalysis        `json:"gitops_workflow"`
-	ConfigSync             TimingPhaseAnalysis        `json:"config_sync"`
-	ResourceDeployment     TimingPhaseAnalysis        `json:"resource_deployment"`
-	NetworkConfiguration   TimingPhaseAnalysis        `json:"network_configuration"`
-	HealthValidation       TimingPhaseAnalysis        `json:"health_validation"`
+	IntentProcessing     TimingPhaseAnalysis `json:"intent_processing"`
+	QoSTranslation       TimingPhaseAnalysis `json:"qos_translation"`
+	PlacementDecision    TimingPhaseAnalysis `json:"placement_decision"`
+	PorchGeneration      TimingPhaseAnalysis `json:"porch_generation"`
+	GitOpsWorkflow       TimingPhaseAnalysis `json:"gitops_workflow"`
+	ConfigSync           TimingPhaseAnalysis `json:"config_sync"`
+	ResourceDeployment   TimingPhaseAnalysis `json:"resource_deployment"`
+	NetworkConfiguration TimingPhaseAnalysis `json:"network_configuration"`
+	HealthValidation     TimingPhaseAnalysis `json:"health_validation"`
 }
 
 type TimingPhaseAnalysis struct {
-	AverageTime       float64    `json:"average_time_ms"`
-	MinTime           float64    `json:"min_time_ms"`
-	MaxTime           float64    `json:"max_time_ms"`
-	StandardDeviation float64    `json:"standard_deviation_ms"`
-	PercentOfTotal    float64    `json:"percent_of_total"`
-	Bottlenecks       []string   `json:"bottlenecks"`
+	AverageTime       float64  `json:"average_time_ms"`
+	MinTime           float64  `json:"min_time_ms"`
+	MaxTime           float64  `json:"max_time_ms"`
+	StandardDeviation float64  `json:"standard_deviation_ms"`
+	PercentOfTotal    float64  `json:"percent_of_total"`
+	Bottlenecks       []string `json:"bottlenecks"`
 }
 
 type TimingComplianceReport struct {
-	TenMinuteSLA          ComplianceMetric       `json:"ten_minute_sla"`
-	IndividualPhases      map[string]ComplianceMetric `json:"individual_phases"`
-	PerformanceGrades     map[string]int         `json:"performance_grades"`
-	RecommendedActions    []string               `json:"recommended_actions"`
-	ComplianceScore       float64                `json:"compliance_score"`
+	TenMinuteSLA       ComplianceMetric            `json:"ten_minute_sla"`
+	IndividualPhases   map[string]ComplianceMetric `json:"individual_phases"`
+	PerformanceGrades  map[string]int              `json:"performance_grades"`
+	RecommendedActions []string                    `json:"recommended_actions"`
+	ComplianceScore    float64                     `json:"compliance_score"`
 }
 
 type ComplianceMetric struct {
-	Target           float64    `json:"target_ms"`
-	Achieved         float64    `json:"achieved_ms"`
-	ComplianceRate   float64    `json:"compliance_rate_percent"`
-	Violations       int        `json:"violations"`
-	WorstCase        float64    `json:"worst_case_ms"`
+	Target         float64 `json:"target_ms"`
+	Achieved       float64 `json:"achieved_ms"`
+	ComplianceRate float64 `json:"compliance_rate_percent"`
+	Violations     int     `json:"violations"`
+	WorstCase      float64 `json:"worst_case_ms"`
 }
 
 type ScenarioResourceUsage struct {
-	PeakCPUUsage      float64    `json:"peak_cpu_usage_percent"`
-	PeakMemoryUsage   float64    `json:"peak_memory_usage_percent"`
-	NetworkUtilization float64   `json:"network_utilization_mbps"`
-	StorageIOPS       float64    `json:"storage_iops"`
+	PeakCPUUsage       float64 `json:"peak_cpu_usage_percent"`
+	PeakMemoryUsage    float64 `json:"peak_memory_usage_percent"`
+	NetworkUtilization float64 `json:"network_utilization_mbps"`
+	StorageIOPS        float64 `json:"storage_iops"`
 }
 
 // Deployment scenarios targeting thesis requirements and real-world use cases
 var deploymentTimingScenarios = []struct {
 	name               string
-	description        string  // nolint:unused // TODO: use in future scenario reporting
+	description        string // nolint:unused // TODO: use in future scenario reporting
 	intent             string
 	expectedVNFs       []VNFDeploymentSpec
 	targetClusters     []string
-	deploymentStrategy string  // nolint:unused // TODO: implement deployment strategy logic
-	maxAllowedTime     time.Duration  // nolint:unused // TODO: validate against scenario-specific limits
-	parallelDeployment bool  // nolint:unused // TODO: implement parallel deployment optimization
+	deploymentStrategy string        // nolint:unused // TODO: implement deployment strategy logic
+	maxAllowedTime     time.Duration // nolint:unused // TODO: validate against scenario-specific limits
+	parallelDeployment bool          // nolint:unused // TODO: implement parallel deployment optimization
 }{
 	{
 		name:        "Single_UPF_Edge_Deployment",
@@ -353,9 +353,9 @@ var _ = Describe("End-to-End Deployment Timing Validation", func() {
 	Context("Individual VNF Deployment Timing", func() {
 		It("should meet VNF-specific timing requirements", func() {
 			vnfTimingTargets := map[string]time.Duration{
-				"UPF": 3 * time.Minute,  // UPF should deploy quickly
-				"AMF": 4 * time.Minute,  // AMF has more complex setup
-				"SMF": 5 * time.Minute,  // SMF may require database setup
+				"UPF": 3 * time.Minute, // UPF should deploy quickly
+				"AMF": 4 * time.Minute, // AMF has more complex setup
+				"SMF": 5 * time.Minute, // SMF may require database setup
 			}
 
 			scenario := deploymentTimingScenarios[1] // Multi-VNF scenario
@@ -600,10 +600,10 @@ func TestDeploymentTiming(t *testing.T) {
 func setupDeploymentTimingSuite() *DeploymentTimingSuite {
 	suite := &DeploymentTimingSuite{
 		testResults: &DeploymentTimingResults{
-			TestStartTime:     time.Now(),
+			TestStartTime:      time.Now(),
 			IntentToDeployment: make([]IntentToDeploymentResult, 0),
-			ScenarioResults:   make([]DeploymentScenarioResult, 0),
-			Errors:            make([]string, 0),
+			ScenarioResults:    make([]DeploymentScenarioResult, 0),
+			Errors:             make([]string, 0),
 		},
 	}
 
@@ -630,11 +630,11 @@ func teardownDeploymentTimingSuite(suite *DeploymentTimingSuite) {
 
 func (s *DeploymentTimingSuite) testIntentToDeploymentTiming(scenario DeploymentTimingScenario) IntentToDeploymentResult {
 	result := IntentToDeploymentResult{
-		TestName:              scenario.name,
-		Intent:                scenario.intent,
-		TargetClusters:        scenario.targetClusters,
-		PhaseTimings:          make(map[string]time.Duration),
-		VNFDeploymentResults:  make([]VNFDeploymentTiming, 0),
+		TestName:                scenario.name,
+		Intent:                  scenario.intent,
+		TargetClusters:          scenario.targetClusters,
+		PhaseTimings:            make(map[string]time.Duration),
+		VNFDeploymentResults:    make([]VNFDeploymentTiming, 0),
 		OptimizationSuggestions: make([]string, 0),
 	}
 
@@ -686,17 +686,17 @@ func (s *DeploymentTimingSuite) testIntentToDeploymentTiming(scenario Deployment
 	// Collect VNF-specific timing results
 	for i, vnfSpec := range scenario.expectedVNFs {
 		vnfTiming := VNFDeploymentTiming{
-			VNFName:           vnfSpec.Name,
-			VNFType:           vnfSpec.Type,
-			TargetCluster:     vnfSpec.Cluster,
-			CreationTime:      time.Duration(500) * time.Millisecond, // Simulated
-			PorchGenTime:      time.Duration(2) * time.Second,         // Simulated
-			GitOpsTime:        time.Duration(5) * time.Second,         // Simulated
-			ConfigSyncTime:    time.Duration(10) * time.Second,        // Simulated
-			PodStartupTime:    time.Duration(30) * time.Second,        // Simulated
-			ReadinessTime:     time.Duration(15) * time.Second,        // Simulated
+			VNFName:            vnfSpec.Name,
+			VNFType:            vnfSpec.Type,
+			TargetCluster:      vnfSpec.Cluster,
+			CreationTime:       time.Duration(500) * time.Millisecond, // Simulated
+			PorchGenTime:       time.Duration(2) * time.Second,        // Simulated
+			GitOpsTime:         time.Duration(5) * time.Second,        // Simulated
+			ConfigSyncTime:     time.Duration(10) * time.Second,       // Simulated
+			PodStartupTime:     time.Duration(30) * time.Second,       // Simulated
+			ReadinessTime:      time.Duration(15) * time.Second,       // Simulated
 			DependencyWaitTime: time.Duration(i*10) * time.Second,     // Simulated dependency wait
-			Success:           true,
+			Success:            true,
 		}
 		vnfTiming.TotalTime = vnfTiming.CreationTime + vnfTiming.PorchGenTime + vnfTiming.GitOpsTime +
 			vnfTiming.ConfigSyncTime + vnfTiming.PodStartupTime + vnfTiming.ReadinessTime + vnfTiming.DependencyWaitTime
@@ -967,8 +967,8 @@ func (s *DeploymentTimingSuite) calculatePhaseAnalysis(timings []float64) Timing
 
 func (s *DeploymentTimingSuite) generateComplianceReport(results []IntentToDeploymentResult) TimingComplianceReport {
 	report := TimingComplianceReport{
-		IndividualPhases: make(map[string]ComplianceMetric),
-		PerformanceGrades: make(map[string]int),
+		IndividualPhases:   make(map[string]ComplianceMetric),
+		PerformanceGrades:  make(map[string]int),
 		RecommendedActions: make([]string, 0),
 	}
 
@@ -1042,13 +1042,19 @@ func (s *DeploymentTimingSuite) generateDeploymentTimingReport() {
 
 	// Save to file
 	reportDir := "testdata/timing_reports"
-	os.MkdirAll(reportDir, security.SecureDirMode)
+	if err := os.MkdirAll(reportDir, security.SecureDirMode); err != nil {
+		fmt.Printf("Failed to create report directory: %v\n", err)
+		return
+	}
 
 	timestamp := time.Now().Format("20060102-150405")
 	filename := filepath.Join(reportDir, fmt.Sprintf("deployment_timing_report_%s.json", timestamp))
 
 	data, _ := json.MarshalIndent(reportData, "", "  ")
-	os.WriteFile(filename, data, security.SecureFileMode)
+	if err := os.WriteFile(filename, data, security.SecureFileMode); err != nil {
+		fmt.Printf("Failed to write report file: %v\n", err)
+		return
+	}
 
 	fmt.Printf("Deployment timing report saved to: %s\n", filename)
 }

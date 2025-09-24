@@ -31,7 +31,7 @@ type DeploymentManager struct {
 }
 
 // GetDeploymentManagers retrieves available deployment managers
-func (c *Client) GetDeploymentManagers(ctx context.Context) ([]DeploymentManager, error) {
+func (c *Client) GetDeploymentManagers(_ context.Context) ([]DeploymentManager, error) {
 	// Placeholder implementation
 	return []DeploymentManager{
 		{
@@ -52,13 +52,13 @@ func (c *Client) GetDeploymentManagers(ctx context.Context) ([]DeploymentManager
 }
 
 // DeployNetworkFunction deploys a network function via O2 DMS
-func (c *Client) DeployNetworkFunction(ctx context.Context, dmsID string, nfSpec interface{}) error {
+func (c *Client) DeployNetworkFunction(_ context.Context, _ string, _ interface{}) error {
 	// Placeholder implementation
 	return nil
 }
 
 // GetAvailableSites retrieves available deployment sites
-func (c *Client) GetAvailableSites(ctx context.Context) ([]string, error) {
+func (c *Client) GetAvailableSites(_ context.Context) ([]string, error) {
 	// Placeholder implementation
 	return []string{"edge-site-1", "edge-site-2", "regional-site-1"}, nil
 }
@@ -75,7 +75,7 @@ type DeploymentStatus struct {
 }
 
 // GetDeploymentStatus retrieves the status of a deployment
-func (c *Client) GetDeploymentStatus(ctx context.Context, deploymentID string) ([]DeploymentStatus, error) {
+func (c *Client) GetDeploymentStatus(_ context.Context, deploymentID string) ([]DeploymentStatus, error) {
 	// Placeholder implementation
 	return []DeploymentStatus{
 		{
@@ -100,7 +100,7 @@ func (c *Client) GetDeploymentStatus(ctx context.Context, deploymentID string) (
 }
 
 // DeleteDeployment deletes a deployment
-func (c *Client) DeleteDeployment(ctx context.Context, deploymentID string) error {
+func (c *Client) DeleteDeployment(_ context.Context, _ string) error {
 	// Placeholder implementation
 	return nil
 }

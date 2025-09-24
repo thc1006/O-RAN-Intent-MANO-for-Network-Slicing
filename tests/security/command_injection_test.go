@@ -103,10 +103,10 @@ func TestCommandInjectionPrevention(t *testing.T) {
 
 	t.Run("prevent_path_traversal_injection", func(t *testing.T) {
 		tests := []struct {
-			name        string
-			command     string
-			args        []string
-			shouldFail  bool
+			name       string
+			command    string
+			args       []string
+			shouldFail bool
 		}{
 			{
 				name:       "path_traversal_dots",
@@ -147,10 +147,10 @@ func TestCommandInjectionPrevention(t *testing.T) {
 
 	t.Run("prevent_environment_variable_injection", func(t *testing.T) {
 		tests := []struct {
-			name        string
-			command     string
-			args        []string
-			shouldFail  bool
+			name       string
+			command    string
+			args       []string
+			shouldFail bool
 		}{
 			{
 				name:       "env_var_home",
@@ -584,23 +584,23 @@ func TestCustomValidatorIntegration(t *testing.T) {
 		}
 
 		tests := []struct {
-			name      string
-			args      []string
+			name       string
+			args       []string
 			shouldFail bool
 		}{
 			{
-				name:      "clean_args",
-				args:      []string{"-c", "1", "127.0.0.1"},
+				name:       "clean_args",
+				args:       []string{"-c", "1", "127.0.0.1"},
 				shouldFail: false,
 			},
 			{
-				name:      "eval_pattern",
-				args:      []string{"-c", "1", "eval(dangerous_code)"},
+				name:       "eval_pattern",
+				args:       []string{"-c", "1", "eval(dangerous_code)"},
 				shouldFail: true,
 			},
 			{
-				name:      "exec_pattern",
-				args:      []string{"-c", "1", "exec('rm -rf /')"},
+				name:       "exec_pattern",
+				args:       []string{"-c", "1", "exec('rm -rf /')"},
 				shouldFail: true,
 			},
 		}

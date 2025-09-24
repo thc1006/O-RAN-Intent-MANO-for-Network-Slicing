@@ -190,7 +190,7 @@ func (dd *DriftDetector) ScanForDrift(ctx context.Context) (*DriftScanResult, er
 }
 
 // getDesiredState retrieves the desired state from Git repository
-func (dd *DriftDetector) getDesiredState(ctx context.Context) (map[string]*unstructured.Unstructured, error) {
+func (dd *DriftDetector) getDesiredState(_ context.Context) (map[string]*unstructured.Unstructured, error) {
 	desiredResources := make(map[string]*unstructured.Unstructured)
 
 	// Walk through Git repository and find Kubernetes resource files
@@ -756,14 +756,21 @@ func (dd *DriftDetector) remediateDrift(ctx context.Context, driftResults []Drif
 func (dd *DriftDetector) correctDrift(ctx context.Context, driftResults []DriftResult) error {
 	log.Printf("Correcting drift for %d resources", len(driftResults))
 
+	var correctionErrors []string
 	for _, drift := range driftResults {
 		if !drift.HasDrift {
 			continue
 		}
 
 		if err := dd.correctResourceDrift(ctx, drift); err != nil {
-			log.Printf("Failed to correct drift for %s/%s: %v", drift.Resource.Kind, drift.Resource.Name, err)
+			errorMsg := fmt.Sprintf("Failed to correct drift for %s/%s: %v", drift.Resource.Kind, drift.Resource.Name, err)
+			log.Printf("%s", errorMsg)
+			correctionErrors = append(correctionErrors, errorMsg)
 		}
+	}
+
+	if len(correctionErrors) > 0 {
+		return fmt.Errorf("drift correction failed for some resources: %s", strings.Join(correctionErrors, "; "))
 	}
 
 	return nil

@@ -5,6 +5,16 @@
 claude_code-gemini-mcp/
 memory/
 
+# Go binary files - DO NOT COMMIT
+*.exe
+*.dll
+*.so
+*.dylib
+**/main
+**/cmd
+!**/cmd/
+!cmd/
+
 # Built application files
 *.apk
 *.aab

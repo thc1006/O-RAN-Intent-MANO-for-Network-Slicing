@@ -285,37 +285,37 @@ func (tf *TestFramework) runTestCategory(ctx context.Context, category TestCateg
 }
 
 // Helper methods for different test types
-func (tf *TestFramework) runUnitTests(ctx context.Context, suite *TestSuite) error {
+func (tf *TestFramework) runUnitTests(_ context.Context, _ *TestSuite) error {
 	// Implementation for unit tests
 	return nil
 }
 
-func (tf *TestFramework) runIntegrationTests(ctx context.Context, suite *TestSuite) error {
+func (tf *TestFramework) runIntegrationTests(_ context.Context, _ *TestSuite) error {
 	// Implementation for integration tests
 	return nil
 }
 
-func (tf *TestFramework) runE2ETests(ctx context.Context, suite *TestSuite) error {
+func (tf *TestFramework) runE2ETests(_ context.Context, _ *TestSuite) error {
 	// Implementation for E2E tests
 	return nil
 }
 
-func (tf *TestFramework) runPerformanceTests(ctx context.Context, suite *TestSuite) error {
+func (tf *TestFramework) runPerformanceTests(_ context.Context, _ *TestSuite) error {
 	// Implementation for performance tests
 	return nil
 }
 
-func (tf *TestFramework) runContractTests(ctx context.Context, suite *TestSuite) error {
+func (tf *TestFramework) runContractTests(_ context.Context, _ *TestSuite) error {
 	// Implementation for contract tests
 	return nil
 }
 
-func (tf *TestFramework) runChaosTests(ctx context.Context, suite *TestSuite) error {
+func (tf *TestFramework) runChaosTests(_ context.Context, _ *TestSuite) error {
 	// Implementation for chaos tests
 	return nil
 }
 
-func (tf *TestFramework) runSecurityTests(ctx context.Context, suite *TestSuite) error {
+func (tf *TestFramework) runSecurityTests(_ context.Context, _ *TestSuite) error {
 	// Implementation for security tests
 	return nil
 }

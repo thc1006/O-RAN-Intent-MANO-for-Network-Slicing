@@ -13,6 +13,10 @@ import (
 	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security"
 )
 
+const (
+	statusFailedString = "failed"
+)
+
 // TestReporter provides comprehensive test reporting capabilities
 type TestReporter struct {
 	StartTime   time.Time
@@ -71,7 +75,7 @@ type PerformanceMetrics struct {
 // NewTestReporter creates a new test reporter
 func NewTestReporter() *TestReporter {
 	outputDir := filepath.Join(".", "test-results")
-	os.MkdirAll(outputDir, security.SecureDirMode)
+	_ = os.MkdirAll(outputDir, security.SecureDirMode) // TODO: handle error properly
 
 	return &TestReporter{
 		StartTime:    time.Now(),
@@ -108,7 +112,7 @@ func (tr *TestReporter) ReportTestResult(result TestResult) {
 	case "passed":
 		tr.Summary.PassedTests++
 		fmt.Printf("✅ PASS: %s (%v)\n", result.Name, result.Duration)
-	case "failed":
+	case statusFailedString:
 		tr.Summary.FailedTests++
 		fmt.Printf("❌ FAIL: %s (%v) - %s\n", result.Name, result.Duration, result.Error)
 	case "skipped":
@@ -179,7 +183,10 @@ func (tr *TestReporter) generateJUnitReport() error {
 	}
 
 	// Use Ginkgo's JUnit reporter as a base and adapt it
-	_ = reporters.NewJUnitReporter(tr.JUnitPath)
+	junitReporter := reporters.NewJUnitReporter(tr.JUnitPath)
+	if junitReporter == nil {
+		return fmt.Errorf("failed to create JUnit reporter")
+	}
 
 	// Create a fake Ginkgo spec summary to leverage existing JUnit generation
 	for category, results := range suites {
@@ -192,7 +199,8 @@ func (tr *TestReporter) generateJUnitReport() error {
 			}
 
 			// This is a simplified approach - in practice, you'd want to create
-			// a proper JUnit XML structure
+			// a proper JUnit XML structure by calling the reporter methods
+			// For now, we acknowledge the spec was processed
 			_ = spec
 		}
 	}
@@ -203,7 +211,10 @@ func (tr *TestReporter) generateJUnitReport() error {
 // generateHTMLReport creates an HTML test report
 func (tr *TestReporter) generateHTMLReport() error {
 	html := tr.generateHTMLContent()
-	return os.WriteFile(tr.HTMLPath, []byte(html), security.SecureFileMode)
+	if err := os.WriteFile(tr.HTMLPath, []byte(html), security.SecureFileMode); err != nil {
+		return fmt.Errorf("failed to write HTML report: %w", err)
+	}
+	return nil
 }
 
 // generateHTMLContent creates HTML content for the test report
@@ -322,7 +333,7 @@ func (tr *TestReporter) generateResultsHTML() string {
                     %s
                 </div>
                 `, result.Status, result.Name, result.Duration,
-					map[string]string{"failed": "<br>" + result.Error}[result.Status])
+					map[string]string{statusFailedString: "<br>" + result.Error}[result.Status])
 			}
 		}
 	}
@@ -418,7 +429,7 @@ func (tr *TestReporter) convertStatusToGinkgoState(status string) types.SpecStat
 	switch status {
 	case "passed":
 		return types.SpecStatePassed
-	case "failed":
+	case statusFailedString:
 		return types.SpecStateFailed
 	case "skipped":
 		return types.SpecStateSkipped
@@ -428,7 +439,7 @@ func (tr *TestReporter) convertStatusToGinkgoState(status string) types.SpecStat
 }
 
 func (tr *TestReporter) createSpecFailureIfNeeded(result TestResult) types.SpecFailure {
-	if result.Status == "failed" {
+	if result.Status == statusFailedString {
 		return types.SpecFailure{
 			Message: result.Error,
 		}

@@ -125,10 +125,11 @@ func (m *MockMetricsProvider) generateMetrics(siteID string) *SiteMetrics {
 	}
 
 	// Use crypto/rand for secure random number generation
-	cpu := scenario.BaseCPU + secureRandomFloat64(-0.5, 0.5)*2*variability*scenario.BaseCPU
-	memory := scenario.BaseMemory + secureRandomFloat64(-0.5, 0.5)*2*variability*scenario.BaseMemory
-	bandwidth := scenario.BaseBandwidth + secureRandomFloat64(-0.5, 0.5)*2*variability*scenario.BaseBandwidth
-	latency := scenario.BaseLatency + secureRandomFloat64(-0.5, 0.5)*2*variability*scenario.BaseLatency
+	randomVariation := func() float64 { return secureRandomFloat64(-0.5, 0.5) }
+	cpu := scenario.BaseCPU + randomVariation()*2*variability*scenario.BaseCPU
+	memory := scenario.BaseMemory + randomVariation()*2*variability*scenario.BaseMemory
+	bandwidth := scenario.BaseBandwidth + randomVariation()*2*variability*scenario.BaseBandwidth
+	latency := scenario.BaseLatency + randomVariation()*2*variability*scenario.BaseLatency
 
 	// Apply trends
 	if scenario.TrendUp {
@@ -138,18 +139,18 @@ func (m *MockMetricsProvider) generateMetrics(siteID string) *SiteMetrics {
 	}
 
 	// Ensure values are within valid ranges
-	cpu = min(max(cpu, 0), 100)
-	memory = min(max(memory, 0), 100)
+	cpu = minFloat(max(cpu, 0), 100)
+	memory = minFloat(max(memory, 0), 100)
 	bandwidth = max(bandwidth, 0)
 	latency = max(latency, 0)
 
 	return &SiteMetrics{
 		Timestamp:              time.Now(),
-		CPUUtilization:        cpu,
-		MemoryUtilization:     memory,
+		CPUUtilization:         cpu,
+		MemoryUtilization:      memory,
 		AvailableBandwidthMbps: bandwidth,
 		CurrentLatencyMs:       latency,
-		ActiveNFs:             int(cpu / 10), // Rough approximation
+		ActiveNFs:              int(cpu / 10), // Rough approximation
 	}
 }
 
@@ -203,7 +204,7 @@ func (m *MockMetricsProvider) inferScenario(siteID string) MetricsScenario {
 }
 
 // SimulateTimeSeriesMetrics generates a time series of metrics for testing
-func (m *MockMetricsProvider) SimulateTimeSeriesMetrics(siteID string, duration time.Duration, interval time.Duration) []*SiteMetrics {
+func (m *MockMetricsProvider) SimulateTimeSeriesMetrics(siteID string, duration, interval time.Duration) []*SiteMetrics {
 	var series []*SiteMetrics
 
 	startTime := time.Now()
@@ -224,8 +225,8 @@ func (m *MockMetricsProvider) SimulateTimeSeriesMetrics(siteID string, duration 
 		// Simulate time-based changes
 		if scenario, ok := m.scenarios[siteID]; ok && scenario.TrendUp {
 			// Gradually increase utilization
-			scenario.BaseCPU += 1
-			scenario.BaseMemory += 1
+			scenario.BaseCPU++
+			scenario.BaseMemory++
 			m.scenarios[siteID] = scenario
 		}
 	}
@@ -241,17 +242,17 @@ func (m *MockMetricsProvider) ResetMetrics() {
 }
 
 // secureRandomFloat64 generates a cryptographically secure random float64 between min and max
-func secureRandomFloat64(min, max float64) float64 {
-	if min >= max {
-		return min
+func secureRandomFloat64(minVal, maxVal float64) float64 {
+	if minVal >= maxVal {
+		return minVal
 	}
 
 	// Generate random int64 for precision
 	const precision = 1000000 // 6 decimal places
-	rangeInt := int64((max - min) * precision)
+	rangeInt := int64((maxVal - minVal) * precision)
 
 	if rangeInt <= 0 {
-		return min
+		return minVal
 	}
 
 	randomInt, err := rand.Int(rand.Reader, big.NewInt(rangeInt))
@@ -261,7 +262,7 @@ func secureRandomFloat64(min, max float64) float64 {
 	}
 
 	randomFloat := float64(randomInt.Int64()) / precision
-	return min + randomFloat
+	return minVal + randomFloat
 }
 
 // containsAny checks if string contains any of the substrings
@@ -306,17 +307,9 @@ func stringContains(s, substr string) bool {
 	return false
 }
 
-// min returns the smaller of two float64 values
-func min(a, b float64) float64 {
+// minFloat returns the smaller of two float64 values
+func minFloat(a, b float64) float64 {
 	if a < b {
-		return a
-	}
-	return b
-}
-
-// max returns the larger of two float64 values
-func max(a, b float64) float64 {
-	if a > b {
 		return a
 	}
 	return b
