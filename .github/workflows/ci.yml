@@ -279,6 +279,11 @@ jobs:
       run: |
         go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
 
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y iperf3
+
     - name: Download envtest binaries and export KUBEBUILDER_ASSETS
       shell: bash
       run: |
@@ -477,6 +482,11 @@ jobs:
         curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
         chmod 700 get_helm.sh
         ./get_helm.sh --version ${{ env.HELM_VERSION }}
+
+    - name: Install iperf3
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y iperf3
 
     - name: Free up disk space
       run: |
