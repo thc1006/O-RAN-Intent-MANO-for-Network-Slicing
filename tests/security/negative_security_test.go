@@ -425,7 +425,7 @@ func (suite *NegativeSecurityTestSuite) testDenialOfServiceViolations(t *testing
 			Description: "Sleep command with short timeout",
 		}
 
-		suite.executor.RegisterCommand(shortTimeoutCmd)
+		_ = suite.executor.RegisterCommand(shortTimeoutCmd)
 
 		// Try to run command that exceeds timeout
 		start := time.Now()
@@ -1029,7 +1029,7 @@ func BenchmarkSecurityViolationDetection(b *testing.B) {
 		maliciousIP := "127.0.0.1; cat /etc/passwd"
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			suite.validator.ValidateIPAddress(maliciousIP)
+			_ = suite.validator.ValidateIPAddress(maliciousIP)
 		}
 	})
 }

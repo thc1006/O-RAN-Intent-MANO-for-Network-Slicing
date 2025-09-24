@@ -15,6 +15,12 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
+// Constants for commonly used strings
+const (
+	// Sync status constants
+	SyncStatusSynced = "SYNCED"
+)
+
 // ConfigSyncValidator validates Config Sync resources and status
 type ConfigSyncValidator struct {
 	ClusterClient *ClusterClient
@@ -203,7 +209,7 @@ func (csv *ConfigSyncValidator) ValidateConfigSync(ctx context.Context) (*Config
 		status.Errors = append(status.Errors, fmt.Sprintf("RootSync validation failed: %v", err))
 	} else {
 		status.RootSync = rootSyncStatus
-		if rootSyncStatus.Sync.Status != "SYNCED" {
+		if rootSyncStatus.Sync.Status != SyncStatusSynced {
 			status.Healthy = false
 		}
 	}
@@ -215,7 +221,7 @@ func (csv *ConfigSyncValidator) ValidateConfigSync(ctx context.Context) (*Config
 	} else {
 		status.RepoSyncs = repoSyncs
 		for _, rs := range repoSyncs {
-			if rs.Sync.Status != "SYNCED" {
+			if rs.Sync.Status != SyncStatusSynced {
 				status.Healthy = false
 			}
 		}
@@ -637,16 +643,16 @@ func (csv *ConfigSyncValidator) calculateOverallSyncStatus(status *ConfigSyncSta
 		return "ERROR"
 	}
 
-	if status.RootSync != nil && status.RootSync.Sync.Status == "SYNCED" {
+	if status.RootSync != nil && status.RootSync.Sync.Status == SyncStatusSynced {
 		allRepoSyncsSynced := true
 		for _, rs := range status.RepoSyncs {
-			if rs.Sync.Status != "SYNCED" {
+			if rs.Sync.Status != SyncStatusSynced {
 				allRepoSyncsSynced = false
 				break
 			}
 		}
 		if allRepoSyncsSynced {
-			return "SYNCED"
+			return SyncStatusSynced
 		}
 	}
 

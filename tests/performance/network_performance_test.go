@@ -758,8 +758,15 @@ func (s *NetworkPerformanceSuite) generatePerformanceReport() {
 		"performance_results": s.results,
 	}
 
-	data, _ := json.MarshalIndent(reportData, "", "  ")
-	os.WriteFile("testdata/performance_report.json", data, security.SecureFileMode)
+	data, err := json.MarshalIndent(reportData, "", "  ")
+	if err != nil {
+		fmt.Printf("Failed to marshal performance report: %v\n", err)
+		return
+	}
+
+	if err := os.WriteFile("testdata/performance_report.json", data, security.SecureFileMode); err != nil {
+		fmt.Printf("Failed to write performance report: %v\n", err)
+	}
 }
 
 type NetworkStressJob struct {

@@ -23,6 +23,12 @@ import (
 	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security"
 )
 
+// Constants for commonly used strings
+const (
+	// File constants
+	KptfileString = "Kptfile"
+)
+
 // NephioValidator provides validation for Nephio/Porch packages
 type NephioValidator struct {
 	Config      NephioConfig
@@ -236,7 +242,7 @@ func (nv *NephioValidator) ValidatePackageDetailed(ctx context.Context, packageP
 // validatePackageStructure validates the package directory structure
 func (nv *NephioValidator) validatePackageStructure(packagePath string) error {
 	// Check for required files
-	requiredFiles := []string{"Kptfile", "package-context.yaml"}
+	requiredFiles := []string{KptfileString, "package-context.yaml"}
 
 	for _, file := range requiredFiles {
 		filePath := filepath.Join(packagePath, file)
@@ -254,7 +260,7 @@ func (nv *NephioValidator) validatePackageStructure(packagePath string) error {
 	hasResourceFiles := false
 	for _, entry := range entries {
 		if !entry.IsDir() && (strings.HasSuffix(entry.Name(), ".yaml") || strings.HasSuffix(entry.Name(), ".yml")) {
-			if entry.Name() != "Kptfile" && entry.Name() != "package-context.yaml" {
+			if entry.Name() != KptfileString && entry.Name() != "package-context.yaml" {
 				hasResourceFiles = true
 				break
 			}
@@ -270,7 +276,7 @@ func (nv *NephioValidator) validatePackageStructure(packagePath string) error {
 
 // validateKptfile validates the Kptfile
 func (nv *NephioValidator) validateKptfile(packagePath string) error {
-	kptfilePath := filepath.Join(packagePath, "Kptfile")
+	kptfilePath := filepath.Join(packagePath, KptfileString)
 
 	// Validate file path for security
 	if err := nv.validator.ValidateFilePath(kptfilePath); err != nil {
@@ -296,7 +302,7 @@ func (nv *NephioValidator) validateKptfile(packagePath string) error {
 	}
 
 	// Validate kind
-	if kind, ok := kptfile["kind"].(string); !ok || kind != "Kptfile" {
+	if kind, ok := kptfile["kind"].(string); !ok || kind != KptfileString {
 		return fmt.Errorf("invalid kind in Kptfile, expected 'Kptfile'")
 	}
 
@@ -372,7 +378,7 @@ func (nv *NephioValidator) parseRenderedResources(packagePath string) ([]Rendere
 
 		// Skip special files
 		basename := filepath.Base(path)
-		if basename == "Kptfile" || basename == "package-context.yaml" {
+		if basename == KptfileString || basename == "package-context.yaml" {
 			return nil
 		}
 

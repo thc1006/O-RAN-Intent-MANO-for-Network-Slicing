@@ -1050,9 +1050,9 @@ func BenchmarkSecurityTestPerformance(b *testing.B) {
 
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			validator.ValidateCommandArgument("test_argument")
-			validator.ValidateIPAddress("192.168.1.1")
-			validator.ValidateFilePath("/tmp/test.txt")
+			_ = validator.ValidateCommandArgument("test_argument")
+			_ = validator.ValidateIPAddress("192.168.1.1")
+			_ = validator.ValidateFilePath("/tmp/test.txt")
 		}
 	})
 
