@@ -1083,9 +1083,10 @@ func (s *VNFLifecycleSuite) testVNFUpgrade(vnfName, fromVersion, toVersion, stra
 
 	result.UpgradeTime = time.Since(start)
 
-	if strategy == "rolling" {
+	switch strategy {
+	case "rolling":
 		result.DowntimeDuration = 15 * time.Second
-	} else if strategy == "blue-green" {
+	case "blue-green":
 		result.DowntimeDuration = 5 * time.Second
 	}
 
