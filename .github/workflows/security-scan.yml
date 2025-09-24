@@ -46,12 +46,12 @@ permissions:
 jobs:
   security-scan:
     name: Comprehensive Security Scan
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         fetch-depth: 0
 
@@ -494,12 +494,12 @@ jobs:
   # Separate job for dependency security scanning
   dependency-scan:
     name: Dependency Security Scan
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: github.event_name == 'pull_request' || github.event_name == 'push'
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Set up Go
       uses: actions/setup-go@v5
@@ -520,12 +520,12 @@ jobs:
   # Container image scanning job
   container-scan:
     name: Container Image Security Scan
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Build test images
       run: |
@@ -539,7 +539,7 @@ jobs:
         fi
 
     - name: Run Trivy container scan
-      uses: aquasecurity/trivy-action@master
+      uses: aquasecurity/trivy-action@0.28.0
       with:
         image-ref: 'test-image:latest'
         format: 'sarif'

@@ -7,7 +7,7 @@ echo "🔍 Reproducing Go code analysis workflow locally..."
 echo "=============================================="
 
 # Set environment variables like in CI
-export GOLANGCI_LINT_VERSION="v1.64.2"
+export GOLANGCI_LINT_VERSION="v2.5.0"
 export GO_VERSION="1.24.7"
 
 # Clean Go module cache to prevent permission issues (like in CI)

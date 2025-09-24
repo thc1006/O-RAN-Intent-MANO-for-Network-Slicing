@@ -21,49 +21,49 @@ This report provides a comprehensive analysis of the build health across all Go 
 
 #### 1. Root Module (`/`)
 - **Status:** ✅ BUILD SUCCESS
-- **Go Version:** 1.24.7
+- **Go Version:** 1.22
 - **Dependencies:** 37 direct, 83 total
 - **Issues:** None after dependency resolution
 - **Notes:** Main module with workspace configuration
 
 #### 2. Orchestrator (`/orchestrator`)
 - **Status:** ✅ BUILD SUCCESS
-- **Go Version:** 1.24.7
+- **Go Version:** 1.22
 - **Dependencies:** 2 direct, 4 total
 - **Issues:** None
 - **Notes:** Clean minimal dependencies
 
 #### 3. VNF Operator (`/adapters/vnf-operator`)
 - **Status:** ✅ BUILD SUCCESS
-- **Go Version:** 1.24.7
+- **Go Version:** 1.22
 - **Dependencies:** 8 direct, 62 total
 - **Issues:** Resolved after adding API dependency
 - **Notes:** Required manual addition of api/v1alpha1 dependency
 
 #### 4. CN-DMS (`/cn-dms`)
 - **Status:** ✅ BUILD SUCCESS
-- **Go Version:** 1.24.7, toolchain 1.24.7
+- **Go Version:** 1.22, toolchain 1.22.10
 - **Dependencies:** 4 direct, 37 total
 - **Issues:** Resolved after adding missing dependencies
 - **Notes:** Had missing logging and configuration dependencies
 
 #### 5. RAN-DMS (`/ran-dms`)
 - **Status:** ✅ BUILD SUCCESS
-- **Go Version:** 1.24.7
+- **Go Version:** 1.22
 - **Dependencies:** 4 direct, 37 total
 - **Issues:** None
 - **Notes:** Clean build, similar structure to CN-DMS
 
 #### 6. TN Module (`/tn`)
 - **Status:** ✅ BUILD SUCCESS (partial)
-- **Go Version:** 1.24.7, toolchain 1.24.7
+- **Go Version:** 1.22, toolchain 1.22.10
 - **Dependencies:** 8 direct, 51 total
 - **Issues:** Some API dependency warnings
 - **Notes:** Contains complex manager/agent architecture
 
 #### 7. Security Package (`/pkg/security`)
 - **Status:** ✅ BUILD SUCCESS + TESTS PASSING
-- **Go Version:** 1.24.7
+- **Go Version:** 1.22
 - **Dependencies:** Minimal, self-contained
 - **Test Results:** 100% passing (15 test functions, 161 test cases)
 - **Notes:** Excellent test coverage with comprehensive security validation
@@ -119,8 +119,8 @@ Proper replace directives are in place for local module references:
 - API submodules properly referenced via replace statements
 
 ### Version Consistency
-- **Go Version:** Standardized to 1.24.7 across all modules
-- **Toolchain:** Consistently using 1.24.7
+- **Go Version:** Standardized to 1.22 across all modules
+- **Toolchain:** Consistently using 1.22.10
 - **Dependencies:** Major versions aligned (Kubernetes v0.34.1, controller-runtime v0.22.1)
 
 ## Test Coverage Analysis
@@ -166,7 +166,7 @@ Proper replace directives are in place for local module references:
 ## Recommendations
 
 ### Immediate Actions Required
-1. **Standardize Go Version:** Update all modules to use Go 1.24.7
+1. **Standardize Go Version:** Update all modules to use Go 1.22
 2. **Fix API Dependencies:** Resolve import path issues for api/v1alpha1 modules
 3. **Complete Dependency Specifications:** Ensure all modules have complete dependency lists
 
@@ -201,14 +201,14 @@ cd /pkg/security && go test -v ./...
 
 | Module | Go Version | Direct Deps | Total Deps | Build Status | Test Status |
 |--------|------------|-------------|------------|--------------|-------------|
-| Root | 1.24.7 | 37 | 83 | ✅ | ⚠️ |
-| orchestrator | 1.24.7 | 2 | 4 | ✅ | ❌ |
-| vnf-operator | 1.24.7 | 8 | 62 | ✅ | ❌ |
-| cn-dms | 1.24.7/1.24.7 | 4 | 37 | ✅ | N/A |
-| ran-dms | 1.24.7 | 4 | 37 | ✅ | N/A |
-| tn | 1.24.7/1.24.7 | 8 | 51 | ✅ | ❌ |
-| pkg/security | 1.24.7 | 0 | 0 | ✅ | ✅ |
-| cn-dms/cmd | 1.24.7 | 4 | 37 | ✅ | N/A |
+| Root | 1.22 | 37 | 83 | ✅ | ⚠️ |
+| orchestrator | 1.22 | 2 | 4 | ✅ | ❌ |
+| vnf-operator | 1.22 | 8 | 62 | ✅ | ❌ |
+| cn-dms | 1.22/1.22.10 | 4 | 37 | ✅ | N/A |
+| ran-dms | 1.22 | 4 | 37 | ✅ | N/A |
+| tn | 1.22/1.22.10 | 8 | 51 | ✅ | ❌ |
+| pkg/security | 1.22 | 0 | 0 | ✅ | ✅ |
+| cn-dms/cmd | 1.22 | 4 | 37 | ✅ | N/A |
 
 ## Conclusion
 

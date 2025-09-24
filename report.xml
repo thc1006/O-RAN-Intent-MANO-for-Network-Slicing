@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<checkstyle version="5.0">
+  <file name="architecture/nephio-adapter-controller.go">
+    <error column="1" line="11" message="File is not properly formatted" severity="warning" source="goimports"></error>
+    <error column="12" line="237" message="QF1008: could remove embedded field &#34;ObjectMeta&#34; from selector" severity="warning" source="staticcheck"></error>
+  </file>
+  <file name="architecture/package-generator.go">
+    <error column="1" line="1" message="package-comments: package comment should be of the form &#34;Package nephio ...&#34;" severity="warning" source="revive"></error>
+    <error column="6" line="633" message="QF1004: could use strings.ReplaceAll instead" severity="warning" source="staticcheck"></error>
+    <error column="6" line="634" message="QF1004: could use strings.ReplaceAll instead" severity="warning" source="staticcheck"></error>
+  </file>
+</checkstyle>

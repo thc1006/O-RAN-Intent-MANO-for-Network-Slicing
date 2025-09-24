@@ -454,7 +454,7 @@ spec:
 #### Docker 映像檔結構
 ```dockerfile
 # 多階段建構範例
-FROM golang:1.21-alpine AS builder
+FROM golang:1.22-alpine AS builder
 WORKDIR /app
 COPY . .
 RUN go build -o orchestrator ./cmd/

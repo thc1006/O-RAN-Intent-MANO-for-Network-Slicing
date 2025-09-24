@@ -1,7 +1,7 @@
 # O-RAN Intent-Based MANO for Network Slicing
 
 [![CI/CD Pipeline](https://github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/actions/workflows/ci.yml/badge.svg)](https://github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/actions/workflows/ci.yml)
-[![Go Version](https://img.shields.io/badge/go-1.21+-blue.svg)](https://golang.org/doc/go1.21)
+[![Go Version](https://img.shields.io/badge/go-1.22+-blue.svg)](https://golang.org/doc/go1.22)
 [![Python Version](https://img.shields.io/badge/python-3.11+-blue.svg)](https://python.org)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![GitHub Issues](https://img.shields.io/github/issues/thc1006/O-RAN-Intent-MANO-for-Network-Slicing)](https://github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/issues)
@@ -120,7 +120,7 @@ kubectl get pods -A | grep oran-mano
 ## 🛠️ Technology Stack
 
 ### Core Languages & Frameworks
-- **Go 1.21+**: High-performance orchestration services
+- **Go 1.22+**: High-performance orchestration services
 - **Python 3.11+**: NLP processing and ML components
 - **Kubernetes 1.28+**: Container orchestration platform
 - **React 18**: Modern web interface
@@ -152,7 +152,7 @@ Our modern CI/CD pipeline demonstrates production-ready practices:
 | **Performance Tests** | ✅ Targets Met | Automated benchmarks |
 
 ### GitHub Actions Workflows
-- **Enhanced CI**: Comprehensive testing with Go 1.21, Python 3.11
+- **Enhanced CI**: Comprehensive testing with Go 1.22, Python 3.11
 - **Security**: SAST, dependency scanning, container security
 - **Production Deployment**: Automated releases and rollbacks
 
@@ -164,7 +164,7 @@ Our modern CI/CD pipeline demonstrates production-ready practices:
 # Required tools
 - Docker 24.0+
 - Kubernetes 1.28+ (Kind, minikube, or production cluster)
-- Go 1.21+
+- Go 1.22+
 - Python 3.11+
 - kubectl 1.28+
 - Helm 3.13+
