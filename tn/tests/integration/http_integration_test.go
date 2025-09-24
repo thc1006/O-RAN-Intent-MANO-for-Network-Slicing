@@ -77,19 +77,19 @@ func setupRoutes(router *mux.Router, agent *pkg.TNAgent) {
 	// Health and status - use simple mock handlers since agent methods are unexported
 	router.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status":"healthy"}`))
+		_, _ = w.Write([]byte(`{"status":"healthy"}`))
 	}).Methods("GET")
 
 	router.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status":"running","agent":"active"}`))
+		_, _ = w.Write([]byte(`{"status":"running","agent":"active"}`))
 	}).Methods("GET")
 
 	// Configuration
 	router.HandleFunc("/config", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"clusterName":"integration-test-cluster","status":"active"}`))
+		_, _ = w.Write([]byte(`{"clusterName":"integration-test-cluster","status":"active"}`))
 	}).Methods("GET")
 
 	router.HandleFunc("/config", func(w http.ResponseWriter, r *http.Request) {
@@ -203,7 +203,7 @@ func TestHTTPIntegration_HealthEndpoint(t *testing.T) {
 	// Test healthy agent
 	resp, err := suite.client.Get(suite.baseURL + "/health")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Equal(t, "application/json", resp.Header.Get("Content-Type"))
@@ -224,7 +224,7 @@ func TestHTTPIntegration_StatusEndpoint(t *testing.T) {
 
 	resp, err := suite.client.Get(suite.baseURL + "/status")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -243,7 +243,7 @@ func TestHTTPIntegration_ConfigurationEndpoints(t *testing.T) {
 	// Test GET config
 	resp, err := suite.client.Get(suite.baseURL + "/config")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -282,7 +282,7 @@ func TestHTTPIntegration_ConfigurationEndpoints(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	resp, err = suite.client.Do(req)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -298,7 +298,7 @@ func TestHTTPIntegration_ConfigurationEndpoints(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	resp, err = suite.client.Do(req)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 }
@@ -320,7 +320,7 @@ func TestHTTPIntegration_SliceManagement(t *testing.T) {
 
 	resp, err := suite.client.Post(suite.baseURL+"/slices/"+sliceID, "application/json", bytes.NewReader(configData))
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -338,7 +338,7 @@ func TestHTTPIntegration_SliceManagement(t *testing.T) {
 
 	resp, err = suite.client.Do(req)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -365,7 +365,7 @@ func TestHTTPIntegration_PerformanceTests(t *testing.T) {
 
 	resp, err := suite.client.Post(suite.baseURL+"/tests", "application/json", bytes.NewReader(configData))
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// Might succeed or fail depending on environment, but should respond
 	assert.True(t, resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusInternalServerError)
@@ -373,7 +373,7 @@ func TestHTTPIntegration_PerformanceTests(t *testing.T) {
 	// Test GET test result
 	resp, err = suite.client.Get(suite.baseURL + "/tests/integration-test-1")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -391,7 +391,7 @@ func TestHTTPIntegration_VXLANManagement(t *testing.T) {
 	// Test VXLAN status (might fail if manager not initialized)
 	resp, err := suite.client.Get(suite.baseURL + "/vxlan/status")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// Should either return status or service unavailable
 	assert.True(t, resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusServiceUnavailable)
@@ -412,7 +412,7 @@ func TestHTTPIntegration_VXLANManagement(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	resp, err = suite.client.Do(req)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// Should either succeed or fail gracefully
 	assert.True(t, resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusInternalServerError)
@@ -420,7 +420,7 @@ func TestHTTPIntegration_VXLANManagement(t *testing.T) {
 	// Test VXLAN connectivity
 	resp, err = suite.client.Post(suite.baseURL+"/vxlan/connectivity", "application/json", nil)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	assert.True(t, resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusServiceUnavailable)
 }
@@ -432,7 +432,7 @@ func TestHTTPIntegration_TrafficControl(t *testing.T) {
 	// Test TC status
 	resp, err := suite.client.Get(suite.baseURL + "/tc/status")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// Should either return status or service unavailable
 	assert.True(t, resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusServiceUnavailable)
@@ -454,7 +454,7 @@ func TestHTTPIntegration_TrafficControl(t *testing.T) {
 
 	resp, err = suite.client.Post(suite.baseURL+"/tc/rules", "application/json", bytes.NewReader(policyData))
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// Should either succeed or fail gracefully
 	assert.True(t, resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusInternalServerError)
@@ -465,7 +465,7 @@ func TestHTTPIntegration_TrafficControl(t *testing.T) {
 
 	resp, err = suite.client.Do(req)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	assert.True(t, resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusInternalServerError)
 }
@@ -477,7 +477,7 @@ func TestHTTPIntegration_IperfManagement(t *testing.T) {
 	// Test get iperf servers
 	resp, err := suite.client.Get(suite.baseURL + "/iperf/servers")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -492,7 +492,7 @@ func TestHTTPIntegration_IperfManagement(t *testing.T) {
 	port := 15001
 	resp, err = suite.client.Post(suite.baseURL+fmt.Sprintf("/iperf/servers/%d", port), "application/json", nil)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// Should either succeed or fail gracefully
 	assert.True(t, resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusInternalServerError)
@@ -511,7 +511,7 @@ func TestHTTPIntegration_IperfManagement(t *testing.T) {
 
 		resp, err = suite.client.Do(req)
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -531,7 +531,7 @@ func TestHTTPIntegration_MonitoringEndpoints(t *testing.T) {
 	// Test bandwidth metrics
 	resp, err := suite.client.Get(suite.baseURL + "/bandwidth")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// Should either return metrics or service unavailable
 	assert.True(t, resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusServiceUnavailable)
@@ -539,14 +539,14 @@ func TestHTTPIntegration_MonitoringEndpoints(t *testing.T) {
 	// Test metrics endpoint
 	resp, err = suite.client.Get(suite.baseURL + "/metrics")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	// Test metrics export
 	resp, err = suite.client.Get(suite.baseURL + "/metrics/export")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// Should either return export or fail gracefully
 	assert.True(t, resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusInternalServerError)
@@ -570,7 +570,7 @@ func TestHTTPIntegration_BandwidthStream(t *testing.T) {
 
 	resp, err := suite.client.Do(req)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// Should either return stream or service unavailable
 	assert.True(t, resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusServiceUnavailable)
@@ -619,7 +619,7 @@ func TestHTTPIntegration_ConcurrentRequests(t *testing.T) {
 				errorChan <- fmt.Errorf("request %d to %s failed: %w", i, endpoint, err)
 				return
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			if resp.StatusCode >= 500 {
 				errorChan <- fmt.Errorf("request %d to %s returned %d", i, endpoint, resp.StatusCode)
@@ -673,7 +673,7 @@ func TestHTTPIntegration_LargePayloads(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := suite.client.Do(req)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// Should handle large payloads (might succeed or fail based on validation)
 	assert.True(t, resp.StatusCode == http.StatusOK ||
@@ -702,7 +702,7 @@ func TestHTTPIntegration_ErrorRecovery(t *testing.T) {
 			req.Header.Set("Content-Type", "application/json")
 			resp, err := suite.client.Do(req)
 			require.NoError(t, err)
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			// Should reject malformed JSON
 			assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
@@ -710,7 +710,7 @@ func TestHTTPIntegration_ErrorRecovery(t *testing.T) {
 			// Server should still be responsive after error
 			healthResp, err := suite.client.Get(suite.baseURL + "/health")
 			require.NoError(t, err)
-			defer healthResp.Body.Close()
+			defer func() { _ = healthResp.Body.Close() }()
 
 			assert.Equal(t, http.StatusOK, healthResp.StatusCode)
 		})
@@ -757,7 +757,7 @@ func TestHTTPIntegration_ContentNegotiation(t *testing.T) {
 
 	resp, err := suite.client.Do(req)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Equal(t, "application/json", resp.Header.Get("Content-Type"))
@@ -769,7 +769,7 @@ func TestHTTPIntegration_ContentNegotiation(t *testing.T) {
 
 	resp, err = suite.client.Do(req)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// Should still process as the handler looks at the body content
 	assert.True(t, resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusBadRequest)
@@ -786,7 +786,7 @@ func TestHTTPIntegration_SecurityHeaders(t *testing.T) {
 
 	resp, err := suite.client.Do(req)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Equal(t, "*", resp.Header.Get("Access-Control-Allow-Origin"))
@@ -826,7 +826,7 @@ func TestHTTPIntegration_LoadTesting(t *testing.T) {
 				mu.Unlock()
 				return
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			if resp.StatusCode != http.StatusOK {
 				mu.Lock()
@@ -864,7 +864,7 @@ func TestHTTPIntegration_NetworkErrors(t *testing.T) {
 		// Timeout is expected with very short timeout
 		assert.Contains(t, err.Error(), "timeout")
 	} else {
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 		// If it succeeds, it should be valid
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 	}

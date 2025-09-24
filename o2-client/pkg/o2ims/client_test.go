@@ -280,7 +280,7 @@ func TestGetResourcePool(t *testing.T) {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(mockPool)
+		_ = json.NewEncoder(w).Encode(mockPool)
 	}))
 	defer server.Close()
 
@@ -357,7 +357,7 @@ func TestHTTPErrorHandling(t *testing.T) {
 	t.Run("404 Not Found", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNotFound)
-			_ = w.Write([]byte("Not Found"))
+			_, _ = w.Write([]byte("Not Found"))
 		}))
 		defer server.Close()
 
@@ -384,7 +384,7 @@ func TestHTTPErrorHandling(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(apiError)
+			_ = json.NewEncoder(w).Encode(apiError)
 		}))
 		defer server.Close()
 
