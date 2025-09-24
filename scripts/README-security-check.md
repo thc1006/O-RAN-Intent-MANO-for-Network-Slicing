@@ -143,7 +143,7 @@ The script automatically installs these tools if missing:
 5. **yq** - YAML processor
 
 ### System Requirements
-- Go 1.23.4+
+- Go 1.24.7+
 - Python 3.11+
 - Bash 4.0+
 - Internet access (for tool installation)

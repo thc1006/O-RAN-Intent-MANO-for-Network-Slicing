@@ -847,7 +847,7 @@ jobs:
 
         | Tool | Version | Purpose |
         |------|---------|---------|
-        | Go | 1.23.4 | Build environment |
+        | Go | 1.24.7 | Build environment |
         | Trivy | 0.24.0 | Container vulnerability scanning |
         | Grype | v4.x | Container vulnerability scanning |
         | Snyk | 0.4.0 | Security and compliance scanning |
@@ -941,7 +941,7 @@ jobs:
             "cn-dms"
           ],
           "tools_versions": {
-            "go": "1.23.6",
+            "go": "1.24.7",
             "trivy": "0.24.0",
             "grype": "v4.x",
             "snyk": "0.4.0",
