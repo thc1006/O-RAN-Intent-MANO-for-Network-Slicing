@@ -12,7 +12,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-	"unicode"
 
 	"github.com/stretchr/testify/assert"
 
@@ -758,7 +757,7 @@ func TestFuzzingErrorHandling(t *testing.T) {
 				}()
 
 				suite.logger.Clear()
-				err := fmt.Errorf(fuzzedError)
+				err := fmt.Errorf("%s", fuzzedError)
 				handledErr := suite.errorHandler.HandleError(err, context)
 
 				if handledErr != nil {

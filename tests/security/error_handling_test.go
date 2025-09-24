@@ -688,7 +688,7 @@ func TestErrorMetrics(t *testing.T) {
 		}
 
 		for _, errMsg := range errorMessages {
-			err := fmt.Errorf(errMsg)
+			err := fmt.Errorf("%s", errMsg)
 			handler.HandleError(err, nil)
 		}
 
