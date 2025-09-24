@@ -60,7 +60,7 @@ env:
   HELM_VERSION: 'v3.16.2'
   KUSTOMIZE_VERSION: 'v5.5.0'
   KPT_VERSION: 'v1.0.0-beta.34'
-  GOLANGCI_LINT_VERSION: 'v2.4.0'
+  GOLANGCI_LINT_VERSION: 'v2.5.0'
   SONAR_VERSION: '5.0.1.3006'
 
   # Quality Gates and Targets

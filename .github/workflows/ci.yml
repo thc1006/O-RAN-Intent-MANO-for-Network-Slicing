@@ -154,15 +154,16 @@ jobs:
         wait-for-processing: false
       continue-on-error: true
 
-    - name: Verify golangci-lint version
-      run: |
-        golangci-lint version
-        echo "✅ golangci-lint version confirmed"
+    - name: Show golangci-lint version
+      uses: golangci/golangci-lint-action@v8
+      with:
+        version: v2.5.0
+        args: --version
 
     - name: Run golangci-lint with security checks
       uses: golangci/golangci-lint-action@v8
       with:
-        version: v2.4.0
+        version: v2.5.0
         args: --timeout=10m --enable=gosec,gocritic,revive,staticcheck,unparam,unused,ineffassign,misspell,goconst,gocyclo --disable=gofmt,goimports
 
     - name: Upload gosec artifacts
