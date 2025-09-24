@@ -1,3 +1,6 @@
+// Package dashboard provides metrics aggregation and visualization for test results.
+// It includes functionality for collecting, processing, and displaying performance metrics
+// from various test executions and system components.
 package dashboard
 
 import (

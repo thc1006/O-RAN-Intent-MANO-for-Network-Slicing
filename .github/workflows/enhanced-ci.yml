@@ -806,7 +806,34 @@ jobs:
         sudo apt-get install -y net-tools iproute2 iputils-ping
         # Install bc for arithmetic in shell scripts
         sudo apt-get install -y bc
+        # Install etcd for controller-runtime envtest
+        sudo apt-get install -y etcd
         echo "✅ System dependencies installed"
+
+    - name: Setup Kubebuilder and envtest
+      if: matrix.language == 'go' && contains(matrix.test-dir, 'vnf-operator')
+      run: |
+        echo "🔧 Setting up Kubebuilder and envtest for controller testing..."
+        # Install kubebuilder test binaries
+        K8S_VERSION="1.31.0"
+        ARCH=$(go env GOARCH)
+        OS=$(go env GOOS)
+
+        # Download and extract kubebuilder binaries
+        curl -sSLo envtest-bins.tar.gz "https://go.kubebuilder.io/test-tools/${K8S_VERSION}/${OS}/${ARCH}"
+        mkdir -p /tmp/kubebuilder/bin
+        tar -C /tmp/kubebuilder --strip-components=1 -zvxf envtest-bins.tar.gz
+
+        # Set environment variables for envtest
+        echo "KUBEBUILDER_ASSETS=/tmp/kubebuilder/bin" >> $GITHUB_ENV
+        echo "TEST_ASSET_KUBE_APISERVER=/tmp/kubebuilder/bin/kube-apiserver" >> $GITHUB_ENV
+        echo "TEST_ASSET_ETCD=/tmp/kubebuilder/bin/etcd" >> $GITHUB_ENV
+        echo "TEST_ASSET_KUBECTL=/tmp/kubebuilder/bin/kubectl" >> $GITHUB_ENV
+
+        # Verify installation
+        /tmp/kubebuilder/bin/etcd --version || true
+        /tmp/kubebuilder/bin/kube-apiserver --version || true
+        echo "✅ Kubebuilder and envtest setup completed"
 
     - name: Install dependencies and test tools
       working-directory: ${{ matrix.test-dir }}
