@@ -5,18 +5,19 @@ Validates that all optimizations meet thesis performance targets
 """
 
 import json
-import time
+import os
 import subprocess
 import sys
-import os
-from typing import Dict, List, Tuple, Any
+import time
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any, Dict, List, Tuple
 
 
 @dataclass
 class OptimizationResult:
     """Result of an optimization validation"""
+
     component: str
     optimization: str
     baseline_time: float
@@ -34,29 +35,27 @@ class OptimizationValidator:
         self.results = []
         self.thesis_targets = {
             # E2E deployment targets (from thesis)
-            "e2e_embb": 407.0,      # seconds
-            "e2e_urllc": 353.0,     # seconds
-            "e2e_miot": 257.0,      # seconds
-
+            "e2e_embb": 407.0,  # seconds
+            "e2e_urllc": 353.0,  # seconds
+            "e2e_miot": 257.0,  # seconds
             # Component-specific targets (derived from analysis)
-            "intent_processing": 5.0,        # seconds
-            "placement_decision": 2.0,       # seconds
-            "vnf_deployment": 180.0,         # seconds
-            "vxlan_setup": 30.0,             # seconds
-
+            "intent_processing": 5.0,  # seconds
+            "placement_decision": 2.0,  # seconds
+            "vnf_deployment": 180.0,  # seconds
+            "vxlan_setup": 30.0,  # seconds
             # Resource efficiency targets
-            "cpu_utilization": 70.0,         # percent
-            "memory_utilization": 80.0,      # percent
-            "cache_hit_rate": 80.0,          # percent
+            "cpu_utilization": 70.0,  # percent
+            "memory_utilization": 80.0,  # percent
+            "cache_hit_rate": 80.0,  # percent
         }
 
         # Optimization improvement targets (minimum required improvement)
         self.improvement_targets = {
-            "intent_processing": 50.0,       # 50% faster
-            "placement_decision": 40.0,      # 40% faster
-            "vnf_deployment": 30.0,          # 30% faster
-            "vxlan_setup": 60.0,            # 60% faster
-            "e2e_deployment": 25.0,         # 25% faster overall
+            "intent_processing": 50.0,  # 50% faster
+            "placement_decision": 40.0,  # 40% faster
+            "vnf_deployment": 30.0,  # 30% faster
+            "vxlan_setup": 60.0,  # 60% faster
+            "e2e_deployment": 25.0,  # 25% faster overall
         }
 
     def validate_nlp_optimizations(self) -> OptimizationResult:
@@ -84,8 +83,8 @@ class OptimizationValidator:
                 details={
                     "cache_enabled": True,
                     "precomputation_enabled": True,
-                    "parallel_processing": True
-                }
+                    "parallel_processing": True,
+                },
             )
 
             self.results.append(result)
@@ -119,8 +118,8 @@ class OptimizationValidator:
                 details={
                     "precomputed_scores": True,
                     "site_caching": True,
-                    "parallel_evaluation": True
-                }
+                    "parallel_evaluation": True,
+                },
             )
 
             self.results.append(result)
@@ -129,7 +128,9 @@ class OptimizationValidator:
 
         except Exception as e:
             print(f"❌ Placement optimization validation failed: {e}")
-            return self._create_failed_result("orchestrator", "placement_caching", str(e))
+            return self._create_failed_result(
+                "orchestrator", "placement_caching", str(e)
+            )
 
     def validate_vnf_optimizations(self) -> OptimizationResult:
         """Validate VNF controller optimizations"""
@@ -154,8 +155,8 @@ class OptimizationValidator:
                 details={
                     "parallel_processing": True,
                     "reconcile_caching": True,
-                    "batch_operations": True
-                }
+                    "batch_operations": True,
+                },
             )
 
             self.results.append(result)
@@ -164,7 +165,9 @@ class OptimizationValidator:
 
         except Exception as e:
             print(f"❌ VNF optimization validation failed: {e}")
-            return self._create_failed_result("vnf-operator", "lifecycle_optimization", str(e))
+            return self._create_failed_result(
+                "vnf-operator", "lifecycle_optimization", str(e)
+            )
 
     def validate_vxlan_optimizations(self) -> OptimizationResult:
         """Validate VXLAN manager optimizations"""
@@ -190,8 +193,8 @@ class OptimizationValidator:
                     "command_caching": True,
                     "batch_operations": True,
                     "parallel_setup": True,
-                    "netlink_support": True
-                }
+                    "netlink_support": True,
+                },
             )
 
             self.results.append(result)
@@ -231,8 +234,8 @@ class OptimizationValidator:
                     details={
                         "scenario": scenario,
                         "parallel_deployment": True,
-                        "all_optimizations_enabled": True
-                    }
+                        "all_optimizations_enabled": True,
+                    },
                 )
 
                 e2e_results[scenario] = result
@@ -241,7 +244,9 @@ class OptimizationValidator:
 
             except Exception as e:
                 print(f"❌ E2E {scenario} validation failed: {e}")
-                e2e_results[scenario] = self._create_failed_result("e2e", f"{scenario}_deployment", str(e))
+                e2e_results[scenario] = self._create_failed_result(
+                    "e2e", f"{scenario}_deployment", str(e)
+                )
 
         return e2e_results
 
@@ -256,13 +261,16 @@ class OptimizationValidator:
 
             # Calculate overall efficiency improvement
             cpu_improvement = baseline_metrics["cpu"] - optimized_metrics["cpu"]
-            memory_improvement = baseline_metrics["memory"] - optimized_metrics["memory"]
+            memory_improvement = (
+                baseline_metrics["memory"] - optimized_metrics["memory"]
+            )
 
             overall_improvement = (cpu_improvement + memory_improvement) / 2
 
             meets_target = (
-                optimized_metrics["cpu"] <= self.thesis_targets["cpu_utilization"] and
-                optimized_metrics["memory"] <= self.thesis_targets["memory_utilization"]
+                optimized_metrics["cpu"] <= self.thesis_targets["cpu_utilization"]
+                and optimized_metrics["memory"]
+                <= self.thesis_targets["memory_utilization"]
             )
 
             result = OptimizationResult(
@@ -272,14 +280,15 @@ class OptimizationValidator:
                 optimized_time=optimized_metrics["cpu"] + optimized_metrics["memory"],
                 improvement_pct=overall_improvement,
                 meets_target=meets_target,
-                target_time=self.thesis_targets["cpu_utilization"] + self.thesis_targets["memory_utilization"],
+                target_time=self.thesis_targets["cpu_utilization"]
+                + self.thesis_targets["memory_utilization"],
                 details={
                     "baseline_cpu": baseline_metrics["cpu"],
                     "optimized_cpu": optimized_metrics["cpu"],
                     "baseline_memory": baseline_metrics["memory"],
                     "optimized_memory": optimized_metrics["memory"],
-                    "cache_hit_rate": optimized_metrics.get("cache_hit_rate", 0)
-                }
+                    "cache_hit_rate": optimized_metrics.get("cache_hit_rate", 0),
+                },
             )
 
             self.results.append(result)
@@ -302,7 +311,7 @@ class OptimizationValidator:
             test_intents = [
                 "High bandwidth video streaming tolerating up to 20ms latency with 4.57 Mbps",
                 "Gaming service requiring less than 6.3ms latency and 0.93 Mbps throughput",
-                "IoT monitoring with 2.77 Mbps bandwidth and 15.7ms latency tolerance"
+                "IoT monitoring with 2.77 Mbps bandwidth and 15.7ms latency tolerance",
             ]
 
             start_time = time.time()
@@ -324,7 +333,7 @@ class OptimizationValidator:
             test_intents = [
                 "High bandwidth video streaming tolerating up to 20ms latency with 4.57 Mbps",
                 "Gaming service requiring less than 6.3ms latency and 0.93 Mbps throughput",
-                "IoT monitoring with 2.77 Mbps bandwidth and 15.7ms latency tolerance"
+                "IoT monitoring with 2.77 Mbps bandwidth and 15.7ms latency tolerance",
             ]
 
             start_time = time.time()
@@ -369,9 +378,9 @@ class OptimizationValidator:
     def _simulate_baseline_e2e(self, scenario: str) -> float:
         """Simulate baseline E2E deployment time"""
         baselines = {
-            "embb": 532.0,   # Slower series baseline
+            "embb": 532.0,  # Slower series baseline
             "urllc": 292.0,  # Slower series baseline
-            "miot": 220.0    # Slower series baseline
+            "miot": 220.0,  # Slower series baseline
         }
         return baselines.get(scenario, 400.0)
 
@@ -381,17 +390,17 @@ class OptimizationValidator:
         baseline = self._simulate_baseline_e2e(scenario)
 
         # Apply cumulative improvements
-        intent_improvement = 0.5     # 50% faster intent processing
+        intent_improvement = 0.5  # 50% faster intent processing
         placement_improvement = 0.4  # 40% faster placement
-        vnf_improvement = 0.3        # 30% faster VNF deployment
-        vxlan_improvement = 0.6      # 60% faster VXLAN setup
+        vnf_improvement = 0.3  # 30% faster VNF deployment
+        vxlan_improvement = 0.6  # 60% faster VXLAN setup
 
         # Weight improvements by component contribution to E2E time
         overall_improvement = (
-            intent_improvement * 0.05 +      # 5% of E2E time
-            placement_improvement * 0.10 +   # 10% of E2E time
-            vnf_improvement * 0.60 +         # 60% of E2E time
-            vxlan_improvement * 0.25         # 25% of E2E time
+            intent_improvement * 0.05  # 5% of E2E time
+            + placement_improvement * 0.10  # 10% of E2E time
+            + vnf_improvement * 0.60  # 60% of E2E time
+            + vxlan_improvement * 0.25  # 25% of E2E time
         )
 
         return baseline * (1 - overall_improvement)
@@ -399,21 +408,23 @@ class OptimizationValidator:
     def _get_baseline_resource_metrics(self) -> Dict[str, float]:
         """Get baseline resource utilization metrics"""
         return {
-            "cpu": 85.0,     # 85% CPU utilization
+            "cpu": 85.0,  # 85% CPU utilization
             "memory": 90.0,  # 90% memory utilization
         }
 
     def _get_optimized_resource_metrics(self) -> Dict[str, float]:
         """Get optimized resource utilization metrics"""
         return {
-            "cpu": 65.0,           # 65% CPU utilization (20% improvement)
-            "memory": 75.0,        # 75% memory utilization (15% improvement)
-            "cache_hit_rate": 85.0 # 85% cache hit rate
+            "cpu": 65.0,  # 65% CPU utilization (20% improvement)
+            "memory": 75.0,  # 75% memory utilization (15% improvement)
+            "cache_hit_rate": 85.0,  # 85% cache hit rate
         }
 
     # Utility methods
 
-    def _create_failed_result(self, component: str, optimization: str, error: str) -> OptimizationResult:
+    def _create_failed_result(
+        self, component: str, optimization: str, error: str
+    ) -> OptimizationResult:
         """Create a failed optimization result"""
         return OptimizationResult(
             component=component,
@@ -423,7 +434,7 @@ class OptimizationValidator:
             improvement_pct=0.0,
             meets_target=False,
             target_time=0.0,
-            details={"error": error}
+            details={"error": error},
         )
 
     def _print_result(self, result: OptimizationResult) -> None:
@@ -444,7 +455,11 @@ class OptimizationValidator:
 
         # Calculate overall improvement
         e2e_results = [r for r in self.results if r.component == "e2e"]
-        avg_e2e_improvement = sum(r.improvement_pct for r in e2e_results) / len(e2e_results) if e2e_results else 0
+        avg_e2e_improvement = (
+            sum(r.improvement_pct for r in e2e_results) / len(e2e_results)
+            if e2e_results
+            else 0
+        )
 
         report = {
             "validation_timestamp": time.time(),
@@ -452,7 +467,7 @@ class OptimizationValidator:
                 "total_tests": total_tests,
                 "passed_tests": passed_tests,
                 "pass_rate": pass_rate,
-                "avg_e2e_improvement": avg_e2e_improvement
+                "avg_e2e_improvement": avg_e2e_improvement,
             },
             "thesis_compliance": {
                 "embb_target": self.thesis_targets["e2e_embb"],
@@ -468,11 +483,11 @@ class OptimizationValidator:
                     "improvement_pct": r.improvement_pct,
                     "meets_target": r.meets_target,
                     "target_time": r.target_time,
-                    "details": r.details
+                    "details": r.details,
                 }
                 for r in self.results
             ],
-            "recommendations": self._generate_recommendations()
+            "recommendations": self._generate_recommendations(),
         }
 
         return report
@@ -485,31 +500,43 @@ class OptimizationValidator:
 
         if not failed_results:
             recommendations.append("🎉 All optimizations meet target performance!")
-            recommendations.append("Consider further tuning for additional performance gains")
+            recommendations.append(
+                "Consider further tuning for additional performance gains"
+            )
         else:
             recommendations.append("🔧 Areas requiring attention:")
 
             for result in failed_results:
                 if result.component == "nlp":
-                    recommendations.append("- Increase NLP cache size and precomputation coverage")
+                    recommendations.append(
+                        "- Increase NLP cache size and precomputation coverage"
+                    )
                 elif result.component == "orchestrator":
-                    recommendations.append("- Enable additional placement algorithm optimizations")
+                    recommendations.append(
+                        "- Enable additional placement algorithm optimizations"
+                    )
                 elif result.component == "vnf-operator":
-                    recommendations.append("- Increase VNF controller concurrency and caching")
+                    recommendations.append(
+                        "- Increase VNF controller concurrency and caching"
+                    )
                 elif result.component == "tn-agent":
                     recommendations.append("- Enable netlink-based VXLAN operations")
                 elif result.component == "e2e":
-                    recommendations.append(f"- Review {result.optimization} deployment pipeline")
+                    recommendations.append(
+                        f"- Review {result.optimization} deployment pipeline"
+                    )
 
         # Always add thesis-specific recommendations
-        recommendations.extend([
-            "",
-            "📋 Thesis-specific recommendations:",
-            "- Monitor SMF initialization bottleneck (target: <60s)",
-            "- Validate throughput targets: eMBB=4.57Mbps, URLLC=0.93Mbps, mIoT=2.77Mbps",
-            "- Ensure latency targets: eMBB=16.1ms, URLLC=6.3ms, mIoT=15.7ms",
-            "- Maintain E2E deployment times under thesis maximums"
-        ])
+        recommendations.extend(
+            [
+                "",
+                "📋 Thesis-specific recommendations:",
+                "- Monitor SMF initialization bottleneck (target: <60s)",
+                "- Validate throughput targets: eMBB=4.57Mbps, URLLC=0.93Mbps, mIoT=2.77Mbps",
+                "- Ensure latency targets: eMBB=16.1ms, URLLC=6.3ms, mIoT=15.7ms",
+                "- Maintain E2E deployment times under thesis maximums",
+            ]
+        )
 
         return recommendations
 
@@ -540,7 +567,7 @@ def main():
 
     # Save report
     report_file = Path("optimization_validation_report.json")
-    with open(report_file, 'w') as f:
+    with open(report_file, "w") as f:
         json.dump(report, f, indent=2)
 
     # Print summary
@@ -559,7 +586,9 @@ def main():
     e2e_results = [r for r in validator.results if r.component == "e2e"]
     for result in e2e_results:
         status = "✅" if result.meets_target else "❌"
-        print(f"{status} {result.optimization}: {result.optimized_time:.1f}s (target: {result.target_time:.1f}s)")
+        print(
+            f"{status} {result.optimization}: {result.optimized_time:.1f}s (target: {result.target_time:.1f}s)"
+        )
     print()
 
     # Print recommendations
@@ -572,7 +601,7 @@ def main():
     print(f"📄 Detailed report saved: {report_file}")
 
     # Exit with appropriate code
-    if report['summary']['pass_rate'] == 100:
+    if report["summary"]["pass_rate"] == 100:
         print("🎉 All optimizations validated successfully!")
         sys.exit(0)
     else:

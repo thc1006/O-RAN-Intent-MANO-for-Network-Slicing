@@ -213,6 +213,7 @@ jobs:
           name: ${{ matrix.component }}-coverage
 
       - name: Build and push container image
+        id: build
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -233,14 +234,34 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64,linux/arm64
+          outputs: type=image,name=target,annotation-index.org.opencontainers.image.description=Multi-platform build
 
-      - name: Sign container image
+      - name: Install cosign
         uses: sigstore/cosign-installer@v3
+        with:
+          cosign-release: 'v2.2.4'
       - name: Sign the published Docker image
+        if: steps.build.outcome == 'success'
         env:
           COSIGN_EXPERIMENTAL: 1
         run: |
-          echo "${{ steps.meta.outputs.tags }}" | xargs -I {} cosign sign --yes {}@${{ steps.build.outputs.digest }}
+          # Verify digest exists
+          if [ -z "${{ steps.build.outputs.digest }}" ]; then
+            echo "Error: Build digest is empty. Cannot sign image."
+            echo "Build outputs: ${{ toJson(steps.build.outputs) }}"
+            exit 1
+          fi
+
+          echo "Signing images with digest: ${{ steps.build.outputs.digest }}"
+          echo "Tags to sign: ${{ steps.meta.outputs.tags }}"
+
+          # Sign each tag with the digest
+          echo "${{ steps.meta.outputs.tags }}" | tr ',' '\n' | while read -r tag; do
+            if [ -n "$tag" ]; then
+              echo "Signing: ${tag}@${{ steps.build.outputs.digest }}"
+              cosign sign --yes "${tag}@${{ steps.build.outputs.digest }}"
+            fi
+          done
 
   # Integration tests
   integration-tests:
