@@ -49,7 +49,7 @@ COPY ran-dms/ .
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -ldflags='-w -s -extldflags "-static"' \
     -a -installsuffix cgo \
-    -o ran-dms cmd/main.go
+    -o ran-dms ./cmd/dms/main.go
 
 # Stage 2: Runtime
 FROM alpine:3.22.1

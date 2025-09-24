@@ -61,7 +61,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build \
     -ldflags='-w -s -extldflags "-static"' \
     -a -installsuffix cgo \
-    -o cn-dms cmd/main.go
+    -o cn-dms ./cmd/dms/main.go
 
 # Stage 2: Runtime
 FROM alpine:3.22.1
