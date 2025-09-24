@@ -3,7 +3,6 @@ package integration_test
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -358,7 +357,7 @@ var _ = Describe("VNF Operator Performance", func() {
 })
 
 // Test utilities for checking cluster connectivity
-func isClusterAvailable() bool {
+func isClusterAvailable() bool { // nolint:unused // TODO: implement cluster connectivity checks
 	home, _ := os.UserHomeDir()
 	kubeconfig := filepath.Join(home, ".kube", "config")
 
@@ -386,7 +385,7 @@ func isClusterAvailable() bool {
 }
 
 // Test data generation helpers
-func generateTestData(dataType string) interface{} {
+func generateTestData(dataType string) interface{} { // nolint:unused // TODO: implement test data generation
 	switch dataType {
 	case "vnf":
 		return createTestVNF("generated-vnf", "default")
@@ -402,7 +401,7 @@ func generateTestData(dataType string) interface{} {
 }
 
 // Validation helpers
-func validateVNFSpec(vnf *vnfv1alpha1.VNF) error {
+func validateVNFSpec(vnf *vnfv1alpha1.VNF) error { // nolint:unused // TODO: implement VNF spec validation
 	v := reflect.ValueOf(vnf.Spec)
 	t := v.Type()
 
@@ -420,12 +419,12 @@ func validateVNFSpec(vnf *vnfv1alpha1.VNF) error {
 }
 
 // File system helpers for test artifacts
-func writeTestArtifact(filename string, content []byte) error {
+func writeTestArtifact(filename string, content []byte) error { // nolint:unused // TODO: implement test artifact writing
 	artifactDir := filepath.Join(".", "test-artifacts")
 	if err := os.MkdirAll(artifactDir, security.PrivateDirMode); err != nil {
 		return err
 	}
 
 	filePath := filepath.Join(artifactDir, filename)
-	return ioutil.WriteFile(filePath, content, security.SecureFileMode)
+	return os.WriteFile(filePath, content, security.SecureFileMode)
 }

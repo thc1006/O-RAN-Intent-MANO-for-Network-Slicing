@@ -238,7 +238,7 @@ func (csv *ConfigSyncValidator) checkConfigSyncInstallation(ctx context.Context)
 	_, err := csv.ClusterClient.Clientset.CoreV1().Namespaces().Get(ctx, csv.Config.Namespace, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
-			return fmt.Errorf("Config Sync namespace %s not found", csv.Config.Namespace)
+			return fmt.Errorf("config Sync namespace %s not found", csv.Config.Namespace)
 		}
 		return fmt.Errorf("failed to get Config Sync namespace: %w", err)
 	}
@@ -303,7 +303,7 @@ func (csv *ConfigSyncValidator) parseRootSyncStatus(rootSync *unstructured.Unstr
 	// Parse status
 	statusObj, found, err := unstructured.NestedMap(rootSync.Object, "status")
 	if !found || err != nil {
-		return nil, fmt.Errorf("RootSync status not found or invalid")
+		return nil, fmt.Errorf("rootSync status not found or invalid")
 	}
 
 	// Parse observed generation
@@ -372,7 +372,7 @@ func (csv *ConfigSyncValidator) parseRepoSyncStatus(repoSync *unstructured.Unstr
 	// Parse status (similar to RootSync)
 	statusObj, found, err := unstructured.NestedMap(repoSync.Object, "status")
 	if !found || err != nil {
-		return nil, fmt.Errorf("RepoSync status not found or invalid")
+		return nil, fmt.Errorf("repoSync status not found or invalid")
 	}
 
 	// Parse observed generation

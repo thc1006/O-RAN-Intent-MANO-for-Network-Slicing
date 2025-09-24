@@ -15,7 +15,7 @@ import (
 
 // VNFLifecycleSuite manages VNF operator lifecycle testing
 type VNFLifecycleSuite struct {
-	k8sClient    client.Client
+	k8sClient    client.Client              // nolint:unused // TODO: integrate with actual k8s client
 	testContext  context.Context
 	testCancel   context.CancelFunc
 	testResults  *VNFLifecycleTestResults

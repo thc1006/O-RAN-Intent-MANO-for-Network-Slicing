@@ -470,7 +470,7 @@ func (mc *MetricsCollector) collectDeploymentTime(ctx context.Context, clusterNa
 // queryPrometheus queries Prometheus API
 func (mc *MetricsCollector) queryPrometheus(ctx context.Context, query string) (*PrometheusResponse, error) {
 	if mc.PrometheusClient == nil {
-		return nil, fmt.Errorf("Prometheus client not configured")
+		return nil, fmt.Errorf("prometheus client not configured")
 	}
 
 	// Build query URL
@@ -493,7 +493,7 @@ func (mc *MetricsCollector) queryPrometheus(ctx context.Context, query string) (
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("Prometheus query failed with status %d", resp.StatusCode)
+		return nil, fmt.Errorf("prometheus query failed with status %d", resp.StatusCode)
 	}
 
 	var promResp PrometheusResponse
@@ -502,7 +502,7 @@ func (mc *MetricsCollector) queryPrometheus(ctx context.Context, query string) (
 	}
 
 	if promResp.Status != "success" {
-		return nil, fmt.Errorf("Prometheus query failed: %s", promResp.Status)
+		return nil, fmt.Errorf("prometheus query failed: %s", promResp.Status)
 	}
 
 	return &promResp, nil

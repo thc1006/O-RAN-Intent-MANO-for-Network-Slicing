@@ -19,7 +19,7 @@ import (
 
 // DeploymentTimingSuite manages end-to-end deployment timing validation
 type DeploymentTimingSuite struct {
-	k8sClient    client.Client
+	k8sClient    client.Client              // nolint:unused // TODO: integrate with actual k8s client
 	testContext  context.Context
 	testCancel   context.CancelFunc
 	testResults  *DeploymentTimingResults
@@ -146,13 +146,13 @@ type ScenarioResourceUsage struct {
 // Deployment scenarios targeting thesis requirements and real-world use cases
 var deploymentTimingScenarios = []struct {
 	name               string
-	description        string
+	description        string  // nolint:unused // TODO: use in future scenario reporting
 	intent             string
 	expectedVNFs       []VNFDeploymentSpec
 	targetClusters     []string
-	deploymentStrategy string
-	maxAllowedTime     time.Duration
-	parallelDeployment bool
+	deploymentStrategy string  // nolint:unused // TODO: implement deployment strategy logic
+	maxAllowedTime     time.Duration  // nolint:unused // TODO: validate against scenario-specific limits
+	parallelDeployment bool  // nolint:unused // TODO: implement parallel deployment optimization
 }{
 	{
 		name:        "Single_UPF_Edge_Deployment",
@@ -296,7 +296,7 @@ var _ = Describe("End-to-End Deployment Timing Validation", func() {
 				result.TotalDeploymentTime = time.Since(deploymentStart)
 
 				allResults = append(allResults, result)
-				suite.testResults.IntentToDeployment = append(suite.testResults.IntentToDeployment, result)
+				suite.testResults.IntentToDeployment = allResults
 
 				// Check SLA compliance
 				if result.TotalDeploymentTime > 10*time.Minute {

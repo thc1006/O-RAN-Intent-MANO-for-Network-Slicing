@@ -51,7 +51,7 @@ type PerformanceTestSuite struct {
 	cancel            context.CancelFunc
 	framework         *testutils.TestFramework
 	prometheusClient  v1.API
-	testClusters      []string
+	testClusters      []string         // nolint:unused // TODO: implement multi-cluster performance tests
 	thesisMetrics     ThesisMetrics
 	resultCollector   *PerformanceResultCollector
 }

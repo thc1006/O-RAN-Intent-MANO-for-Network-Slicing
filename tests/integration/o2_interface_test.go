@@ -99,7 +99,7 @@ type ValidationResult struct {
 }
 
 // O2 test scenarios covering various interface operations
-var o2TestScenarios = []struct {
+var o2TestScenarios = []struct { // nolint:unused // TODO: implement additional test scenarios
 	name         string
 	description  string
 	testType     string // "o2ims", "o2dms", "integration"

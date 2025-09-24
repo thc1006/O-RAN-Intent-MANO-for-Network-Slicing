@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -302,7 +301,7 @@ func (ma *MetricsAggregator) processDataSource(source DataSource, metrics *TestM
 
 // processJUnitResults processes JUnit XML test results
 func (ma *MetricsAggregator) processJUnitResults(source DataSource, metrics *TestMetrics) error {
-	data, err := ioutil.ReadFile(source.Path)
+	data, err := os.ReadFile(source.Path)
 	if err != nil {
 		return err
 	}
@@ -335,7 +334,7 @@ func (ma *MetricsAggregator) processJUnitResults(source DataSource, metrics *Tes
 
 // processCoverageResults processes code coverage results
 func (ma *MetricsAggregator) processCoverageResults(source DataSource, metrics *TestMetrics) error {
-	data, err := ioutil.ReadFile(source.Path)
+	data, err := os.ReadFile(source.Path)
 	if err != nil {
 		return err
 	}
@@ -371,7 +370,7 @@ func (ma *MetricsAggregator) processCoverageResults(source DataSource, metrics *
 
 // processPerformanceResults processes performance test results
 func (ma *MetricsAggregator) processPerformanceResults(source DataSource, metrics *TestMetrics) error {
-	data, err := ioutil.ReadFile(source.Path)
+	data, err := os.ReadFile(source.Path)
 	if err != nil {
 		return err
 	}
@@ -410,7 +409,7 @@ func (ma *MetricsAggregator) processPerformanceResults(source DataSource, metric
 
 // processSecurityResults processes security scan results
 func (ma *MetricsAggregator) processSecurityResults(source DataSource, metrics *TestMetrics) error {
-	data, err := ioutil.ReadFile(source.Path)
+	data, err := os.ReadFile(source.Path)
 	if err != nil {
 		return err
 	}
@@ -583,21 +582,21 @@ func (ma *MetricsAggregator) saveAggregatedMetrics(metrics *TestMetrics) error {
 	if err != nil {
 		return err
 	}
-	if err := ioutil.WriteFile(jsonPath, jsonData, security.SecureFileMode); err != nil {
+	if err := os.WriteFile(jsonPath, jsonData, security.SecureFileMode); err != nil {
 		return err
 	}
 
 	// Save timestamped version
 	timestampedPath := filepath.Join(ma.config.OutputDirectory, fmt.Sprintf("metrics_%s.json",
 		metrics.Timestamp.Format("20060102_150405")))
-	if err := ioutil.WriteFile(timestampedPath, jsonData, security.SecureFileMode); err != nil {
+	if err := os.WriteFile(timestampedPath, jsonData, security.SecureFileMode); err != nil {
 		return err
 	}
 
 	// Save summary report
 	summaryPath := filepath.Join(ma.config.OutputDirectory, "summary.txt")
 	summary := ma.generateSummaryReport(metrics)
-	if err := ioutil.WriteFile(summaryPath, []byte(summary), security.SecureFileMode); err != nil {
+	if err := os.WriteFile(summaryPath, []byte(summary), security.SecureFileMode); err != nil {
 		return err
 	}
 
@@ -606,7 +605,7 @@ func (ma *MetricsAggregator) saveAggregatedMetrics(metrics *TestMetrics) error {
 
 // generateSummaryReport generates a text summary report
 func (ma *MetricsAggregator) generateSummaryReport(metrics *TestMetrics) string {
-	summary := fmt.Sprintf("O-RAN Intent-MANO Test Metrics Summary\n")
+	summary := "O-RAN Intent-MANO Test Metrics Summary\n"
 	summary += fmt.Sprintf("Generated: %s\n\n", metrics.Timestamp.Format("2006-01-02 15:04:05"))
 
 	// Test results summary

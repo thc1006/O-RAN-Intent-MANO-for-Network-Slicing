@@ -274,7 +274,7 @@ func (nv *NephioValidator) validateKptfile(packagePath string) error {
 
 	// Validate file path for security
 	if err := nv.validator.ValidateFilePath(kptfilePath); err != nil {
-		return fmt.Errorf("Kptfile path validation failed: %w", err)
+		return fmt.Errorf("kptfile path validation failed: %w", err)
 	}
 
 	data, err := nv.validator.SafeReadFile(kptfilePath)

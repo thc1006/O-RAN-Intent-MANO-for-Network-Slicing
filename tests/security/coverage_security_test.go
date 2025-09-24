@@ -528,7 +528,7 @@ func (a *SecurityCoverageAnalyzer) validateSecurityBoundaryTests(t *testing.T) {
 		if coverage, exists := a.coverageData[functionName]; exists {
 			t.Run(fmt.Sprintf("boundary_tests_%s", functionName), func(t *testing.T) {
 				boundaryTestCount := 0
-				for _, _ = range boundaries {
+				for range boundaries {
 					for _, testCase := range coverage.TestCases {
 						if strings.Contains(testCase, "boundary") ||
 						   strings.Contains(testCase, "limit") ||

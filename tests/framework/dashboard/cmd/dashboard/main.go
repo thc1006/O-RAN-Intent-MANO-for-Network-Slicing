@@ -429,6 +429,8 @@ func handleWebSocket(aggregator *dashboard.MetricsAggregator) http.HandlerFunc {
 					log.Printf("WebSocket ping failed: %v", err)
 					return
 				}
+			default:
+				time.Sleep(100 * time.Millisecond) // Prevent busy loop
 			}
 		}
 	}

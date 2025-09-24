@@ -458,7 +458,7 @@ func (vf *ValidationFramework) validateGitState(ctx context.Context) (*GitValida
 // validateNephioPackages validates Nephio/Porch packages
 func (vf *ValidationFramework) validateNephioPackages(ctx context.Context, clusterName string) error {
 	if vf.PackageValidator == nil {
-		return fmt.Errorf("Nephio validator not initialized")
+		return fmt.Errorf("nephio validator not initialized")
 	}
 
 	cluster := vf.findClusterConfig(clusterName)
