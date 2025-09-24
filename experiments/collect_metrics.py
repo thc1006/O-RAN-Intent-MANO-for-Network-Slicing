@@ -4,16 +4,16 @@ E2E Deployment Metrics Collection and Analysis
 Collects timing, resource usage, and bottleneck metrics
 """
 
-import json
-import time
-import subprocess
 import argparse
+import json
+import statistics
+import subprocess
 import sys
 import threading
-import statistics
+import time
 from datetime import datetime
-from collections import defaultdict
-from typing import Dict, List, Tuple, Any
+from typing import Any, Dict, List
+
 
 class MetricsCollector:
     """Collects and analyzes deployment metrics"""
@@ -25,20 +25,20 @@ class MetricsCollector:
             "resources": {
                 "smo": {"cpu": [], "memory": []},
                 "ocloud": {"memory_per_node": {}},
-                "pods": {"count": [], "states": {}}
+                "pods": {"count": [], "states": {}},
             },
             "bottlenecks": {
                 "smf_timeline": [],
                 "smf_init_delay": 0,
                 "porch_sync_times": [],
-                "configsync_latencies": []
+                "configsync_latencies": [],
             },
             "timing": {},
             "validation": {
                 "target_series": "unknown",
                 "deviations": {},
-                "pass_fail": {}
-            }
+                "pass_fail": {},
+            },
         }
         self.collection_threads = []
         self.stop_collection = False
@@ -47,11 +47,7 @@ class MetricsCollector:
         """Execute kubectl command and return output"""
         try:
             result = subprocess.run(
-                f"kubectl {cmd}",
-                shell=True,
-                capture_output=True,
-                text=True,
-                timeout=10
+                f"kubectl {cmd}", shell=True, capture_output=True, text=True, timeout=10
             )
             return result.stdout.strip()
         except subprocess.TimeoutExpired:
@@ -65,9 +61,7 @@ class MetricsCollector:
         metrics = {"cpu": 0.0, "memory": 0.0}
 
         # Get SMO pods (assuming they're in oran-system namespace)
-        pods_json = self.run_kubectl(
-            "get pods -n oran-system -o json"
-        )
+        pods_json = self.run_kubectl("get pods -n oran-system -o json")
 
         if not pods_json:
             return metrics
@@ -89,11 +83,11 @@ class MetricsCollector:
                     parts = metrics_output.split()
                     if len(parts) >= 3:
                         # Parse CPU (remove 'm' suffix and convert to cores)
-                        cpu_str = parts[1].replace('m', '')
+                        cpu_str = parts[1].replace("m", "")
                         total_cpu += float(cpu_str) / 1000.0
 
                         # Parse memory (convert to MB)
-                        mem_str = parts[2].replace('Mi', '').replace('Gi', '000')
+                        mem_str = parts[2].replace("Mi", "").replace("Gi", "000")
                         total_memory += float(mem_str)
 
             metrics["cpu"] = round(total_cpu, 3)
@@ -110,27 +104,23 @@ class MetricsCollector:
 
         for node in nodes:
             # Get node metrics
-            metrics_output = self.run_kubectl(
-                f"top node {node} --no-headers"
-            )
+            metrics_output = self.run_kubectl(f"top node {node} --no-headers")
 
             if metrics_output:
                 parts = metrics_output.split()
                 if len(parts) >= 5:
                     # Parse memory percentage
-                    mem_percent = parts[4].replace('%', '')
+                    mem_percent = parts[4].replace("%", "")
 
                     # Get node capacity
-                    node_json = self.run_kubectl(
-                        f"get node {node} -o json"
-                    )
+                    node_json = self.run_kubectl(f"get node {node} -o json")
 
                     if node_json:
                         try:
                             node_data = json.loads(node_json)
                             mem_capacity = node_data["status"]["capacity"]["memory"]
                             # Convert Ki to MB
-                            mem_capacity_mb = int(mem_capacity.replace('Ki', '')) / 1024
+                            mem_capacity_mb = int(mem_capacity.replace("Ki", "")) / 1024
                             mem_used_mb = mem_capacity_mb * float(mem_percent) / 100
                             memory_usage[node] = round(mem_used_mb, 2)
                         except (json.JSONDecodeError, KeyError) as e:
@@ -140,18 +130,14 @@ class MetricsCollector:
 
     def monitor_smf_bottleneck(self, scenario: str) -> None:
         """Monitor SMF pod for initialization bottleneck"""
-        smf_pod = f"cn-{scenario}"
         namespace = "oran-system"
         timeline = []
         start_time = time.time()
 
         # Initial state
-        timeline.append({
-            "t": 0,
-            "event": "Monitoring started",
-            "cpu": 0,
-            "state": "Pending"
-        })
+        timeline.append(
+            {"t": 0, "event": "Monitoring started", "cpu": 0, "state": "Pending"}
+        )
 
         # Monitor for 3 minutes
         while time.time() - start_time < 180:
@@ -179,19 +165,21 @@ class MetricsCollector:
                         if metrics:
                             parts = metrics.split()
                             if len(parts) >= 2:
-                                cpu_usage = float(parts[1].replace('m', '')) / 1000.0
+                                cpu_usage = float(parts[1].replace("m", "")) / 1000.0
 
                         # Check for bottleneck pattern (high CPU during init)
                         elapsed = time.time() - start_time
 
                         # Record significant events
                         if phase == "Running" and cpu_usage > 0.8:  # 80% CPU
-                            timeline.append({
-                                "t": elapsed,
-                                "event": "High CPU detected - SMF initialization",
-                                "cpu": cpu_usage,
-                                "state": phase
-                            })
+                            timeline.append(
+                                {
+                                    "t": elapsed,
+                                    "event": "High CPU detected - SMF initialization",
+                                    "cpu": cpu_usage,
+                                    "state": phase,
+                                }
+                            )
 
                             # This is the bottleneck
                             if self.metrics["bottlenecks"]["smf_init_delay"] == 0:
@@ -202,13 +190,17 @@ class MetricsCollector:
                             conditions = pod["status"].get("conditions", [])
                             for cond in conditions:
                                 if cond["type"] == "Ready" and cond["status"] == "True":
-                                    timeline.append({
-                                        "t": elapsed,
-                                        "event": "SMF Ready",
-                                        "cpu": cpu_usage,
-                                        "state": "Ready"
-                                    })
-                                    self.metrics["bottlenecks"]["smf_timeline"] = timeline
+                                    timeline.append(
+                                        {
+                                            "t": elapsed,
+                                            "event": "SMF Ready",
+                                            "cpu": cpu_usage,
+                                            "state": "Ready",
+                                        }
+                                    )
+                                    self.metrics["bottlenecks"][
+                                        "smf_timeline"
+                                    ] = timeline
                                     return
 
                 except (json.JSONDecodeError, KeyError) as e:
@@ -234,7 +226,9 @@ class MetricsCollector:
             if pods_output:
                 try:
                     pods = json.loads(pods_output)
-                    self.metrics["resources"]["pods"]["count"].append(len(pods["items"]))
+                    self.metrics["resources"]["pods"]["count"].append(
+                        len(pods["items"])
+                    )
                 except json.JSONDecodeError:
                     pass
 
@@ -252,7 +246,7 @@ class MetricsCollector:
             "scenario": scenario,
             "timestamp": datetime.now().isoformat(),
             "qos": {},
-            "placement": {}
+            "placement": {},
         }
 
         if scenario == "embb":
@@ -260,7 +254,7 @@ class MetricsCollector:
                 "bandwidth": 4.57,
                 "latency": 16.1,
                 "jitter": 2.0,
-                "reliability": 99.9
+                "reliability": 99.9,
             }
             config["placement"] = {"type": "edge", "zones": ["edge-1", "edge-2"]}
         elif scenario == "urllc":
@@ -268,7 +262,7 @@ class MetricsCollector:
                 "bandwidth": 0.93,
                 "latency": 6.3,
                 "jitter": 0.5,
-                "reliability": 99.999
+                "reliability": 99.999,
             }
             config["placement"] = {"type": "edge", "zones": ["edge-1"]}
         elif scenario == "miot":
@@ -276,12 +270,12 @@ class MetricsCollector:
                 "bandwidth": 2.77,
                 "latency": 15.7,
                 "jitter": 2.5,
-                "reliability": 99.5
+                "reliability": 99.5,
             }
             config["placement"] = {"type": "regional", "zones": ["regional-1"]}
 
         # Save configuration
-        with open(output_file, 'w') as f:
+        with open(output_file, "w") as f:
             json.dump(config, f, indent=2)
 
         print(f"Configuration generated: {output_file}")
@@ -292,26 +286,27 @@ class MetricsCollector:
 
         # Initialize scenario metrics if not exists
         if scenario not in self.metrics["scenarios"]:
-            self.metrics["scenarios"][scenario] = {
-                "domains": {},
-                "total_time": 0
-            }
+            self.metrics["scenarios"][scenario] = {"domains": {}, "total_time": 0}
 
         # Record domain start time
         self.metrics["scenarios"][scenario]["domains"][domain] = {
             "start_time": time.time(),
             "end_time": 0,
             "duration": 0,
-            "pod_count": 0
+            "pod_count": 0,
         }
 
     def validate_results(self, target_series: Dict[str, Dict]) -> Dict[str, Any]:
         """Validate results against target thresholds"""
         validation = {
-            "series_type": "fast" if target_series.get("embb", {}).get("target", 0) < 500 else "slow",
+            "series_type": (
+                "fast"
+                if target_series.get("embb", {}).get("target", 0) < 500
+                else "slow"
+            ),
             "passed": True,
             "failures": [],
-            "details": {}
+            "details": {},
         }
 
         for scenario, targets in target_series.items():
@@ -328,7 +323,7 @@ class MetricsCollector:
                     "target": target_time,
                     "deviation": deviation,
                     "tolerance": tolerance,
-                    "passed": passed
+                    "passed": passed,
                 }
 
                 if not passed:
@@ -358,25 +353,33 @@ class MetricsCollector:
 
         # Calculate statistics
         if self.metrics["resources"]["smo"]["cpu"]:
-            self.metrics["resources"]["smo"]["cpu_peak"] = max(self.metrics["resources"]["smo"]["cpu"])
-            self.metrics["resources"]["smo"]["cpu_avg"] = statistics.mean(self.metrics["resources"]["smo"]["cpu"])
+            self.metrics["resources"]["smo"]["cpu_peak"] = max(
+                self.metrics["resources"]["smo"]["cpu"]
+            )
+            self.metrics["resources"]["smo"]["cpu_avg"] = statistics.mean(
+                self.metrics["resources"]["smo"]["cpu"]
+            )
 
         if self.metrics["resources"]["smo"]["memory"]:
-            self.metrics["resources"]["smo"]["memory_peak"] = max(self.metrics["resources"]["smo"]["memory"])
-            self.metrics["resources"]["smo"]["memory_avg"] = statistics.mean(self.metrics["resources"]["smo"]["memory"])
+            self.metrics["resources"]["smo"]["memory_peak"] = max(
+                self.metrics["resources"]["smo"]["memory"]
+            )
+            self.metrics["resources"]["smo"]["memory_avg"] = statistics.mean(
+                self.metrics["resources"]["smo"]["memory"]
+            )
 
         # Target series for validation
         target_series = {
             "embb": {"target": 407, "tolerance": 20},
             "urllc": {"target": 353, "tolerance": 20},
-            "miot": {"target": 257, "tolerance": 20}
+            "miot": {"target": 257, "tolerance": 20},
         }
 
         # Validate results
         self.metrics["validation"] = self.validate_results(target_series)
 
         # Save JSON report
-        with open(output_file, 'w') as f:
+        with open(output_file, "w") as f:
             json.dump(self.metrics, f, indent=2)
 
         print(f"JSON report saved: {output_file}")
@@ -501,7 +504,9 @@ class MetricsCollector:
 
         # Build O-Cloud memory list
         ocloud_memory = ""
-        for node, mem in self.metrics["resources"]["ocloud"].get("memory_per_node", {}).items():
+        for node, mem in (
+            self.metrics["resources"]["ocloud"].get("memory_per_node", {}).items()
+        ):
             ocloud_memory += f"<li>{node}: {mem} MB</li>"
 
         # Fill template
@@ -510,7 +515,8 @@ class MetricsCollector:
             validation_class="pass" if validation.get("passed") else "fail",
             validation_status="PASSED" if validation.get("passed") else "FAILED",
             series_type=validation.get("series_type", "unknown"),
-            validation_details=", ".join(validation.get("failures", [])) or "All checks passed",
+            validation_details=", ".join(validation.get("failures", []))
+            or "All checks passed",
             timing_rows=timing_rows,
             smf_delay=self.metrics["bottlenecks"].get("smf_init_delay", 0),
             smf_timeline=smf_timeline or "<p>No bottleneck detected</p>",
@@ -518,13 +524,14 @@ class MetricsCollector:
             smo_cpu_avg=self.metrics["resources"]["smo"].get("cpu_avg", 0),
             smo_mem_peak=self.metrics["resources"]["smo"].get("memory_peak", 0),
             smo_mem_avg=self.metrics["resources"]["smo"].get("memory_avg", 0),
-            ocloud_memory=ocloud_memory or "<li>No data</li>"
+            ocloud_memory=ocloud_memory or "<li>No data</li>",
         )
 
-        with open(html_file, 'w') as f:
+        with open(html_file, "w") as f:
             f.write(html_filled)
 
         print(f"HTML report saved: {html_file}")
+
 
 def main():
     parser = argparse.ArgumentParser(description="E2E Deployment Metrics Collection")
@@ -538,7 +545,9 @@ def main():
     intent_parser.add_argument("--output", required=True, help="Output file")
 
     # Start collection command
-    collect_parser = subparsers.add_parser("start_collection", help="Start metrics collection")
+    collect_parser = subparsers.add_parser(
+        "start_collection", help="Start metrics collection"
+    )
     collect_parser.add_argument("--domain", required=True, help="Domain (ran/tn/cn)")
     collect_parser.add_argument("--scenario", required=True, help="Scenario name")
 
@@ -547,18 +556,30 @@ def main():
     smf_parser.add_argument("--scenario", required=True, help="Scenario name")
 
     # Continuous collection command
-    continuous_parser = subparsers.add_parser("continuous", help="Continuous metrics collection")
+    continuous_parser = subparsers.add_parser(
+        "continuous", help="Continuous metrics collection"
+    )
     continuous_parser.add_argument("--output", required=True, help="Output file")
-    continuous_parser.add_argument("--interval", type=int, default=5, help="Collection interval")
+    continuous_parser.add_argument(
+        "--interval", type=int, default=5, help="Collection interval"
+    )
 
     # System metrics command
-    system_parser = subparsers.add_parser("collect_system", help="Collect system metrics")
+    system_parser = subparsers.add_parser(
+        "collect_system", help="Collect system metrics"
+    )
     system_parser.add_argument("--output", required=True, help="Output file")
-    system_parser.add_argument("--smo-namespace", default="oran-system", help="SMO namespace")
-    system_parser.add_argument("--ocloud-nodes", required=True, help="Comma-separated node names")
+    system_parser.add_argument(
+        "--smo-namespace", default="oran-system", help="SMO namespace"
+    )
+    system_parser.add_argument(
+        "--ocloud-nodes", required=True, help="Comma-separated node names"
+    )
 
     # Generate report command
-    report_parser = subparsers.add_parser("generate_report", help="Generate final report")
+    report_parser = subparsers.add_parser(
+        "generate_report", help="Generate final report"
+    )
     report_parser.add_argument("--metrics", required=True, help="Metrics file")
     report_parser.add_argument("--timers", help="Timers file")
     report_parser.add_argument("--output", required=True, help="Output JSON file")
@@ -580,8 +601,7 @@ def main():
     elif args.command == "continuous":
         # Run continuous collection in background
         thread = threading.Thread(
-            target=collector.collect_continuous_metrics,
-            args=(args.interval,)
+            target=collector.collect_continuous_metrics, args=(args.interval,)
         )
         thread.daemon = True
         thread.start()
@@ -594,29 +614,30 @@ def main():
             collector.stop_collection = True
 
         # Save metrics
-        with open(args.output, 'w') as f:
+        with open(args.output, "w") as f:
             json.dump(collector.metrics, f, indent=2)
 
     elif args.command == "collect_system":
         # Collect system-wide metrics once
         smo_metrics = collector.collect_smo_metrics()
-        nodes = args.ocloud_nodes.split(',')
+        nodes = args.ocloud_nodes.split(",")
         ocloud_memory = collector.collect_ocloud_memory(nodes)
 
         collector.metrics["resources"]["smo"]["final"] = smo_metrics
         collector.metrics["resources"]["ocloud"]["memory_per_node"] = ocloud_memory
 
-        with open(args.output, 'w') as f:
+        with open(args.output, "w") as f:
             json.dump(collector.metrics, f, indent=2)
 
     elif args.command == "generate_report":
         # Load metrics
         if args.metrics:
-            with open(args.metrics, 'r') as f:
+            with open(args.metrics, "r") as f:
                 collector.metrics = json.load(f)
 
         # Generate report
         collector.generate_report(args.output, args.html)
+
 
 if __name__ == "__main__":
     main()

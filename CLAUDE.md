@@ -13,6 +13,8 @@ Reproduce the thesis system: map natural-language intents → QoS(JSON) → E2E 
 ## Version Requirements
 - **Go Version**: ALWAYS use Go 1.24.7 in all Dockerfiles, CI workflows, and development environments
 - **Never change Go version** without explicit approval - 1.24.7 is the project standard
+- **golangci-lint Version**: ALWAYS use golangci-lint v1.64.2 or higher (minimum v1.64.2 required for Go 1.24.7 compatibility)
+- **Never downgrade golangci-lint** below v1.64.2 - required for proper Go toolchain support
 
 ## Repository Layout (expected)
 - nlp/: prompt.md, schema.json, tests/

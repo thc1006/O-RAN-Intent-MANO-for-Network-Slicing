@@ -1,0 +1,8 @@
+{
+  "analysis_type": "go-analysis",
+  "timestamp": "2025-09-24T12:06:34Z",
+  "total_issues": 38,
+  "complexity_violations": 47,
+  "modules_analyzed": 15,
+  "quality_gate_status": "failed"
+}
