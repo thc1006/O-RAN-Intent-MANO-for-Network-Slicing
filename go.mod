@@ -1,8 +1,8 @@
 module github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing
 
-go 1.23.6
+go 1.24.0
 
-toolchain go1.23.6
+toolchain go1.24.5
 
 replace (
 	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/adapters/vnf-operator => ./adapters/vnf-operator

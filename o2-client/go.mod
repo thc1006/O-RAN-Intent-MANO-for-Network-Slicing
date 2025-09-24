@@ -2,8 +2,6 @@ module github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/o2-client
 
 go 1.23.6
 
-toolchain go1.23.6
-
 require (
 	github.com/gin-gonic/gin v1.11.0
 	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing v0.0.0-20250923132651-9222c3967202
