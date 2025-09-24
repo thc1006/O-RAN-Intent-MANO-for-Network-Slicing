@@ -154,12 +154,6 @@ jobs:
         wait-for-processing: false
       continue-on-error: true
 
-    - name: Show golangci-lint version
-      uses: golangci/golangci-lint-action@v8
-      with:
-        version: v2.5.0
-        args: --version
-
     - name: Run golangci-lint with security checks
       uses: golangci/golangci-lint-action@v8
       with:
