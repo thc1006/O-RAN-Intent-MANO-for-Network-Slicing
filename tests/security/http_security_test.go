@@ -222,7 +222,7 @@ func (s *SecureHTTPServer) handleHealth(w http.ResponseWriter, r *http.Request) 
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 func (s *SecureHTTPServer) handleStatus(w http.ResponseWriter, r *http.Request) {
@@ -233,7 +233,7 @@ func (s *SecureHTTPServer) handleStatus(w http.ResponseWriter, r *http.Request) 
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 func (s *SecureHTTPServer) handleConfig(w http.ResponseWriter, r *http.Request) {
@@ -252,7 +252,7 @@ func (s *SecureHTTPServer) handleGetConfig(w http.ResponseWriter, r *http.Reques
 	defer s.mu.RUnlock()
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(s.config)
+	_ = json.NewEncoder(w).Encode(s.config)
 }
 
 func (s *SecureHTTPServer) handleUpdateConfig(w http.ResponseWriter, r *http.Request) {
@@ -274,7 +274,7 @@ func (s *SecureHTTPServer) handleUpdateConfig(w http.ResponseWriter, r *http.Req
 	s.mu.Unlock()
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"status": "updated"})
+	_ = json.NewEncoder(w).Encode(map[string]string{"status": "updated"})
 }
 
 // validateConfig validates security configuration
@@ -713,7 +713,7 @@ func TestHTTPInputValidation(t *testing.T) {
 				if w.Code == http.StatusOK {
 					// If accepted, ensure it was sanitized/validated
 					var response map[string]interface{}
-					json.Unmarshal(w.Body.Bytes(), &response)
+					_ = json.Unmarshal(w.Body.Bytes(), &response)
 
 					// Add additional validation checks here
 					assert.NotContains(t, fmt.Sprintf("%v", response), "DROP TABLE")
@@ -846,10 +846,10 @@ func TestHTTPSecurityIntegration(t *testing.T) {
 	// Start server on random port
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
-	defer listener.Close()
+	defer func() { _ = listener.Close() }()
 
 	go func() {
-		server.server.Serve(listener)
+		_ = server.server.Serve(listener)
 	}()
 
 	baseURL := fmt.Sprintf("http://%s", listener.Addr().String())
@@ -861,7 +861,7 @@ func TestHTTPSecurityIntegration(t *testing.T) {
 
 		resp, err := client.Get(baseURL + "/health")
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		// Check security headers
 		assert.Equal(t, "nosniff", resp.Header.Get("X-Content-Type-Options"))
@@ -881,7 +881,7 @@ func TestHTTPSecurityIntegration(t *testing.T) {
 		duration := time.Since(start)
 
 		require.NoError(t, err)
-		resp.Body.Close()
+		_ = resp.Body.Close()
 
 		assert.True(t, duration < 500*time.Millisecond,
 			"Server should respond quickly to health checks")

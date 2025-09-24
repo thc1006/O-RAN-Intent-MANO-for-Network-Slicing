@@ -15,6 +15,12 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
+// Constants for commonly used strings
+const (
+	// Status constants
+	StatusReady = "Ready"
+)
+
 // ArgoCDValidator validates ArgoCD resources and applications
 type ArgoCDValidator struct {
 	ClusterClient *ClusterClient
@@ -417,7 +423,7 @@ func (acv *ArgoCDValidator) validateArgoCDServer(ctx context.Context) (string, e
 		return "PartiallyReady", fmt.Errorf("ArgoCD server deployment is partially ready: %d/%d", deployment.Status.ReadyReplicas, *deployment.Spec.Replicas)
 	}
 
-	return "Ready", nil
+	return StatusReady, nil
 }
 
 // validateApplications validates ArgoCD applications

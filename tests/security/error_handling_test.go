@@ -309,7 +309,7 @@ func TestSecureErrorHandling(t *testing.T) {
 		// Generate many identical errors
 		err := errors.New("repeated error")
 		for i := 0; i < 15; i++ {
-			handler.HandleError(err, nil)
+			_ = handler.HandleError(err, nil)
 		}
 
 		// Should have rate limited some errors
@@ -603,7 +603,7 @@ func BenchmarkErrorHandling(b *testing.B) {
 
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			handler.HandleError(err, context)
+			_ = handler.HandleError(err, context)
 		}
 	})
 
@@ -616,7 +616,7 @@ func BenchmarkErrorHandling(b *testing.B) {
 
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			handler.HandleError(err, context)
+			_ = handler.HandleError(err, context)
 		}
 	})
 
@@ -626,7 +626,7 @@ func BenchmarkErrorHandling(b *testing.B) {
 
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			handler.HandleError(longError, context)
+			_ = handler.HandleError(longError, context)
 		}
 	})
 }
@@ -689,14 +689,14 @@ func TestErrorMetrics(t *testing.T) {
 
 		for _, errMsg := range errorMessages {
 			err := fmt.Errorf("%s", errMsg)
-			handler.HandleError(err, nil)
+			_ = handler.HandleError(err, nil)
 		}
 
 		// Check that error counting is working
 		// This is internal to the handler, so we verify through rate limiting behavior
 		for i := 0; i < 12; i++ {
 			err := errors.New("database connection failed")
-			handler.HandleError(err, nil)
+			_ = handler.HandleError(err, nil)
 		}
 
 		// Should see rate limiting warnings

@@ -43,8 +43,8 @@ var (
 	cancel    context.CancelFunc
 )
 
-var _ = BeforeSuite(func() {
-	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
+var _ = ginkgo.BeforeSuite(func() {
+	logf.SetLogger(zap.New(zap.WriteTo(ginkgo.GinkgoWriter), zap.UseDevMode(true)))
 
 	ctx, cancel = context.WithCancel(context.TODO())
 
@@ -82,7 +82,7 @@ var _ = BeforeSuite(func() {
 	gomega.Expect(k8sClient).NotTo(gomega.BeNil())
 })
 
-var _ = AfterSuite(func() {
+var _ = ginkgo.AfterSuite(func() {
 	cancel()
 	if testEnv != nil {
 		ginkgo.By("tearing down the test environment")
@@ -192,7 +192,7 @@ var _ = ginkgo.Describe("VNF Operator", func() {
 					return err
 				}
 				return k8sClient.Delete(ctx, vnf)
-			}, time.Second*10, time.Millisecond*250).Should(Succeed())
+			}, time.Second*10, time.Millisecond*250).Should(gomega.Succeed())
 
 			// Verify deletion
 			gomega.Eventually(func() bool {
@@ -202,8 +202,8 @@ var _ = ginkgo.Describe("VNF Operator", func() {
 		})
 	})
 
-	Context("Resource Management", func() {
-		It("Should validate resource requirements", func() {
+	ginkgo.Context("Resource Management", func() {
+		ginkgo.It("Should validate resource requirements", func() {
 			vnf := &vnfv1alpha1.VNF{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "resource-test-vnf",
@@ -232,8 +232,8 @@ var _ = ginkgo.Describe("VNF Operator", func() {
 		})
 	})
 
-	Context("QoS Validation", func() {
-		It("Should validate QoS requirements", func() {
+	ginkgo.Context("QoS Validation", func() {
+		ginkgo.It("Should validate QoS requirements", func() {
 			testCases := []struct {
 				name        string
 				qos         vnfv1alpha1.QoSRequirements
@@ -269,7 +269,7 @@ var _ = ginkgo.Describe("VNF Operator", func() {
 			}
 
 			for _, tc := range testCases {
-				By(fmt.Sprintf("Testing %s", tc.name))
+				ginkgo.By(fmt.Sprintf("Testing %s", tc.name))
 				// Basic validation
 				gomega.Expect(tc.qos.Bandwidth).To(gomega.BeNumerically(">", 0))
 				gomega.Expect(tc.qos.Latency).To(gomega.BeNumerically(">", 0))
@@ -339,9 +339,9 @@ func waitForCondition(ctx context.Context, timeout time.Duration, condition func
 }
 
 // Benchmark tests
-var _ = Describe("VNF Operator Performance", func() {
-	Context("Deployment Speed", func() {
-		It("Should deploy VNF within SLA time", func() {
+var _ = ginkgo.Describe("VNF Operator Performance", func() {
+	ginkgo.Context("Deployment Speed", func() {
+		ginkgo.It("Should deploy VNF within SLA time", func() {
 			startTime := time.Now()
 			vnf := createTestVNF("perf-vnf", "default")
 
@@ -352,7 +352,7 @@ var _ = Describe("VNF Operator Performance", func() {
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			deploymentTime := time.Since(startTime)
-			By(fmt.Sprintf("Deployment completed in %v", deploymentTime))
+			ginkgo.By(fmt.Sprintf("Deployment completed in %v", deploymentTime))
 
 			// Target: E2E deploy time <10 min (thesis requirement)
 			gomega.Expect(deploymentTime).To(gomega.BeNumerically("<", 10*time.Minute))
