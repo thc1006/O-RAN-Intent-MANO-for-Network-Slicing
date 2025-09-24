@@ -331,13 +331,9 @@ func (acv *ArgoCDValidator) ValidateArgoCD(ctx context.Context) (*ArgoCDStatus, 
 	status.ServerStatus = serverStatus
 
 	// Validate applications
-	apps, err := acv.validateApplications(ctx)
-	if err != nil {
-		status.Warnings = append(status.Warnings, fmt.Sprintf("Application validation warning: %v", err))
-	} else {
-		status.Applications = apps
-		acv.calculateApplicationStats(status)
-	}
+	apps := acv.validateApplications(ctx)
+	status.Applications = apps
+	acv.calculateApplicationStats(status)
 
 	// Validate projects
 	projects, err := acv.validateProjects(ctx)
@@ -428,7 +424,7 @@ func (acv *ArgoCDValidator) validateArgoCDServer(ctx context.Context) (string, e
 
 // validateApplications validates ArgoCD applications
 // Returns error interface for future error handling capabilities
-func (acv *ArgoCDValidator) validateApplications(ctx context.Context) ([]ApplicationStatus, error) {
+func (acv *ArgoCDValidator) validateApplications(ctx context.Context) []ApplicationStatus {
 	// Define Application GVR
 	appGVR := schema.GroupVersionResource{
 		Group:    "argoproj.io",
@@ -457,7 +453,7 @@ func (acv *ArgoCDValidator) validateApplications(ctx context.Context) ([]Applica
 		}
 	}
 
-	return applications, nil
+	return applications
 }
 
 // parseApplicationStatus parses application status from unstructured object

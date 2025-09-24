@@ -156,7 +156,9 @@ func (gr *GitRepository) configureSSHAuth() error {
 	if err := security.ValidateEnvironmentValue(sshCmd); err != nil {
 		return fmt.Errorf("invalid SSH command: %w", err)
 	}
-	os.Setenv("GIT_SSH_COMMAND", sshCmd)
+	if err := os.Setenv("GIT_SSH_COMMAND", sshCmd); err != nil {
+		return fmt.Errorf("failed to set GIT_SSH_COMMAND: %w", err)
+	}
 
 	return nil
 }
