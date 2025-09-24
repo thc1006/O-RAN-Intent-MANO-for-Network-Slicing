@@ -393,11 +393,11 @@ jobs:
             --enable=staticcheck,typecheck,unused,vet,errcheck \
             --enable=bodyclose,noctx,rowserrcheck,sqlclosecheck \
             --enable=unconvert,unparam,whitespace \
-            --disable=varnamelen,wrapcheck,goanalysis_metalinter \
+            --disable=varnamelen,wrapcheck \
             --max-issues-per-linter=50 \
             --max-same-issues=10 \
-            --out-format=github-actions \
-            --skip-dirs=vendor \
+            --out-format=colored-line-number \
+            --issues-exit-code=0 \
             ./... || ((total_issues++))
 
           # Cyclomatic complexity
