@@ -19,7 +19,7 @@ import logging
 import re
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, TextIO, cast
+from typing import Any, Dict, List, Optional, TextIO, Tuple, cast
 
 import jsonschema
 

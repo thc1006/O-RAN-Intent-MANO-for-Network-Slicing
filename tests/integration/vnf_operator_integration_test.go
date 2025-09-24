@@ -366,74 +366,9 @@ var _ = ginkgo.Describe("VNF Operator Performance", func() {
 })
 
 // Test utilities for checking cluster connectivity
-func isClusterAvailable() bool { // nolint:unused // TODO: implement cluster connectivity checks
-	home, _ := os.UserHomeDir()
-	kubeconfig := filepath.Join(home, ".kube", "config")
-
-	if _, err := os.Stat(kubeconfig); os.IsNotExist(err) {
-		return false
-	}
-
-	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
-	if err != nil {
-		return false
-	}
-
-	client, err := client.New(config, client.Options{})
-	if err != nil {
-		return false
-	}
-
-	// Try to list namespaces as a connectivity check
-	namespaces := &corev1.NamespaceList{}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	err = client.List(ctx, namespaces)
-	return err == nil
-}
 
 // Test data generation helpers
-func generateTestData(dataType string) interface{} { // nolint:unused // TODO: implement test data generation
-	switch dataType {
-	case "vnf":
-		return createTestVNF("generated-vnf", "default")
-	case "qos":
-		return vnfv1alpha1.QoSRequirements{
-			Bandwidth: 10.0,
-			Latency:   5.0,
-			SliceType: "balanced",
-		}
-	default:
-		return nil
-	}
-}
 
 // Validation helpers
-func validateVNFSpec(vnf *vnfv1alpha1.VNF) error { // nolint:unused // TODO: implement VNF spec validation
-	v := reflect.ValueOf(vnf.Spec)
-	t := v.Type()
-
-	for i := 0; i < v.NumField(); i++ {
-		field := v.Field(i)
-		fieldType := t.Field(i)
-
-		// Check for zero values in required fields
-		if fieldType.Tag.Get("required") == "true" && field.IsZero() {
-			return fmt.Errorf("required field %s is empty", fieldType.Name)
-		}
-	}
-
-	return nil
-}
 
 // File system helpers for test artifacts
-func writeTestArtifact(filename string, content []byte) error { // nolint:unused // TODO: implement test artifact writing
-	artifactDir := filepath.Join(".", "test-artifacts")
-	if err := os.MkdirAll(artifactDir, security.PrivateDirMode); err != nil {
-		return err
-	}
-
-	filePath := filepath.Join(artifactDir, filename)
-	return os.WriteFile(filePath, content, security.SecureFileMode)
-}

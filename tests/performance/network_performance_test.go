@@ -480,7 +480,6 @@ func TestNetworkPerformance(t *testing.T) {
 // NetworkPerformanceSuite implementation
 
 type NetworkPerformanceSuite struct {
-	clientset   kubernetes.Interface // nolint:unused // TODO: integrate with k8s client for performance tests
 	testContext context.Context
 	testCancel  context.CancelFunc
 	results     []PerformanceMeasurement
