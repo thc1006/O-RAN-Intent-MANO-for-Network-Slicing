@@ -33,7 +33,7 @@ COPY cn-dms/go.mod go.mod
 COPY cn-dms/go.sum go.sum
 
 # Download dependencies with explicit toolchain
-ENV GOTOOLCHAIN=go1.24.5
+ENV GOTOOLCHAIN=auto
 ENV GOPROXY=https://proxy.golang.org,direct
 ENV GOSUMDB=sum.golang.org
 RUN go mod download
