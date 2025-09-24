@@ -9,9 +9,10 @@ run:
   go: "1.24"
 
 output:
-  # Use formats instead of deprecated format
+  # Updated format for golangci-lint v2.4.0+
   formats:
-    - format: colored-line-number
+    colored-line-number:
+      path: stdout
   print-issued-lines: true
   print-linter-name: true
   unique-by-line: true
