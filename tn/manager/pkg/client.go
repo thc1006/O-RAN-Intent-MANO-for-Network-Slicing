@@ -42,7 +42,7 @@ func (client *TNAgentClient) Connect() error {
 	if err != nil {
 		return fmt.Errorf("failed to connect to agent: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("agent health check failed: status %d", resp.StatusCode)
@@ -86,7 +86,7 @@ func (client *TNAgentClient) ConfigureSlice(sliceID string, config *TNConfig) er
 	if err != nil {
 		return fmt.Errorf("failed to send configuration request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -118,7 +118,7 @@ func (client *TNAgentClient) RunPerformanceTest(config *PerformanceTestConfig) (
 	if err != nil {
 		return nil, fmt.Errorf("failed to send test request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -151,7 +151,7 @@ func (client *TNAgentClient) GetStatus() (*TNStatus, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get status: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("status request failed: status %d", resp.StatusCode)
@@ -180,7 +180,7 @@ func (client *TNAgentClient) GetMetrics() (map[string]interface{}, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get metrics: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("metrics request failed: status %d", resp.StatusCode)
@@ -218,7 +218,7 @@ func (client *TNAgentClient) SendCommand(command string, payload interface{}) (i
 	if err != nil {
 		return nil, fmt.Errorf("failed to send command: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -261,7 +261,7 @@ func (client *TNAgentClient) Ping() error {
 	if err != nil {
 		return fmt.Errorf("ping failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("ping failed: status %d", resp.StatusCode)

@@ -55,7 +55,7 @@ func (r *VNFReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	}
 
 	// Check if the VNF instance is marked for deletion
-	if vnf.ObjectMeta.DeletionTimestamp != nil {
+	if vnf.DeletionTimestamp != nil {
 		if controllerutil.ContainsFinalizer(vnf, vnfFinalizer) {
 			// Run finalization logic
 			if err := r.finalizeVNF(ctx, vnf); err != nil {

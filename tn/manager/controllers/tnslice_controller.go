@@ -65,7 +65,7 @@ func (r *TNSliceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	// Handle deletion
-	if slice.ObjectMeta.DeletionTimestamp != nil {
+	if slice.DeletionTimestamp != nil {
 		if controllerutil.ContainsFinalizer(slice, tnSliceFinalizer) {
 			if err := r.finalizeTNSlice(ctx, slice); err != nil {
 				return ctrl.Result{}, err

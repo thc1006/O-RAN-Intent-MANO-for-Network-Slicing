@@ -166,7 +166,7 @@ func (r *OptimizedVNFReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}
 
 	// Handle deletion
-	if vnf.ObjectMeta.DeletionTimestamp != nil {
+	if vnf.DeletionTimestamp != nil {
 		return r.handleDeletion(ctx, vnf)
 	}
 

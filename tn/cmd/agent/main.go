@@ -115,6 +115,9 @@ type LoggingConfig struct {
 func main() {
 	flag.Parse()
 
+	// TODO: Implement log level functionality
+	_ = logLevel
+
 	// Show version if requested
 	if *version {
 		fmt.Printf("TN Agent Version: %s\n", Version)
@@ -341,7 +344,7 @@ func convertToTNConfig(config *Config) *pkg.TNConfig {
 
 // setupLogging configures logging based on configuration
 func setupLogging(config LoggingConfig) (*log.Logger, error) {
-	var output *os.File = os.Stdout
+	output := os.Stdout
 
 	if config.File != "" {
 		// Create log directory if it doesn't exist

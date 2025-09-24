@@ -740,6 +740,7 @@ func (dv *DeploymentValidator) validateServiceEndpoints(ctx context.Context, ser
 	}
 
 	// Get endpoints for the service
+	// TODO: Migrate from corev1.Endpoints to discoveryv1.EndpointSlice (deprecated in v1.33+)
 	endpoints := &corev1.Endpoints{}
 	if err := dv.client.Get(ctx, client.ObjectKey{
 		Name:      service.Name,

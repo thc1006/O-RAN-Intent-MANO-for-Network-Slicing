@@ -1,6 +1,5 @@
 # golangci-lint v2.4.0 configuration for Go 1.24.7
 # Optimized for Nephio R3 compatibility
-version: v2
 
 run:
   # Go version for compatibility check

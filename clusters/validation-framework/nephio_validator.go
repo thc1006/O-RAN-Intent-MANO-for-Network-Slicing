@@ -321,7 +321,7 @@ func (nv *NephioValidator) renderPackage(ctx context.Context, packagePath string
 	if err != nil {
 		return nil, fmt.Errorf("failed to create temp directory: %w", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	// Copy package to temp directory
 	if err := nv.copyDirectory(packagePath, tempDir); err != nil {

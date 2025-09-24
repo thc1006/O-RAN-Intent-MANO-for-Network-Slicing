@@ -157,7 +157,8 @@ func (analyzer *CoverageAnalyzer) GenerateCoverageReport(coverageFile string) (*
 
 	// Skip the mode line
 	if scanner.Scan() {
-		// mode: set or mode: count
+		// mode: set or mode: count - intentionally ignored
+		_ = scanner.Text()
 	}
 
 	packageCoverage := make(map[string]*PackageCoverage)

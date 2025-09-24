@@ -108,6 +108,7 @@ func TestOptimizedManager_CreateTunnelOptimized_ValidationErrors(t *testing.T) {
 			} else {
 				// Error might occur due to other reasons, but not validation
 				// We mainly check that it doesn't panic
+				assert.NoError(t, err)
 			}
 		})
 	}
@@ -166,7 +167,7 @@ func TestOptimizedManager_CreateTunnelOptimized_ExistingTunnel(t *testing.T) {
 	manager.tunnels[101] = failedTunnel
 
 	// Creating a tunnel with failed state should try to delete and recreate
-	err = manager.CreateTunnelOptimized(101, "10.0.1.1", []string{"10.0.1.2"}, "eth0")
+	_ = manager.CreateTunnelOptimized(101, "10.0.1.1", []string{"10.0.1.2"}, "eth0")
 	// The result depends on the mock setup, but it shouldn't panic
 	assert.NotNil(t, manager.tunnels[101]) // Should still exist in some state
 }
