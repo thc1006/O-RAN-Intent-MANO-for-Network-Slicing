@@ -29,7 +29,7 @@ linters:
     - staticcheck
     - typecheck
     - unused
-    - vet
+    - govet  # renamed from vet
     - errcheck
     - bodyclose
     - noctx
@@ -56,8 +56,7 @@ linters:
     - gocognit
     - godot
     - godox
-    - goerr113
-    - gomnd
+    - err113  # renamed from goerr113
     - gomodguard
     - goprintffuncname
     - gosimple
