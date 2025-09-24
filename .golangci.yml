@@ -1,0 +1,196 @@
+# golangci-lint configuration
+# See: https://golangci-lint.run/usage/configuration/
+
+run:
+  timeout: 15m
+  issues-exit-code: 1
+  tests: true
+  build-tags: []
+  go: "1.24"
+  # Use issues.exclude-dirs instead of deprecated run.skip-dirs
+  # skip-dirs is deprecated
+
+output:
+  # Use formats instead of deprecated format
+  formats:
+    - format: colored-line-number
+  print-issued-lines: true
+  print-linter-name: true
+  unique-by-line: true
+
+linters:
+  enable:
+    - gocyclo
+    - gofmt
+    - goimports
+    - gosec
+    - ineffassign
+    - misspell
+    - staticcheck
+    - typecheck
+    - unused
+    - vet
+    - errcheck
+    - bodyclose
+    - noctx
+    - rowserrcheck
+    - sqlclosecheck
+    - unconvert
+    - unparam
+    - whitespace
+    - gocritic
+    - revive
+    - goconst
+  disable:
+    - varnamelen
+    - wrapcheck
+    # goanalysis_metalinter is not a valid linter - removed
+    - exhaustive
+    - exhaustruct
+    - depguard
+    - dupl
+    - forbidigo
+    - funlen
+    - gochecknoglobals
+    - gochecknoinits
+    - gocognit
+    - godot
+    - godox
+    - goerr113
+    - gomnd
+    - gomodguard
+    - goprintffuncname
+    - gosimple
+    - lll
+    - maintidx
+    - makezero
+    - nakedret
+    - nestif
+    - nilerr
+    - nlreturn
+    - nolintlint
+    - nosprintfhostport
+    - paralleltest
+    - prealloc
+    - predeclared
+    - promlinter
+    - stylecheck
+    - tagliatelle
+    - testpackage
+    - thelper
+    - tparallel
+    - wastedassign
+    - wsl
+
+linters-settings:
+  gocyclo:
+    min-complexity: 15
+
+  gosec:
+    severity: medium
+    confidence: medium
+    excludes:
+      - G104  # Errors unhandled
+      - G304  # File path provided as taint input
+
+  misspell:
+    locale: US
+
+  staticcheck:
+    checks: ["all"]
+
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - experimental
+      - opinionated
+      - performance
+      - style
+    disabled-checks:
+      - dupImport # https://github.com/go-critic/go-critic/issues/845
+      - ifElseChain
+      - octalLiteral
+      - whyNoLint
+      - wrapperFunc
+
+  revive:
+    severity: warning
+    rules:
+      - name: blank-imports
+      - name: context-as-argument
+      - name: context-keys-type
+      - name: dot-imports
+      - name: error-return
+      - name: error-strings
+      - name: error-naming
+      - name: exported
+      - name: if-return
+      - name: increment-decrement
+      - name: var-naming
+      - name: var-declaration
+      - name: package-comments
+      - name: range
+      - name: receiver-naming
+      - name: time-naming
+      - name: unexported-return
+      - name: indent-error-flow
+      - name: errorf
+      - name: empty-block
+      - name: superfluous-else
+      - name: unused-parameter
+      - name: unreachable-code
+      - name: redefines-builtin-id
+
+issues:
+  # Use exclude-dirs instead of deprecated run.skip-dirs
+  exclude-dirs:
+    - vendor
+    - node_modules
+    - .git
+    - tests/golden
+    - test/testdata
+    - examples
+    - docs
+    - scripts
+    - .github
+    - dist
+    - build
+    - tmp
+
+  exclude-rules:
+    # Exclude some linters from running on tests files
+    - path: _test\.go
+      linters:
+        - gosec
+        - dupl
+        - gocritic
+
+    # Exclude known test packages
+    - path: (testdata|examples|test|tests)/
+      linters:
+        - gosec
+        - gocritic
+
+    # Exclude generated files
+    - path: \.pb\.go$
+      linters:
+        - gosec
+        - gocritic
+        - golint
+
+    # Exclude vendor
+    - path: vendor/
+      linters:
+        - gosec
+        - gocritic
+        - golint
+        - stylecheck
+
+  max-issues-per-linter: 50
+  max-same-issues: 10
+  new: false
+  fix: false
+
+severity:
+  default-severity: warning
+  case-sensitive: false
