@@ -39,26 +39,26 @@ type ValidationFramework struct {
 
 // ValidationConfig holds validation framework configuration
 type ValidationConfig struct {
-	Clusters         []ClusterConfig         `yaml:"clusters"`
-	Git              GitConfig               `yaml:"git"`
-	Nephio           NephioConfig            `yaml:"nephio"`
-	Validation       ValidationRules         `yaml:"validation"`
-	Monitoring       MonitoringConfig        `yaml:"monitoring"`
-	Rollback         RollbackConfig          `yaml:"rollback"`
-	DriftDetection   DriftDetectionConfig    `yaml:"driftDetection"`
-	Performance      PerformanceConfig       `yaml:"performance"`
+	Clusters       []ClusterConfig      `yaml:"clusters"`
+	Git            GitConfig            `yaml:"git"`
+	Nephio         NephioConfig         `yaml:"nephio"`
+	Validation     ValidationRules      `yaml:"validation"`
+	Monitoring     MonitoringConfig     `yaml:"monitoring"`
+	Rollback       RollbackConfig       `yaml:"rollback"`
+	DriftDetection DriftDetectionConfig `yaml:"driftDetection"`
+	Performance    PerformanceConfig    `yaml:"performance"`
 }
 
 // ClusterConfig represents cluster-specific configuration
 type ClusterConfig struct {
-	Name        string            `yaml:"name"`
-	Type        string            `yaml:"type"` // edge01, edge02, regional, central
-	KubeConfig  string            `yaml:"kubeconfig"`
-	Context     string            `yaml:"context"`
-	Packages    []string          `yaml:"packages"`
-	Capabilities []string         `yaml:"capabilities"`
-	Labels      map[string]string `yaml:"labels"`
-	Environment string            `yaml:"environment"`
+	Name         string            `yaml:"name"`
+	Type         string            `yaml:"type"` // edge01, edge02, regional, central
+	KubeConfig   string            `yaml:"kubeconfig"`
+	Context      string            `yaml:"context"`
+	Packages     []string          `yaml:"packages"`
+	Capabilities []string          `yaml:"capabilities"`
+	Labels       map[string]string `yaml:"labels"`
+	Environment  string            `yaml:"environment"`
 }
 
 // ClusterClient wraps Kubernetes clients for a cluster
@@ -90,9 +90,9 @@ type NephioConfig struct {
 
 // ValidationRules defines validation criteria
 type ValidationRules struct {
-	RequiredResources    []ResourceRule      `yaml:"requiredResources"`
-	ReadinessTimeout     time.Duration       `yaml:"readinessTimeout"`
-	DriftTolerance       DriftTolerance      `yaml:"driftTolerance"`
+	RequiredResources     []ResourceRule        `yaml:"requiredResources"`
+	ReadinessTimeout      time.Duration         `yaml:"readinessTimeout"`
+	DriftTolerance        DriftTolerance        `yaml:"driftTolerance"`
 	PerformanceThresholds PerformanceThresholds `yaml:"performanceThresholds"`
 }
 
@@ -122,11 +122,11 @@ type DriftTolerance struct {
 
 // PerformanceThresholds defines expected performance metrics
 type PerformanceThresholds struct {
-	DeploymentTime   time.Duration `yaml:"deploymentTime"`   // <10 min
-	ThroughputMbps   []float64     `yaml:"throughputMbps"`   // [4.57, 2.77, 0.93]
-	PingRTTMs        []float64     `yaml:"pingRttMs"`        // [16.1, 15.7, 6.3]
-	CPUUtilization   float64       `yaml:"cpuUtilization"`
-	MemoryUtilization float64      `yaml:"memoryUtilization"`
+	DeploymentTime    time.Duration `yaml:"deploymentTime"` // <10 min
+	ThroughputMbps    []float64     `yaml:"throughputMbps"` // [4.57, 2.77, 0.93]
+	PingRTTMs         []float64     `yaml:"pingRttMs"`      // [16.1, 15.7, 6.3]
+	CPUUtilization    float64       `yaml:"cpuUtilization"`
+	MemoryUtilization float64       `yaml:"memoryUtilization"`
 }
 
 // MonitoringConfig defines monitoring integration
@@ -150,31 +150,31 @@ type RollbackConfig struct {
 
 // DriftDetectionConfig configures drift detection
 type DriftDetectionConfig struct {
-	Enabled       bool          `yaml:"enabled"`
-	ScanInterval  time.Duration `yaml:"scanInterval"`
-	Remediation   string        `yaml:"remediation"` // alert, correct, rollback
-	IgnoreFields  []string      `yaml:"ignoreFields"`
+	Enabled      bool          `yaml:"enabled"`
+	ScanInterval time.Duration `yaml:"scanInterval"`
+	Remediation  string        `yaml:"remediation"` // alert, correct, rollback
+	IgnoreFields []string      `yaml:"ignoreFields"`
 }
 
 // PerformanceConfig defines performance monitoring
 type PerformanceConfig struct {
-	Enabled           bool          `yaml:"enabled"`
-	CollectionInterval time.Duration `yaml:"collectionInterval"`
-	RetentionPeriod   time.Duration `yaml:"retentionPeriod"`
-	AlertThresholds   map[string]float64 `yaml:"alertThresholds"`
+	Enabled            bool               `yaml:"enabled"`
+	CollectionInterval time.Duration      `yaml:"collectionInterval"`
+	RetentionPeriod    time.Duration      `yaml:"retentionPeriod"`
+	AlertThresholds    map[string]float64 `yaml:"alertThresholds"`
 }
 
 // ValidationResult represents the result of a validation operation
 type ValidationResult struct {
-	Timestamp    time.Time                `json:"timestamp"`
-	Cluster      string                   `json:"cluster"`
-	Success      bool                     `json:"success"`
-	Errors       []string                 `json:"errors,omitempty"`
-	Warnings     []string                 `json:"warnings,omitempty"`
-	Resources    []ResourceValidationResult `json:"resources"`
-	Performance  *PerformanceResult       `json:"performance,omitempty"`
-	GitState     *GitValidationResult     `json:"gitState,omitempty"`
-	Duration     time.Duration            `json:"duration"`
+	Timestamp   time.Time                  `json:"timestamp"`
+	Cluster     string                     `json:"cluster"`
+	Success     bool                       `json:"success"`
+	Errors      []string                   `json:"errors,omitempty"`
+	Warnings    []string                   `json:"warnings,omitempty"`
+	Resources   []ResourceValidationResult `json:"resources"`
+	Performance *PerformanceResult         `json:"performance,omitempty"`
+	GitState    *GitValidationResult       `json:"gitState,omitempty"`
+	Duration    time.Duration              `json:"duration"`
 }
 
 // ResourceValidationResult represents validation result for a specific resource
@@ -200,11 +200,11 @@ type PerformanceResult struct {
 
 // GitValidationResult represents Git repository validation result
 type GitValidationResult struct {
-	Branch       string    `json:"branch"`
-	LastCommit   string    `json:"lastCommit"`
-	CleanState   bool      `json:"cleanState"`
-	SyncStatus   string    `json:"syncStatus"`
-	LastSync     time.Time `json:"lastSync"`
+	Branch     string    `json:"branch"`
+	LastCommit string    `json:"lastCommit"`
+	CleanState bool      `json:"cleanState"`
+	SyncStatus string    `json:"syncStatus"`
+	LastSync   time.Time `json:"lastSync"`
 }
 
 // NewValidationFramework creates a new validation framework instance

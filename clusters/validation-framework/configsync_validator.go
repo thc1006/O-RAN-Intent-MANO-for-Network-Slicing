@@ -29,58 +29,58 @@ type ConfigSyncValidator struct {
 
 // ConfigSyncConfig holds Config Sync configuration
 type ConfigSyncConfig struct {
-	Namespace              string        `yaml:"namespace"`
-	RootSyncName           string        `yaml:"rootSyncName"`
-	RepoSyncTimeout        time.Duration `yaml:"repoSyncTimeout"`
-	ValidationTimeout      time.Duration `yaml:"validationTimeout"`
-	ExpectedSyncResources  []string      `yaml:"expectedSyncResources"`
-	HealthCheckInterval    time.Duration `yaml:"healthCheckInterval"`
+	Namespace             string        `yaml:"namespace"`
+	RootSyncName          string        `yaml:"rootSyncName"`
+	RepoSyncTimeout       time.Duration `yaml:"repoSyncTimeout"`
+	ValidationTimeout     time.Duration `yaml:"validationTimeout"`
+	ExpectedSyncResources []string      `yaml:"expectedSyncResources"`
+	HealthCheckInterval   time.Duration `yaml:"healthCheckInterval"`
 }
 
 // ConfigSyncStatus represents the status of Config Sync
 type ConfigSyncStatus struct {
-	Healthy             bool                    `json:"healthy"`
-	SyncStatus          string                  `json:"syncStatus"`
-	LastSync            time.Time               `json:"lastSync"`
-	Errors              []string                `json:"errors,omitempty"`
-	Warnings            []string                `json:"warnings,omitempty"`
-	RootSync            *RootSyncStatus         `json:"rootSync,omitempty"`
-	RepoSyncs           []RepoSyncStatus        `json:"repoSyncs,omitempty"`
-	ResourceGroups      []ResourceGroupStatus   `json:"resourceGroups,omitempty"`
-	SyncedResources     int                     `json:"syncedResources"`
-	ErroredResources    int                     `json:"erroredResources"`
-	ValidationErrors    []ValidationError       `json:"validationErrors,omitempty"`
+	Healthy          bool                  `json:"healthy"`
+	SyncStatus       string                `json:"syncStatus"`
+	LastSync         time.Time             `json:"lastSync"`
+	Errors           []string              `json:"errors,omitempty"`
+	Warnings         []string              `json:"warnings,omitempty"`
+	RootSync         *RootSyncStatus       `json:"rootSync,omitempty"`
+	RepoSyncs        []RepoSyncStatus      `json:"repoSyncs,omitempty"`
+	ResourceGroups   []ResourceGroupStatus `json:"resourceGroups,omitempty"`
+	SyncedResources  int                   `json:"syncedResources"`
+	ErroredResources int                   `json:"erroredResources"`
+	ValidationErrors []ValidationError     `json:"validationErrors,omitempty"`
 }
 
 // RootSyncStatus represents RootSync status
 type RootSyncStatus struct {
-	Name              string              `json:"name"`
-	Namespace         string              `json:"namespace"`
-	Source            SourceStatus        `json:"source"`
-	Sync              SyncStatus          `json:"sync"`
-	Rendering         RenderingStatus     `json:"rendering"`
-	Conditions        []ConditionStatus   `json:"conditions"`
-	ObservedGeneration int64              `json:"observedGeneration"`
+	Name               string            `json:"name"`
+	Namespace          string            `json:"namespace"`
+	Source             SourceStatus      `json:"source"`
+	Sync               SyncStatus        `json:"sync"`
+	Rendering          RenderingStatus   `json:"rendering"`
+	Conditions         []ConditionStatus `json:"conditions"`
+	ObservedGeneration int64             `json:"observedGeneration"`
 }
 
 // RepoSyncStatus represents RepoSync status
 type RepoSyncStatus struct {
-	Name              string              `json:"name"`
-	Namespace         string              `json:"namespace"`
-	Source            SourceStatus        `json:"source"`
-	Sync              SyncStatus          `json:"sync"`
-	Rendering         RenderingStatus     `json:"rendering"`
-	Conditions        []ConditionStatus   `json:"conditions"`
-	ObservedGeneration int64              `json:"observedGeneration"`
+	Name               string            `json:"name"`
+	Namespace          string            `json:"namespace"`
+	Source             SourceStatus      `json:"source"`
+	Sync               SyncStatus        `json:"sync"`
+	Rendering          RenderingStatus   `json:"rendering"`
+	Conditions         []ConditionStatus `json:"conditions"`
+	ObservedGeneration int64             `json:"observedGeneration"`
 }
 
 // SourceStatus represents source status
 type SourceStatus struct {
-	Git             GitSourceStatus     `json:"git,omitempty"`
-	Oci             OciSourceStatus     `json:"oci,omitempty"`
-	Helm            HelmSourceStatus    `json:"helm,omitempty"`
-	Errors          []ErrorStatus       `json:"errors,omitempty"`
-	LastUpdate      time.Time           `json:"lastUpdate"`
+	Git        GitSourceStatus  `json:"git,omitempty"`
+	Oci        OciSourceStatus  `json:"oci,omitempty"`
+	Helm       HelmSourceStatus `json:"helm,omitempty"`
+	Errors     []ErrorStatus    `json:"errors,omitempty"`
+	LastUpdate time.Time        `json:"lastUpdate"`
 }
 
 // GitSourceStatus represents Git source status
@@ -94,8 +94,8 @@ type GitSourceStatus struct {
 
 // OciSourceStatus represents OCI source status
 type OciSourceStatus struct {
-	Image    string `json:"image"`
-	Dir      string `json:"dir"`
+	Image string `json:"image"`
+	Dir   string `json:"dir"`
 }
 
 // HelmSourceStatus represents Helm source status
@@ -107,12 +107,12 @@ type HelmSourceStatus struct {
 
 // SyncStatus represents sync status
 type SyncStatus struct {
-	Status           string      `json:"status"`
-	LastUpdate       time.Time   `json:"lastUpdate"`
-	GitStatus        GitStatus   `json:"gitStatus,omitempty"`
-	Import           string      `json:"import,omitempty"`
-	Sync             string      `json:"sync,omitempty"`
-	Errors           []ErrorStatus `json:"errors,omitempty"`
+	Status     string        `json:"status"`
+	LastUpdate time.Time     `json:"lastUpdate"`
+	GitStatus  GitStatus     `json:"gitStatus,omitempty"`
+	Import     string        `json:"import,omitempty"`
+	Sync       string        `json:"sync,omitempty"`
+	Errors     []ErrorStatus `json:"errors,omitempty"`
 }
 
 // RenderingStatus represents rendering status
@@ -135,10 +135,10 @@ type ConditionStatus struct {
 
 // ErrorStatus represents error status
 type ErrorStatus struct {
-	Code         string    `json:"code"`
-	Description  string    `json:"description"`
-	Timestamp    time.Time `json:"timestamp"`
-	Resources    []string  `json:"resources,omitempty"`
+	Code        string    `json:"code"`
+	Description string    `json:"description"`
+	Timestamp   time.Time `json:"timestamp"`
+	Resources   []string  `json:"resources,omitempty"`
 }
 
 // ResourceGroupStatus represents resource group status
@@ -153,12 +153,12 @@ type ResourceGroupStatus struct {
 
 // ValidationError represents a validation error
 type ValidationError struct {
-	Resource    string    `json:"resource"`
-	Kind        string    `json:"kind"`
-	Namespace   string    `json:"namespace"`
-	Name        string    `json:"name"`
-	Error       string    `json:"error"`
-	Timestamp   time.Time `json:"timestamp"`
+	Resource  string    `json:"resource"`
+	Kind      string    `json:"kind"`
+	Namespace string    `json:"namespace"`
+	Name      string    `json:"name"`
+	Error     string    `json:"error"`
+	Timestamp time.Time `json:"timestamp"`
 }
 
 // NewConfigSyncValidator creates a new Config Sync validator
@@ -189,10 +189,10 @@ func NewConfigSyncValidator(client *ClusterClient, config ConfigSyncConfig) *Con
 // ValidateConfigSync validates Config Sync deployment and status
 func (csv *ConfigSyncValidator) ValidateConfigSync(ctx context.Context) (*ConfigSyncStatus, error) {
 	status := &ConfigSyncStatus{
-		Healthy:            true,
-		SyncStatus:        "unknown",
-		ResourceGroups:    make([]ResourceGroupStatus, 0),
-		ValidationErrors:  make([]ValidationError, 0),
+		Healthy:          true,
+		SyncStatus:       "unknown",
+		ResourceGroups:   make([]ResourceGroupStatus, 0),
+		ValidationErrors: make([]ValidationError, 0),
 	}
 
 	// Check if Config Sync is installed

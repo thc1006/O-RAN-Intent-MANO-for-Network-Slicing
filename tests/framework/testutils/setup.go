@@ -11,6 +11,7 @@ import (
 
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -18,13 +19,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security"
 )
 
 const (
-	TestTimeout          = 30 * time.Second
-	TestPollingInterval  = 250 * time.Millisecond
-	TestEventualTimeout  = 60 * time.Second
+	TestTimeout         = 30 * time.Second
+	TestPollingInterval = 250 * time.Millisecond
+	TestEventualTimeout = 60 * time.Second
 )
 
 // TestSuite represents a comprehensive test suite configuration
@@ -54,34 +54,34 @@ const (
 
 // TestConfig holds configuration for test execution
 type TestConfig struct {
-	KubeConfig         *rest.Config
-	KubeClient         client.Client
-	KubernetesClient   kubernetes.Interface
-	TestEnv            *envtest.Environment
-	Context            context.Context
-	CancelFunc         context.CancelFunc
-	TestDataDir        string
-	TempDir            string
-	LogLevel           string
-	MockServices       map[string]interface{}
-	TestMetrics        *TestMetrics
-	ParallelNodes      int
-	EnableCoverage     bool
-	CoverageThreshold  float64
+	KubeConfig        *rest.Config
+	KubeClient        client.Client
+	KubernetesClient  kubernetes.Interface
+	TestEnv           *envtest.Environment
+	Context           context.Context
+	CancelFunc        context.CancelFunc
+	TestDataDir       string
+	TempDir           string
+	LogLevel          string
+	MockServices      map[string]interface{}
+	TestMetrics       *TestMetrics
+	ParallelNodes     int
+	EnableCoverage    bool
+	CoverageThreshold float64
 }
 
 // TestMetrics tracks test execution metrics
 type TestMetrics struct {
-	StartTime         time.Time
-	EndTime           time.Time
-	Duration          time.Duration
-	TestsRun          int
-	TestsPassed       int
-	TestsFailed       int
-	TestsSkipped      int
-	CoveragePercent   float64
-	PerformanceData   map[string]interface{}
-	ResourceUsage     map[string]interface{}
+	StartTime       time.Time
+	EndTime         time.Time
+	Duration        time.Duration
+	TestsRun        int
+	TestsPassed     int
+	TestsFailed     int
+	TestsSkipped    int
+	CoveragePercent float64
+	PerformanceData map[string]interface{}
+	ResourceUsage   map[string]interface{}
 }
 
 // TestFramework provides a comprehensive testing framework

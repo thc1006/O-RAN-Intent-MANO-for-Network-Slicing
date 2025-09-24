@@ -8,6 +8,8 @@ import (
 	"time"
 
 	porchapi "github.com/GoogleContainerTools/kpt/porch/api/porch/v1alpha1"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/orchestrator/pkg/placement"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/o2client"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -16,8 +18,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/orchestrator/pkg/placement"
-	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/o2client"
 )
 
 // Constants for commonly used strings
@@ -32,12 +32,12 @@ type NephioAdapterReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 
-	PorchClient       PorchClient
-	PackageGenerator  PackageGenerator
-	PlacementEngine   placement.Policy
+	PorchClient      PorchClient
+	PackageGenerator PackageGenerator
+	PlacementEngine  placement.Policy
 	O2Client         o2client.Client
-	Repository        string
-	Namespace         string
+	Repository       string
+	Namespace        string
 }
 
 // NetworkSliceIntentSpec defines the desired state of NetworkSliceIntent
@@ -132,7 +132,7 @@ type DeploymentConfig struct {
 
 // HealthCheck defines health checking parameters
 type HealthCheck struct {
-	Type     string            `json:"type"`     // "http", "tcp", "exec"
+	Type     string            `json:"type"` // "http", "tcp", "exec"
 	Path     string            `json:"path,omitempty"`
 	Port     int32             `json:"port,omitempty"`
 	Command  []string          `json:"command,omitempty"`
@@ -164,14 +164,14 @@ type NetworkSliceIntentStatus struct {
 
 // DeployedFunction represents a deployed network function
 type DeployedFunction struct {
-	Name             string    `json:"name"`
-	Type             string    `json:"type"`
-	Cluster          string    `json:"cluster"`
-	Namespace        string    `json:"namespace"`
-	Status           string    `json:"status"`
-	PackageRevision  string    `json:"packageRevision"`
-	DeploymentTime   time.Time `json:"deploymentTime"`
-	HealthStatus     string    `json:"healthStatus"`
+	Name            string    `json:"name"`
+	Type            string    `json:"type"`
+	Cluster         string    `json:"cluster"`
+	Namespace       string    `json:"namespace"`
+	Status          string    `json:"status"`
+	PackageRevision string    `json:"packageRevision"`
+	DeploymentTime  time.Time `json:"deploymentTime"`
+	HealthStatus    string    `json:"healthStatus"`
 }
 
 // PackageRevision represents a Nephio package revision

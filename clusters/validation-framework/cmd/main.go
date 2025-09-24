@@ -48,7 +48,8 @@ func main() {
 	// Initialize validation framework
 	framework, err := validation.NewValidationFramework(*configPath)
 	if err != nil {
-		log.Fatalf("Failed to initialize validation framework: %v", err)
+		log.Printf("Failed to initialize validation framework: %v", err)
+		os.Exit(1)
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -58,19 +59,25 @@ func main() {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
+	var exitCode int
 	if *validateOnly {
 		// Run validation once and exit
 		if err := runValidation(ctx, framework, *clusterName); err != nil {
-			log.Fatalf("Validation failed: %v", err)
+			log.Printf("Validation failed: %v", err)
+			exitCode = 1
 		}
 	} else {
 		// Run continuous monitoring
 		if err := runContinuousMonitoring(ctx, framework, *clusterName, *interval, sigChan); err != nil {
-			log.Fatalf("Continuous monitoring failed: %v", err)
+			log.Printf("Continuous monitoring failed: %v", err)
+			exitCode = 1
 		}
 	}
 
-	log.Printf("GitOps Validation Framework completed successfully")
+	if exitCode == 0 {
+		log.Printf("GitOps Validation Framework completed successfully")
+	}
+	os.Exit(exitCode)
 }
 
 // setupLogging configures logging based on log level
@@ -185,7 +192,7 @@ func runContinuousMonitoring(ctx context.Context, framework *validation.Validati
 }
 
 // runDriftDetection performs drift detection across all clusters
-func runDriftDetection(ctx context.Context, framework *validation.ValidationFramework) error {
+func runDriftDetection(_ context.Context, framework *validation.ValidationFramework) error {
 	// This would iterate through all clusters and run drift detection
 	// For now, we'll implement a placeholder
 	log.Printf("Drift detection completed (placeholder)")
@@ -193,7 +200,7 @@ func runDriftDetection(ctx context.Context, framework *validation.ValidationFram
 }
 
 // handleValidationFailure handles validation failures
-func handleValidationFailure(ctx context.Context, framework *validation.ValidationFramework, clusterName string, validationErr error) error {
+func handleValidationFailure(_ context.Context, framework *validation.ValidationFramework, clusterName string, validationErr error) error {
 	log.Printf("Handling validation failure for cluster %s: %v", clusterName, validationErr)
 
 	// This could trigger rollback, alerting, or other remediation actions

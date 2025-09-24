@@ -36,24 +36,24 @@ type ThesisMetrics struct {
 
 // QoSClass represents a specific QoS class from the thesis
 type QoSClass struct {
-	Name                    string
+	Name                   string
 	SliceType              string
-	ExpectedThroughputMbps  float64
-	ExpectedLatencyMs       float64
-	MinReliabilityPercent   float64
-	MaxPacketLossRate       float64
-	TrafficProfile          string
+	ExpectedThroughputMbps float64
+	ExpectedLatencyMs      float64
+	MinReliabilityPercent  float64
+	MaxPacketLossRate      float64
+	TrafficProfile         string
 }
 
 // PerformanceTestSuite provides comprehensive performance validation
 type PerformanceTestSuite struct {
-	ctx               context.Context
-	cancel            context.CancelFunc
-	framework         *testutils.TestFramework
-	prometheusClient  v1.API
-	testClusters      []string         // nolint:unused // TODO: implement multi-cluster performance tests
-	thesisMetrics     ThesisMetrics
-	resultCollector   *PerformanceResultCollector
+	ctx              context.Context
+	cancel           context.CancelFunc
+	framework        *testutils.TestFramework
+	prometheusClient v1.API
+	testClusters     []string // nolint:unused // TODO: implement multi-cluster performance tests
+	thesisMetrics    ThesisMetrics
+	resultCollector  *PerformanceResultCollector
 }
 
 // PerformanceResultCollector aggregates test results
@@ -64,20 +64,20 @@ type PerformanceResultCollector struct {
 
 // TestResult represents a single performance test result
 type TestResult struct {
-	TestName            string             `json:"test_name"`
-	SliceType           string             `json:"slice_type"`
-	StartTime           time.Time          `json:"start_time"`
-	EndTime             time.Time          `json:"end_time"`
-	DeploymentTime      time.Duration      `json:"deployment_time"`
-	MeasuredThroughput  float64            `json:"measured_throughput_mbps"`
-	MeasuredLatency     float64            `json:"measured_latency_ms"`
-	MeasuredReliability float64            `json:"measured_reliability"`
-	PacketLossRate      float64            `json:"packet_loss_rate"`
-	CPUUsage            float64            `json:"cpu_usage"`
-	MemoryUsage         float64            `json:"memory_usage_mb"`
-	NetworkUtilization  float64            `json:"network_utilization"`
-	Success             bool               `json:"success"`
-	Violations          []string           `json:"violations"`
+	TestName            string                 `json:"test_name"`
+	SliceType           string                 `json:"slice_type"`
+	StartTime           time.Time              `json:"start_time"`
+	EndTime             time.Time              `json:"end_time"`
+	DeploymentTime      time.Duration          `json:"deployment_time"`
+	MeasuredThroughput  float64                `json:"measured_throughput_mbps"`
+	MeasuredLatency     float64                `json:"measured_latency_ms"`
+	MeasuredReliability float64                `json:"measured_reliability"`
+	PacketLossRate      float64                `json:"packet_loss_rate"`
+	CPUUsage            float64                `json:"cpu_usage"`
+	MemoryUsage         float64                `json:"memory_usage_mb"`
+	NetworkUtilization  float64                `json:"network_utilization"`
+	Success             bool                   `json:"success"`
+	Violations          []string               `json:"violations"`
 	Metadata            map[string]interface{} `json:"metadata"`
 }
 
@@ -139,8 +139,8 @@ var _ = Describe("Thesis Performance Validation", func() {
 		// Initialize thesis metrics targets
 		suite.thesisMetrics = ThesisMetrics{
 			MaxDeploymentTimeMinutes: 10.0,
-			ThroughputTargets:       []float64{4.57, 2.77, 0.93}, // Mbps
-			LatencyTargets:          []float64{16.1, 15.7, 6.3},  // ms
+			ThroughputTargets:        []float64{4.57, 2.77, 0.93}, // Mbps
+			LatencyTargets:           []float64{16.1, 15.7, 6.3},  // ms
 			QoSClasses: []QoSClass{
 				{
 					Name:                   "Critical Emergency",
@@ -178,11 +178,11 @@ var _ = Describe("Thesis Performance Validation", func() {
 
 		// Setup test framework
 		testConfig := &testutils.TestConfig{
-			Context:           suite.ctx,
-			CancelFunc:        suite.cancel,
-			LogLevel:          "info",
-			ParallelNodes:     4,
-			EnableCoverage:    false, // Disable for performance tests
+			Context:        suite.ctx,
+			CancelFunc:     suite.cancel,
+			LogLevel:       "info",
+			ParallelNodes:  4,
+			EnableCoverage: false, // Disable for performance tests
 		}
 
 		var err error
@@ -944,8 +944,8 @@ func (s *PerformanceTestSuite) generateTestReport() {
 	// Update framework reporter
 	s.framework.Reporter.UpdatePerformanceMetrics(&testutils.PerformanceMetrics{
 		DeploymentTime:    8 * time.Minute, // Average from results
-		ThroughputMbps:    3.5,              // Average thesis target
-		LatencyMs:         12.7,             // Average thesis target
+		ThroughputMbps:    3.5,             // Average thesis target
+		LatencyMs:         12.7,            // Average thesis target
 		ErrorRate:         (100.0 - successRate) / 100.0,
 		RequestsPerSecond: float64(totalCount) / 600.0, // Tests per 10 minutes
 	})

@@ -233,7 +233,7 @@ func handleDashboard(dashboardInstance *dashboard.Dashboard) http.HandlerFunc {
 }
 
 // handleHealth handles health check requests
-func handleHealth(w http.ResponseWriter, r *http.Request) {
+func handleHealth(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, `{
@@ -329,7 +329,7 @@ func handleAPIHistory(aggregator *dashboard.MetricsAggregator) http.HandlerFunc 
 }
 
 // handleAPIRefresh handles API refresh endpoint
-func handleAPIRefresh(dashboardInstance *dashboard.Dashboard, aggregator *dashboard.MetricsAggregator) http.HandlerFunc {
+func handleAPIRefresh(dashboardInstance *dashboard.Dashboard, _ *dashboard.MetricsAggregator) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -479,9 +479,11 @@ func handleExportCSV(aggregator *dashboard.MetricsAggregator) http.HandlerFunc {
 	}
 }
 
-func handleExportPDF(_ *dashboard.MetricsAggregator) http.HandlerFunc {
-	return func(w http.ResponseWriter, _ *http.Request) {
+func handleExportPDF(aggregator *dashboard.MetricsAggregator) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		// PDF export would require additional dependencies
+		_ = aggregator // TODO: implement PDF export functionality
+		_ = r          // TODO: process request parameters for PDF generation
 		http.Error(w, "PDF export not implemented", http.StatusNotImplemented)
 	}
 }
@@ -517,7 +519,7 @@ func generateStaticDashboard() {
 }
 
 // secureFileHandler wraps a file handler with path validation to prevent directory traversal
-func secureFileHandler(handler http.Handler, baseDir string) http.Handler {
+func secureFileHandler(handler http.Handler, _ string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Get the requested path
 		requestPath := r.URL.Path

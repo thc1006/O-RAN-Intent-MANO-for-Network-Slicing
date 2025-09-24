@@ -40,55 +40,55 @@ type ArgoCDConfig struct {
 
 // ArgoCDStatus represents the status of ArgoCD
 type ArgoCDStatus struct {
-	Healthy               bool                      `json:"healthy"`
-	ServerStatus          string                    `json:"serverStatus"`
-	Applications          []ApplicationStatus       `json:"applications"`
-	Projects              []ProjectStatus           `json:"projects"`
-	Repositories          []RepositoryStatus        `json:"repositories"`
-	Clusters              []ClusterStatus           `json:"clusters"`
-	SyncedApplications    int                       `json:"syncedApplications"`
-	OutOfSyncApplications int                       `json:"outOfSyncApplications"`
-	ErroredApplications   int                       `json:"erroredApplications"`
-	Errors                []string                  `json:"errors,omitempty"`
-	Warnings              []string                  `json:"warnings,omitempty"`
-	LastUpdate            time.Time                 `json:"lastUpdate"`
+	Healthy               bool                `json:"healthy"`
+	ServerStatus          string              `json:"serverStatus"`
+	Applications          []ApplicationStatus `json:"applications"`
+	Projects              []ProjectStatus     `json:"projects"`
+	Repositories          []RepositoryStatus  `json:"repositories"`
+	Clusters              []ClusterStatus     `json:"clusters"`
+	SyncedApplications    int                 `json:"syncedApplications"`
+	OutOfSyncApplications int                 `json:"outOfSyncApplications"`
+	ErroredApplications   int                 `json:"erroredApplications"`
+	Errors                []string            `json:"errors,omitempty"`
+	Warnings              []string            `json:"warnings,omitempty"`
+	LastUpdate            time.Time           `json:"lastUpdate"`
 }
 
 // ApplicationStatus represents ArgoCD application status
 type ApplicationStatus struct {
-	Name              string                `json:"name"`
-	Namespace         string                `json:"namespace"`
-	Project           string                `json:"project"`
-	SyncStatus        SyncStatusInfo        `json:"syncStatus"`
-	HealthStatus      HealthStatusInfo      `json:"healthStatus"`
-	Source            ApplicationSource     `json:"source"`
-	Destination       ApplicationDestination `json:"destination"`
-	Conditions        []ApplicationCondition `json:"conditions"`
-	OperationState    *OperationState       `json:"operationState,omitempty"`
-	Resources         []ResourceStatus      `json:"resources"`
-	CreatedAt         time.Time             `json:"createdAt"`
-	LastSyncedAt      time.Time             `json:"lastSyncedAt"`
+	Name           string                 `json:"name"`
+	Namespace      string                 `json:"namespace"`
+	Project        string                 `json:"project"`
+	SyncStatus     SyncStatusInfo         `json:"syncStatus"`
+	HealthStatus   HealthStatusInfo       `json:"healthStatus"`
+	Source         ApplicationSource      `json:"source"`
+	Destination    ApplicationDestination `json:"destination"`
+	Conditions     []ApplicationCondition `json:"conditions"`
+	OperationState *OperationState        `json:"operationState,omitempty"`
+	Resources      []ResourceStatus       `json:"resources"`
+	CreatedAt      time.Time              `json:"createdAt"`
+	LastSyncedAt   time.Time              `json:"lastSyncedAt"`
 }
 
 // ProjectStatus represents ArgoCD project status
 type ProjectStatus struct {
-	Name        string              `json:"name"`
-	Namespace   string              `json:"namespace"`
-	Description string              `json:"description"`
+	Name         string               `json:"name"`
+	Namespace    string               `json:"namespace"`
+	Description  string               `json:"description"`
 	Destinations []ProjectDestination `json:"destinations"`
-	Sources     []string            `json:"sources"`
-	Roles       []ProjectRole       `json:"roles"`
-	Conditions  []ProjectCondition  `json:"conditions"`
+	Sources      []string             `json:"sources"`
+	Roles        []ProjectRole        `json:"roles"`
+	Conditions   []ProjectCondition   `json:"conditions"`
 }
 
 // RepositoryStatus represents ArgoCD repository status
 type RepositoryStatus struct {
-	Name           string            `json:"name"`
-	Repo           string            `json:"repo"`
-	Type           string            `json:"type"`
-	ConnectionState ConnectionState  `json:"connectionState"`
-	Credentials    string            `json:"credentials,omitempty"`
-	InsecureIgnore bool              `json:"insecureIgnore"`
+	Name            string          `json:"name"`
+	Repo            string          `json:"repo"`
+	Type            string          `json:"type"`
+	ConnectionState ConnectionState `json:"connectionState"`
+	Credentials     string          `json:"credentials,omitempty"`
+	InsecureIgnore  bool            `json:"insecureIgnore"`
 }
 
 // ClusterStatus represents ArgoCD cluster status
@@ -102,9 +102,9 @@ type ClusterStatus struct {
 
 // SyncStatusInfo represents application sync status
 type SyncStatusInfo struct {
-	Status    string      `json:"status"`
-	Revision  string      `json:"revision"`
-	Revisions []string    `json:"revisions,omitempty"`
+	Status     string     `json:"status"`
+	Revision   string     `json:"revision"`
+	Revisions  []string   `json:"revisions,omitempty"`
 	ComparedTo ComparedTo `json:"comparedTo"`
 }
 
@@ -116,13 +116,13 @@ type HealthStatusInfo struct {
 
 // ApplicationSource represents application source
 type ApplicationSource struct {
-	RepoURL        string            `json:"repoURL"`
-	Path           string            `json:"path"`
-	TargetRevision string            `json:"targetRevision"`
-	Helm           *HelmSource       `json:"helm,omitempty"`
-	Kustomize      *KustomizeSource  `json:"kustomize,omitempty"`
-	Directory      *DirectorySource  `json:"directory,omitempty"`
-	Plugin         *PluginSource     `json:"plugin,omitempty"`
+	RepoURL        string           `json:"repoURL"`
+	Path           string           `json:"path"`
+	TargetRevision string           `json:"targetRevision"`
+	Helm           *HelmSource      `json:"helm,omitempty"`
+	Kustomize      *KustomizeSource `json:"kustomize,omitempty"`
+	Directory      *DirectorySource `json:"directory,omitempty"`
+	Plugin         *PluginSource    `json:"plugin,omitempty"`
 }
 
 // ApplicationDestination represents application destination
@@ -141,25 +141,25 @@ type ApplicationCondition struct {
 
 // OperationState represents operation state
 type OperationState struct {
-	Operation   Operation `json:"operation"`
-	Phase       string    `json:"phase"`
-	Message     string    `json:"message,omitempty"`
-	SyncResult  *SyncResult `json:"syncResult,omitempty"`
-	StartedAt   time.Time `json:"startedAt"`
-	FinishedAt  *time.Time `json:"finishedAt,omitempty"`
+	Operation  Operation   `json:"operation"`
+	Phase      string      `json:"phase"`
+	Message    string      `json:"message,omitempty"`
+	SyncResult *SyncResult `json:"syncResult,omitempty"`
+	StartedAt  time.Time   `json:"startedAt"`
+	FinishedAt *time.Time  `json:"finishedAt,omitempty"`
 }
 
 // ResourceStatus represents resource status
 type ResourceStatus struct {
-	Group       string             `json:"group,omitempty"`
-	Version     string             `json:"version"`
-	Kind        string             `json:"kind"`
-	Namespace   string             `json:"namespace,omitempty"`
-	Name        string             `json:"name"`
-	Status      string             `json:"status"`
-	Health      *HealthStatus      `json:"health,omitempty"`
-	Hook        bool               `json:"hook,omitempty"`
-	RequiresPruning bool           `json:"requiresPruning,omitempty"`
+	Group           string        `json:"group,omitempty"`
+	Version         string        `json:"version"`
+	Kind            string        `json:"kind"`
+	Namespace       string        `json:"namespace,omitempty"`
+	Name            string        `json:"name"`
+	Status          string        `json:"status"`
+	Health          *HealthStatus `json:"health,omitempty"`
+	Hook            bool          `json:"hook,omitempty"`
+	RequiresPruning bool          `json:"requiresPruning,omitempty"`
 }
 
 // Additional types for ArgoCD structures
@@ -181,8 +181,8 @@ type ProjectCondition struct {
 }
 
 type ConnectionState struct {
-	Status     string    `json:"status"`
-	Message    string    `json:"message,omitempty"`
+	Status      string    `json:"status"`
+	Message     string    `json:"message,omitempty"`
 	AttemptedAt time.Time `json:"attemptedAt"`
 }
 
@@ -192,26 +192,26 @@ type ComparedTo struct {
 }
 
 type HelmSource struct {
-	ValueFiles []string               `json:"valueFiles,omitempty"`
-	Parameters []HelmParameter        `json:"parameters,omitempty"`
-	Values     string                 `json:"values,omitempty"`
+	ValueFiles []string        `json:"valueFiles,omitempty"`
+	Parameters []HelmParameter `json:"parameters,omitempty"`
+	Values     string          `json:"values,omitempty"`
 }
 
 type KustomizeSource struct {
-	NamePrefix string                 `json:"namePrefix,omitempty"`
-	NameSuffix string                 `json:"nameSuffix,omitempty"`
-	Images     []KustomizeImage       `json:"images,omitempty"`
-	CommonLabels map[string]string    `json:"commonLabels,omitempty"`
+	NamePrefix   string            `json:"namePrefix,omitempty"`
+	NameSuffix   string            `json:"nameSuffix,omitempty"`
+	Images       []KustomizeImage  `json:"images,omitempty"`
+	CommonLabels map[string]string `json:"commonLabels,omitempty"`
 }
 
 type DirectorySource struct {
-	Recurse bool                   `json:"recurse,omitempty"`
-	Jsonnet JsonnetSource          `json:"jsonnet,omitempty"`
+	Recurse bool          `json:"recurse,omitempty"`
+	Jsonnet JsonnetSource `json:"jsonnet,omitempty"`
 }
 
 type PluginSource struct {
-	Name string                     `json:"name"`
-	Env  []PluginEnv               `json:"env,omitempty"`
+	Name string      `json:"name"`
+	Env  []PluginEnv `json:"env,omitempty"`
 }
 
 type HelmParameter struct {
@@ -247,17 +247,17 @@ type Operation struct {
 }
 
 type SyncOperation struct {
-	Revision   string             `json:"revision,omitempty"`
-	Prune      bool               `json:"prune,omitempty"`
-	DryRun     bool               `json:"dryRun,omitempty"`
-	SyncOptions []string          `json:"syncOptions,omitempty"`
-	Source     *ApplicationSource `json:"source,omitempty"`
-	Manifests  []string           `json:"manifests,omitempty"`
+	Revision    string             `json:"revision,omitempty"`
+	Prune       bool               `json:"prune,omitempty"`
+	DryRun      bool               `json:"dryRun,omitempty"`
+	SyncOptions []string           `json:"syncOptions,omitempty"`
+	Source      *ApplicationSource `json:"source,omitempty"`
+	Manifests   []string           `json:"manifests,omitempty"`
 }
 
 type SyncResult struct {
-	Resources []ResourceResult `json:"resources,omitempty"`
-	Revision  string           `json:"revision"`
+	Resources []ResourceResult  `json:"resources,omitempty"`
+	Revision  string            `json:"revision"`
 	Source    ApplicationSource `json:"source"`
 }
 
@@ -307,8 +307,8 @@ func NewArgoCDValidator(client *ClusterClient, config ArgoCDConfig) *ArgoCDValid
 // ValidateArgoCD validates ArgoCD deployment and applications
 func (acv *ArgoCDValidator) ValidateArgoCD(ctx context.Context) (*ArgoCDStatus, error) {
 	status := &ArgoCDStatus{
-		Healthy:    true,
-		LastUpdate: time.Now(),
+		Healthy:      true,
+		LastUpdate:   time.Now(),
 		Applications: make([]ApplicationStatus, 0),
 		Projects:     make([]ProjectStatus, 0),
 		Repositories: make([]RepositoryStatus, 0),
