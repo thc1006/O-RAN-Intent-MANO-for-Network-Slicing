@@ -460,15 +460,15 @@ jobs:
 
           # Code formatting check
           echo "  Checking code formatting..."
-          black --check --diff . || ((python_issues++))
+          black --check --diff . || python_issues=$((python_issues + 1))
 
           # Import sorting
           echo "  Checking import sorting..."
-          isort --check-only --diff . || ((python_issues++))
+          isort --check-only --diff . || python_issues=$((python_issues + 1))
 
           # Code quality
           echo "  Running flake8..."
-          flake8 . --max-line-length=120 --exclude=venv,__pycache__ --statistics || ((python_issues++))
+          flake8 . --max-line-length=120 --exclude=venv,__pycache__ --statistics || python_issues=$((python_issues + 1))
 
           # Pylint analysis
           echo "  Running pylint..."
@@ -476,15 +476,15 @@ jobs:
 
           # Type checking
           echo "  Running mypy..."
-          mypy *.py --ignore-missing-imports --explicit-package-bases || ((python_issues++))
+          mypy *.py --ignore-missing-imports --explicit-package-bases || python_issues=$((python_issues + 1))
 
           # Security scanning
           echo "  Running bandit security scan..."
-          bandit -r . -f json -o bandit-report.json || ((python_issues++))
+          bandit -r . -f json -o bandit-report.json || python_issues=$((python_issues + 1))
 
           # Dependency security check
           echo "  Checking dependency security..."
-          safety check --json --output safety-report.json || ((python_issues++))
+          safety check --json --output safety-report.json || python_issues=$((python_issues + 1))
 
           cd - > /dev/null
         fi
