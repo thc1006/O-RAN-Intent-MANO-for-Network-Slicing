@@ -1,5 +1,6 @@
-# golangci-lint configuration
+# golangci-lint configuration v2
 # See: https://golangci-lint.run/usage/configuration/
+version: "2"
 
 run:
   timeout: 15m
@@ -9,9 +10,9 @@ run:
   go: "1.24"
 
 output:
-  # Updated format for golangci-lint v2.4.0+
+  # Format settings for golangci-lint v2
   formats:
-    colored-line-number:
+    - format: colored-line-number
       path: stdout
   print-issued-lines: true
   print-linter-name: true
