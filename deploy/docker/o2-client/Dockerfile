@@ -58,7 +58,7 @@ WORKDIR /workspace/o2-client
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -ldflags='-w -s -extldflags "-static"' \
     -a -installsuffix cgo \
-    -o /workspace/o2-client-binary ./cmd/main.go
+    -o /workspace/o2-client-binary ./cmd/client/main.go
 
 # Stage 2: Runtime
 FROM alpine:3.22.1
