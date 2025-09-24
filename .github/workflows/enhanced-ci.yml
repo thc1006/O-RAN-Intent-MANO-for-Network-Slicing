@@ -115,14 +115,12 @@ jobs:
         echo "🔍 Analyzing repository changes..."
 
         # Initialize outputs
-        cat >> $GITHUB_OUTPUT << 'EOF'
-should-run=true
-go-modules=true
-python-modules=false
-docker=true
-tests=true
-docs-only=false
-EOF
+        echo "should-run=true" >> $GITHUB_OUTPUT
+        echo "go-modules=true" >> $GITHUB_OUTPUT
+        echo "python-modules=false" >> $GITHUB_OUTPUT
+        echo "docker=true" >> $GITHUB_OUTPUT
+        echo "tests=true" >> $GITHUB_OUTPUT
+        echo "docs-only=false" >> $GITHUB_OUTPUT
 
         # For PRs, analyze actual changes
         if [ "${{ github.event_name }}" = "pull_request" ]; then
