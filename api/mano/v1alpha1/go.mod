@@ -1,8 +1,8 @@
 module github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/api/mano/v1alpha1
 
-go 1.24.0
+go 1.23.6
 
-toolchain go1.24.5
+toolchain go1.23.6
 
 require k8s.io/apimachinery v0.34.1
 

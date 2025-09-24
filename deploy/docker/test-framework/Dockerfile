@@ -1,5 +1,5 @@
 # Test Framework Multi-stage Dockerfile
-FROM golang:1.24.0-alpine AS go-builder
+FROM golang:1.23.6-alpine AS go-builder
 
 # Security labels and metadata
 LABEL maintainer="O-RAN MANO Team"
@@ -22,7 +22,7 @@ RUN apk update && apk upgrade && apk add --no-cache \
 WORKDIR /workspace
 COPY tests/go.mod tests/go.sum ./
 # Download dependencies with explicit toolchain
-ENV GOTOOLCHAIN=go1.24.5
+ENV GOTOOLCHAIN=go1.23.6
 ENV GOPROXY=https://proxy.golang.org,direct
 ENV GOSUMDB=sum.golang.org
 RUN go mod download
@@ -39,7 +39,7 @@ LABEL security.scan="trivy,grype,snyk"
 LABEL security.user="non-root"
 LABEL security.distroless="false"
 LABEL security.base.image="debian:12.9-slim"
-LABEL security.go.version="1.24.5"
+LABEL security.go.version="1.23.6"
 LABEL security.scan.date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 LABEL security.risk="high-testing-tools"
 
