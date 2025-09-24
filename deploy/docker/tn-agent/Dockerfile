@@ -1,6 +1,6 @@
 # TN Agent Multi-stage Dockerfile
 # Stage 1: Build
-FROM golang:1.24.7-alpine AS builder
+FROM golang:1.23.6-alpine AS builder
 
 # Security labels and metadata
 LABEL maintainer="O-RAN MANO Team"
@@ -40,7 +40,7 @@ COPY tn/manager/api/v1alpha1/ ./manager/api/v1alpha1/
 COPY pkg/security/ ../pkg/security/
 
 # Download dependencies with explicit toolchain
-ENV GOTOOLCHAIN=go1.24.7
+ENV GOTOOLCHAIN=go1.23.6
 ENV GOPROXY=https://proxy.golang.org,direct
 ENV GOSUMDB=sum.golang.org
 

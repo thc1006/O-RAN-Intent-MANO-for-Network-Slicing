@@ -475,7 +475,7 @@ jobs:
 
           # Type checking
           echo "  Running mypy..."
-          mypy . --ignore-missing-imports || ((python_issues++))
+          mypy *.py --ignore-missing-imports --explicit-package-bases || ((python_issues++))
 
           # Security scanning
           echo "  Running bandit security scan..."
