@@ -10,6 +10,10 @@ Reproduce the thesis system: map natural-language intents → QoS(JSON) → E2E 
 - **Determinism**: Prefer headless steps; pin versions; write idempotent scripts.
 - **Safety**: Never alter kube contexts outside `kind-*`/lab clusters; never `sudo` unless explicitly allowed.
 
+## Version Requirements
+- **Go Version**: ALWAYS use Go 1.24.7 in all Dockerfiles, CI workflows, and development environments
+- **Never change Go version** without explicit approval - 1.24.7 is the project standard
+
 ## Repository Layout (expected)
 - nlp/: prompt.md, schema.json, tests/
 - orchestrator/: pkg/placement/, cmd/, tests/
