@@ -1,5 +1,5 @@
 # Test Framework Multi-stage Dockerfile
-FROM golang:1.24.7-alpine AS go-builder
+FROM golang:1.22.10-alpine AS go-builder
 
 # Security labels and metadata
 LABEL maintainer="O-RAN MANO Team"
@@ -87,7 +87,7 @@ LABEL security.scan="trivy,grype,snyk"
 LABEL security.user="non-root"
 LABEL security.distroless="false"
 LABEL security.base.image="debian:12.9-slim"
-LABEL security.go.version="1.24.7"
+LABEL security.go.version="1.22.10"
 LABEL security.scan.date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 LABEL security.risk="high-testing-tools"
 
