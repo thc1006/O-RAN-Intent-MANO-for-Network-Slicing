@@ -801,6 +801,36 @@ jobs:
 
     - name: Download all artifacts
       uses: actions/download-artifact@v4
+      with:
+        path: ./artifacts
+      continue-on-error: true
+
+    - name: Verify artifacts directory
+      run: |
+        # Create artifacts directory if it doesn't exist
+        mkdir -p ./artifacts
+
+        # Check if any artifacts were downloaded
+        if [ -z "$(ls -A ./artifacts 2>/dev/null)" ]; then
+          echo "⚠️ Warning: No artifacts were downloaded. This might be due to:"
+          echo "  - Previous jobs may have failed or been skipped"
+          echo "  - Artifacts may have expired or been deleted"
+          echo "  - Network issues during download"
+          echo ""
+          echo "Creating placeholder structure for report generation..."
+
+          # Create minimal structure to allow report generation to continue
+          mkdir -p ./artifacts/placeholder
+          echo "No artifacts available" > ./artifacts/placeholder/no-artifacts.txt
+        else
+          echo "✅ Artifacts downloaded successfully"
+          echo "Found $(find ./artifacts -type f | wc -l) files in $(find ./artifacts -maxdepth 1 -type d | wc -l) directories"
+        fi
+
+        # List what we have
+        echo ""
+        echo "📁 Artifact structure:"
+        ls -la ./artifacts/ | head -20 || echo "No artifacts found"
 
     - name: Generate comprehensive security summary
       run: |
@@ -952,8 +982,12 @@ jobs:
         }
         EOF
 
-        # Count artifacts generated
-        ARTIFACT_COUNT=$(find . -name "*.sarif" -o -name "*.json" -o -name "*-summary.md" | wc -l)
+        # Count artifacts generated (handle case where no artifacts exist)
+        if [ -d ./artifacts ]; then
+          ARTIFACT_COUNT=$(find ./artifacts -type f \( -name "*.sarif" -o -name "*.json" -o -name "*-summary.md" \) 2>/dev/null | wc -l || echo "0")
+        else
+          ARTIFACT_COUNT=0
+        fi
         echo "Generated $ARTIFACT_COUNT security artifacts"
 
     - name: Upload security report
