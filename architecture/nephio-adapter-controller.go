@@ -27,8 +27,8 @@ const (
 	StatusFailed = "Failed"
 )
 
-// NephioAdapterReconciler reconciles NetworkSliceIntent objects
-type NephioAdapterReconciler struct {
+// AdapterReconciler reconciles NetworkSliceIntent objects
+type AdapterReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 
@@ -218,7 +218,7 @@ type NetworkSliceIntentList struct {
 }
 
 // Reconcile handles NetworkSliceIntent reconciliation
-func (r *NephioAdapterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *AdapterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 	startTime := time.Now()
 
@@ -270,7 +270,7 @@ func (r *NephioAdapterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 }
 
 // handlePendingPhase validates the intent and starts planning
-func (r *NephioAdapterReconciler) handlePendingPhase(ctx context.Context, intent *NetworkSliceIntent, startTime time.Time) (ctrl.Result, error) {
+func (r *AdapterReconciler) handlePendingPhase(ctx context.Context, intent *NetworkSliceIntent, startTime time.Time) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
 	// Validate QoS requirements
@@ -296,7 +296,7 @@ func (r *NephioAdapterReconciler) handlePendingPhase(ctx context.Context, intent
 }
 
 // handlePlanningPhase generates placement decisions
-func (r *NephioAdapterReconciler) handlePlanningPhase(ctx context.Context, intent *NetworkSliceIntent, startTime time.Time) (ctrl.Result, error) {
+func (r *AdapterReconciler) handlePlanningPhase(ctx context.Context, intent *NetworkSliceIntent, _ time.Time) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 	planningStartTime := time.Now()
 
@@ -320,7 +320,8 @@ func (r *NephioAdapterReconciler) handlePlanningPhase(ctx context.Context, inten
 
 	// Generate placement decisions for each network function
 	placements := make([]*placement.Decision, 0, len(intent.Spec.NetworkFunctions))
-	for _, nfSpec := range intent.Spec.NetworkFunctions {
+	for i := range intent.Spec.NetworkFunctions {
+		nfSpec := &intent.Spec.NetworkFunctions[i]
 		nf := r.convertToNetworkFunction(nfSpec, intent.Spec.QoSProfile)
 		decision, err := r.PlacementEngine.Place(nf, sites)
 		if err != nil {
@@ -346,7 +347,7 @@ func (r *NephioAdapterReconciler) handlePlanningPhase(ctx context.Context, inten
 }
 
 // handlePackagingPhase generates Nephio packages
-func (r *NephioAdapterReconciler) handlePackagingPhase(ctx context.Context, intent *NetworkSliceIntent, startTime time.Time) (ctrl.Result, error) {
+func (r *AdapterReconciler) handlePackagingPhase(ctx context.Context, intent *NetworkSliceIntent, _ time.Time) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 	packagingStartTime := time.Now()
 
@@ -395,7 +396,7 @@ func (r *NephioAdapterReconciler) handlePackagingPhase(ctx context.Context, inte
 }
 
 // handleDeployingPhase monitors deployment progress
-func (r *NephioAdapterReconciler) handleDeployingPhase(ctx context.Context, intent *NetworkSliceIntent, startTime time.Time) (ctrl.Result, error) {
+func (r *AdapterReconciler) handleDeployingPhase(ctx context.Context, intent *NetworkSliceIntent, startTime time.Time) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 	deploymentStartTime := time.Now()
 
@@ -451,7 +452,7 @@ func (r *NephioAdapterReconciler) handleDeployingPhase(ctx context.Context, inte
 }
 
 // handleReadyPhase monitors the deployed network slice
-func (r *NephioAdapterReconciler) handleReadyPhase(ctx context.Context, intent *NetworkSliceIntent) (ctrl.Result, error) {
+func (r *AdapterReconciler) handleReadyPhase(_ context.Context, _ *NetworkSliceIntent) (ctrl.Result, error) {
 	// Monitor health of deployed functions
 	// Check for any configuration updates needed
 	// Handle scaling events if required
@@ -461,7 +462,7 @@ func (r *NephioAdapterReconciler) handleReadyPhase(ctx context.Context, intent *
 }
 
 // handleFailedPhase handles cleanup and retry logic
-func (r *NephioAdapterReconciler) handleFailedPhase(ctx context.Context, intent *NetworkSliceIntent) (ctrl.Result, error) {
+func (r *AdapterReconciler) handleFailedPhase(_ context.Context, _ *NetworkSliceIntent) (ctrl.Result, error) {
 	// Implement retry logic based on failure reason
 	// Clean up partially deployed resources
 	// Alert operators
@@ -470,7 +471,7 @@ func (r *NephioAdapterReconciler) handleFailedPhase(ctx context.Context, intent 
 }
 
 // handleDeletion handles NetworkSliceIntent deletion
-func (r *NephioAdapterReconciler) handleDeletion(ctx context.Context, intent *NetworkSliceIntent) (ctrl.Result, error) {
+func (r *AdapterReconciler) handleDeletion(ctx context.Context, intent *NetworkSliceIntent) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
 	// Clean up deployed resources via O2dms
@@ -493,7 +494,7 @@ func (r *NephioAdapterReconciler) handleDeletion(ctx context.Context, intent *Ne
 
 // Helper methods
 
-func (r *NephioAdapterReconciler) validateQoSRequirements(qos QoSProfile) error {
+func (r *AdapterReconciler) validateQoSRequirements(qos QoSProfile) error {
 	// Implement QoS validation logic
 	if qos.Bandwidth == "" || qos.Latency == "" {
 		return fmt.Errorf("bandwidth and latency are required")
@@ -501,7 +502,7 @@ func (r *NephioAdapterReconciler) validateQoSRequirements(qos QoSProfile) error 
 	return nil
 }
 
-func (r *NephioAdapterReconciler) validateNetworkFunctions(nfs []NetworkFunctionSpec) error {
+func (r *AdapterReconciler) validateNetworkFunctions(nfs []NetworkFunctionSpec) error {
 	// Implement network function validation logic
 	if len(nfs) == 0 {
 		return fmt.Errorf("at least one network function must be specified")
@@ -509,7 +510,7 @@ func (r *NephioAdapterReconciler) validateNetworkFunctions(nfs []NetworkFunction
 	return nil
 }
 
-func (r *NephioAdapterReconciler) convertToNetworkFunction(nfSpec NetworkFunctionSpec, qos QoSProfile) *placement.NetworkFunction {
+func (r *AdapterReconciler) convertToNetworkFunction(nfSpec *NetworkFunctionSpec, _ QoSProfile) *placement.NetworkFunction {
 	// Convert NetworkFunctionSpec to placement.NetworkFunction
 	return &placement.NetworkFunction{
 		ID:   fmt.Sprintf("%s-%s", nfSpec.Type, nfSpec.Placement.SiteID),
@@ -527,7 +528,7 @@ func (r *NephioAdapterReconciler) convertToNetworkFunction(nfSpec NetworkFunctio
 	}
 }
 
-func (r *NephioAdapterReconciler) updatePlacementDecisions(intent *NetworkSliceIntent, placements []*placement.Decision) {
+func (r *AdapterReconciler) updatePlacementDecisions(intent *NetworkSliceIntent, placements []*placement.Decision) {
 	// Update intent with placement decisions
 	for i, placement := range placements {
 		if i < len(intent.Spec.NetworkFunctions) {
@@ -536,17 +537,17 @@ func (r *NephioAdapterReconciler) updatePlacementDecisions(intent *NetworkSliceI
 	}
 }
 
-func (r *NephioAdapterReconciler) countReadyFunctions(functions []DeployedFunction) int {
+func (r *AdapterReconciler) countReadyFunctions(functions []DeployedFunction) int {
 	ready := 0
-	for _, fn := range functions {
-		if fn.Status == StatusReady {
+	for i := range functions {
+		if functions[i].Status == StatusReady {
 			ready++
 		}
 	}
 	return ready
 }
 
-func (r *NephioAdapterReconciler) updateStatus(ctx context.Context, intent *NetworkSliceIntent, message string) {
+func (r *AdapterReconciler) updateStatus(ctx context.Context, intent *NetworkSliceIntent, message string) {
 	intent.Status.Message = message
 	if err := r.Status().Update(ctx, intent); err != nil {
 		log.FromContext(ctx).Error(err, "Failed to update NetworkSliceIntent status")
@@ -554,7 +555,7 @@ func (r *NephioAdapterReconciler) updateStatus(ctx context.Context, intent *Netw
 }
 
 // SetupWithManager sets up the controller with the Manager
-func (r *NephioAdapterReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *AdapterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&NetworkSliceIntent{}).
 		Complete(r)

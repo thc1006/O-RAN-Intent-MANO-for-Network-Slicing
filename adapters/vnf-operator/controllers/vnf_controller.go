@@ -27,10 +27,10 @@ const (
 // VNFReconciler reconciles a VNF object
 type VNFReconciler struct {
 	client.Client
-	Scheme           *runtime.Scheme
-	PorchTranslator  *translator.PorchTranslator
-	DMSClient        dms.Client
-	GitOpsClient     gitops.Client
+	Scheme          *runtime.Scheme
+	PorchTranslator *translator.PorchTranslator
+	DMSClient       dms.Client
+	GitOpsClient    gitops.Client
 }
 
 //+kubebuilder:rbac:groups=mano.oran.io,resources=vnfs,verbs=get;list;watch;create;update;patch;delete

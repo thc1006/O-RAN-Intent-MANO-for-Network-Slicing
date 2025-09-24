@@ -35,7 +35,7 @@ func NewMockDMSClient() *MockDMSClient {
 }
 
 // CreateDeployment creates a new DMS deployment
-func (c *MockDMSClient) CreateDeployment(ctx context.Context, vnf *manov1alpha1.VNF) (string, error) {
+func (c *MockDMSClient) CreateDeployment(_ context.Context, vnf *manov1alpha1.VNF) (string, error) {
 	// Simulate deployment creation
 	deploymentID := fmt.Sprintf("dms-%s-%s", vnf.Name, vnf.Spec.Type)
 
@@ -49,7 +49,7 @@ func (c *MockDMSClient) CreateDeployment(ctx context.Context, vnf *manov1alpha1.
 }
 
 // GetDeploymentStatus gets the status of a deployment
-func (c *MockDMSClient) GetDeploymentStatus(ctx context.Context, deploymentID string) (string, error) {
+func (c *MockDMSClient) GetDeploymentStatus(_ context.Context, deploymentID string) (string, error) {
 	deployment, exists := c.Deployments[deploymentID]
 	if !exists {
 		return "", fmt.Errorf("deployment %s not found", deploymentID)
@@ -64,7 +64,7 @@ func (c *MockDMSClient) GetDeploymentStatus(ctx context.Context, deploymentID st
 }
 
 // UpdateDeployment updates an existing deployment
-func (c *MockDMSClient) UpdateDeployment(ctx context.Context, deploymentID string, vnf *manov1alpha1.VNF) error {
+func (c *MockDMSClient) UpdateDeployment(_ context.Context, deploymentID string, vnf *manov1alpha1.VNF) error {
 	deployment, exists := c.Deployments[deploymentID]
 	if !exists {
 		return fmt.Errorf("deployment %s not found", deploymentID)
@@ -77,7 +77,7 @@ func (c *MockDMSClient) UpdateDeployment(ctx context.Context, deploymentID strin
 }
 
 // DeleteDeployment deletes a deployment
-func (c *MockDMSClient) DeleteDeployment(ctx context.Context, deploymentID string) error {
+func (c *MockDMSClient) DeleteDeployment(_ context.Context, deploymentID string) error {
 	_, exists := c.Deployments[deploymentID]
 	if !exists {
 		return fmt.Errorf("deployment %s not found", deploymentID)
@@ -102,26 +102,26 @@ func NewO2DMSClient(endpoint, token string) *O2DMSClient {
 }
 
 // CreateDeployment creates a deployment via O2 DMS API
-func (c *O2DMSClient) CreateDeployment(ctx context.Context, vnf *manov1alpha1.VNF) (string, error) {
+func (c *O2DMSClient) CreateDeployment(_ context.Context, vnf *manov1alpha1.VNF) (string, error) {
 	// TODO: Implement actual O2 DMS API call
 	// This would make HTTP/gRPC calls to the O2 DMS endpoint
 	return fmt.Sprintf("o2dms-%s", vnf.Name), nil
 }
 
 // GetDeploymentStatus gets deployment status via O2 DMS API
-func (c *O2DMSClient) GetDeploymentStatus(ctx context.Context, deploymentID string) (string, error) {
+func (c *O2DMSClient) GetDeploymentStatus(_ context.Context, deploymentID string) (string, error) {
 	// TODO: Implement actual O2 DMS API call
 	return "Running", nil
 }
 
 // UpdateDeployment updates deployment via O2 DMS API
-func (c *O2DMSClient) UpdateDeployment(ctx context.Context, deploymentID string, vnf *manov1alpha1.VNF) error {
+func (c *O2DMSClient) UpdateDeployment(_ context.Context, deploymentID string, vnf *manov1alpha1.VNF) error {
 	// TODO: Implement actual O2 DMS API call
 	return nil
 }
 
 // DeleteDeployment deletes deployment via O2 DMS API
-func (c *O2DMSClient) DeleteDeployment(ctx context.Context, deploymentID string) error {
+func (c *O2DMSClient) DeleteDeployment(_ context.Context, deploymentID string) error {
 	// TODO: Implement actual O2 DMS API call
 	return nil
 }

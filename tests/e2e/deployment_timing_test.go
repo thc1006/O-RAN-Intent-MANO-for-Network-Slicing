@@ -731,7 +731,7 @@ func (s *DeploymentTimingSuite) testIntentToDeploymentTiming(scenario Deployment
 
 // Simulation methods for deployment phases
 
-func (s *DeploymentTimingSuite) processIntent(intent string) QoSSpec {
+func (s *DeploymentTimingSuite) processIntent(_ string) QoSSpec {
 	// TODO: Implement actual intent processing
 	time.Sleep(1 * time.Second) // Simulate intent processing time
 	return QoSSpec{
@@ -795,7 +795,7 @@ func (s *DeploymentTimingSuite) executeGitOpsWorkflow(packages []PorchPackage) [
 	return results
 }
 
-func (s *DeploymentTimingSuite) waitForConfigSync(packages []PorchPackage, clusters []string) []ConfigSyncResult {
+func (s *DeploymentTimingSuite) waitForConfigSync(_ []PorchPackage, clusters []string) []ConfigSyncResult {
 	// TODO: Implement actual Config Sync waiting
 	syncTime := time.Duration(len(clusters)) * 5 * time.Second // 5s per cluster
 	time.Sleep(syncTime)
@@ -930,22 +930,22 @@ func (s *DeploymentTimingSuite) calculatePhaseAnalysis(timings []float64) Timing
 
 	// Calculate basic statistics
 	sum := 0.0
-	min := timings[0]
-	max := timings[0]
+	minTime := timings[0]
+	maxTime := timings[0]
 
 	for _, timing := range timings {
 		sum += timing
-		if timing < min {
-			min = timing
+		if timing < minTime {
+			minTime = timing
 		}
-		if timing > max {
-			max = timing
+		if timing > maxTime {
+			maxTime = timing
 		}
 	}
 
 	analysis.AverageTime = sum / float64(len(timings))
-	analysis.MinTime = min
-	analysis.MaxTime = max
+	analysis.MinTime = minTime
+	analysis.MaxTime = maxTime
 
 	// Calculate standard deviation
 	variance := 0.0
@@ -1017,15 +1017,15 @@ func (s *DeploymentTimingSuite) generateComplianceReport(results []IntentToDeplo
 
 // Utility methods for simulation
 
-func (s *DeploymentTimingSuite) simulateClusterLoad(clusterName string, cpuPercent int) {
+func (s *DeploymentTimingSuite) simulateClusterLoad(_ string, _ int) {
 	// TODO: Implement cluster load simulation
 }
 
-func (s *DeploymentTimingSuite) simulateResourceConstraints(clusterName string, cpuPercent, memoryPercent int) {
+func (s *DeploymentTimingSuite) simulateResourceConstraints(_ string, _, _ int) {
 	// TODO: Implement resource constraint simulation
 }
 
-func (s *DeploymentTimingSuite) simulateNetworkLatency(clusterName string, latencyMs int) {
+func (s *DeploymentTimingSuite) simulateNetworkLatency(_ string, _ int) {
 	// TODO: Implement network latency simulation
 }
 

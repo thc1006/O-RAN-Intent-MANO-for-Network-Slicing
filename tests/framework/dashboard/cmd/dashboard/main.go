@@ -245,7 +245,7 @@ func handleHealth(w http.ResponseWriter, _ *http.Request) {
 
 // handleMetrics handles metrics endpoint
 func handleMetrics(aggregator *dashboard.MetricsAggregator) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, _ *http.Request) {
 		metrics := aggregator.GetCurrentMetrics()
 		if metrics == nil {
 			http.Error(w, "No metrics available", http.StatusNotFound)
@@ -262,7 +262,7 @@ func handleMetrics(aggregator *dashboard.MetricsAggregator) http.HandlerFunc {
 
 // handleAlerts handles alerts endpoint
 func handleAlerts(aggregator *dashboard.MetricsAggregator) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, _ *http.Request) {
 		alerts := aggregator.GetActiveAlerts()
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(alerts); err != nil {
@@ -380,7 +380,7 @@ func handleAPIConfig(w http.ResponseWriter, r *http.Request) {
 
 // WebSocket upgrader
 var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool {
+	CheckOrigin: func(_ *http.Request) bool {
 		return true // Allow all origins in development
 	},
 }
@@ -438,7 +438,7 @@ func handleWebSocket(aggregator *dashboard.MetricsAggregator) http.HandlerFunc {
 
 // Export handlers
 func handleExportJSON(aggregator *dashboard.MetricsAggregator) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, _ *http.Request) {
 		metrics := aggregator.GetCurrentMetrics()
 		if metrics == nil {
 			http.Error(w, "No metrics available", http.StatusNotFound)
@@ -457,7 +457,7 @@ func handleExportJSON(aggregator *dashboard.MetricsAggregator) http.HandlerFunc 
 }
 
 func handleExportCSV(aggregator *dashboard.MetricsAggregator) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, _ *http.Request) {
 		metrics := aggregator.GetCurrentMetrics()
 		if metrics == nil {
 			http.Error(w, "No metrics available", http.StatusNotFound)

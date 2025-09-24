@@ -484,21 +484,21 @@ func TestValidateDirectoryExists(t *testing.T) {
 func BenchmarkValidateNetworkInterface(b *testing.B) {
 	validator := NewInputValidator()
 	for i := 0; i < b.N; i++ {
-		validator.ValidateNetworkInterface("eth0")
+		_ = validator.ValidateNetworkInterface("eth0")
 	}
 }
 
 func BenchmarkValidateIPAddress(b *testing.B) {
 	validator := NewInputValidator()
 	for i := 0; i < b.N; i++ {
-		validator.ValidateIPAddress("192.168.1.1")
+		_ = validator.ValidateIPAddress("192.168.1.1")
 	}
 }
 
 func BenchmarkValidateFilePath(b *testing.B) {
 	validator := NewInputValidator()
 	for i := 0; i < b.N; i++ {
-		validator.ValidateFilePath("/tmp/test.txt")
+		_ = validator.ValidateFilePath("/tmp/test.txt")
 	}
 }
 

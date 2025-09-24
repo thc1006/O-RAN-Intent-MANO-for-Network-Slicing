@@ -4,14 +4,14 @@
 package security
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"log"
 	"regexp"
 	"strings"
-	"unicode"
 	"time"
-	"crypto/rand"
-	"encoding/hex"
+	"unicode"
 )
 
 // SecureLogger provides log injection protection
@@ -45,7 +45,7 @@ func NewLegacySecureLogger(logger *log.Logger) *SecureLogger {
 // generateLoggerID creates a unique identifier for the logger instance
 func generateLoggerID() string {
 	bytes := make([]byte, 4)
-	rand.Read(bytes)
+	_, _ = rand.Read(bytes)
 	return hex.EncodeToString(bytes)
 }
 
@@ -149,9 +149,9 @@ func containsLogInjectionPatterns(input string) bool {
 		// CRLF injection with log levels
 		"\r\n[error]", "\r\n[warn]", "\r\n[info]", "\r\n[debug]",
 		// URL encoded injection
-		"%0a[", // Encoded newline + log level
+		"%0a[",   // Encoded newline + log level
 		"%0d%0a", // Encoded CRLF
-		"%1b[", // Encoded escape sequence
+		"%1b[",   // Encoded escape sequence
 		// Unicode line separators used for injection
 		"\u2028[", "\u2029[", // Unicode newlines + log level
 	}
@@ -426,17 +426,17 @@ func (sl *SecureLogger) strictValidateMessage(message string) error {
 func (sl *SecureLogger) finalSanitize(message string) string {
 	// Remove any remaining dangerous patterns that might have been missed
 	dangerous := map[string]string{
-		"\x1b[":   "\\x1b[",  // ANSI escape
-		"\x00":    "\\x00",   // Null byte
-		"\x07":    "\\x07",   // Bell character
-		"\x08":    "\\x08",   // Backspace
-		"\x0c":    "\\x0c",   // Form feed
-		"\x7f":    "\\x7f",   // Delete character
-		"\ufeff":  "",        // BOM
-		"\u200b":  "",        // Zero-width space
-		"\u200c":  "",        // Zero-width non-joiner
-		"\u200d":  "",        // Zero-width joiner
-		"\u2060":  "",        // Word joiner
+		"\x1b[":  "\\x1b[", // ANSI escape
+		"\x00":   "\\x00",  // Null byte
+		"\x07":   "\\x07",  // Bell character
+		"\x08":   "\\x08",  // Backspace
+		"\x0c":   "\\x0c",  // Form feed
+		"\x7f":   "\\x7f",  // Delete character
+		"\ufeff": "",       // BOM
+		"\u200b": "",       // Zero-width space
+		"\u200c": "",       // Zero-width non-joiner
+		"\u200d": "",       // Zero-width joiner
+		"\u2060": "",       // Word joiner
 	}
 
 	result := message
@@ -504,14 +504,6 @@ func sanitizeLogArgument(arg interface{}) interface{} {
 		// For other types, convert to string and sanitize
 		return SanitizeStringForLog(fmt.Sprintf("%v", v))
 	}
-}
-
-// min helper function
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }
 
 // Global secure logging functions for backward compatibility

@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import regex as re  # More efficient than standard re
 
-from intent_processor import IntentProcessor, IntentResult, ServiceType
+from .intent_processor import IntentProcessor, IntentResult, ServiceType
 
 
 @dataclass
@@ -75,22 +75,22 @@ class PerformanceIntentCache:
         self.compiled_patterns["latency"] = [
             (
                 re.compile(r"(\d+(?:\.\d+)?)\s*ms\s*latency", re.IGNORECASE),
-                lambda x: float(x),
+                float,
             ),
             (
                 re.compile(r"latency\s*[<≤]\s*(\d+(?:\.\d+)?)\s*ms", re.IGNORECASE),
-                lambda x: float(x),
+                float,
             ),
-            (re.compile(r"ultra[-\s]?low\s*latency", re.IGNORECASE), lambda: 10.0),
-            (re.compile(r"low\s*latency", re.IGNORECASE), lambda: 20.0),
-            (re.compile(r"moderate\s*latency", re.IGNORECASE), lambda: 50.0),
+            (re.compile(r"ultra[-\s]?low\s*latency", re.IGNORECASE), 10.0),
+            (re.compile(r"low\s*latency", re.IGNORECASE), 20.0),
+            (re.compile(r"moderate\s*latency", re.IGNORECASE), 50.0),
         ]
 
         # Throughput patterns
         self.compiled_patterns["throughput"] = [
             (
                 re.compile(r"(\d+(?:\.\d+)?)\s*[Mm]bps", re.IGNORECASE),
-                lambda x: float(x),
+                float,
             ),
             (
                 re.compile(r"(\d+(?:\.\d+)?)\s*[Gg]bps", re.IGNORECASE),
@@ -121,7 +121,7 @@ class PerformanceIntentCache:
             "High bandwidth video streaming tolerating up to 20ms latency with 4.57 Mbps",
             "Video streaming service with 10 Mbps bandwidth",
             # URLLC scenarios
-            "Deploy an ultra-reliable slice for autonomous vehicle communication with 5 nines reliability",
+            "Deploy ultra-reliable slice for autonomous vehicles with 5 nines reliability",
             "Ultra-low latency slice for critical applications with 1ms latency",
             "Mission critical communication for emergency services",
             # IoT scenarios
@@ -152,7 +152,7 @@ class PerformanceIntentCache:
                 try:
                     future.result()
                     self.stats["precomputed"] += 1
-                except Exception as e:
+                except (ValueError, KeyError, TypeError) as e:
                     print(f"Error pre-computing intent: {e}")
 
         precompute_time = time.time() - start_time
@@ -180,7 +180,7 @@ class PerformanceIntentCache:
         if not scores or max(scores.values()) == 0:
             return ServiceType.EMBB, 0.5
 
-        best_type = max(scores, key=scores.get)
+        best_type = max(scores, key=lambda k: scores[k])
         max_score = scores[best_type]
         confidence = min(max_score / 3.0, 1.0)
 
@@ -232,14 +232,14 @@ class PerformanceIntentCache:
         service_type, type_confidence = self._fast_service_type_detection(intent)
 
         # Get base QoS parameters
-        qos_params = self.processor._get_base_qos(service_type)
+        qos_params = self.processor.get_base_qos(service_type)
 
         # Extract specific QoS requirements
         extracted_qos, qos_confidence = self._fast_qos_extraction(intent)
-        qos_params = self.processor._merge_qos_parameters(qos_params, extracted_qos)
+        qos_params = self.processor.merge_qos_parameters(qos_params, extracted_qos)
 
         # Extract placement hints (use original method for now)
-        placement_hints = self.processor._extract_placement_hints(intent.lower())
+        placement_hints = self.processor.extract_placement_hints(intent.lower())
 
         # Calculate confidence
         confidence = (type_confidence + qos_confidence) / 2
@@ -299,9 +299,8 @@ class PerformanceIntentCache:
                     entry.hit_count += 1
                     self.stats["hits"] += 1
                     return entry.result
-                else:
-                    # Remove expired entry
-                    del self.cache[cache_key]
+                # Remove expired entry
+                del self.cache[cache_key]
 
             # Cache miss - compute result
             self.stats["misses"] += 1
@@ -322,7 +321,7 @@ class PerformanceIntentCache:
         Returns:
             List of IntentResult objects
         """
-        results = [None] * len(intents)
+        results: List[Optional[IntentResult]] = [None] * len(intents)
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
             # Submit all tasks
@@ -336,7 +335,7 @@ class PerformanceIntentCache:
                 index = future_to_index[future]
                 try:
                     results[index] = future.result()
-                except Exception as e:
+                except (ValueError, RuntimeError) as e:
                     print(f"Error processing intent {index}: {e}")
                     # Create error result
                     results[index] = IntentResult(
@@ -347,7 +346,7 @@ class PerformanceIntentCache:
                         confidence=0.0,
                     )
 
-        return results
+        return [r for r in results if r is not None]
 
     def warm_cache(self, intents: List[str]):
         """Warm cache with provided intents"""
@@ -361,7 +360,7 @@ class PerformanceIntentCache:
             for future in concurrent.futures.as_completed(futures):
                 try:
                     future.result()
-                except Exception as e:
+                except (ValueError, RuntimeError) as e:
                     print(f"Error warming cache: {e}")
 
         warm_time = time.time() - start_time
@@ -412,7 +411,7 @@ _global_cache: Optional[PerformanceIntentCache] = None
 
 def get_cached_processor() -> PerformanceIntentCache:
     """Get or create global cached processor instance"""
-    global _global_cache
+    global _global_cache  # pylint: disable=global-statement
     if _global_cache is None:
         _global_cache = PerformanceIntentCache()
     return _global_cache

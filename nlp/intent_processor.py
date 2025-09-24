@@ -153,21 +153,21 @@ class IntentProcessor:
         # QoS requirement patterns
         self.qos_patterns = {
             "latency": [
-                (r"(\d+)\s*ms\s*latency", lambda x: float(x)),
-                (r"latency\s*[<≤]\s*(\d+)\s*ms", lambda x: float(x)),
+                (r"(\d+)\s*ms\s*latency", float),
+                (r"latency\s*[<≤]\s*(\d+)\s*ms", float),
                 (r"ultra[-\s]?low\s*latency", lambda: 10.0),
                 (r"low\s*latency", lambda: 20.0),
                 (r"moderate\s*latency", lambda: 50.0),
             ],
             "throughput": [
-                (r"(\d+\.?\d*)\s*[Mm]bps", lambda x: float(x)),
+                (r"(\d+\.?\d*)\s*[Mm]bps", float),
                 (r"(\d+\.?\d*)\s*[Gg]bps", lambda x: float(x) * 1000),
                 (r"high\s*bandwidth", lambda: 100.0),
                 (r"moderate\s*bandwidth", lambda: 10.0),
                 (r"low\s*bandwidth", lambda: 1.0),
             ],
             "reliability": [
-                (r"(\d+\.?\d*)\s*%\s*reliability", lambda x: float(x)),
+                (r"(\d+\.?\d*)\s*%\s*reliability", float),
                 (r"(\d+)\s*nines", lambda x: 100 - 10 ** (-int(x)) * 100),
                 (r"ultra[-\s]?reliable", lambda: 99.999),
                 (r"high\s*reliability", lambda: 99.99),
@@ -295,7 +295,7 @@ class IntentProcessor:
             # Default to EMBB if no specific type detected
             return ServiceType.EMBB, 0.5
 
-        best_type = max(scores, key=scores.get)
+        best_type = max(scores, key=lambda k: scores[k])
         max_score = scores[best_type]
         confidence = min(max_score / 3.0, 1.0)  # Normalize confidence
 
@@ -313,7 +313,13 @@ class IntentProcessor:
                 if match.groups():
                     extracted["max_latency_ms"] = extractor(match.group(1))
                 else:
-                    extracted["max_latency_ms"] = extractor()
+                    # Handle lambda functions that expect no arguments
+                    if callable(extractor):
+                        try:
+                            extracted["max_latency_ms"] = extractor()
+                        except TypeError:
+                            # If it fails, try with empty string
+                            extracted["max_latency_ms"] = extractor("")
                 matches_found += 1
                 break
 
@@ -324,7 +330,13 @@ class IntentProcessor:
                 if match.groups():
                     extracted["min_throughput_mbps"] = extractor(match.group(1))
                 else:
-                    extracted["min_throughput_mbps"] = extractor()
+                    # Handle lambda functions that expect no arguments
+                    if callable(extractor):
+                        try:
+                            extracted["min_throughput_mbps"] = extractor()
+                        except TypeError:
+                            # If it fails, try with empty string
+                            extracted["min_throughput_mbps"] = extractor("")
                 matches_found += 1
                 break
 
@@ -335,7 +347,13 @@ class IntentProcessor:
                 if match.groups():
                     extracted["reliability_percent"] = extractor(match.group(1))
                 else:
-                    extracted["reliability_percent"] = extractor()
+                    # Handle lambda functions that expect no arguments
+                    if callable(extractor):
+                        try:
+                            extracted["reliability_percent"] = extractor()
+                        except TypeError:
+                            # If it fails, try with empty string
+                            extracted["reliability_percent"] = extractor("")
                 matches_found += 1
                 break
 
@@ -404,6 +422,21 @@ class IntentProcessor:
 
         return hints
 
+    # Public wrapper methods to avoid protected member access
+    def get_base_qos(self, service_type: ServiceType) -> QoSParameters:
+        """Public wrapper for getting base QoS parameters"""
+        return self._get_base_qos(service_type)
+
+    def merge_qos_parameters(
+        self, base: QoSParameters, extracted: Dict
+    ) -> QoSParameters:
+        """Public wrapper for merging QoS parameters"""
+        return self._merge_qos_parameters(base, extracted)
+
+    def extract_placement_hints(self, intent: str) -> Dict[str, str]:
+        """Public wrapper for extracting placement hints"""
+        return self._extract_placement_hints(intent)
+
 
 def main():
     """Example usage of IntentProcessor"""
@@ -413,7 +446,7 @@ def main():
     test_intents = [
         "Create a low-latency network slice for AR/VR gaming with guaranteed 10ms latency",
         "I need a high bandwidth slice for 4K video streaming with at least 25 Mbps",
-        "Deploy an ultra-reliable slice for autonomous vehicle communication with 5 nines reliability",
+        "Deploy ultra-reliable slice for autonomous vehicles with 5 nines reliability",
         "Set up IoT monitoring with low bandwidth requirements at the edge",
         "Mission critical communication for emergency services with ultra-low latency",
         "Gaming service requiring less than 6.3ms latency and 1 Mbps throughput",

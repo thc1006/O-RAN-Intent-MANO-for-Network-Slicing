@@ -15,12 +15,12 @@ import (
 
 // AllowedCommand represents a command that is allowed to be executed
 type AllowedCommand struct {
-	Command     string            // Base command (e.g., "iperf3", "tc", "ip")
-	AllowedArgs map[string]bool   // Map of allowed arguments
-	ArgPatterns []string          // Regex patterns for dynamic arguments
-	MaxArgs     int               // Maximum number of arguments
-	Timeout     time.Duration     // Maximum execution time
-	Description string            // Description of the command purpose
+	Command     string          // Base command (e.g., "iperf3", "tc", "ip")
+	AllowedArgs map[string]bool // Map of allowed arguments
+	ArgPatterns []string        // Regex patterns for dynamic arguments
+	MaxArgs     int             // Maximum number of arguments
+	Timeout     time.Duration   // Maximum execution time
+	Description string          // Description of the command purpose
 }
 
 // SecureSubprocessExecutor provides secure subprocess execution with validation
@@ -46,7 +46,7 @@ func NewSecureSubprocessExecutor() *SecureSubprocessExecutor {
 // registerDefaultCommands registers commonly used safe commands
 func (se *SecureSubprocessExecutor) registerDefaultCommands() {
 	// iperf3 command allowlist
-	se.RegisterCommand(&AllowedCommand{
+	_ = se.RegisterCommand(&AllowedCommand{
 		Command: "iperf3",
 		AllowedArgs: map[string]bool{
 			"-s": true, "-c": true, "-p": true, "-t": true, "-u": true,
@@ -54,10 +54,10 @@ func (se *SecureSubprocessExecutor) registerDefaultCommands() {
 			"--bidir": true, "-J": true, "-D": true, "-V": true, "-h": true,
 		},
 		ArgPatterns: []string{
-			`^\d{1,5}$`,                    // Port numbers (1-65535)
-			`^\d+(\.\d+)?[KMG]?$`,         // Bandwidth values (e.g., 10M, 1G)
+			`^\d{1,5}$`,                       // Port numbers (1-65535)
+			`^\d+(\.\d+)?[KMG]?$`,             // Bandwidth values (e.g., 10M, 1G)
 			`^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$`, // IPv4 addresses
-			`^[0-9a-fA-F:]+$`,             // IPv6 addresses
+			`^[0-9a-fA-F:]+$`,                 // IPv6 addresses
 		},
 		MaxArgs:     20,
 		Timeout:     300 * time.Second, // 5 minutes for network tests
@@ -65,7 +65,7 @@ func (se *SecureSubprocessExecutor) registerDefaultCommands() {
 	})
 
 	// tc (traffic control) command allowlist
-	se.RegisterCommand(&AllowedCommand{
+	_ = se.RegisterCommand(&AllowedCommand{
 		Command: "tc",
 		AllowedArgs: map[string]bool{
 			"qdisc": true, "add": true, "del": true, "show": true, "replace": true,
@@ -74,11 +74,11 @@ func (se *SecureSubprocessExecutor) registerDefaultCommands() {
 			"prio": true, "-s": true, "-d": true,
 		},
 		ArgPatterns: []string{
-			`^[a-zA-Z0-9\-_\.]+$`,         // Interface names
-			`^\d+:?$`,                     // Handle IDs (1:, 10:0)
-			`^\d+(\.\d+)?[KMG]?bit$`,      // Rate values (10Mbit, 1Gbit)
-			`^\d+[KMG]?b$`,                // Burst values (1Kb, 10Mb)
-			`^\d+$`,                       // Numeric values
+			`^[a-zA-Z0-9\-_\.]+$`,    // Interface names
+			`^\d+:?$`,                // Handle IDs (1:, 10:0)
+			`^\d+(\.\d+)?[KMG]?bit$`, // Rate values (10Mbit, 1Gbit)
+			`^\d+[KMG]?b$`,           // Burst values (1Kb, 10Mb)
+			`^\d+$`,                  // Numeric values
 		},
 		MaxArgs:     15,
 		Timeout:     10 * time.Second,
@@ -86,7 +86,7 @@ func (se *SecureSubprocessExecutor) registerDefaultCommands() {
 	})
 
 	// ip command allowlist
-	se.RegisterCommand(&AllowedCommand{
+	_ = se.RegisterCommand(&AllowedCommand{
 		Command: "ip",
 		AllowedArgs: map[string]bool{
 			"link": true, "addr": true, "add": true, "del": true, "set": true, "show": true,
@@ -95,11 +95,11 @@ func (se *SecureSubprocessExecutor) registerDefaultCommands() {
 			"dev": true, "delete": true, "-s": true, "-d": true,
 		},
 		ArgPatterns: []string{
-			`^[a-zA-Z0-9\-_\.]+$`,         // Interface names and device names
-			`^\d{1,5}$`,                   // Port numbers and VNI values
-			`^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$`, // IPv4 addresses
+			`^[a-zA-Z0-9\-_\.]+$`,                     // Interface names and device names
+			`^\d{1,5}$`,                               // Port numbers and VNI values
+			`^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$`,         // IPv4 addresses
 			`^(?:[0-9]{1,3}\.){3}[0-9]{1,3}/\d{1,2}$`, // IPv4 CIDR notation
-			`^\d{1,4}$`,                   // MTU values
+			`^\d{1,4}$`,                               // MTU values
 		},
 		MaxArgs:     15,
 		Timeout:     10 * time.Second,
@@ -107,7 +107,7 @@ func (se *SecureSubprocessExecutor) registerDefaultCommands() {
 	})
 
 	// bridge command allowlist (for VXLAN FDB management)
-	se.RegisterCommand(&AllowedCommand{
+	_ = se.RegisterCommand(&AllowedCommand{
 		Command: "bridge",
 		AllowedArgs: map[string]bool{
 			"fdb": true, "add": true, "del": true, "append": true, "show": true,
@@ -115,7 +115,7 @@ func (se *SecureSubprocessExecutor) registerDefaultCommands() {
 		},
 		ArgPatterns: []string{
 			`^[a-fA-F0-9]{2}:[a-fA-F0-9]{2}:[a-fA-F0-9]{2}:[a-fA-F0-9]{2}:[a-fA-F0-9]{2}:[a-fA-F0-9]{2}$`, // MAC addresses
-			`^[a-zA-Z0-9\-_\.]+$`,         // Interface names
+			`^[a-zA-Z0-9\-_\.]+$`,             // Interface names
 			`^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$`, // IPv4 addresses
 		},
 		MaxArgs:     10,
@@ -124,18 +124,18 @@ func (se *SecureSubprocessExecutor) registerDefaultCommands() {
 	})
 
 	// ping command allowlist
-	se.RegisterCommand(&AllowedCommand{
+	_ = se.RegisterCommand(&AllowedCommand{
 		Command: "ping",
 		AllowedArgs: map[string]bool{
 			"-c": true, "-i": true, "-W": true, "-w": true, "-s": true,
 			"-I": true, "-t": true, "-q": true, "-n": true,
 		},
 		ArgPatterns: []string{
-			`^\d{1,3}$`,                   // Count, interval, timeout values
-			`^\d{1,4}$`,                   // Packet size
+			`^\d{1,3}$`,                       // Count, interval, timeout values
+			`^\d{1,4}$`,                       // Packet size
 			`^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$`, // IPv4 addresses
-			`^[0-9a-fA-F:]+$`,             // IPv6 addresses
-			`^[a-zA-Z0-9\-_\.]+$`,         // Interface names and hostnames
+			`^[0-9a-fA-F:]+$`,                 // IPv6 addresses
+			`^[a-zA-Z0-9\-_\.]+$`,             // Interface names and hostnames
 		},
 		MaxArgs:     15,
 		Timeout:     30 * time.Second,
@@ -143,14 +143,14 @@ func (se *SecureSubprocessExecutor) registerDefaultCommands() {
 	})
 
 	// pkill command allowlist (limited to specific patterns)
-	se.RegisterCommand(&AllowedCommand{
+	_ = se.RegisterCommand(&AllowedCommand{
 		Command: "pkill",
 		AllowedArgs: map[string]bool{
 			"-f": true, "-x": true, "-u": true, "-g": true,
 		},
 		ArgPatterns: []string{
-			`^iperf3.*-p \d{1,5}$`,        // iperf3 processes with specific port
-			`^[a-zA-Z0-9\-_\.\s]+$`,       // Simple process names/patterns
+			`^iperf3.*-p \d{1,5}$`,  // iperf3 processes with specific port
+			`^[a-zA-Z0-9\-_\.\s]+$`, // Simple process names/patterns
 		},
 		MaxArgs:     5,
 		Timeout:     5 * time.Second,
@@ -158,12 +158,12 @@ func (se *SecureSubprocessExecutor) registerDefaultCommands() {
 	})
 
 	// cat command allowlist (for safe file reading)
-	se.RegisterCommand(&AllowedCommand{
-		Command: "cat",
+	_ = se.RegisterCommand(&AllowedCommand{
+		Command:     "cat",
 		AllowedArgs: map[string]bool{},
 		ArgPatterns: []string{
-			`^/proc/net/dev$`,             // Network device statistics
-			`^/proc/[0-9]+/stat$`,         // Process statistics
+			`^/proc/net/dev$`,     // Network device statistics
+			`^/proc/[0-9]+/stat$`, // Process statistics
 			`^/sys/class/net/[a-zA-Z0-9\-_\.]+/statistics/.*$`, // Network interface statistics
 		},
 		MaxArgs:     3,
@@ -172,14 +172,14 @@ func (se *SecureSubprocessExecutor) registerDefaultCommands() {
 	})
 
 	// pgrep command allowlist (for finding processes)
-	se.RegisterCommand(&AllowedCommand{
+	_ = se.RegisterCommand(&AllowedCommand{
 		Command: "pgrep",
 		AllowedArgs: map[string]bool{
 			"-f": true, "-x": true, "-l": true, "-u": true, "-g": true,
 		},
 		ArgPatterns: []string{
-			`^iperf3.*-p.*\d{1,5}$`,       // iperf3 processes with port
-			`^[a-zA-Z0-9\-_\.\s]+$`,       // Simple process names/patterns
+			`^iperf3.*-p.*\d{1,5}$`, // iperf3 processes with port
+			`^[a-zA-Z0-9\-_\.\s]+$`, // Simple process names/patterns
 		},
 		MaxArgs:     5,
 		Timeout:     5 * time.Second,
@@ -187,7 +187,7 @@ func (se *SecureSubprocessExecutor) registerDefaultCommands() {
 	})
 
 	// git command allowlist
-	se.RegisterCommand(&AllowedCommand{
+	_ = se.RegisterCommand(&AllowedCommand{
 		Command: "git",
 		AllowedArgs: map[string]bool{
 			"config": true, "rev-parse": true, "log": true, "status": true, "diff": true,
@@ -201,13 +201,13 @@ func (se *SecureSubprocessExecutor) registerDefaultCommands() {
 			"HEAD": true, "HEAD...@{upstream}": true,
 		},
 		ArgPatterns: []string{
-			`^[a-fA-F0-9]{7,40}$`,                    // Git commit hashes
-			`^[a-zA-Z0-9\-_\./]+$`,                   // Branch names, tag names, file paths
-			`^origin$`,                               // Remote name
-			`^HEAD(\.\.\.\@\{upstream\})?$`,          // HEAD references
-			`^--pretty=format:%[HanectmsSd\|]+$`,     // Pretty format strings
-			`^\d{1,3}$`,                              // Numeric limits
-			`^backup-\d+$`,                           // Backup branch names
+			`^[a-fA-F0-9]{7,40}$`,                // Git commit hashes
+			`^[a-zA-Z0-9\-_\./]+$`,               // Branch names, tag names, file paths
+			`^origin$`,                           // Remote name
+			`^HEAD(\.\.\.\@\{upstream\})?$`,      // HEAD references
+			`^--pretty=format:%[HanectmsSd\|]+$`, // Pretty format strings
+			`^\d{1,3}$`,                          // Numeric limits
+			`^backup-\d+$`,                       // Backup branch names
 		},
 		MaxArgs:     15,
 		Timeout:     60 * time.Second,
@@ -215,14 +215,14 @@ func (se *SecureSubprocessExecutor) registerDefaultCommands() {
 	})
 
 	// kpt command allowlist (for Nephio package management)
-	se.RegisterCommand(&AllowedCommand{
+	_ = se.RegisterCommand(&AllowedCommand{
 		Command: "kpt",
 		AllowedArgs: map[string]bool{
 			"fn": true, "render": true, "pkg": true, "get": true, "live": true,
 			"init": true, "apply": true, "status": true, "destroy": true,
 		},
 		ArgPatterns: []string{
-			`^[a-zA-Z0-9\-_\./]+$`,       // Package paths and names
+			`^[a-zA-Z0-9\-_\./]+$`,           // Package paths and names
 			`^https?://[a-zA-Z0-9\-\._~/]+$`, // Git URLs
 		},
 		MaxArgs:     10,
@@ -231,14 +231,14 @@ func (se *SecureSubprocessExecutor) registerDefaultCommands() {
 	})
 
 	// cp command allowlist (for file copying in validators)
-	se.RegisterCommand(&AllowedCommand{
+	_ = se.RegisterCommand(&AllowedCommand{
 		Command: "cp",
 		AllowedArgs: map[string]bool{
 			"-r": true, "-R": true, "-p": true, "-a": true,
 		},
 		ArgPatterns: []string{
-			`^[a-zA-Z0-9\-_\./]+$`,       // File and directory paths
-			`^.*\/\.$`,                   // Copy to directory patterns
+			`^[a-zA-Z0-9\-_\./]+$`, // File and directory paths
+			`^.*\/\.$`,             // Copy to directory patterns
 		},
 		MaxArgs:     5,
 		Timeout:     30 * time.Second,
@@ -594,14 +594,14 @@ func validateCIDRAddress(cidr string) error {
 // parseIntSafe safely parses an integer, returning 0 on error
 func parseIntSafe(s string) int {
 	var result int
-	fmt.Sscanf(s, "%d", &result)
+	_, _ = fmt.Sscanf(s, "%d", &result)
 	return result
 }
 
 // parseUint32Safe safely parses a uint32, returning 0 on error
 func parseUint32Safe(s string) uint32 {
 	var result uint32
-	fmt.Sscanf(s, "%d", &result)
+	_, _ = fmt.Sscanf(s, "%d", &result)
 	return result
 }
 
