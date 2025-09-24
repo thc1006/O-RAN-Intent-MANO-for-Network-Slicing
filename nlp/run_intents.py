@@ -159,15 +159,15 @@ class IntentToQoSMapper:
                 f"{pattern_scores[best_pattern]['keywords']}"
             )
             return best_pattern, cast(
-                Dict[str, Any], pattern_scores[best_pattern]['qos']
+                Dict[str, Any], pattern_scores[best_pattern]["qos"]
             )
 
         # Default to balanced if no patterns match
         logger.warning(
             f"No pattern matched for intent: '{intent}'. Using balanced profile."
         )
-        return 'balanced', cast(
-            Dict[str, Any], self.intent_patterns['balanced']['qos'].copy()
+        return "balanced", cast(
+            Dict[str, Any], self.intent_patterns["balanced"]["qos"].copy()
         )
 
     def _enhance_qos_parameters(

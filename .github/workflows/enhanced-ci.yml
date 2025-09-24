@@ -358,8 +358,7 @@ jobs:
             curl -sSfL https://raw.githubusercontent.com/securecodewarrior/gosec/master/install.sh | sh -s -- -b /usr/local/bin v2.21.4
             # Install cosign v2.4.1 for container signing
             curl -sSfL https://raw.githubusercontent.com/sigstore/cosign/main/install.sh | sh -s -- -b /usr/local/bin v2.4.1
-            # Also install via go for backup
-            go install github.com/securecodewarrior/gosec/v2/cmd/gosec@v2.18.2
+            # Note: gosec already installed via curl above, no need for go install
             echo "$HOME/go/bin" >> $GITHUB_PATH
             ;;
           "license-check")
