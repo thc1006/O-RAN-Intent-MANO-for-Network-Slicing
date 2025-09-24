@@ -1,6 +1,6 @@
 # VNF Operator Multi-stage Dockerfile
 # Stage 1: Build
-FROM golang:1.24.0-alpine AS builder
+FROM golang:1.24.5-alpine AS builder
 
 # Security labels and metadata
 LABEL maintainer="O-RAN MANO Team"
@@ -40,7 +40,7 @@ COPY pkg/security ../pkg/security
 COPY adapters/vnf-operator/api /workspace/api
 
 # Download dependencies with explicit toolchain
-ENV GOTOOLCHAIN=auto
+ENV GOTOOLCHAIN=go1.24.5
 ENV GOPROXY=https://proxy.golang.org,direct
 ENV GOSUMDB=sum.golang.org
 RUN go mod download
@@ -92,7 +92,7 @@ LABEL security.scan="trivy,grype,snyk"
 LABEL security.user="non-root"
 LABEL security.distroless="true"
 LABEL security.base.image="gcr.io/distroless/static:nonroot"
-LABEL security.go.version="1.24.0"
+LABEL security.go.version="1.24.5"
 LABEL security.scan.date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 # Copy the binaries
