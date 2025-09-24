@@ -55,12 +55,12 @@ env:
   PUBLISH_DASHBOARD: 'true'
   GENERATE_REPORTS: 'true'
   NODE_VERSION: '18'
-  KIND_VERSION: 'v0.20.0'
-  KUBECTL_VERSION: 'v1.28.0'
-  HELM_VERSION: 'v3.13.0'
-  KUSTOMIZE_VERSION: 'v5.0.0'
+  KIND_VERSION: 'v0.23.0'
+  KUBECTL_VERSION: 'v1.31.0'
+  HELM_VERSION: 'v3.16.2'
+  KUSTOMIZE_VERSION: 'v5.5.0'
   KPT_VERSION: 'v1.0.0-beta.34'
-  GOLANGCI_LINT_VERSION: 'v1.59.1'
+  GOLANGCI_LINT_VERSION: 'v2.4.0'
   SONAR_VERSION: '5.0.1.3006'
 
   # Quality Gates and Targets
@@ -105,7 +105,7 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         fetch-depth: 0
 
@@ -284,7 +284,7 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         fetch-depth: 0
 
@@ -328,9 +328,8 @@ jobs:
         case "${{ matrix.analysis-type }}" in
           "go-analysis")
             echo "🔧 Installing Go analysis tools..."
-            # Install golangci-lint using official installer for better compatibility
-            curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin ${{ env.GOLANGCI_LINT_VERSION }}
-            echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+            # Use GitHub Action v8 for better compatibility and caching
+            echo "golangci-lint will be installed via GitHub Action v8"
             go install honnef.co/go/tools/cmd/staticcheck@latest
             go install github.com/fzipp/gocyclo/cmd/gocyclo@latest
             go install github.com/client9/misspell/cmd/misspell@latest
@@ -342,10 +341,13 @@ jobs:
             ;;
           "security-scan")
             echo "🔧 Installing security tools..."
+            # Install security tools with latest compatible versions
             curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
             curl -sSfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
-            # Install gosec for Go security analysis with specific version
-            curl -sSfL https://raw.githubusercontent.com/securecodewarrior/gosec/master/install.sh | sh -s -- -b /usr/local/bin v2.18.2
+            # Install gosec v2.21.4 for Go security analysis
+            curl -sSfL https://raw.githubusercontent.com/securecodewarrior/gosec/master/install.sh | sh -s -- -b /usr/local/bin v2.21.4
+            # Install cosign v2.4.1 for container signing
+            curl -sSfL https://raw.githubusercontent.com/sigstore/cosign/main/install.sh | sh -s -- -b /usr/local/bin v2.4.1
             # Also install via go for backup
             go install github.com/securecodewarrior/gosec/v2/cmd/gosec@v2.18.2
             echo "$HOME/go/bin" >> $GITHUB_PATH
@@ -361,10 +363,21 @@ jobs:
             ;;
         esac
 
-    - name: Run Go code analysis
+    - name: Run golangci-lint
+      if: matrix.analysis-type == 'go-analysis' && needs.pre-flight.outputs.go-modules-changed == 'true'
+      uses: golangci/golangci-lint-action@v8
+      with:
+        version: ${{ env.GOLANGCI_LINT_VERSION }}
+        args: --timeout=15m --out-format=colored-line-number --issues-exit-code=0
+        skip-cache: false
+        skip-save-cache: false
+        only-new-issues: false
+        working-directory: ./
+
+    - name: Run additional Go code analysis
       if: matrix.analysis-type == 'go-analysis' && needs.pre-flight.outputs.go-modules-changed == 'true'
       run: |
-        echo "🔍 Running comprehensive Go code analysis..."
+        echo "🔍 Running additional Go code analysis..."
 
         # Initialize quality metrics
         total_issues=0
@@ -382,28 +395,6 @@ jobs:
           # Static analysis
           echo "  Running staticcheck..."
           staticcheck ./... || ((total_issues++))
-
-          # Linting with golangci-lint
-          echo "  Running golangci-lint..."
-          # Clean build cache before running golangci-lint to prevent version conflicts
-          go clean -cache
-          # Skip golangci-lint if module uses k8s.io/apimachinery v0.34+ due to compatibility issues
-          if grep -q "k8s.io/apimachinery v0.34" go.mod; then
-            echo "  ⚠️  Skipping golangci-lint for this module (k8s.io/apimachinery v0.34+ compatibility issue)"
-          else
-            golangci-lint run \
-              --timeout=15m \
-              --enable=gocyclo,gofmt,goimports,gosec,ineffassign,misspell \
-              --enable=staticcheck,typecheck,unused,vet,errcheck \
-              --enable=bodyclose,noctx,rowserrcheck,sqlclosecheck \
-              --enable=unconvert,unparam,whitespace \
-              --disable=varnamelen,wrapcheck \
-              --max-issues-per-linter=50 \
-              --max-same-issues=10 \
-              --out-format=colored-line-number \
-              --issues-exit-code=0 \
-              ./... || ((total_issues++))
-          fi
 
           # Cyclomatic complexity
           echo "  Checking cyclomatic complexity..."
@@ -425,7 +416,8 @@ jobs:
           "total_issues": $total_issues,
           "complexity_violations": $complexity_violations,
           "modules_analyzed": $(find . -name "go.mod" -not -path "./vendor/*" | wc -l),
-          "quality_gate_status": "$([ $total_issues -le 10 ] && [ $complexity_violations -le ${{ env.MAX_COMPLEXITY_VIOLATIONS }} ] && echo 'passed' || echo 'failed')"
+          "quality_gate_status": "$([ $total_issues -le 10 ] && [ $complexity_violations -le ${{ env.MAX_COMPLEXITY_VIOLATIONS }} ] && echo 'passed' || echo 'failed')",
+          "golangci_lint_version": "${{ env.GOLANGCI_LINT_VERSION }}"
         }
         EOF
 
@@ -758,7 +750,7 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Set up Go
       if: matrix.language == 'go'
@@ -1148,7 +1140,7 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Setup Go
       uses: actions/setup-go@v5
@@ -1310,7 +1302,7 @@ jobs:
 
     - name: Setup Pages
       if: github.ref == 'refs/heads/main'
-      uses: actions/configure-pages@v3
+      uses: actions/configure-pages@v5
 
     - name: Upload dashboard to Pages
       if: github.ref == 'refs/heads/main'
@@ -1345,7 +1337,7 @@ jobs:
 
     - name: Comment PR with dashboard link
       if: github.event_name == 'pull_request'
-      uses: actions/github-script@v6
+      uses: actions/github-script@v7
       with:
         script: |
           const fs = require('fs');

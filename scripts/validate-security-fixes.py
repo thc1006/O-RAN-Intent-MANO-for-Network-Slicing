@@ -2,7 +2,8 @@
 """
 Kubernetes Security Fixes Validation Script
 
-This script validates that the security fixes applied to orchestrator.yaml and vnf-operator.yaml
+This script validates that the security fixes applied to orchestrator.yaml
+and vnf-operator.yaml
 address the Checkov compliance issues mentioned in the requirements.
 """
 
@@ -30,12 +31,14 @@ def check_service_account_token(docs, component_name):
     if token_mount is True:
         return (
             True,
-            f"PASS {component_name}: automountServiceAccountToken correctly set to true",
+            f"PASS {component_name}: automountServiceAccountToken correctly "
+            f"set to true",
         )
     else:
         return (
             False,
-            f"FAIL {component_name}: automountServiceAccountToken should be true, got {token_mount}",
+            f"FAIL {component_name}: automountServiceAccountToken should be "
+            f"true, got {token_mount}",
         )
 
 
@@ -60,7 +63,8 @@ def check_image_reference(docs, component_name):
     if ":v1.0.1" in image and "@sha256:" not in image:
         return (
             True,
-            f"PASS {component_name}: Using proper versioned tag without placeholder digest",
+            f"PASS {component_name}: Using proper versioned tag without "
+            f"placeholder digest",
         )
     elif "@sha256:" in image and len(image.split("@sha256:")[1]) == 64:
         return True, f"PASS {component_name}: Using proper SHA256 digest"
@@ -93,7 +97,8 @@ def check_image_pull_policy(docs, component_name):
     else:
         return (
             False,
-            f"FAIL {component_name}: imagePullPolicy should be Always, got {pull_policy}",
+            f"FAIL {component_name}: imagePullPolicy should be Always, "
+            f"got {pull_policy}",
         )
 
 
@@ -121,12 +126,15 @@ def check_seccomp_profile(docs, component_name):
     if pod_seccomp == "RuntimeDefault" and container_seccomp == "RuntimeDefault":
         return (
             True,
-            f"PASS {component_name}: Seccomp profiles correctly set to RuntimeDefault",
+            f"PASS {component_name}: Seccomp profiles correctly set to "
+            f"RuntimeDefault",
         )
     else:
         return (
             False,
-            f"FAIL {component_name}: Seccomp profiles should be RuntimeDefault, got pod:{pod_seccomp}, container:{container_seccomp}",
+            f"FAIL {component_name}: Seccomp profiles should be "
+            f"RuntimeDefault, got pod:{pod_seccomp}, "
+            f"container:{container_seccomp}",
         )
 
 
@@ -175,14 +183,16 @@ def check_rbac_configuration(rbac_docs):
                 results.append(
                     (
                         True,
-                        f"PASS ServiceAccount {name}: automountServiceAccountToken correctly set to true",
+                        f"PASS ServiceAccount {name}: automountServiceAccountToken "
+                        f"correctly set to true",
                     )
                 )
             else:
                 results.append(
                     (
                         False,
-                        f"FAIL ServiceAccount {name}: automountServiceAccountToken should be true",
+                        f"FAIL ServiceAccount {name}: automountServiceAccountToken "
+                        f"should be true",
                     )
                 )
 
@@ -190,14 +200,16 @@ def check_rbac_configuration(rbac_docs):
                 results.append(
                     (
                         True,
-                        f"PASS ServiceAccount {name}: Security justification annotation present",
+                        f"PASS ServiceAccount {name}: Security justification "
+                        f"annotation present",
                     )
                 )
             else:
                 results.append(
                     (
                         False,
-                        f"FAIL ServiceAccount {name}: Missing security justification annotation",
+                        f"FAIL ServiceAccount {name}: Missing security justification "
+                        f"annotation",
                     )
                 )
 

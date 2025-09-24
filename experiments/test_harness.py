@@ -19,7 +19,9 @@ import yaml
 class TestHarness:
     """Main test harness for E2E deployment validation"""
 
-    def __init__(self, config_dir: str = "config", results_dir: str = "results"):
+    def __init__(
+        self, config_dir: str = "config", results_dir: str = "results"
+    ):
         self.config_dir = Path(config_dir)
         self.results_dir = Path(results_dir)
         self.logger = self._setup_logging()
@@ -37,7 +39,9 @@ class TestHarness:
         """Load validation thresholds"""
         thresholds_file = self.config_dir / "thresholds.yaml"
         if not thresholds_file.exists():
-            self.logger.warning(f"Thresholds file not found: {thresholds_file}")
+            self.logger.warning(
+                f"Thresholds file not found: {thresholds_file}"
+            )
             return {}
 
         with open(thresholds_file) as f:
@@ -51,7 +55,10 @@ class TestHarness:
             ("kubectl cluster-info", "Kubernetes cluster connectivity"),
             ("which yq", "yq command availability"),
             ("which bc", "bc command availability"),
-            ("python3 -c 'import json, subprocess, time'", "Python dependencies"),
+            (
+                "python3 -c 'import json, subprocess, time'",
+                "Python dependencies",
+            ),
         ]
 
         for cmd, description in checks:
@@ -136,7 +143,10 @@ class TestHarness:
 
         try:
             # Collect resource metrics
-            cmd = f"python3 collect_metrics.py collect_system --scenario {scenario} --output -"
+            cmd = (
+                f"python3 collect_metrics.py collect_system "
+                f"--scenario {scenario} --output -"
+            )
             result = subprocess.run(
                 cmd, shell=True, capture_output=True, text=True, timeout=30
             )
