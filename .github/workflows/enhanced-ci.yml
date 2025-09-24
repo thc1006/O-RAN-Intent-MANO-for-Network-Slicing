@@ -46,7 +46,7 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}
-  GO_VERSION: '1.23.6'
+  GO_VERSION: '1.24.7'
   PYTHON_VERSION: '3.11'
 
   # Dashboard and reporting configuration
