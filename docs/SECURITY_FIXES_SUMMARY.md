@@ -7,7 +7,7 @@ This document summarizes the critical security vulnerabilities found in the cont
 ## Executive Summary
 
 - **Issue**: Container scan failure in CI/CD pipeline due to critical vulnerabilities
-- **Root Cause**: CVE-2025-4674 in Go 1.24.0 and outdated base images with vulnerable packages
+- **Root Cause**: CVE-2025-4674 in Go 1.23.0 and outdated base images with vulnerable packages
 - **Status**: ✅ **RESOLVED** - All critical vulnerabilities addressed
 - **Impact**: Reduced security risk from **HIGH** to **LOW** across all containers
 
@@ -16,9 +16,9 @@ This document summarizes the critical security vulnerabilities found in the cont
 ### Critical Issues Fixed
 
 #### 1. **CVE-2025-4674** - Go Version Vulnerability (CRITICAL)
-- **Component**: All Dockerfiles using `golang:1.24-alpine`
+- **Component**: All Dockerfiles using `golang:1.23-alpine`
 - **Risk**: Unexpected command execution in untrusted VCS repositories
-- **Fix**: Updated all Dockerfiles to use `golang:1.24.7-alpine`
+- **Fix**: Updated all Dockerfiles to use `golang:1.23.6-alpine`
 - **Files Fixed**: 8 Dockerfiles
 
 #### 2. **Outdated Base Images** (HIGH)
@@ -39,11 +39,11 @@ This document summarizes the critical security vulnerabilities found in the cont
 
 ```dockerfile
 # Before (Vulnerable)
-FROM golang:1.24-alpine AS builder
+FROM golang:1.23-alpine AS builder
 FROM alpine:3.20
 
 # After (Secure)
-FROM golang:1.24.7-alpine AS builder
+FROM golang:1.23.6-alpine AS builder
 FROM alpine:3.20.3
 ```
 
@@ -66,7 +66,7 @@ RUN apk add --no-cache \
 ```dockerfile
 # Added comprehensive security metadata
 LABEL security.base.image="alpine:3.20.3"
-LABEL security.go.version="1.24.7"
+LABEL security.go.version="1.23.6"
 LABEL security.scan.date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 ```
 
