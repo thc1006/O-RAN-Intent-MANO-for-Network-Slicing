@@ -1,254 +1,281 @@
-# O-RAN Intent-MANO Integration Test Suite
+# O-RAN Intent-MANO Testing Infrastructure
 
-This directory contains comprehensive integration tests for the O-RAN Intent-MANO system, focusing on reproducing thesis performance targets and validating end-to-end deployment workflows.
+## Overview
 
-## Test Structure
+This comprehensive testing framework provides end-to-end validation for the O-RAN Intent-Based MANO system. The framework is designed to validate all thesis requirements, including deployment times (<10 minutes), throughput targets (4.57/2.77/0.93 Mbps), and RTT latencies (16.1/15.7/6.3 ms).
 
-### Integration Tests (`integration/`)
+## Architecture
 
-#### End-to-End Workflow Tests (`e2e_workflow_test.go`)
-- **Intent → QoS → VNF Deployment**: Complete workflow validation from natural language intent to deployed VNFs
-- **Multi-cluster Deployment**: Validation across edge, regional, and central clusters
-- **Performance Targets**: Validates thesis targets (6.3ms, 15.7ms, 16.1ms RTT; 0.93, 2.77, 4.57 Mbps)
-- **Deployment Timing**: Ensures E2E deployment completes within 10 minutes
+```
+tests/
+├── cmd/
+│   └── test-runner/           # Test orchestration engine
+│       └── main.go
+├── integration/               # Cross-service integration tests
+│   ├── orchestrator_integration_test.go
+│   ├── ran_dms_integration_test.go
+│   ├── cn_dms_integration_test.go
+│   └── vnf_operator_integration_test.go
+├── performance/               # Performance and thesis validation
+│   ├── thesis_metrics_validation_test.go
+│   ├── benchmark_test.go
+│   └── network_performance_test.go
+├── e2e/                      # End-to-end workflow tests
+│   ├── complete_intent_flow_test.go
+│   └── deployment_timing_test.go
+├── healthcheck/              # Service health monitoring
+│   └── services_health_test.go
+├── security/                 # Security validation tests
+├── utils/                    # Test utilities and helpers
+│   ├── test_helpers.go
+│   └── metrics.go
+├── mocks/                    # Mock API types and services
+│   └── api_types.go
+├── go.mod                    # Go module configuration
+├── test.config.yaml          # Test configuration
+├── run-tests.sh             # Comprehensive test runner
+└── README.md                # This file
+```
 
-**Key Test Scenarios:**
-- Ultra-low latency edge computing (autonomous vehicles)
-- High-bandwidth streaming services (4K video)
-- Balanced IoT services (smart city applications)
+## Key Features
 
-#### Multi-Cluster Deployment Tests (`multi_cluster_test.go`)
-- **Cluster Validation**: Health checks and resource validation across clusters
-- **Failover Testing**: Cluster failure and recovery scenarios
-- **Cross-cluster Communication**: Network connectivity and performance validation
-- **Load Distribution**: Optimal load balancing across cluster types
+### 🎯 Thesis Validation
+- **Deployment Time**: Validates E2E deployment < 10 minutes
+- **Throughput Targets**: Measures and validates 4.57/2.77/0.93 Mbps for eMBB/URLLC/mMTC
+- **Latency Requirements**: Validates RTT of 16.1/15.7/6.3 ms (including TC overhead)
+- **Comprehensive Reporting**: JSON/HTML reports with thesis compliance metrics
 
-**Test Coverage:**
-- Edge cluster deployments (low latency requirements)
-- Regional cluster deployments (balanced performance)
-- Central cluster deployments (high bandwidth requirements)
-- Cascading failure scenarios and recovery
+### 🔧 Test Types
+- **Unit Tests**: Component-level validation
+- **Integration Tests**: Cross-service interaction testing
+- **E2E Tests**: Complete workflow validation
+- **Performance Tests**: Throughput, latency, and resource utilization
+- **Security Tests**: Security vulnerability scanning
+- **Health Check Tests**: Service availability and health monitoring
+- **Benchmark Tests**: Performance regression testing
 
-#### O2 Interface Integration Tests (`o2_interface_test.go`)
-- **O2IMS Testing**: Infrastructure Management Service validation
-- **O2DMS Testing**: Deployment Management Service validation
-- **VNF Lifecycle**: Complete VNF deployment lifecycle via O2 interfaces
-- **CNF Support**: Containerized Network Function deployment testing
+### 🏗️ Infrastructure Features
+- **Go 1.24.7 Compatibility**: Enforced across all tests
+- **Kubernetes Integration**: Native K8s testing with envtest
+- **Mock Services**: O2, Nephio, and other external service mocks
+- **Parallel Execution**: Configurable parallel test execution
+- **Docker Support**: Containerized test execution
+- **CI/CD Ready**: Integrated with GitHub Actions workflows
 
-**API Coverage:**
-- Infrastructure discovery and inventory
-- Resource pool management
-- VNF/CNF deployment operations
-- Event subscription and notification
-- Performance and error handling
-
-#### Nephio Integration Tests (`nephio_integration_test.go`)
-- **Porch Package Generation**: GitOps package creation and validation
-- **Config Sync**: Multi-cluster configuration synchronization
-- **Package Versioning**: Version control and rollback scenarios
-- **GitOps Workflow**: Complete GitOps deployment pipeline
-
-**Features Tested:**
-- Package generation from VNF specifications
-- Multi-site package consistency
-- Deployment via GitOps workflows
-- Configuration drift detection and correction
-- Performance at scale (concurrent deployments)
-
-#### VNF Operator Lifecycle Tests (`vnf_lifecycle_test.go`)
-- **Complete Lifecycle**: Creation, deployment, scaling, upgrade, termination
-- **Operator Behavior**: Controller response times and reconciliation loops
-- **Failure Recovery**: Pod, node, and network failure scenarios
-- **Performance Optimization**: Resource efficiency and timing validation
-
-**Lifecycle Phases:**
-- VNF creation and validation
-- Deployment and readiness monitoring
-- Scaling (up/down and auto-scaling)
-- Rolling upgrades and rollbacks
-- Failure detection and recovery
-
-### Performance Tests (`performance/`)
-
-#### QoS Validation Tests (`qos_validation_test.go`)
-- **Latency Validation**: Thesis targets (6.3ms, 15.7ms, 16.1ms RTT)
-- **Throughput Validation**: Thesis targets (0.93, 2.77, 4.57 Mbps)
-- **Network Slice Isolation**: QoS enforcement between slices
-- **SLA Compliance**: Continuous monitoring and violation detection
-
-**Test Profiles:**
-- uRLLC: Ultra-reliable low-latency communication
-- mIoT: Massive IoT with balanced requirements
-- eMBB: Enhanced mobile broadband
-- Edge Gaming: Real-time applications
-- Industrial Automation: Stringent latency requirements
-
-#### Network Performance Tests (`network_performance_test.go`)
-- **Thesis Target Validation**: Comprehensive performance measurement
-- **Multi-hop Path Testing**: End-to-end network path validation
-- **Stress Testing**: Performance under network congestion
-- **Slice Isolation**: Concurrent slice performance validation
-
-**Measurement Types:**
-- High-frequency latency testing (1000+ samples)
-- Sustained throughput testing (extended duration)
-- Burst capacity testing
-- Performance consistency over time
-- Resource utilization correlation
-
-### End-to-End Tests (`e2e/`)
-
-#### Deployment Timing Validation (`deployment_timing_test.go`)
-- **10-Minute SLA**: Validates E2E deployment within thesis requirement
-- **Phase Analysis**: Detailed timing breakdown of deployment phases
-- **Bottleneck Identification**: Performance optimization recommendations
-- **Stress Testing**: Timing under resource constraints and high load
-
-**Timing Scenarios:**
-- Single VNF edge deployment (< 5 minutes)
-- Multi-VNF core network (< 8 minutes)
-- Cross-cluster distributed deployment (< 10 minutes)
-- High-bandwidth video streaming (< 7 minutes)
-- Stress test with multiple parallel deployments
-
-## Thesis Performance Targets
-
-The test suite validates the following performance targets from the research:
-
-### Network Latency Targets
-- **uRLLC**: 6.3ms RTT (ultra-low latency)
-- **mIoT**: 15.7ms RTT (balanced performance)
-- **eMBB**: 16.1ms RTT (high bandwidth)
-
-### Throughput Targets
-- **uRLLC**: 0.93 Mbps (latency-optimized)
-- **mIoT**: 2.77 Mbps (balanced)
-- **eMBB**: 4.57 Mbps (bandwidth-optimized)
-
-### Deployment Timing
-- **E2E Deployment**: < 10 minutes (complete intent-to-deployment)
-- **Individual VNF**: < 5 minutes (single VNF deployment)
-- **SLA Compliance**: ≥ 90% of deployments meet timing requirements
-
-## Running the Tests
+## Quick Start
 
 ### Prerequisites
-- Go 1.21+
-- Kubernetes clusters (kind recommended for testing)
-- O2 interface implementations
-- Nephio/Porch installation
-- Network simulation tools
 
-### Quick Start
-```bash
-# Run all integration tests
-go test ./integration/... -v
+- Go 1.24.7+
+- kubectl (for integration/E2E tests)
+- Docker (optional, for containerized testing)
+- Kubernetes cluster (kind/k3s/real cluster)
 
-# Run performance validation
-go test ./performance/... -v
-
-# Run end-to-end timing tests
-go test ./e2e/... -v
-
-# Run specific test suite
-go test ./integration/e2e_workflow_test.go -v
-
-# Run with extended timeout for full scenarios
-go test ./integration/... -timeout 60m -v
-```
-
-### Test Configuration
-Tests use environment variables and configuration files:
+### Basic Usage
 
 ```bash
-# Set test cluster contexts
-export EDGE_CLUSTER_CONTEXT="kind-edge-01"
-export REGIONAL_CLUSTER_CONTEXT="kind-regional-01"
-export CENTRAL_CLUSTER_CONTEXT="kind-central-01"
+# Run all tests
+make test
 
-# Configure O2 endpoints
-export O2IMS_ENDPOINT="http://o2ims-service:8080"
-export O2DMS_ENDPOINT="http://o2dms-service:8080"
+# Run specific test suites
+make test-unit           # Unit tests only
+make test-integration    # Integration tests
+make test-e2e           # End-to-end tests
+make test-performance   # Performance tests
+make test-thesis        # Thesis validation
+make test-security      # Security tests
+make test-healthcheck   # Health checks
 
-# Set Nephio/Porch configuration
-export PORCH_ENDPOINT="http://porch-server:7007"
-export CONFIG_SYNC_REPO="https://github.com/org/config-repo"
+# Advanced usage
+./tests/run-tests.sh --help                    # Show all options
+./tests/run-tests.sh all --verbose --clean     # Clean run with verbose output
+./tests/run-tests.sh thesis --timeout=45m      # Thesis validation with extended timeout
+./tests/run-tests.sh performance --docker      # Performance tests in Docker
 ```
 
-### Test Reports
-Tests generate comprehensive reports in JSON format:
+### Configuration
 
-- `testdata/results/e2e_results_*.json` - E2E workflow results
-- `testdata/results/performance_report_*.json` - Performance metrics
-- `testdata/timing_reports/deployment_timing_report_*.json` - Timing analysis
+Tests can be configured via `tests/test.config.yaml`:
 
-## Test Categories
+```yaml
+test_suite: "all"
+parallel: true
+verbose: true
+timeout: "30m"
+coverage: true
+environment:
+  THESIS_VALIDATION: "true"
+  INTEGRATION_TESTS: "true"
 
-### Functional Tests
-- ✅ Intent processing and QoS translation
-- ✅ VNF placement and cluster selection
-- ✅ Porch package generation and validation
-- ✅ GitOps workflow execution
-- ✅ Multi-cluster deployment coordination
-- ✅ O2 interface integration (O2IMS/O2DMS)
-- ✅ VNF operator lifecycle management
+# Thesis validation thresholds
+thesis_requirements:
+  deployment_time_max: "10m"
+  throughput_targets:
+    embb: 4.57  # Mbps
+    urllc: 2.77 # Mbps
+    mmtc: 0.93  # Mbps
+  latency_targets:
+    embb: 16.1  # ms
+    urllc: 15.7 # ms
+    mmtc: 6.3   # ms
+```
 
-### Performance Tests
-- ✅ Network latency validation (thesis targets)
-- ✅ Throughput measurement and validation
-- ✅ QoS parameter enforcement
-- ✅ Resource utilization efficiency
-- ✅ Deployment timing optimization
-- ✅ Scalability under load
+## Test Execution
 
-### Reliability Tests
-- ✅ Cluster failure and recovery
-- ✅ Network partition handling
-- ✅ VNF failure detection and recovery
-- ✅ Configuration drift correction
-- ✅ Upgrade and rollback scenarios
-- ✅ Stress testing and edge cases
+### Common Commands
 
-## Validation Criteria
+```bash
+# Development workflow
+./tests/run-tests.sh unit --fast                # Quick unit tests
+./tests/run-tests.sh integration --parallel     # Parallel integration tests
+./tests/run-tests.sh e2e --timeout=45m         # Extended E2E tests
 
-### Performance Compliance
-- **Latency**: Within ±15% of thesis targets
-- **Throughput**: Within ±20% of thesis targets
-- **Deployment Time**: ≤ 10 minutes for E2E deployment
-- **Success Rate**: ≥ 95% for all operations
+# CI/CD pipeline
+./tests/run-tests.sh all --docker --clean      # Complete CI test run
+./tests/run-tests.sh thesis --no-parallel      # Thesis validation
 
-### Quality Gates
-- **Unit Test Coverage**: ≥ 80%
-- **Integration Test Coverage**: All major workflows
-- **Performance Regression**: No degradation > 10%
-- **Error Rate**: ≤ 5% for all operations
+# Debugging
+./tests/run-tests.sh unit --verbose            # Verbose output
+./tests/run-tests.sh healthcheck --config=custom.yaml  # Custom configuration
+```
+
+### Environment Variables
+
+Key environment variables for test execution:
+
+```bash
+# Test control
+THESIS_VALIDATION=true     # Enable thesis validation
+INTEGRATION_TESTS=true     # Enable integration tests
+PERFORMANCE_TESTS=true     # Enable performance tests
+
+# Kubernetes
+KUBECONFIG=/path/to/config # Kubernetes configuration
+TEST_NAMESPACE=test-ns     # Test namespace
+
+# Go configuration
+GO_VERSION=1.24.7         # Enforced Go version
+CGO_ENABLED=0             # Disable CGO for tests
+```
+
+## Test Framework Components
+
+### 1. Test Runner (`cmd/test-runner/main.go`)
+Comprehensive test orchestration engine that:
+- Manages test suite execution
+- Handles parallel/sequential execution
+- Collects and aggregates results
+- Generates comprehensive reports
+- Validates thesis requirements
+
+### 2. Integration Tests (`integration/`)
+Cross-service interaction tests:
+- **Orchestrator**: Intent processing, QoS mapping, placement decisions
+- **RAN-DMS**: Radio resource management, slice configuration
+- **CN-DMS**: Core network deployment, slice management
+- **VNF-Operator**: VNF lifecycle management
+
+### 3. Performance Tests (`performance/`)
+Thesis validation and performance benchmarking:
+- **Deployment Time**: E2E slice deployment timing
+- **Throughput**: Network throughput measurement using iperf3
+- **Latency**: RTT measurement with ping and custom tools
+- **Resource Efficiency**: CPU, memory, and storage utilization
+
+### 4. E2E Tests (`e2e/`)
+Complete workflow validation:
+- **Intent Flow**: Natural language → QoS → Deployment
+- **Multi-Domain**: RAN + TN + CN coordination
+- **Multi-Site**: Edge/cloud deployment scenarios
+- **Failure Recovery**: Resilience and self-healing
+
+### 5. Health Check Tests (`healthcheck/`)
+Service monitoring and availability:
+- **Service Health**: HTTP health endpoints
+- **Database Connectivity**: PostgreSQL/Redis health
+- **External Dependencies**: O2/Nephio/Prometheus connectivity
+- **Resource Health**: Pod status and resource utilization
+
+### 6. Test Utilities (`utils/`)
+Common test infrastructure:
+- **Test Helpers**: Environment setup, mocking, assertions
+- **Metrics Collection**: Performance measurement and validation
+- **Mock Services**: O2, Nephio, and external service mocks
+
+## Thesis Validation
+
+The framework specifically validates thesis requirements:
+
+### Deployment Time Requirement
+- **Target**: E2E deployment < 10 minutes
+- **Measurement**: Complete intent-to-deployment timing
+- **Validation**: Automated pass/fail with detailed reporting
+
+### Throughput Requirements
+- **eMBB**: 4.57 Mbps target (±10% tolerance)
+- **URLLC**: 2.77 Mbps target (±10% tolerance)
+- **mMTC**: 0.93 Mbps target (±10% tolerance)
+- **Measurement**: iperf3-based network throughput testing
+
+### Latency Requirements (including TC overhead)
+- **eMBB**: 16.1 ms RTT target
+- **URLLC**: 15.7 ms RTT target
+- **mMTC**: 6.3 ms RTT target
+- **Measurement**: ping-based RTT measurement with TC consideration
 
 ### Compliance Reporting
-Tests generate compliance reports showing:
-- SLA adherence rates
-- Performance trend analysis
-- Bottleneck identification
-- Optimization recommendations
-- Resource efficiency metrics
+Comprehensive thesis compliance reports generated in JSON/HTML format:
+```json
+{
+  "compliance_report": {
+    "overall_compliance": true,
+    "deployment_compliance": true,
+    "throughput_compliance": true,
+    "latency_compliance": true,
+    "violations": [],
+    "violation_count": 0
+  }
+}
+```
 
-## Contributing
+## Docker Build Fix
 
-### Adding New Tests
-1. Follow existing test structure and naming conventions
-2. Include comprehensive validation and assertions
-3. Add performance measurement where applicable
-4. Update this README with new test coverage
-5. Ensure tests are deterministic and isolated
+This testing infrastructure resolves Docker build failures by:
 
-### Test Guidelines
-- Use table-driven tests for multiple scenarios
-- Include both positive and negative test cases
-- Validate timing and performance requirements
-- Provide clear test descriptions and failure messages
-- Clean up resources after test completion
+1. **Creating missing `/tests` directory** with proper Go module structure
+2. **Providing comprehensive test framework** for all services
+3. **Including test dependencies** in go.mod/go.sum
+4. **Supporting CI/CD integration** with proper artifact generation
+5. **Enabling thesis validation** with automated compliance checking
 
-### Performance Testing
-- Always measure and validate against thesis targets
-- Include confidence intervals and statistical analysis
-- Test under various load conditions
-- Document performance baselines and regressions
+## Quick Test Execution
+
+```bash
+# Validate Docker build fix
+cd tests && go mod verify && go mod tidy
+
+# Run basic test suite to verify framework
+./tests/run-tests.sh unit --verbose
+
+# Full thesis validation
+make test-thesis
+
+# CI/CD compatible test run
+./tests/run-tests.sh all --docker --clean
+```
+
+## Support and Troubleshooting
+
+For common issues:
+1. **Go Module Issues**: `cd tests && go mod tidy && go mod verify`
+2. **Kubernetes Connectivity**: `kubectl cluster-info && kubectl get nodes`
+3. **Test Failures**: `./tests/run-tests.sh unit --verbose`
+4. **Performance Issues**: `THESIS_VALIDATION=true ./tests/run-tests.sh thesis --timeout=60m`
+
+Enable debug mode: `export TEST_DEBUG=true`
+
+## Version Compatibility
+- **Go**: 1.24.7 (enforced)
+- **Kubernetes**: 1.31.0+
+- **Ginkgo**: v2.25.3+
+- **Testify**: v1.11.1+

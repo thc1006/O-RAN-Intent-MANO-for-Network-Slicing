@@ -450,7 +450,7 @@ curl -X POST http://localhost:8080/api/v1/intents \
 # Test with invalid token - should fail
 curl -X POST http://localhost:8080/api/v1/intents \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer invalid-token" \
+  -H "Authorization: Bearer FAKE_TEST_TOKEN_PLACEHOLDER" \
   -d '{"intent":{}}' \
   -w "\nHTTP Status: %{http_code}\n"
 

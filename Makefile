@@ -134,9 +134,87 @@ verify-env:
 	fi
 	@echo -e "$(GREEN)Environment verified$(NC)"
 
-## test: Run all tests
+## test: Run comprehensive test suite
 test: verify-env
-	@echo -e "$(YELLOW)Running tests...$(NC)"
+	@echo -e "$(YELLOW)Running comprehensive test suite...$(NC)"
+	@./tests/run-tests.sh all --verbose
+	@echo -e "$(GREEN)All tests completed$(NC)"
+
+## test-unit: Run unit tests only
+test-unit: verify-env
+	@echo -e "$(YELLOW)Running unit tests...$(NC)"
+	@./tests/run-tests.sh unit --verbose
+	@echo -e "$(GREEN)Unit tests completed$(NC)"
+
+## test-integration: Run integration tests
+test-integration: verify-env
+	@echo -e "$(YELLOW)Running integration tests...$(NC)"
+	@./tests/run-tests.sh integration --verbose
+	@echo -e "$(GREEN)Integration tests completed$(NC)"
+
+## test-e2e: Run end-to-end tests
+test-e2e: verify-env
+	@echo -e "$(YELLOW)Running E2E tests...$(NC)"
+	@./tests/run-tests.sh e2e --verbose
+	@echo -e "$(GREEN)E2E tests completed$(NC)"
+
+## test-performance: Run performance tests
+test-performance: verify-env
+	@echo -e "$(YELLOW)Running performance tests...$(NC)"
+	@./tests/run-tests.sh performance --verbose
+	@echo -e "$(GREEN)Performance tests completed$(NC)"
+
+## test-thesis: Run thesis validation tests
+test-thesis: verify-env
+	@echo -e "$(YELLOW)Running thesis validation tests...$(NC)"
+	@THESIS_VALIDATION=true ./tests/run-tests.sh thesis --verbose
+	@echo -e "$(GREEN)Thesis validation completed$(NC)"
+
+## test-security: Run security tests
+test-security: verify-env
+	@echo -e "$(YELLOW)Running security tests...$(NC)"
+	@./tests/run-tests.sh security --verbose
+	@echo -e "$(GREEN)Security tests completed$(NC)"
+
+## test-healthcheck: Run health check tests
+test-healthcheck: verify-env
+	@echo -e "$(YELLOW)Running health check tests...$(NC)"
+	@./tests/run-tests.sh healthcheck --verbose
+	@echo -e "$(GREEN)Health check tests completed$(NC)"
+
+## test-benchmark: Run benchmark tests
+test-benchmark: verify-env
+	@echo -e "$(YELLOW)Running benchmark tests...$(NC)"
+	@./tests/run-tests.sh benchmark --verbose
+	@echo -e "$(GREEN)Benchmark tests completed$(NC)"
+
+## test-coverage: Run tests with coverage reporting
+test-coverage: verify-env
+	@echo -e "$(YELLOW)Running tests with coverage...$(NC)"
+	@./tests/run-tests.sh all --coverage --verbose
+	@echo -e "$(GREEN)Coverage tests completed$(NC)"
+
+## test-fast: Run fast subset of tests
+test-fast: verify-env
+	@echo -e "$(YELLOW)Running fast tests...$(NC)"
+	@./tests/run-tests.sh unit --no-coverage --parallel
+	@echo -e "$(GREEN)Fast tests completed$(NC)"
+
+## test-clean: Clean test artifacts and run all tests
+test-clean: verify-env
+	@echo -e "$(YELLOW)Cleaning and running tests...$(NC)"
+	@./tests/run-tests.sh all --clean --verbose
+	@echo -e "$(GREEN)Clean test run completed$(NC)"
+
+## test-docker: Run tests in Docker containers
+test-docker: verify-env
+	@echo -e "$(YELLOW)Running tests in Docker...$(NC)"
+	@./tests/run-tests.sh all --docker --verbose
+	@echo -e "$(GREEN)Docker tests completed$(NC)"
+
+## test-legacy: Run legacy individual tests (fallback)
+test-legacy: verify-env
+	@echo -e "$(YELLOW)Running legacy individual tests...$(NC)"
 	@if [ -d "nlp" ] && [ -f "nlp/tests/test_*.py" ] 2>/dev/null; then \
 		cd nlp && $(PYTHON) -m pytest tests/ -v; \
 	fi

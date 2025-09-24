@@ -17,8 +17,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tests/utils"
-	orchestratorv1 "github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/orchestrator/api/v1"
-	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/orchestrator/pkg/placement"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tests/mocks"
 )
 
 var _ = ginkgo.Describe("Orchestrator Integration Tests", func() {
@@ -42,8 +41,8 @@ var _ = ginkgo.Describe("Orchestrator Integration Tests", func() {
 	ginkgo.Context("Intent Processing", func() {
 		ginkgo.It("should process natural language intent to QoS requirements", func() {
 			// Test intent: "Deploy eMBB slice with 5G throughput in edge cluster"
-			intent := &orchestratorv1.Intent{
-				Spec: orchestratorv1.IntentSpec{
+			intent := &mocks.Intent{
+				Spec: mocks.IntentSpec{
 					Description: "Deploy eMBB slice with 5G throughput in edge cluster",
 					SliceType:   "embb",
 					QoSRequirements: orchestratorv1.QoSRequirements{
