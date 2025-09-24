@@ -1,6 +1,6 @@
 # O2 Client Multi-stage Dockerfile
 # Stage 1: Build
-FROM golang:1.24.0-alpine AS builder
+FROM golang:1.24.5-alpine AS builder
 
 # Security labels and metadata
 LABEL maintainer="O-RAN MANO Team"
@@ -42,7 +42,7 @@ COPY ran-dms/ ran-dms/
 COPY tn/ tn/
 
 # Download dependencies (after copying local packages) with explicit toolchain
-ENV GOTOOLCHAIN=auto
+ENV GOTOOLCHAIN=go1.24.5
 ENV GOPROXY=https://proxy.golang.org,direct
 ENV GOSUMDB=sum.golang.org
 RUN go mod download
@@ -61,7 +61,7 @@ LABEL org.opencontainers.image.title="O2 Client Runtime"
 LABEL security.scan="trivy,grype,snyk"
 LABEL security.user="non-root"
 LABEL security.base.image="alpine:3.22.1"
-LABEL security.go.version="1.24.0"
+LABEL security.go.version="1.24.5"
 LABEL security.scan.date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 # Install runtime dependencies with pinned versions, clean cache

@@ -205,7 +205,14 @@ jobs:
         KUBEBUILDER_VERSION=3.10.0
         os=$(go env GOOS)
         arch=$(go env GOARCH)
-        curl -L https://github.com/kubernetes-sigs/kubebuilder/releases/download/v${KUBEBUILDER_VERSION}/kubebuilder_${KUBEBUILDER_VERSION}_${os}_${arch}.tar.gz | tar -xz -C /tmp/
+        # Download first to check if it's actually gzipped
+        curl -L -o /tmp/kubebuilder.tar.gz https://github.com/kubernetes-sigs/kubebuilder/releases/download/v${KUBEBUILDER_VERSION}/kubebuilder_${KUBEBUILDER_VERSION}_${os}_${arch}.tar.gz
+        # Try to extract with gzip, fall back to plain tar if not gzipped
+        if file /tmp/kubebuilder.tar.gz | grep -q "gzip compressed"; then
+          tar -xz -C /tmp/ -f /tmp/kubebuilder.tar.gz
+        else
+          tar -x -C /tmp/ -f /tmp/kubebuilder.tar.gz
+        fi
         sudo mv /tmp/kubebuilder_${KUBEBUILDER_VERSION}_${os}_${arch} /usr/local/kubebuilder
         echo "/usr/local/kubebuilder/bin" >> $GITHUB_PATH
 
