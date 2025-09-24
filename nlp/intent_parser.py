@@ -6,19 +6,23 @@ Maps natural language intents to QoS JSON specifications
 
 import json
 import re
-from typing import Dict, Any, List, Optional, Tuple
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any, Dict, List, Optional, Tuple
+
 
 class SliceType(Enum):
     """Network slice types as per thesis requirements"""
+
     EMBB = "eMBB"  # Enhanced Mobile Broadband
     URLLC = "URLLC"  # Ultra-Reliable Low-Latency Communications
     MMTC = "mMTC"  # Massive Machine-Type Communications
 
+
 @dataclass
 class QoSMapping:
     """QoS parameters mapped from natural language intent"""
+
     slice_type: SliceType
     throughput_mbps: float  # Target: {4.57, 2.77, 0.93} Mbps based on slice type
     latency_ms: float  # Target: {16.1, 15.7, 6.3} ms based on slice type
@@ -28,9 +32,12 @@ class QoSMapping:
     bandwidth_guarantee: Optional[float] = None
     reliability: Optional[float] = None  # For URLLC
 
+
 class IntentValidationError(Exception):
     """Raised when intent validation fails"""
+
     pass
+
 
 class IntentParser:
     """
@@ -41,19 +48,49 @@ class IntentParser:
     # Keywords for slice type detection
     SLICE_KEYWORDS = {
         SliceType.EMBB: [
-            "video", "streaming", "bandwidth", "throughput", "hd", "4k",
-            "download", "upload", "mobile broadband", "entertainment",
-            "enterprise", "business", "machine learning", "file transfer"
+            "video",
+            "streaming",
+            "bandwidth",
+            "throughput",
+            "hd",
+            "4k",
+            "download",
+            "upload",
+            "mobile broadband",
+            "entertainment",
+            "enterprise",
+            "business",
+            "machine learning",
+            "file transfer",
         ],
         SliceType.URLLC: [
-            "latency", "reliability", "critical", "real-time", "autonomous",
-            "industrial", "emergency", "mission-critical", "ultra-reliable",
-            "gaming", "voice", "calls", "vehicle", "infrastructure"
+            "latency",
+            "reliability",
+            "critical",
+            "real-time",
+            "autonomous",
+            "industrial",
+            "emergency",
+            "mission-critical",
+            "ultra-reliable",
+            "gaming",
+            "voice",
+            "calls",
+            "vehicle",
+            "infrastructure",
         ],
         SliceType.MMTC: [
-            "iot", "sensor", "massive", "device", "meter", "monitoring",
-            "telemetry", "machine", "m2m", "low-power"
-        ]
+            "iot",
+            "sensor",
+            "massive",
+            "device",
+            "meter",
+            "monitoring",
+            "telemetry",
+            "machine",
+            "m2m",
+            "low-power",
+        ],
     }
 
     # Thesis target metrics by slice type
@@ -61,19 +98,19 @@ class IntentParser:
         SliceType.EMBB: {
             "throughput_mbps": 4.57,
             "latency_ms": 16.1,
-            "packet_loss_rate": 0.001
+            "packet_loss_rate": 0.001,
         },
         SliceType.URLLC: {
             "throughput_mbps": 0.93,
             "latency_ms": 6.3,
             "packet_loss_rate": 0.00001,
-            "reliability": 0.99999
+            "reliability": 0.99999,
         },
         SliceType.MMTC: {
             "throughput_mbps": 2.77,
             "latency_ms": 15.7,
-            "packet_loss_rate": 0.01
-        }
+            "packet_loss_rate": 0.01,
+        },
     }
 
     def __init__(self):
@@ -102,7 +139,10 @@ class IntentParser:
 
         # Check for only special characters or numbers
         import string
-        if all(c in string.punctuation + string.digits + string.whitespace for c in intent):
+
+        if all(
+            c in string.punctuation + string.digits + string.whitespace for c in intent
+        ):
             raise IntentValidationError("Intent must contain alphabetic characters")
 
         # Check for only whitespace
@@ -118,10 +158,7 @@ class IntentParser:
         qos_params = self._extract_qos_parameters(intent_lower, slice_type)
 
         # Create mapping
-        mapping = QoSMapping(
-            slice_type=slice_type,
-            **qos_params
-        )
+        mapping = QoSMapping(slice_type=slice_type, **qos_params)
 
         # Validate against thesis requirements
         self._validate_mapping(mapping)
@@ -157,7 +194,9 @@ class IntentParser:
 
         return detected
 
-    def _extract_qos_parameters(self, intent: str, slice_type: SliceType) -> Dict[str, Any]:
+    def _extract_qos_parameters(
+        self, intent: str, slice_type: SliceType
+    ) -> Dict[str, Any]:
         """
         Extract QoS parameters from intent text
 
@@ -172,78 +211,113 @@ class IntentParser:
         params = self.THESIS_TARGETS[slice_type].copy()
 
         # Special handling for high-priority emergency services
-        is_high_priority = ("high priority" in intent or "high-priority" in intent or
-                           "emergency" in intent or "critical" in intent)
+        is_high_priority = (
+            "high priority" in intent
+            or "high-priority" in intent
+            or "emergency" in intent
+            or "critical" in intent
+        )
 
         # Special handling for ultra-low latency requirements
-        is_ultra_low_latency = ("ultra-low" in intent and "latency" in intent) or \
-                              ("ultra-low latency" in intent) or \
-                              ("critical application" in intent)
+        is_ultra_low_latency = (
+            ("ultra-low" in intent and "latency" in intent)
+            or ("ultra-low latency" in intent)
+            or ("critical application" in intent)
+        )
 
         if is_ultra_low_latency:
             # Override with ultra-low latency targets
-            params.update({
-                "throughput_mbps": max(params.get("throughput_mbps", 0), 100.0),
-                "latency_ms": 1.0,  # Ultra-low latency
-                "packet_loss_rate": 0.00001,
-                "reliability": 0.99999
-            })
+            params.update(
+                {
+                    "throughput_mbps": max(params.get("throughput_mbps", 0), 100.0),
+                    "latency_ms": 1.0,  # Ultra-low latency
+                    "packet_loss_rate": 0.00001,
+                    "reliability": 0.99999,
+                }
+            )
 
         elif is_high_priority and slice_type == SliceType.URLLC:
             # Override with more aggressive targets for high-priority emergency services
-            params.update({
-                "throughput_mbps": 100.0,  # Higher throughput for emergency
-                "latency_ms": 1.0,  # Ultra-low latency for critical services
-                "packet_loss_rate": 0.00001,
-                "reliability": 0.99999
-            })
+            params.update(
+                {
+                    "throughput_mbps": 100.0,  # Higher throughput for emergency
+                    "latency_ms": 1.0,  # Ultra-low latency for critical services
+                    "packet_loss_rate": 0.00001,
+                    "reliability": 0.99999,
+                }
+            )
 
         # Special handling for video streaming applications
-        if ("video" in intent or "streaming" in intent) and slice_type == SliceType.EMBB:
-            params.update({
-                "throughput_mbps": 50.0,  # Higher throughput for video streaming
-                "latency_ms": 10.0,  # Lower latency for video
-                "reliability": 0.999  # 99.9% reliability
-            })
+        if (
+            "video" in intent or "streaming" in intent
+        ) and slice_type == SliceType.EMBB:
+            params.update(
+                {
+                    "throughput_mbps": 50.0,  # Higher throughput for video streaming
+                    "latency_ms": 10.0,  # Lower latency for video
+                    "reliability": 0.999,  # 99.9% reliability
+                }
+            )
 
         # Special handling for maximum bandwidth requirements
-        if ("maximum" in intent and "bandwidth" in intent) or \
-           ("high-speed" in intent and "data" in intent) or \
-           ("max" in intent and ("throughput" in intent or "bandwidth" in intent)):
-            params.update({
-                "throughput_mbps": max(params.get("throughput_mbps", 0), 100.0),  # High throughput
-                "reliability": 0.999  # High reliability for high-speed transfers
-            })
+        if (
+            ("maximum" in intent and "bandwidth" in intent)
+            or ("high-speed" in intent and "data" in intent)
+            or ("max" in intent and ("throughput" in intent or "bandwidth" in intent))
+        ):
+            params.update(
+                {
+                    "throughput_mbps": max(
+                        params.get("throughput_mbps", 0), 100.0
+                    ),  # High throughput
+                    "reliability": 0.999,  # High reliability for high-speed transfers
+                }
+            )
 
         # Special handling for basic IoT applications
         if ("basic" in intent or "sensor" in intent) and slice_type == SliceType.MMTC:
-            params.update({
-                "throughput_mbps": 1.0,  # Low throughput for IoT sensors
-                "latency_ms": 16.1,  # Match thesis target for basic IoT
-                "reliability": 0.99  # 99% reliability for basic IoT
-            })
+            params.update(
+                {
+                    "throughput_mbps": 1.0,  # Low throughput for IoT sensors
+                    "latency_ms": 16.1,  # Match thesis target for basic IoT
+                    "reliability": 0.99,  # 99% reliability for basic IoT
+                }
+            )
 
         # Extract throughput if specified
-        throughput_match = re.search(r'(\d+(?:\.\d+)?)\s*(?:mbps|mb/s|megabits?)', intent)
+        throughput_match = re.search(
+            r"(\d+(?:\.\d+)?)\s*(?:mbps|mb/s|megabits?)", intent
+        )
         if throughput_match:
             params["throughput_mbps"] = float(throughput_match.group(1))
 
         # Extract latency if specified
-        latency_match = re.search(r'(\d+(?:\.\d+)?)\s*(?:ms|milliseconds?)', intent)
+        latency_match = re.search(r"(\d+(?:\.\d+)?)\s*(?:ms|milliseconds?)", intent)
         if latency_match:
             params["latency_ms"] = float(latency_match.group(1))
 
         # Extract packet loss if specified
-        loss_match = re.search(r'(\d+(?:\.\d+)?)\s*%?\s*(?:packet\s*)?loss', intent)
+        loss_match = re.search(r"(\d+(?:\.\d+)?)\s*%?\s*(?:packet\s*)?loss", intent)
         if loss_match:
             loss_value = float(loss_match.group(1))
             # Convert percentage to rate if needed
-            params["packet_loss_rate"] = loss_value / 100 if loss_value > 1 else loss_value
+            params["packet_loss_rate"] = (
+                loss_value / 100 if loss_value > 1 else loss_value
+            )
 
         # Extract priority
-        if "high priority" in intent or "high-priority" in intent or "critical" in intent or "emergency" in intent:
+        if (
+            "high priority" in intent
+            or "high-priority" in intent
+            or "critical" in intent
+            or "emergency" in intent
+        ):
             params["priority"] = 9
-        elif "low priority" in intent or "low-priority" in intent or ("basic" in intent and "iot" in intent):
+        elif (
+            "low priority" in intent
+            or "low-priority" in intent
+            or ("basic" in intent and "iot" in intent)
+        ):
             params["priority"] = 3
         else:
             params["priority"] = 5
@@ -311,8 +385,8 @@ class IntentParser:
                 "throughputMbps": mapping.throughput_mbps,
                 "latencyMs": mapping.latency_ms,
                 "packetLossRate": mapping.packet_loss_rate,
-                "priority": mapping.priority
-            }
+                "priority": mapping.priority,
+            },
         }
 
         # Add optional fields
@@ -368,8 +442,13 @@ class IntentParser:
         # Calculate confidence based on keyword matches and clarity
         confidence = 0.5  # Base confidence
         if len(keywords) > 0:
-            confidence += min(0.3, len(keywords) * 0.1)  # More keywords = higher confidence
-        if any(kw in intent_lower for kw in ["high priority", "emergency", "critical", "ultra"]):
+            confidence += min(
+                0.3, len(keywords) * 0.1
+            )  # More keywords = higher confidence
+        if any(
+            kw in intent_lower
+            for kw in ["high priority", "emergency", "critical", "ultra"]
+        ):
             confidence += 0.2  # Clear priority indicators
         if len(intent.split()) > 3:  # More detailed intents
             confidence += 0.1
@@ -389,7 +468,7 @@ class IntentParser:
             "latency_ms": mapping.latency_ms,
             "packet_loss_rate": mapping.packet_loss_rate,
             "priority": mapping.priority,
-            "confidence": confidence
+            "confidence": confidence,
         }
 
         # Add optional fields if present
@@ -434,8 +513,19 @@ class IntentParser:
 
         # Extract common technical terms
         technical_terms = [
-            "5g", "network", "slice", "qos", "priority", "ultra", "high", "low",
-            "emergency", "services", "communication", "data", "transfer"
+            "5g",
+            "network",
+            "slice",
+            "qos",
+            "priority",
+            "ultra",
+            "high",
+            "low",
+            "emergency",
+            "services",
+            "communication",
+            "data",
+            "transfer",
         ]
 
         for term in technical_terms:

@@ -59,7 +59,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -o manager cmd/manager/main.go
 
 # Build a minimal health check binary
-RUN cat > healthcheck.go <<'EOF' && \
+RUN cat > healthcheck.go <<'EOF'
 package main
 import (
     "fmt"
@@ -82,6 +82,7 @@ func main() {
     fmt.Println("Health check passed")
 }
 EOF
+
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
         -ldflags='-w -s -extldflags "-static"' \
         -a -installsuffix cgo \
