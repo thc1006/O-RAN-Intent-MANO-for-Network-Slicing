@@ -227,7 +227,7 @@ func (rm *RollbackManager) getChangedResources(_ context.Context, fromCommit, to
 // isKubernetesResourceFile checks if a file is a Kubernetes resource file
 func (rm *RollbackManager) isKubernetesResourceFile(filename string) bool {
 	// Check file extension
-	if !(strings.HasSuffix(filename, ".yaml") || strings.HasSuffix(filename, ".yml")) {
+	if !strings.HasSuffix(filename, ".yaml") && !strings.HasSuffix(filename, ".yml") {
 		return false
 	}
 

@@ -494,7 +494,13 @@ func (mc *MetricsCollector) queryPrometheus(ctx context.Context, query string) (
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute query: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			// Log error but don't fail the operation
+			// In production, you might want to use a proper logger here
+			_ = err // Explicitly ignore for now
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("prometheus query failed with status %d", resp.StatusCode)
