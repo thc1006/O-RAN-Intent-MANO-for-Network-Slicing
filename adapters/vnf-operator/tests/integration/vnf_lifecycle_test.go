@@ -128,7 +128,7 @@ func TestVNFLifecycleIntegration(t *testing.T) {
 			// First reconciliation - should initialize status
 			result, err := reconciler.Reconcile(ctx, newReconcileRequest(namespacedName))
 			require.NoError(t, err, "First reconciliation failed")
-			assert.True(t, result.Requeue, "Should requeue after initialization")
+			assert.True(t, result.RequeueAfter > 0, "Should requeue after initialization")
 
 			// Get updated VNF status
 			err = k8sClient.Get(ctx, namespacedName, vnf)

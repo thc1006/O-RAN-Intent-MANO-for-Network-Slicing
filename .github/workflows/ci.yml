@@ -203,17 +203,33 @@ jobs:
 
     - name: Setup Kubebuilder
       run: |
+        set -e
         KUBEBUILDER_VERSION=3.10.0
         os=$(go env GOOS)
         arch=$(go env GOARCH)
-        # Download first to check if it's actually gzipped
-        curl -L -o /tmp/kubebuilder.tar.gz https://github.com/kubernetes-sigs/kubebuilder/releases/download/v${KUBEBUILDER_VERSION}/kubebuilder_${KUBEBUILDER_VERSION}_${os}_${arch}.tar.gz
-        # Try to extract with gzip, fall back to plain tar if not gzipped
-        if file /tmp/kubebuilder.tar.gz | grep -q "gzip compressed"; then
-          tar -xz -C /tmp/ -f /tmp/kubebuilder.tar.gz
-        else
-          tar -x -C /tmp/ -f /tmp/kubebuilder.tar.gz
+
+        # Download with fail-on-error flag
+        echo "Downloading Kubebuilder ${KUBEBUILDER_VERSION} for ${os}_${arch}..."
+        curl -fL -o /tmp/kubebuilder.tar.gz https://github.com/kubernetes-sigs/kubebuilder/releases/download/v${KUBEBUILDER_VERSION}/kubebuilder_${KUBEBUILDER_VERSION}_${os}_${arch}.tar.gz
+
+        # Verify the downloaded file is valid
+        FILE_SIZE=$(stat -c%s /tmp/kubebuilder.tar.gz 2>/dev/null || stat -f%z /tmp/kubebuilder.tar.gz 2>/dev/null || echo "0")
+        if [ "$FILE_SIZE" -lt 1000 ]; then
+          echo "ERROR: Downloaded file is too small (${FILE_SIZE} bytes). Download may have failed."
+          echo "File contents:"
+          head -n 20 /tmp/kubebuilder.tar.gz
+          exit 1
         fi
+
+        # Check if it's a valid tar/gzip file
+        if ! file /tmp/kubebuilder.tar.gz | grep -q -E "gzip compressed|tar archive"; then
+          echo "ERROR: Downloaded file is not a valid tar or gzip archive"
+          echo "File type: $(file /tmp/kubebuilder.tar.gz)"
+          exit 1
+        fi
+
+        # Extract the archive
+        tar -xz -C /tmp/ -f /tmp/kubebuilder.tar.gz
         sudo mv /tmp/kubebuilder_${KUBEBUILDER_VERSION}_${os}_${arch} /usr/local/kubebuilder
         echo "/usr/local/kubebuilder/bin" >> $GITHUB_PATH
 
