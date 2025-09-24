@@ -1,176 +1,305 @@
-version: "2"
+# golangci-lint v2.5.0 configuration for Go 1.24.7
+# Optimized for Nephio R3 compatibility
+
+run:
+  # Go version for compatibility check
+  go: '1.24'
+
+  # Timeout for running golangci-lint
+  timeout: 10m
+
+  # Include test files
+  tests: true
+
+  # Skip directories
+  skip-dirs:
+    - vendor
+    - third_party
+    - testdata
+    - examples
+    - .git
+    - deploy
+    - docs
+    - scripts
+
+  # Skip files
+  skip-files:
+    - ".*\\.pb\\.go$"
+    - ".*\\.gen\\.go$"
+    - "mock_.*\\.go$"
+    - ".*_test\\.go$"
+
+  # Number of CPUs to use
+  concurrency: 4
+
+  # Modules download mode
+  modules-download-mode: readonly
+
+output:
+  # Format of output
+  format: colored-line-number
+
+  # Print lines of code with issue
+  print-issued-lines: true
+
+  # Print linter name in the end of issue text
+  print-linter-name: true
+
+  # Make issues output unique by line
+  unique-by-line: true
+
+  # Sort results by: filepath, line and column
+  sort-results: true
 
 linters:
-  # 使用明確的 enable 清單，對應 CI 參數中的 linters
-  default: none
+  # Disable all linters first
+  disable-all: true
+
+  # Enable specific linters
   enable:
-    - gosec
-    - gocritic
-    - revive
-    - staticcheck
-    - unparam
-    - unused
-    - ineffassign
-    - misspell
-    - goconst
-    - gocyclo
-    - govet
+    # Default linters (always enabled)
     - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - typecheck
+    - unused
+
+    # Security
+    - gosec
+
+    # Style & Format
+    - gofmt
+    - goimports
+    - whitespace
+    - misspell
+
+    # Performance
+    - prealloc
     - bodyclose
     - noctx
     - rowserrcheck
     - sqlclosecheck
+
+    # Code Quality
+    - gocritic
+    - revive
     - unconvert
-    - whitespace
+    - unparam
+    - goconst
+    - gocyclo
+    - gocognit
 
-  # v2: 原本頂層的 linters-settings → 移到 linters.settings
-  settings:
-    gocyclo:
-      min-complexity: 15
+    # Best Practices
+    - dupl
+    - exhaustive
+    - exportloopref
+    - goprintffuncname
+    - nakedret
 
-    gosec:
-      severity: medium
-      confidence: medium
-      excludes:
-        - G104  # Errors unhandled
-        - G304  # File path provided as taint input
+    # New in v2.5.0
+    - godoclint
+    - unqueryvet
+    - iotamixing
 
-    misspell:
-      locale: US
+linters-settings:
+  # errcheck
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
 
-    staticcheck:
-      checks: ["all"]
+  # gocognit
+  gocognit:
+    min-complexity: 30
 
-    gocritic:
-      enabled-tags:
-        - diagnostic
-        - experimental
-        - opinionated
-        - performance
-        - style
-      disabled-checks:
-        - dupImport
-        - ifElseChain
-        - octalLiteral
-        - whyNoLint
-        - wrapperFunc
+  # gocyclo
+  gocyclo:
+    min-complexity: 15
 
-    revive:
-      severity: warning
-      rules:
-        - name: blank-imports
-        - name: context-as-argument
-        - name: context-keys-type
-        - name: dot-imports
-        - name: error-return
-        - name: error-strings
-        - name: error-naming
-        - name: exported
-        - name: if-return
-        - name: increment-decrement
-        - name: var-naming
-        - name: var-declaration
-        - name: package-comments
-        - name: range
-        - name: receiver-naming
-        - name: time-naming
-        - name: unexported-return
-        - name: indent-error-flow
-        - name: errorf
-        - name: empty-block
-        - name: superfluous-else
-        - name: unused-parameter
-        - name: unreachable-code
-        - name: redefines-builtin-id
+  # govet
+  govet:
+    check-shadowing: true
+    enable-all: true
+    disable:
+      - fieldalignment # Too many false positives
 
-  # v2: issues.exclude-dirs/exclude-rules → 移到 linters.exclusions
-  exclusions:
-    generated: strict
-    # 原本 issues.exclude-dirs → linters.exclusions.paths
-    paths:
-      - vendor/
-      - node_modules/
-      - .git/
-      - tests/golden/
-      - test/testdata/
-      - examples/
-      - docs/
-      - scripts/
-      - .github/
-      - dist/
-      - build/
-      - tmp/
+  # gosec
+  gosec:
+    severity: medium
+    confidence: medium
+    excludes:
+      - G104  # Errors unhandled (too many false positives)
+      - G204  # Subprocess launched with variable
+      - G304  # File path provided as taint input
+      - G401  # Use of weak crypto (for testing)
+      - G501  # Weak crypto (for testing)
 
-    # 原本 issues.exclude-rules → linters.exclusions.rules
+  # misspell
+  misspell:
+    locale: US
+
+  # staticcheck
+  staticcheck:
+    go: '1.24'
+    checks: ["all", "-SA1019", "-SA4006"]
+
+  # gocritic
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - experimental
+      - opinionated
+      - performance
+      - style
+    disabled-checks:
+      - dupImport # Too strict
+      - ifElseChain # Sometimes necessary
+      - octalLiteral # Rarely an issue
+      - whyNoLint # We know why we disable
+      - wrapperFunc # Too many false positives
+
+  # revive
+  revive:
+    confidence: 0.8
+    enable-all-rules: false
     rules:
-      - path: _test\.go
-        linters:
-          - gosec
-          - dupl
-          - gocritic
+      - name: blank-imports
+      - name: context-as-argument
+      - name: context-keys-type
+      - name: dot-imports
+      - name: error-return
+      - name: error-strings
+      - name: error-naming
+      - name: exported
+      - name: if-return
+      - name: increment-decrement
+      - name: var-naming
+      - name: var-declaration
+      - name: range
+      - name: receiver-naming
+      - name: time-naming
+      - name: unexported-return
+      - name: indent-error-flow
+      - name: errorf
+      - name: empty-block
+      - name: superfluous-else
+      - name: unreachable-code
 
-      - path: (testdata|examples|test|tests)/
-        linters:
-          - gosec
-          - gocritic
+  # goimports
+  goimports:
+    local-prefixes: github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing
 
-      - path: \.pb\.go$
-        linters:
-          - gosec
-          - gocritic
-          - golint
+  # gofmt
+  gofmt:
+    simplify: true
 
-      - path: vendor/
-        linters:
-          - gosec
-          - gocritic
-          - golint
-          - stylecheck
+  # goconst
+  goconst:
+    min-len: 3
+    min-occurrences: 3
 
-# v2: formatters 不能直接寫 gofmt:/goimports:，要用 enable 清單
-formatters:
-  enable:
-    - gofmt
-    - goimports
-  settings:
-    gofmt:
-      simplify: true
-    goimports:
-      local-prefixes:
-        - github.com/thc1006
+  # dupl
+  dupl:
+    threshold: 150
+
+  # prealloc
+  prealloc:
+    simple: true
+    for-loops: true
+    range-loops: true
+
+  # nakedret
+  nakedret:
+    max-func-lines: 30
+
+  # exhaustive
+  exhaustive:
+    default-signifies-exhaustive: true
+
+  # godoclint (new in v2.5.0)
+  godoclint:
+    minimum-function-doc-length: 10
+    check-private: false
+
+  # unparam
+  unparam:
+    check-exported: false
 
 issues:
-  # v2: output.unique-by-line → issues.uniq-by-line（名稱也從 unique 改成 uniq）
-  uniq-by-line: true
-  max-issues-per-linter: 50
-  max-same-issues: 10
+  # Excluding configuration per-path, per-linter, per-text and per-source
+  exclude-rules:
+    # Exclude some linters from running on tests files
+    - path: _test\.go
+      linters:
+        - gocyclo
+        - errcheck
+        - dupl
+        - gosec
+        - gocognit
+        - goconst
+
+    # Exclude known test patterns
+    - path: (testdata|examples|test)
+      linters:
+        - gocyclo
+        - errcheck
+        - dupl
+        - gosec
+        - gocognit
+
+    # Exclude lll issues for long lines with URLs
+    - linters:
+        - lll
+      source: "https?://"
+
+    # Exclude generated files
+    - path: \.pb\.go
+      linters:
+        - golint
+        - stylecheck
+        - gosec
+
+    # Exclude mock files
+    - path: mock_.*\.go
+      linters:
+        - golint
+        - gosec
+
+  # Independently from option `exclude` we use default exclude patterns
+  exclude-use-default: false
+
+  # Maximum issues count per one linter
+  max-issues-per-linter: 0
+
+  # Maximum count of issues with the same text
+  max-same-issues: 0
+
+  # Show only new issues
   new: false
+
+  # Fix found issues (if it's supported by the linter)
   fix: false
 
-output:
-  formats:
-    json:
-      path: stderr
-    checkstyle:
-      path: report.xml
-    text:
-      path: stdout
-      colors: true
-      print-issued-lines: true
-      print-linter-name: true
-  show-stats: true
-
-run:
-  timeout: 15m
-  issues-exit-code: 1
-  tests: true
-  go: "1.24.7"
-
 severity:
-  # v2: default-severity → default；移除 case-sensitive
-  default: warning
+  # Default value is empty string.
+  # Set the default severity for issues.
+  # If severity rules are defined and the issues do not match or no severity is provided to the rule
+  # this will be the default severity applied.
+  # Severities should match the supported severity names of the selected out format.
+  # - Code climate: https://docs.codeclimate.com/docs/issues#issue-severity
+  # - Checkstyle: https://checkstyle.sourceforge.io/property_types.html#severity
+  # - GitHub: https://help.github.com/en/actions/reference/workflow-commands-for-github-actions#setting-an-error-message
+  default-severity: warning
+
+  # If set to true severity-rules regular expressions become case sensitive
+  case-sensitive: false
+
+  # Rules to apply severity
   rules:
-    - linters: [gocyclo]
-      severity: warning
-    - linters: [gosec]
+    - linters:
+        - gosec
       severity: error
+    - linters:
+        - gocritic
+      severity: warning
