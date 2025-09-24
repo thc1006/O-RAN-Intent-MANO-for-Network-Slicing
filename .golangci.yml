@@ -1,5 +1,6 @@
-# golangci-lint v2.5.0 configuration for Go 1.24.7
+# golangci-lint v2.4.0 configuration for Go 1.24.7
 # Optimized for Nephio R3 compatibility
+version: v2
 
 run:
   # Go version for compatibility check
@@ -27,7 +28,6 @@ run:
     - ".*\\.pb\\.go$"
     - ".*\\.gen\\.go$"
     - "mock_.*\\.go$"
-    - ".*_test\\.go$"
 
   # Number of CPUs to use
   concurrency: 4
@@ -98,10 +98,10 @@ linters:
     - goprintffuncname
     - nakedret
 
-    # New in v2.5.0
-    - godoclint
-    - unqueryvet
-    - iotamixing
+    # New in v2.5.0 (disabled for compatibility)
+    # - godoclint
+    # - unqueryvet
+    # - iotamixing
 
 linters-settings:
   # errcheck
@@ -217,10 +217,10 @@ linters-settings:
   exhaustive:
     default-signifies-exhaustive: true
 
-  # godoclint (new in v2.5.0)
-  godoclint:
-    minimum-function-doc-length: 10
-    check-private: false
+  # godoclint (disabled - not available in v2.4.0)
+  # godoclint:
+  #   minimum-function-doc-length: 10
+  #   check-private: false
 
   # unparam
   unparam:
@@ -233,7 +233,6 @@ issues:
     - path: _test\.go
       linters:
         - gocyclo
-        - errcheck
         - dupl
         - gosec
         - gocognit
