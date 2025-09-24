@@ -323,6 +323,16 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-deps-${{ matrix.analysis-type }}-
 
+    - name: Install system dependencies for analysis
+      run: |
+        echo "🔧 Installing system dependencies for code analysis..."
+        sudo apt-get update
+        # Install basic system tools for analysis
+        sudo apt-get install -y bc curl git
+        # Install iperf3 for performance analysis tests that may run during code analysis
+        sudo apt-get install -y iperf3
+        echo "✅ System dependencies for analysis installed"
+
     - name: Install analysis tools
       run: |
         case "${{ matrix.analysis-type }}" in
@@ -787,6 +797,18 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-${{ matrix.component }}-
 
+    - name: Install system dependencies for testing
+      run: |
+        echo "🔧 Installing system dependencies for integration tests..."
+        sudo apt-get update
+        # Install iperf3 for network performance tests
+        sudo apt-get install -y iperf3
+        # Install network tools for connectivity tests
+        sudo apt-get install -y net-tools iproute2 iputils-ping
+        # Install bc for arithmetic in shell scripts
+        sudo apt-get install -y bc
+        echo "✅ System dependencies installed"
+
     - name: Install dependencies and test tools
       working-directory: ${{ matrix.test-dir }}
       run: |
@@ -842,6 +864,20 @@ jobs:
           go version
           go env
           go list -m all | head -10
+        fi
+
+        # Validate system tools for integration tests
+        echo "🔍 Validating system tools..."
+        if command -v iperf3 >/dev/null 2>&1; then
+          echo "✅ iperf3 is available: $(iperf3 --version | head -1)"
+        else
+          echo "❌ iperf3 not found - integration tests may fail"
+        fi
+
+        if command -v bc >/dev/null 2>&1; then
+          echo "✅ bc calculator is available"
+        else
+          echo "❌ bc calculator not found"
         fi
 
     - name: Run comprehensive unit tests
