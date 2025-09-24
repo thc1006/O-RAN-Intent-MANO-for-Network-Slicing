@@ -30,11 +30,11 @@ help: ## Display this help.
 
 .PHONY: manifests
 manifests: ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
-	go run sigs.k8s.io/controller-tools/cmd/controller-gen@v0.13.0 rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+	go run sigs.k8s.io/controller-tools/cmd/controller-gen@v0.13.0 rbac:roleName=manager-role crd webhook paths="./api/v1alpha1" paths="./controllers" output:crd:artifacts:config=config/crd/bases
 
 .PHONY: generate
 generate: ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
-	go run sigs.k8s.io/controller-tools/cmd/controller-gen@v0.13.0 object:headerFile="hack/boilerplate.go.txt" paths="./..."
+	go run sigs.k8s.io/controller-tools/cmd/controller-gen@v0.13.0 object:headerFile="hack/boilerplate.go.txt" paths="./api/v1alpha1"
 
 .PHONY: fmt
 fmt: ## Run go fmt against code.
@@ -57,6 +57,10 @@ golden-test: ## Run golden tests for package translation
 .PHONY: build
 build: manifests generate fmt vet ## Build manager binary.
 	go build -o bin/manager cmd/manager/main.go
+
+.PHONY: build-windows
+build-windows: fmt vet ## Build manager binary (Windows-safe, skips manifests).
+	go build -o bin/manager.exe cmd/manager/main.go
 
 .PHONY: run
 run: manifests generate fmt vet ## Run a controller from your host.
