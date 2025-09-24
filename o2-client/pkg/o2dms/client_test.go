@@ -90,7 +90,7 @@ func TestListDeploymentManagers(t *testing.T) {
 
 		response := models.ListResponse{Items: items}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
+		_ = json.NewEncoder(w).Encode(response)
 	}))
 	defer server.Close()
 
@@ -129,7 +129,7 @@ func TestGetDeploymentManager(t *testing.T) {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(mockManager)
+		_ = json.NewEncoder(w).Encode(mockManager)
 	}))
 	defer server.Close()
 
@@ -192,7 +192,7 @@ func TestCreateNFDeployment(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(expectedDeployment)
+		_ = json.NewEncoder(w).Encode(expectedDeployment)
 	}))
 	defer server.Close()
 
@@ -242,7 +242,7 @@ func TestListNFDeployments(t *testing.T) {
 
 		response := models.ListResponse{Items: items}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
+		_ = json.NewEncoder(w).Encode(response)
 	}))
 	defer server.Close()
 
@@ -281,7 +281,7 @@ func TestGetNFDeployment(t *testing.T) {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(mockDeployment)
+		_ = json.NewEncoder(w).Encode(mockDeployment)
 	}))
 	defer server.Close()
 
@@ -328,7 +328,7 @@ func TestUpdateNFDeployment(t *testing.T) {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(updatedDeployment)
+		_ = json.NewEncoder(w).Encode(updatedDeployment)
 	}))
 	defer server.Close()
 
@@ -402,7 +402,7 @@ func TestDeployVNFWithQoS(t *testing.T) {
 				},
 			}
 			response := models.ListResponse{Items: descriptors}
-			json.NewEncoder(w).Encode(response)
+			_ = json.NewEncoder(w).Encode(response)
 		} else if strings.Contains(r.URL.Path, "nfDeployments") && r.Method == "POST" {
 			// Second call - create deployment
 			deployment := &models.NFDeployment{
@@ -411,7 +411,7 @@ func TestDeployVNFWithQoS(t *testing.T) {
 				Status: models.NFDeploymentStatusInstantiating,
 			}
 			w.WriteHeader(http.StatusCreated)
-			json.NewEncoder(w).Encode(deployment)
+			_ = json.NewEncoder(w).Encode(deployment)
 		}
 	}))
 	defer server.Close()
@@ -454,7 +454,7 @@ func TestWaitForDeploymentReady(t *testing.T) {
 			deployment.Status = models.NFDeploymentStatusInstantiated
 		}
 
-		json.NewEncoder(w).Encode(deployment)
+		_ = json.NewEncoder(w).Encode(deployment)
 	}))
 	defer server.Close()
 
@@ -486,7 +486,7 @@ func TestWaitForDeploymentReadyTimeout(t *testing.T) {
 			Name:   "Test Deployment",
 			Status: models.NFDeploymentStatusInstantiating, // Always return instantiating
 		}
-		json.NewEncoder(w).Encode(deployment)
+		_ = json.NewEncoder(w).Encode(deployment)
 	}))
 	defer server.Close()
 
@@ -515,7 +515,7 @@ func TestWaitForDeploymentReadyFailed(t *testing.T) {
 			Name:   "Test Deployment",
 			Status: models.NFDeploymentStatusFailed,
 		}
-		json.NewEncoder(w).Encode(deployment)
+		_ = json.NewEncoder(w).Encode(deployment)
 	}))
 	defer server.Close()
 
@@ -559,7 +559,7 @@ func TestGetDeploymentsBySliceType(t *testing.T) {
 
 		response := models.ListResponse{Items: deployments}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
+		_ = json.NewEncoder(w).Encode(response)
 	}))
 	defer server.Close()
 
@@ -626,7 +626,7 @@ func TestHealthCheck(t *testing.T) {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(mockHealth)
+		_ = json.NewEncoder(w).Encode(mockHealth)
 	}))
 	defer server.Close()
 

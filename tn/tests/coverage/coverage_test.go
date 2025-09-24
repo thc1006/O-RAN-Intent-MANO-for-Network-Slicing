@@ -147,7 +147,7 @@ func (analyzer *CoverageAnalyzer) GenerateCoverageReport(coverageFile string) (*
 	if err != nil {
 		return nil, fmt.Errorf("failed to open coverage file: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	report := &CoverageReport{
 		PackageCoverage: make(map[string]PackageCoverage),
@@ -400,7 +400,7 @@ github.com/test/pkg/file2.go:22.16,24.3 1 1
 	if err != nil {
 		b.Fatalf("Failed to create mock coverage file: %v", err)
 	}
-	defer os.Remove(tmpFile)
+	defer func() { _ = os.Remove(tmpFile) }()
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
