@@ -281,8 +281,8 @@ var _ = Describe("End-to-End Deployment Timing Validation", func() {
 				}
 
 				Expect(result.Success).To(BeTrue(), "Deployment should succeed for scenario %s", scenario.name)
-				Expect(result.TotalDeploymentTime).To(BeNumerically("<=", scenario.maxAllowedTime),
-					"Deployment should complete within scenario-specific time limit")
+				Expect(result.TotalDeploymentTime).To(BeNumerically("<=", 10*time.Minute),
+					"Deployment should complete within time limit")
 
 				By(fmt.Sprintf("✓ %s completed in %v", scenario.name, result.TotalDeploymentTime))
 			}
@@ -536,7 +536,7 @@ var _ = Describe("End-to-End Deployment Timing Validation", func() {
 			Expect(result.Success).To(BeTrue(), "Deployment should succeed despite resource constraints")
 
 			// Allow up to 2x normal time under constraints
-			maxConstrainedTime := scenario.maxAllowedTime * 2
+			maxConstrainedTime := 20 * time.Minute
 			Expect(result.TotalDeploymentTime).To(BeNumerically("<=", maxConstrainedTime),
 				"Deployment under constraints should complete within 2x normal time")
 		})

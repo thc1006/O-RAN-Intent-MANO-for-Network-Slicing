@@ -99,7 +99,8 @@ type ValidationResult struct {
 }
 
 // O2 test scenarios covering various interface operations
-// var o2TestScenarios = []struct { // nolint:unused // TODO: implement additional test scenarios
+/* // nolint:unused // TODO: implement additional test scenarios
+var o2TestScenarios = []struct {
 	name         string
 	description  string
 	testType     string // "o2ims", "o2dms", "integration"
@@ -142,6 +143,7 @@ type ValidationResult struct {
 		operations:   []string{"discover", "select", "create", "deploy", "validate", "cleanup"},
 	},
 }
+*/
 
 var _ = ginkgo.Describe("O2 Interface Integration Tests", func() {
 	var suite *O2InterfaceTestSuite
