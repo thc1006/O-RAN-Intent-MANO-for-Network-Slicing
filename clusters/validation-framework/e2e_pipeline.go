@@ -149,7 +149,7 @@ func NewE2EPipeline(config E2EConfig, framework *ValidationFramework) *E2EPipeli
 // Execute runs the complete E2E pipeline
 func (e2e *E2EPipeline) Execute(ctx context.Context) (*E2EResult, error) {
 	if !e2e.Config.Enabled {
-		return nil, fmt.Errorf("E2E pipeline is disabled")
+		return nil, fmt.Errorf("e2E pipeline is disabled")
 	}
 
 	startTime := time.Now()
@@ -463,7 +463,7 @@ func (se *StageExecutor) executeStageType(ctx context.Context, stage E2EStage, r
 // executeGitSync executes Git synchronization
 func (se *StageExecutor) executeGitSync(ctx context.Context, stage E2EStage, result *E2EStageResult) error {
 	if se.pipeline.ValidationFramework.GitRepo == nil {
-		return fmt.Errorf("Git repository not initialized")
+		return fmt.Errorf("git repository not initialized")
 	}
 
 	// Pull latest changes
@@ -474,7 +474,7 @@ func (se *StageExecutor) executeGitSync(ctx context.Context, stage E2EStage, res
 	// Validate Git state
 	gitResult, err := se.pipeline.ValidationFramework.validateGitState(ctx)
 	if err != nil {
-		return fmt.Errorf("Git state validation failed: %w", err)
+		return fmt.Errorf("git state validation failed: %w", err)
 	}
 
 	result.Output = gitResult

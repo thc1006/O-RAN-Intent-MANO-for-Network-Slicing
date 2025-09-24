@@ -173,7 +173,7 @@ func (rm *RollbackManager) executeRollbackSteps(ctx context.Context, rollbackSta
 
 	// Step 4: Execute Git rollback
 	if err := rm.executeGitRollback(ctx, rollbackState.TargetCommit); err != nil {
-		return fmt.Errorf("Git rollback failed: %w", err)
+		return fmt.Errorf("git rollback failed: %w", err)
 	}
 
 	// Step 5: Execute Kubernetes resource rollback

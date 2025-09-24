@@ -20,7 +20,7 @@ type BottleneckAnalyzer struct {
 	analysisHistory  map[string]*AnalysisResult
 	activeAlerts     map[string]*Alert
 	historyMutex     sync.RWMutex
-	alertsMutex      sync.RWMutex
+	alertsMutex      sync.RWMutex // nolint:unused // TODO: implement concurrent alert operations
 
 	// Configuration
 	analysisInterval time.Duration
@@ -184,8 +184,8 @@ type Alert struct {
 type AlertManager struct {
 	alerts     map[string]*Alert
 	mutex      sync.RWMutex
-	webhooks   []string
-	slackURL   string
+	webhooks   []string // nolint:unused // TODO: implement webhook notifications
+	slackURL   string   // nolint:unused // TODO: implement slack notifications
 }
 
 // NewBottleneckAnalyzer creates a new bottleneck analyzer

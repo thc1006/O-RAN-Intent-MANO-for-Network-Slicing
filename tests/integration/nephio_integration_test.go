@@ -17,7 +17,7 @@ import (
 
 // NephioIntegrationSuite manages Nephio package generation and deployment testing
 type NephioIntegrationSuite struct {
-	dynClient         dynamic.Interface
+	dynClient         dynamic.Interface // nolint:unused // TODO: integrate with Porch/Config Sync dynamic client
 	testContext       context.Context
 	testCancel        context.CancelFunc
 	packageResults    []NephioPackageResult

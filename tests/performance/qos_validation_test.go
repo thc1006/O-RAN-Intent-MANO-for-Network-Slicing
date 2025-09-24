@@ -41,7 +41,7 @@ type QoSMeasurement struct {
 
 // QoSValidationSuite manages QoS parameter validation tests
 type QoSValidationSuite struct {
-	clientset    kubernetes.Interface
+	clientset    kubernetes.Interface // nolint:unused // TODO: integrate with k8s client for QoS validation
 	testContext  context.Context
 	testCancel   context.CancelFunc
 	measurements []QoSMeasurement

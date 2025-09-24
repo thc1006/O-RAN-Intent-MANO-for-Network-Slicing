@@ -579,11 +579,17 @@ func BenchmarkRegexPerformance(b *testing.B) {
 		},
 	}
 
-	for _, tp := range testPatterns {
+	// Pre-compile all regex patterns once
+	compiledPatterns := make([]*regexp.Regexp, len(testPatterns))
+	for i, tp := range testPatterns {
+		compiledPatterns[i] = regexp.MustCompile(tp.pattern)
+	}
+
+	for i, tp := range testPatterns {
 		b.Run(tp.name, func(b *testing.B) {
 			b.ResetTimer()
-			for i := 0; i < b.N; i++ {
-				matched, _ := regexp.MatchString(tp.pattern, tp.input)
+			for j := 0; j < b.N; j++ {
+				matched := compiledPatterns[i].MatchString(tp.input)
 				_ = matched
 			}
 		})
@@ -594,10 +600,10 @@ func BenchmarkRegexPerformance(b *testing.B) {
 		input := "test; rm -rf /"
 
 		b.Run("regex_approach", func(b *testing.B) {
-			dangerousPattern := `[;&|<>` + "`" + `$(){}[\]\\]`
+			dangerousRegex := regexp.MustCompile(`[;&|<>` + "`" + `$(){}[\]\\]`)
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				matched, _ := regexp.MatchString(dangerousPattern, input)
+				matched := dangerousRegex.MatchString(input)
 				_ = matched
 			}
 		})
@@ -962,7 +968,7 @@ func BenchmarkComparisonReport(b *testing.B) {
 }
 
 // calculatePerformanceScore calculates a performance score based on multiple metrics
-func calculatePerformanceScore(results map[string]BenchmarkResult) float64 {
+func calculatePerformanceScore(results map[string]BenchmarkResult) float64 { // nolint:unused // TODO: implement performance scoring
 	if len(results) == 0 {
 		return 0.0
 	}

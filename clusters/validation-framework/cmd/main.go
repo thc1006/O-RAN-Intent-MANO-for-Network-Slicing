@@ -43,6 +43,7 @@ func main() {
 	log.Printf("Config: %s", *configPath)
 	log.Printf("Cluster: %s", *clusterName)
 	log.Printf("Validate Only: %v", *validateOnly)
+	log.Printf("Metrics Enabled: %v", *enableMetrics)
 
 	// Initialize validation framework
 	framework, err := validation.NewValidationFramework(*configPath)
