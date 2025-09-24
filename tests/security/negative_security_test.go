@@ -4,17 +4,11 @@
 package security
 
 import (
-	"bufio"
 	"context"
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"net/http/httptest"
-	"net/url"
-	"os"
-	"regexp"
 	"strings"
 	"testing"
 	"time"
