@@ -89,9 +89,9 @@ install_security_tools() {
     if ! command -v gosec &> /dev/null; then
         info "Installing gosec..."
         if is_ci_environment; then
-            curl -sfL https://raw.githubusercontent.com/securecodewarrior/gosec/master/install.sh | sh -s -- -b "$(go env GOPATH)/bin" "v${GOSEC_VERSION}"
+            curl -sfL https://raw.githubusercontent.com/securego/gosec/master/install.sh | sh -s -- -b "$(go env GOPATH)/bin" "v${GOSEC_VERSION}"
         else
-            go install "github.com/securecodewarrior/gosec/v2/cmd/gosec@v${GOSEC_VERSION}"
+            go install "github.com/securego/gosec/v2/cmd/gosec@v${GOSEC_VERSION}"
         fi
         tools_installed=$((tools_installed + 1))
     fi
