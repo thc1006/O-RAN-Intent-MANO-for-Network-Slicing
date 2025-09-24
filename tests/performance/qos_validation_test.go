@@ -9,7 +9,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"k8s.io/client-go/kubernetes"
+	// "k8s.io/client-go/kubernetes" // Unused for now
 )
 
 // QoSTestProfile represents a QoS testing configuration based on thesis targets

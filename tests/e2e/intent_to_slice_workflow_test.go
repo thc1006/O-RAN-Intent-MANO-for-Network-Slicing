@@ -11,9 +11,9 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/ghttp"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	// "k8s.io/client-go/kubernetes" // Unused for now
+	// "k8s.io/client-go/rest" // Unused for now
+	// "sigs.k8s.io/controller-runtime/pkg/client" // Unused for now
 
 	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tests/framework/testutils"
 )

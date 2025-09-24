@@ -1,14 +1,6 @@
-# VNF Operator Multi-stage Dockerfile
-# Stage 1: Build with Go 1.24.7
-# Note: Using golang:latest and setting GOTOOLCHAIN to go1.24.7
-FROM golang:alpine AS builder
-
-# Force Go 1.24.7 via GOTOOLCHAIN
-ENV GOTOOLCHAIN=go1.24.7
-ENV GO124TELEMETRY=off
-ENV GOPROXY=https://proxy.golang.org,direct
-ENV GOSUMDB=sum.golang.org
-ENV GOWORK=off
+# VNF Operator Multi-stage Dockerfile with Go 1.24.7
+# Stage 1: Build with Go 1.24.7 development version
+FROM golang:1.24-rc-alpine AS builder
 
 # Security labels and metadata
 LABEL maintainer="O-RAN MANO Team"
@@ -22,16 +14,16 @@ LABEL security.scan="trivy,grype,snyk"
 LABEL security.distroless="true"
 LABEL security.user="non-root"
 
-# Install necessary tools
-RUN apk add --no-cache \
+# Security: Use non-root user for build
+RUN adduser -D -s /bin/sh appuser
+
+# Install security updates and necessary tools, clean cache
+RUN apk update && apk upgrade && apk add --no-cache \
     git \
     ca-certificates \
     tzdata && \
     update-ca-certificates && \
     rm -rf /var/cache/apk/* /tmp/* /var/tmp/*
-
-# Security: Use non-root user for build
-RUN adduser -D -s /bin/sh appuser
 
 # Set working directory
 WORKDIR /workspace
@@ -46,14 +38,16 @@ COPY pkg/security ../pkg/security
 # Copy api module for local replace directive
 COPY adapters/vnf-operator/api /workspace/api
 
-# Download dependencies - Go will automatically download go1.24.7 toolchain if needed
+# Download dependencies with Go 1.24.7
+ENV GOTOOLCHAIN=go1.24.7
+ENV GOPROXY=https://proxy.golang.org,direct
+ENV GOSUMDB=sum.golang.org
+ENV GOWORK=off
+
 RUN go mod download || (sleep 2 && go mod download) || (sleep 5 && go mod download)
 
 # Copy source code
 COPY adapters/vnf-operator/ .
-
-# Run go mod tidy to update dependencies for Go 1.24.7
-RUN go mod tidy
 
 # Build the binary with security flags using Go 1.24.7
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \

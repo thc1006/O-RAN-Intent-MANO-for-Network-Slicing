@@ -14,7 +14,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	// "sigs.k8s.io/controller-runtime/pkg/client" // Unused for now
 )
 
 // DeploymentTimingSuite manages end-to-end deployment timing validation
