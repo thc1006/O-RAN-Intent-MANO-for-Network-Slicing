@@ -10,12 +10,17 @@ run:
   go: "1.24"
 
 output:
-  # Format settings for golangci-lint v2
   formats:
-    - format: colored-line-number
+    json:
+      path: stderr
+    checkstyle:
+      path: report.xml
+    # v1 的 colored-line-number 改成 text
+    text:
       path: stdout
-  print-issued-lines: true
-  print-linter-name: true
+      colors: true              # colored-line-number 等價
+      print-issued-lines: true  # 這些選項移到 text 下面
+      print-linter-name: true
   unique-by-line: true
 
 linters:
