@@ -26,7 +26,7 @@ type FilePathValidator struct {
 func NewFilePathValidator() *FilePathValidator {
 	return &FilePathValidator{
 		allowedDirs:     make([]AllowedDirectory, 0),
-		maxPathLength:   4096,           // Maximum path length
+		maxPathLength:   4096,              // Maximum path length
 		maxFilenameSize: 100 * 1024 * 1024, // 100MB max file size
 	}
 }
@@ -105,7 +105,7 @@ func (v *FilePathValidator) ValidateFilePathAndExtension(path string, allowedExt
 		ext := strings.ToLower(filepath.Ext(path))
 		allowed := false
 		for _, allowedExt := range allowedExts {
-			if ext == strings.ToLower(allowedExt) {
+			if strings.EqualFold(ext, allowedExt) {
 				allowed = true
 				break
 			}
@@ -219,7 +219,7 @@ func (v *FilePathValidator) isPathAllowed(cleanPath string, allowedDir AllowedDi
 		ext := strings.ToLower(filepath.Ext(cleanPath))
 		allowed := false
 		for _, allowedExt := range allowedDir.Extensions {
-			if ext == strings.ToLower(allowedExt) {
+			if strings.EqualFold(ext, allowedExt) {
 				allowed = true
 				break
 			}
@@ -469,7 +469,7 @@ func ValidateAndCleanPath(path string, allowedExtensions []string) (string, erro
 		ext := strings.ToLower(filepath.Ext(cleanPath))
 		allowed := false
 		for _, allowedExt := range allowedExtensions {
-			if ext == strings.ToLower(allowedExt) {
+			if strings.EqualFold(ext, allowedExt) {
 				allowed = true
 				break
 			}

@@ -709,7 +709,7 @@ func (w *IntentToSliceWorkflow) deploySlice(request SliceDeploymentRequest) Slic
 	}
 }
 
-func (w *IntentToSliceWorkflow) measureQoSPerformance(sliceID string) QoSMetrics {
+func (w *IntentToSliceWorkflow) measureQoSPerformance(_ string) QoSMetrics {
 	// Simulate QoS measurements - in reality this would query monitoring systems
 	// Return metrics that meet thesis targets
 	return QoSMetrics{
@@ -731,12 +731,12 @@ func (w *IntentToSliceWorkflow) validateNetworkConnectivity(status SliceDeployme
 	}
 }
 
-func (w *IntentToSliceWorkflow) simulateVideoStreamingTraffic(sliceID string) {
+func (w *IntentToSliceWorkflow) simulateVideoStreamingTraffic(_ string) {
 	// Simulate video streaming traffic patterns
 	time.Sleep(1 * time.Second)
 }
 
-func (w *IntentToSliceWorkflow) simulateIoTConnections(sliceID string, numConnections int) {
+func (w *IntentToSliceWorkflow) simulateIoTConnections(_ string, numConnections int) {
 	// Simulate massive IoT device connections
 	time.Sleep(1 * time.Second)
 	Expect(numConnections).To(BeNumerically(">", 1000))
@@ -756,7 +756,7 @@ func (w *IntentToSliceWorkflow) validateResourceSharing(statuses []SliceDeployme
 	}
 }
 
-func (w *IntentToSliceWorkflow) scaleSlice(sliceID string, replicas map[string]int) SliceDeploymentStatus {
+func (w *IntentToSliceWorkflow) scaleSlice(sliceID string, _ map[string]int) SliceDeploymentStatus {
 	// Simulate slice scaling
 	return SliceDeploymentStatus{
 		SliceID: sliceID,
@@ -778,7 +778,7 @@ func (w *IntentToSliceWorkflow) updateSlice(sliceID string, qos QoSMapping) Slic
 	}
 }
 
-func (w *IntentToSliceWorkflow) monitorSlicePerformance(sliceID string, duration time.Duration) QoSMetrics {
+func (w *IntentToSliceWorkflow) monitorSlicePerformance(_ string, duration time.Duration) QoSMetrics {
 	// Simulate performance monitoring
 	time.Sleep(duration)
 	return QoSMetrics{
@@ -788,13 +788,13 @@ func (w *IntentToSliceWorkflow) monitorSlicePerformance(sliceID string, duration
 	}
 }
 
-func (w *IntentToSliceWorkflow) deleteSlice(sliceID string) string {
+func (w *IntentToSliceWorkflow) deleteSlice(_ string) string {
 	// Simulate slice deletion
 	time.Sleep(1 * time.Second)
 	return "Deleted"
 }
 
-func (w *IntentToSliceWorkflow) verifySliceCleanup(sliceID string) bool {
+func (w *IntentToSliceWorkflow) verifySliceCleanup(_ string) bool {
 	// Simulate cleanup verification
 	return true
 }

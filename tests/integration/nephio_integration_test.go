@@ -9,7 +9,6 @@ import (
 
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 
 	manov1alpha1 "github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/adapters/vnf-operator/api/v1alpha1"
@@ -848,17 +847,4 @@ func (s *NephioIntegrationSuite) generateNephioTestReport() {
 	// TODO: Generate comprehensive Nephio test report
 }
 
-// Porch and Config Sync resource schemas (GVRs)
-var (
-	porchPackageGVR = schema.GroupVersionResource{
-		Group:    "porch.kpt.dev",
-		Version:  "v1alpha1",
-		Resource: "packagerevisions",
-	}
-
-	configSyncGVR = schema.GroupVersionResource{
-		Group:    "configsync.gke.io",
-		Version:  "v1beta1",
-		Resource: "rootsyncs",
-	}
-)
+// Porch and Config Sync resource schemas would be defined here if needed

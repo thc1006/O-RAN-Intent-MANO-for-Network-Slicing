@@ -92,25 +92,25 @@ func TestGoldenTNPackage(t *testing.T) {
 func TestQoSParameterMapping(t *testing.T) {
 	testCases := []struct {
 		name              string
-		vnfFile          string
+		vnfFile           string
 		expectedBandwidth string
 		expectedLatency   string
 	}{
 		{
 			name:              "High bandwidth eMBB",
-			vnfFile:          "testdata/input/ran_vnf.yaml",
+			vnfFile:           "testdata/input/ran_vnf.yaml",
 			expectedBandwidth: "5.00",
 			expectedLatency:   "9.00",
 		},
 		{
 			name:              "Balanced profile",
-			vnfFile:          "testdata/input/cn_vnf.yaml",
+			vnfFile:           "testdata/input/cn_vnf.yaml",
 			expectedBandwidth: "3.00",
 			expectedLatency:   "9.00",
 		},
 		{
 			name:              "Low latency uRLLC",
-			vnfFile:          "testdata/input/tn_vnf.yaml",
+			vnfFile:           "testdata/input/tn_vnf.yaml",
 			expectedBandwidth: "1.00",
 			expectedLatency:   "1.00",
 		},

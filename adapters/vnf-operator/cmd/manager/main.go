@@ -58,9 +58,9 @@ func main() {
 		Metrics: metricsserver.Options{
 			BindAddress: metricsAddr,
 		},
-		HealthProbeBindAddress: probeAddr,
-		LeaderElection:         enableLeaderElection,
-		LeaderElectionID:       "vnf-operator.mano.oran.io",
+		HealthProbeBindAddress:  probeAddr,
+		LeaderElection:          enableLeaderElection,
+		LeaderElectionID:        "vnf-operator.mano.oran.io",
 		LeaderElectionNamespace: "kube-system",
 	})
 	if err != nil {

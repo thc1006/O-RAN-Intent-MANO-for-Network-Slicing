@@ -184,7 +184,8 @@ func (g *DefaultPackageGenerator) GeneratePackages(ctx context.Context, intent *
 	packages := make([]*Package, 0)
 
 	// Generate individual VNF packages
-	for _, nfSpec := range intent.Spec.NetworkFunctions {
+	for i := range intent.Spec.NetworkFunctions {
+		nfSpec := &intent.Spec.NetworkFunctions[i]
 		pkg, err := g.generateVNFPackage(ctx, nfSpec, intent)
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate package for %s: %w", nfSpec.Type, err)
@@ -193,18 +194,12 @@ func (g *DefaultPackageGenerator) GeneratePackages(ctx context.Context, intent *
 	}
 
 	// Generate network slice orchestration package
-	slicePackage, err := g.generateSliceOrchestrationPackage(ctx, intent)
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate slice orchestration package: %w", err)
-	}
+	slicePackage := g.generateSliceOrchestrationPackage(ctx, intent)
 	packages = append(packages, slicePackage)
 
 	// Generate ConfigSync packages for each target cluster
 	for _, clusterName := range intent.Spec.TargetClusters {
-		configSyncPkg, err := g.generateConfigSyncPackage(ctx, intent, clusterName)
-		if err != nil {
-			return nil, fmt.Errorf("failed to generate ConfigSync package for %s: %w", clusterName, err)
-		}
+		configSyncPkg := g.generateConfigSyncPackage(ctx, intent, clusterName)
 		packages = append(packages, configSyncPkg)
 	}
 
@@ -212,7 +207,7 @@ func (g *DefaultPackageGenerator) GeneratePackages(ctx context.Context, intent *
 }
 
 // generateVNFPackage creates a package for a specific VNF
-func (g *DefaultPackageGenerator) generateVNFPackage(ctx context.Context, nfSpec NetworkFunctionSpec, intent *NetworkSliceIntent) (*Package, error) {
+func (g *DefaultPackageGenerator) generateVNFPackage(_ context.Context, nfSpec *NetworkFunctionSpec, intent *NetworkSliceIntent) (*Package, error) {
 	// Get template from catalog
 	template, err := g.PackageCatalog.GetTemplate(nfSpec.Type, "latest")
 	if err != nil {
@@ -244,7 +239,7 @@ func (g *DefaultPackageGenerator) generateVNFPackage(ctx context.Context, nfSpec
 		},
 		PlacementInfo: PlacementInfo{
 			SiteID:      nfSpec.Placement.SiteID,
-			ClusterName: g.getTargetCluster(nfSpec.Placement),
+			ClusterName: g.getTargetCluster(&nfSpec.Placement),
 			CloudType:   nfSpec.Placement.CloudType,
 			Region:      nfSpec.Placement.Region,
 			Zone:        nfSpec.Placement.Zone,
@@ -304,7 +299,7 @@ func (g *DefaultPackageGenerator) generateVNFPackage(ctx context.Context, nfSpec
 }
 
 // generateSliceOrchestrationPackage creates the top-level slice orchestration package
-func (g *DefaultPackageGenerator) generateSliceOrchestrationPackage(ctx context.Context, intent *NetworkSliceIntent) (*Package, error) {
+func (g *DefaultPackageGenerator) generateSliceOrchestrationPackage(_ context.Context, intent *NetworkSliceIntent) *Package {
 	// Create NetworkSliceIntent resource
 	sliceIntent := &unstructured.Unstructured{
 		Object: map[string]interface{}{
@@ -357,11 +352,11 @@ func (g *DefaultPackageGenerator) generateSliceOrchestrationPackage(ctx context.
 		},
 	}
 
-	return pkg, nil
+	return pkg
 }
 
 // generateConfigSyncPackage creates ConfigSync packages for cluster-specific deployments
-func (g *DefaultPackageGenerator) generateConfigSyncPackage(ctx context.Context, intent *NetworkSliceIntent, clusterName string) (*Package, error) {
+func (g *DefaultPackageGenerator) generateConfigSyncPackage(_ context.Context, intent *NetworkSliceIntent, clusterName string) *Package {
 	// Create RootSync configuration
 	rootSync := &unstructured.Unstructured{
 		Object: map[string]interface{}{
@@ -435,7 +430,7 @@ func (g *DefaultPackageGenerator) generateConfigSyncPackage(ctx context.Context,
 		},
 	}
 
-	return pkg, nil
+	return pkg
 }
 
 // Helper methods
@@ -575,7 +570,7 @@ func (g *DefaultPackageGenerator) generateSliceNetworkPolicy(intent *NetworkSlic
 	}
 }
 
-func (g *DefaultPackageGenerator) generateClusterOverrides(clusterName string, intent *NetworkSliceIntent) map[string]interface{} {
+func (g *DefaultPackageGenerator) generateClusterOverrides(clusterName string, _ *NetworkSliceIntent) map[string]interface{} {
 	return map[string]interface{}{
 		"resources": []interface{}{
 			map[string]interface{}{
@@ -596,7 +591,7 @@ func (g *DefaultPackageGenerator) generateClusterOverrides(clusterName string, i
 	}
 }
 
-func (g *DefaultPackageGenerator) getTargetCluster(placement PlacementSpec) string {
+func (g *DefaultPackageGenerator) getTargetCluster(placement *PlacementSpec) string {
 	// Logic to determine target cluster based on placement constraints
 	if placement.SiteID != "" {
 		return fmt.Sprintf("cluster-%s", placement.SiteID)

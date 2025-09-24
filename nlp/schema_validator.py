@@ -23,9 +23,9 @@ class SchemaValidator:
         """
         if schema_path is None:
             # Use default schema in the same directory
-            schema_path = Path(__file__).parent / "schema.json"
-
-        self.schema_path = Path(schema_path)
+            self.schema_path = Path(__file__).parent / "schema.json"
+        else:
+            self.schema_path = Path(schema_path)
         self.schema = self._load_schema()
 
     def _load_schema(self) -> Dict[str, Any]:
@@ -76,7 +76,7 @@ class SchemaValidator:
             return True, None
         except jsonschema.ValidationError as e:
             return False, str(e)
-        except Exception as e:
+        except (TypeError, ValueError) as e:
             return False, f"Unexpected error: {str(e)}"
 
     def get_schema_summary(self) -> Dict[str, Any]:

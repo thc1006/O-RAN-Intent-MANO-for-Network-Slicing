@@ -36,8 +36,6 @@ class QoSMapping:
 class IntentValidationError(Exception):
     """Raised when intent validation fails"""
 
-    pass
-
 
 class IntentParser:
     """
@@ -186,7 +184,7 @@ class IntentParser:
                     scores[slice_type] += 1
 
         # Return slice type with highest score
-        detected = max(scores, key=scores.get)
+        detected = max(scores, key=lambda k: scores[k])
 
         # Default to eMBB if no clear match
         if scores[detected] == 0:
@@ -379,25 +377,27 @@ class IntentParser:
         Returns:
             JSON string representation
         """
-        data = {
-            "sliceType": mapping.slice_type.value,
-            "qosProfile": {
-                "throughputMbps": mapping.throughput_mbps,
-                "latencyMs": mapping.latency_ms,
-                "packetLossRate": mapping.packet_loss_rate,
-                "priority": mapping.priority,
-            },
+        qos_profile: Dict[str, Any] = {
+            "throughputMbps": mapping.throughput_mbps,
+            "latencyMs": mapping.latency_ms,
+            "packetLossRate": mapping.packet_loss_rate,
+            "priority": mapping.priority,
         }
 
         # Add optional fields
         if mapping.jitter_ms is not None:
-            data["qosProfile"]["jitterMs"] = mapping.jitter_ms
+            qos_profile["jitterMs"] = mapping.jitter_ms
 
         if mapping.bandwidth_guarantee is not None:
-            data["qosProfile"]["bandwidthGuaranteeMbps"] = mapping.bandwidth_guarantee
+            qos_profile["bandwidthGuaranteeMbps"] = mapping.bandwidth_guarantee
 
         if mapping.reliability is not None:
-            data["qosProfile"]["reliability"] = mapping.reliability
+            qos_profile["reliability"] = mapping.reliability
+
+        data = {
+            "sliceType": mapping.slice_type.value,
+            "qosProfile": qos_profile,
+        }
 
         return json.dumps(data, indent=2)
 

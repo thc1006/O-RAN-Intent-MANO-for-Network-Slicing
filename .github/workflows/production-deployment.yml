@@ -220,6 +220,11 @@ jobs:
             ${{
               matrix.component == 'tn-agent' && 'deploy/docker/tn-agent/Dockerfile' ||
               matrix.component == 'tn-manager' && 'deploy/docker/tn-manager/Dockerfile' ||
+              matrix.component == 'orchestrator' && 'deploy/docker/orchestrator/Dockerfile' ||
+              matrix.component == 'o2-client' && 'deploy/docker/o2-client/Dockerfile' ||
+              matrix.component == 'vnf-operator' && 'deploy/docker/vnf-operator/Dockerfile' ||
+              matrix.component == 'ran-dms' && 'deploy/docker/ran-dms/Dockerfile' ||
+              matrix.component == 'cn-dms' && 'deploy/docker/cn-dms/Dockerfile' ||
               format('{0}/Dockerfile', env.COMPONENT_PATH)
             }}
           push: true

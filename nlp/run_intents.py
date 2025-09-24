@@ -39,7 +39,7 @@ class IntentToQoSMapper:
         self.schema = self._load_schema()
 
         # Intent mapping patterns
-        self.intent_patterns = {
+        self.intent_patterns: Dict[str, Dict[str, Any]] = {
             # eMBB patterns - high bandwidth
             "embb": {
                 "keywords": [
@@ -107,11 +107,11 @@ class IntentToQoSMapper:
             with open(self.schema_path, "r", encoding="utf-8") as f:
                 schema = json.load(f)
 
-            logger.info(f"Loaded QoS schema from {self.schema_path}")
+            logger.info("Loaded QoS schema from %s", self.schema_path)
             return schema
 
         except Exception as e:
-            logger.error(f"Failed to load schema: {e}")
+            logger.error("Failed to load schema: %s", e)
             raise
 
     def _normalize_intent(self, intent: str) -> str:
@@ -142,13 +142,17 @@ class IntentToQoSMapper:
                 pattern_scores[pattern_name] = {
                     "score": score,
                     "keywords": keywords_found,
-                    "qos": pattern_data["qos"].copy(),
+                    "qos": (
+                        dict(pattern_data["qos"])
+                        if isinstance(pattern_data["qos"], dict)
+                        else {}
+                    ),
                 }
 
         # Return the highest scoring pattern
         if pattern_scores:
             best_pattern = max(
-                pattern_scores.keys(), key=lambda k: pattern_scores[k]["score"]
+                pattern_scores.keys(), key=lambda k: int(pattern_scores[k]["score"])
             )
             logger.debug(
                 f"Matched pattern '{best_pattern}' with keywords: {pattern_scores[best_pattern]['keywords']}"
@@ -159,7 +163,8 @@ class IntentToQoSMapper:
         logger.warning(
             f"No pattern matched for intent: '{intent}'. Using balanced profile."
         )
-        return "balanced", self.intent_patterns["balanced"]["qos"].copy()
+        balanced_qos = self.intent_patterns["balanced"]["qos"]
+        return "balanced", dict(balanced_qos) if isinstance(balanced_qos, dict) else {}
 
     def _enhance_qos_parameters(
         self, qos: Dict[str, Any], intent: str
@@ -202,26 +207,28 @@ class IntentToQoSMapper:
             # Validate against schema
             self._validate_qos(qos)
 
-            logger.info(f"Mapped intent '{intent[:50]}...' to {pattern_name} profile")
+            logger.info(
+                "Mapped intent '%s...' to %s profile", intent[:50], pattern_name
+            )
             return qos
 
         except Exception as e:
-            logger.error(f"Failed to map intent '{intent}': {e}")
+            logger.error("Failed to map intent '%s': %s", intent, e)
             raise
 
     def _validate_qos(self, qos: Dict[str, Any]) -> None:
         """Validate QoS parameters against the schema."""
         try:
             jsonschema.validate(instance=qos, schema=self.schema)
-            logger.debug(f"QoS parameters validated successfully: {qos}")
+            logger.debug("QoS parameters validated successfully: %s", qos)
 
         except jsonschema.ValidationError as e:
             error_msg = f"QoS validation error: {e.message}"
             logger.error(error_msg)
-            raise ValueError(error_msg)
+            raise ValueError(error_msg) from e
 
         except Exception as e:
-            logger.error(f"Unexpected validation error: {e}")
+            logger.error("Unexpected validation error: %s", e)
             raise
 
     def process_intent_file(self, input_file: str) -> List[Dict[str, Any]]:
@@ -237,7 +244,7 @@ class IntentToQoSMapper:
             with open(input_path, "r", encoding="utf-8") as f:
                 lines = f.readlines()
 
-            logger.info(f"Processing {len(lines)} intents from {input_file}")
+            logger.info("Processing %d intents from %s", len(lines), input_file)
 
             for line_num, line in enumerate(lines, 1):
                 line = line.strip()
@@ -248,18 +255,17 @@ class IntentToQoSMapper:
                     qos = self.map_intent_to_qos(line)
                     results.append({"intent": line, "qos": qos, "line": line_num})
 
-                except Exception as e:
-                    logger.warning(f"Failed to process line {line_num}: {e}")
+                except (ValueError, KeyError, json.JSONDecodeError) as e:
+                    logger.warning("Failed to process line %d: %s", line_num, e)
                     # Add error entry
                     results.append({"intent": line, "error": str(e), "line": line_num})
 
-            logger.info(
-                f"Successfully processed {len([r for r in results if 'qos' in r])} intents"
-            )
+            success_count = len([r for r in results if "qos" in r])
+            logger.info("Successfully processed %d intents", success_count)
             return results
 
         except Exception as e:
-            logger.error(f"Failed to process intent file: {e}")
+            logger.error("Failed to process intent file: %s", e)
             raise
 
 
@@ -269,7 +275,7 @@ def write_jsonl_output(
     """Write results to JSONL format (one JSON object per line)."""
     if output_file:
         output_path = Path(output_file)
-        logger.info(f"Writing results to {output_file}")
+        logger.info("Writing results to %s", output_file)
         file_handle = open(output_path, "w", encoding="utf-8")
     else:
         file_handle = sys.stdout
@@ -290,7 +296,7 @@ def write_jsonl_output(
             file_handle.write("\n")
 
         if output_file:
-            logger.info(f"Results written to {output_file}")
+            logger.info("Results written to %s", output_file)
 
     finally:
         if output_file:
@@ -364,7 +370,7 @@ def main():
         logger.info("Intent-to-QoS mapping completed successfully")
 
     except Exception as e:
-        logger.error(f"Application error: {e}")
+        logger.error("Application error: %s", e)
         sys.exit(1)
 
 

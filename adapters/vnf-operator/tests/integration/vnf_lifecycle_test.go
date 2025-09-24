@@ -201,18 +201,18 @@ func TestVNFValidationIntegration(t *testing.T) {
 		errorText string
 	}{
 		{
-			name: "Invalid Bandwidth",
-			vnf: createTestVNF("invalid-bandwidth", manov1alpha1.VNFTypeRAN, "edge", 10.0, 5.0),
+			name:      "Invalid Bandwidth",
+			vnf:       createTestVNF("invalid-bandwidth", manov1alpha1.VNFTypeRAN, "edge", 10.0, 5.0),
 			errorText: "bandwidth must be between",
 		},
 		{
-			name: "Invalid Latency",
-			vnf: createTestVNF("invalid-latency", manov1alpha1.VNFTypeRAN, "edge", 3.0, 0.5),
+			name:      "Invalid Latency",
+			vnf:       createTestVNF("invalid-latency", manov1alpha1.VNFTypeRAN, "edge", 3.0, 0.5),
 			errorText: "latency must be between",
 		},
 		{
-			name: "Invalid Cloud Type",
-			vnf: createTestVNF("invalid-cloud", manov1alpha1.VNFTypeRAN, "invalid", 3.0, 5.0),
+			name:      "Invalid Cloud Type",
+			vnf:       createTestVNF("invalid-cloud", manov1alpha1.VNFTypeRAN, "invalid", 3.0, 5.0),
 			errorText: "invalid cloud type",
 		},
 	}
