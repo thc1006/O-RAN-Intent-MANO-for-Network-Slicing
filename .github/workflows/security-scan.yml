@@ -127,13 +127,11 @@ jobs:
           HIGH_ISSUES=$(jq -r '.summary.high_issues' security-check-report.json)
           FAILED_CHECKS=$(jq -r '.statistics.failed_checks' security-check-report.json)
 
-          cat >> $GITHUB_OUTPUT << EOF
-overall_status=$OVERALL_STATUS
-total_issues=$TOTAL_ISSUES
-critical_issues=$CRITICAL_ISSUES
-high_issues=$HIGH_ISSUES
-failed_checks=$FAILED_CHECKS
-EOF
+          echo "overall_status=$OVERALL_STATUS" >> $GITHUB_OUTPUT
+          echo "total_issues=$TOTAL_ISSUES" >> $GITHUB_OUTPUT
+          echo "critical_issues=$CRITICAL_ISSUES" >> $GITHUB_OUTPUT
+          echo "high_issues=$HIGH_ISSUES" >> $GITHUB_OUTPUT
+          echo "failed_checks=$FAILED_CHECKS" >> $GITHUB_OUTPUT
 
           # Create summary for step output
           echo "## Security Scan Results" >> $GITHUB_STEP_SUMMARY
