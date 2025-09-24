@@ -70,7 +70,10 @@ jobs:
     - name: Install system dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y jq yq bc curl wget
+        sudo apt-get install -y jq bc curl wget
+        # Install yq manually (the apt version is outdated)
+        sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+        sudo chmod +x /usr/local/bin/yq
 
     - name: Cache security tools
       id: cache-tools
@@ -80,18 +83,63 @@ jobs:
           ~/go/bin/gosec
           ~/.local/bin/checkov
           /usr/local/bin/kubesec
-        key: security-tools-${{ runner.os }}-gosec-2.18.2-checkov-3.0.0-kubesec-2.14.0
+        key: security-tools-${{ runner.os }}-gosec-2.18.2-checkov-3.0.0-kubesec-2.14.2
         restore-keys: |
           security-tools-${{ runner.os }}-
 
-    - name: Install Go dependencies
+    - name: Install analysis tools
+      if: steps.cache-tools.outputs.cache-hit != 'true'
       run: |
+        # Install gosec
+        if ! command -v gosec &> /dev/null; then
+          echo "Installing gosec..."
+          go install github.com/securego/gosec/v2/cmd/gosec@v2.18.2
+        fi
+
+        # Install checkov
+        if ! command -v checkov &> /dev/null; then
+          echo "Installing checkov..."
+          pip3 install --user checkov==3.0.0
+        fi
+
+        # Install kubesec
+        if ! command -v kubesec &> /dev/null; then
+          echo "Installing kubesec..."
+          curl -sSL "https://github.com/controlplaneio/kubesec/releases/download/v2.14.2/kubesec_linux_amd64.tar.gz" | tar -xz -C /tmp
+          sudo mv /tmp/kubesec /usr/local/bin/kubesec
+          sudo chmod +x /usr/local/bin/kubesec
+        fi
+
+        # Verify tools installation
+        echo "Verifying tool installations:"
+        gosec --version || echo "gosec not found"
+        checkov --version || echo "checkov not found"
+        kubesec version || echo "kubesec not found"
+
+    - name: Setup PATH and install Go dependencies
+      run: |
+        # Add tools to PATH
+        echo "$HOME/go/bin" >> $GITHUB_PATH
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
+        echo "/usr/local/bin" >> $GITHUB_PATH
+
+        # Download and verify Go modules
         go mod download
         go mod verify
 
     - name: Run comprehensive security check
       id: security-check
       run: |
+        # Verify tools are available
+        echo "Verifying security tools before running checks..."
+        export PATH="$HOME/go/bin:$HOME/.local/bin:/usr/local/bin:$PATH"
+
+        gosec --version || { echo "gosec not found in PATH"; exit 1; }
+        checkov --version || { echo "checkov not found in PATH"; exit 1; }
+        kubesec version || { echo "kubesec not found in PATH"; exit 1; }
+        yq --version || { echo "yq not found in PATH"; exit 1; }
+        jq --version || { echo "jq not found in PATH"; exit 1; }
+
         # Set script options based on inputs
         SCRIPT_OPTS=""
         if [[ "${{ github.event.inputs.skip_install }}" == "true" ]]; then

@@ -4,19 +4,17 @@ Tests cover intent parsing, QoS mapping, validation, and edge cases.
 Target: >90% code coverage with production-grade test scenarios.
 """
 
-import pytest
-import json
 import os
 import sys
-import time
-from unittest.mock import Mock, patch, MagicMock
-from typing import Dict, List, Any
+from unittest.mock import Mock, patch
+
+import pytest
 
 # Add the parent directory to the path to import the module
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 
-from intent_parser import IntentParser, QoSMapping, IntentValidationError
-from schema_validator import SchemaValidator
+from intent_parser import IntentParser, IntentValidationError  # noqa: E402
+from schema_validator import SchemaValidator  # noqa: E402
 
 
 class TestIntentParser:
@@ -47,7 +45,7 @@ class TestIntentParser:
             "machine_learning": "Set up a high-bandwidth slice for machine learning model training",
             "voice_calls": "Deploy a voice communication slice with consistent quality",
             "file_transfer": "Create a bulk data transfer slice with maximum throughput",
-            "critical_infrastructure": "Establish a mission-critical slice for power grid monitoring"
+            "critical_infrastructure": "Establish a mission-critical slice for power grid monitoring",
         }
 
     @pytest.fixture
@@ -59,30 +57,30 @@ class TestIntentParser:
                 "latency_ms": 1,
                 "throughput_mbps": 100,
                 "reliability": 99.999,
-                "slice_type": "urllc"
+                "slice_type": "urllc",
             },
             "video_streaming": {
                 "priority": "medium",
                 "latency_ms": 10,
                 "throughput_mbps": 50,
                 "reliability": 99.9,
-                "slice_type": "embb"
+                "slice_type": "embb",
             },
             "iot_basic": {
                 "priority": "low",
                 "latency_ms": 100,
                 "throughput_mbps": 1,
                 "reliability": 99.0,
-                "slice_type": "mmtc"
-            }
+                "slice_type": "mmtc",
+            },
         }
 
     def test_parser_initialization(self, parser):
         """Test that parser initializes correctly."""
         assert parser is not None
-        assert hasattr(parser, 'parse_intent')
-        assert hasattr(parser, 'map_to_qos')
-        assert hasattr(parser, 'validate_intent')
+        assert hasattr(parser, "parse_intent")
+        assert hasattr(parser, "map_to_qos")
+        assert hasattr(parser, "validate_intent")
 
     def test_basic_intent_parsing(self, parser, sample_intents):
         """Test basic intent parsing functionality."""
@@ -95,7 +93,9 @@ class TestIntentParser:
         assert "confidence" in result
         assert result["confidence"] > 0.5
 
-    def test_qos_mapping_high_priority(self, parser, sample_intents, expected_qos_mappings):
+    def test_qos_mapping_high_priority(
+        self, parser, sample_intents, expected_qos_mappings
+    ):
         """Test QoS mapping for high-priority intents."""
         intent = sample_intents["high_priority"]
         parsed = parser.parse_intent(intent)
@@ -107,7 +107,9 @@ class TestIntentParser:
         assert qos["throughput_mbps"] >= expected["throughput_mbps"]
         assert qos["reliability"] >= expected["reliability"]
 
-    def test_qos_mapping_video_streaming(self, parser, sample_intents, expected_qos_mappings):
+    def test_qos_mapping_video_streaming(
+        self, parser, sample_intents, expected_qos_mappings
+    ):
         """Test QoS mapping for video streaming intents."""
         intent = sample_intents["video_streaming"]
         parsed = parser.parse_intent(intent)
@@ -127,16 +129,21 @@ class TestIntentParser:
         assert qos["slice_type"] == expected["slice_type"]
         assert qos["priority"] == expected["priority"]
 
-    @pytest.mark.parametrize("intent_key,expected_slice_type", [
-        ("autonomous_vehicles", "urllc"),
-        ("enterprise", "embb"),
-        ("gaming", "urllc"),
-        ("machine_learning", "embb"),
-        ("voice_calls", "urllc"),
-        ("file_transfer", "embb"),
-        ("critical_infrastructure", "urllc")
-    ])
-    def test_slice_type_classification(self, parser, sample_intents, intent_key, expected_slice_type):
+    @pytest.mark.parametrize(
+        "intent_key,expected_slice_type",
+        [
+            ("autonomous_vehicles", "urllc"),
+            ("enterprise", "embb"),
+            ("gaming", "urllc"),
+            ("machine_learning", "embb"),
+            ("voice_calls", "urllc"),
+            ("file_transfer", "embb"),
+            ("critical_infrastructure", "urllc"),
+        ],
+    )
+    def test_slice_type_classification(
+        self, parser, sample_intents, intent_key, expected_slice_type
+    ):
         """Test slice type classification for various intents."""
         intent = sample_intents[intent_key]
         parsed = parser.parse_intent(intent)
@@ -149,7 +156,7 @@ class TestIntentParser:
         intent = sample_intents["high_priority"]
         parsed = parser.parse_intent(intent)
 
-        assert parser.validate_intent(parsed) == True
+        assert parser.validate_intent(parsed) is True
 
     def test_intent_validation_invalid_intent(self, parser):
         """Test validation of invalid intents."""
@@ -189,7 +196,11 @@ class TestIntentParser:
         keywords = parsed.get("keywords", [])
 
         # Check that some expected keywords are found
-        found_keywords = [kw for kw in expected_keywords if any(kw.lower() in k.lower() for k in keywords)]
+        found_keywords = [
+            kw
+            for kw in expected_keywords
+            if any(kw.lower() in k.lower() for k in keywords)
+        ]
         assert len(found_keywords) >= 2
 
     def test_confidence_scoring(self, parser, sample_intents):
@@ -225,7 +236,13 @@ class TestIntentParser:
         qos = parser.map_to_qos(parsed)
 
         # Required fields
-        required_fields = ["priority", "latency_ms", "throughput_mbps", "reliability", "slice_type"]
+        required_fields = [
+            "priority",
+            "latency_ms",
+            "throughput_mbps",
+            "reliability",
+            "slice_type",
+        ]
         for field in required_fields:
             assert field in qos
 
@@ -248,12 +265,13 @@ class TestIntentParser:
         # Test that parser can handle high-priority emergency intents
         result = parser.parse_intent("emergency high-priority slice")
         assert result["confidence"] >= 0.8
-        assert "emergency" in result.get("keywords", []) or "critical" in result.get("keywords", [])
+        assert "emergency" in result.get("keywords", []) or "critical" in result.get(
+            "keywords", []
+        )
         assert result["slice_type"] == "urllc"
 
     def test_concurrent_parsing(self, parser, sample_intents):
         """Test concurrent intent parsing."""
-        import threading
         import concurrent.futures
 
         results = []
@@ -268,8 +286,10 @@ class TestIntentParser:
 
         # Run multiple parsing operations concurrently
         with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-            futures = [executor.submit(parse_intent_thread, intent)
-                      for intent in sample_intents.values()]
+            futures = [
+                executor.submit(parse_intent_thread, intent)
+                for intent in sample_intents.values()
+            ]
             concurrent.futures.wait(futures)
 
         assert len(errors) == 0, f"Concurrent parsing failed with errors: {errors}"
@@ -284,19 +304,22 @@ class TestIntentParser:
         # Parse multiple intents
         for intent in sample_intents.values():
             parsed = parser.parse_intent(intent)
-            qos = parser.map_to_qos(parsed)
+            _ = parser.map_to_qos(parsed)  # QoS mapping for performance test
 
         end_time = time.time()
         total_time = end_time - start_time
         avg_time_per_intent = total_time / len(sample_intents)
 
         # Performance requirement: each intent should be processed in <100ms
-        assert avg_time_per_intent < 0.1, f"Average processing time {avg_time_per_intent}s exceeds 100ms threshold"
+        assert (
+            avg_time_per_intent < 0.1
+        ), f"Average processing time {avg_time_per_intent}s exceeds 100ms threshold"
 
     def test_memory_usage(self, parser, sample_intents):
         """Test memory usage during intent parsing."""
-        import psutil
         import os
+
+        import psutil
 
         process = psutil.Process(os.getpid())
         initial_memory = process.memory_info().rss / 1024 / 1024  # MB
@@ -305,7 +328,7 @@ class TestIntentParser:
         for _ in range(100):
             for intent in sample_intents.values():
                 parsed = parser.parse_intent(intent)
-                qos = parser.map_to_qos(parsed)
+                _ = parser.map_to_qos(parsed)  # QoS mapping for memory test
 
         final_memory = process.memory_info().rss / 1024 / 1024  # MB
         memory_increase = final_memory - initial_memory
@@ -316,7 +339,9 @@ class TestIntentParser:
     def test_error_recovery(self, parser):
         """Test error recovery and graceful degradation."""
         # Test recovery from processing errors
-        with patch.object(parser, '_extract_keywords', side_effect=Exception("NLP Error")):
+        with patch.object(
+            parser, "_extract_keywords", side_effect=Exception("NLP Error")
+        ):
             try:
                 result = parser.parse_intent("test intent")
                 # Should still return a result with default values
@@ -348,7 +373,7 @@ class TestIntentParser:
             "创建高优先级网络切片",  # Chinese
             "créer une tranche réseau prioritaire",  # French
             "создать сетевой срез высокого приоритета",  # Russian
-            "उच्च प्राथमिकता नेटवर्क स्लाइस बनाएं"  # Hindi
+            "उच्च प्राथमिकता नेटवर्क स्लाइस बनाएं",  # Hindi
         ]
 
         for intent in international_intents:
@@ -357,7 +382,9 @@ class TestIntentParser:
                 assert result is not None
                 assert "confidence" in result
             except Exception as e:
-                pytest.fail(f"Failed to handle international text: {intent}, Error: {e}")
+                pytest.fail(
+                    f"Failed to handle international text: {intent}, Error: {e}"
+                )
 
     def test_thesis_performance_targets(self, parser, sample_intents):
         """Test that QoS mappings meet thesis performance targets."""
@@ -366,7 +393,7 @@ class TestIntentParser:
         intents_to_test = [
             ("high_priority", {"min_throughput": 4.57, "max_latency": 6.3}),
             ("video_streaming", {"min_throughput": 2.77, "max_latency": 15.7}),
-            ("iot_basic", {"min_throughput": 0.93, "max_latency": 16.1})
+            ("iot_basic", {"min_throughput": 0.93, "max_latency": 16.1}),
         ]
 
         for intent_key, targets in intents_to_test:
@@ -374,10 +401,12 @@ class TestIntentParser:
             parsed = parser.parse_intent(intent)
             qos = parser.map_to_qos(parsed)
 
-            assert qos["throughput_mbps"] >= targets["min_throughput"], \
-                f"Throughput {qos['throughput_mbps']} < target {targets['min_throughput']} for {intent_key}"
-            assert qos["latency_ms"] <= targets["max_latency"], \
-                f"Latency {qos['latency_ms']} > target {targets['max_latency']} for {intent_key}"
+            assert (
+                qos["throughput_mbps"] >= targets["min_throughput"]
+            ), f"Throughput {qos['throughput_mbps']} < target {targets['min_throughput']} for {intent_key}"
+            assert (
+                qos["latency_ms"] <= targets["max_latency"]
+            ), f"Latency {qos['latency_ms']} > target {targets['max_latency']} for {intent_key}"
 
 
 class TestQoSMapping:
@@ -391,7 +420,7 @@ class TestQoSMapping:
     def test_qos_mapping_initialization(self, parser):
         """Test QoS mapper initialization."""
         assert parser is not None
-        assert hasattr(parser, 'map_to_qos')
+        assert hasattr(parser, "map_to_qos")
 
     def test_urllc_mapping(self, parser):
         """Test URLLC slice type mapping."""
@@ -424,12 +453,14 @@ class TestQoSMapping:
 
 if __name__ == "__main__":
     # Run tests with coverage
-    pytest.main([
-        __file__,
-        "-v",
-        "--cov=intent_parser",
-        "--cov=schema_validator",
-        "--cov-report=html",
-        "--cov-report=term-missing",
-        "--cov-fail-under=90"
-    ])
+    pytest.main(
+        [
+            __file__,
+            "-v",
+            "--cov=intent_parser",
+            "--cov=schema_validator",
+            "--cov-report=html",
+            "--cov-report=term-missing",
+            "--cov-fail-under=90",
+        ]
+    )

@@ -264,6 +264,7 @@ type NFDeploymentStatus string
 
 const (
 	NFDeploymentStatusNotInstantiated NFDeploymentStatus = "NOT_INSTANTIATED"
+	NFDeploymentStatusInstantiating   NFDeploymentStatus = "INSTANTIATING"
 	NFDeploymentStatusInstantiated    NFDeploymentStatus = "INSTANTIATED"
 	NFDeploymentStatusFailed          NFDeploymentStatus = "FAILED"
 )

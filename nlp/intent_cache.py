@@ -4,21 +4,23 @@ High-Performance Intent Processing Cache
 Provides aggressive caching and pre-computation for intent processing
 """
 
-import json
-import hashlib
-import time
-import threading
-from typing import Dict, List, Optional, Tuple, Any
-from dataclasses import dataclass, asdict
-from collections import OrderedDict
 import concurrent.futures
+import hashlib
+import threading
+import time
+from collections import OrderedDict
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Tuple
+
 import regex as re  # More efficient than standard re
-from intent_processor import IntentProcessor, IntentResult, ServiceType, QoSParameters
+
+from intent_processor import IntentProcessor, IntentResult, ServiceType
 
 
 @dataclass
 class CacheEntry:
     """Cached intent processing result"""
+
     result: IntentResult
     timestamp: float
     hit_count: int
@@ -32,7 +34,9 @@ class CacheEntry:
 class PerformanceIntentCache:
     """High-performance intent processing cache with pre-computation"""
 
-    def __init__(self, max_size: int = 10000, ttl: float = 3600, precompute_common: bool = True):
+    def __init__(
+        self, max_size: int = 10000, ttl: float = 3600, precompute_common: bool = True
+    ):
         """
         Initialize performance cache
 
@@ -53,7 +57,7 @@ class PerformanceIntentCache:
             "misses": 0,
             "evictions": 0,
             "precomputed": 0,
-            "total_processing_time": 0.0
+            "total_processing_time": 0.0,
         }
 
         # Pre-compiled regex patterns for performance
@@ -69,20 +73,32 @@ class PerformanceIntentCache:
 
         # Latency patterns
         self.compiled_patterns["latency"] = [
-            (re.compile(r"(\d+(?:\.\d+)?)\s*ms\s*latency", re.IGNORECASE), lambda x: float(x)),
-            (re.compile(r"latency\s*[<≤]\s*(\d+(?:\.\d+)?)\s*ms", re.IGNORECASE), lambda x: float(x)),
+            (
+                re.compile(r"(\d+(?:\.\d+)?)\s*ms\s*latency", re.IGNORECASE),
+                lambda x: float(x),
+            ),
+            (
+                re.compile(r"latency\s*[<≤]\s*(\d+(?:\.\d+)?)\s*ms", re.IGNORECASE),
+                lambda x: float(x),
+            ),
             (re.compile(r"ultra[-\s]?low\s*latency", re.IGNORECASE), lambda: 10.0),
             (re.compile(r"low\s*latency", re.IGNORECASE), lambda: 20.0),
-            (re.compile(r"moderate\s*latency", re.IGNORECASE), lambda: 50.0)
+            (re.compile(r"moderate\s*latency", re.IGNORECASE), lambda: 50.0),
         ]
 
         # Throughput patterns
         self.compiled_patterns["throughput"] = [
-            (re.compile(r"(\d+(?:\.\d+)?)\s*[Mm]bps", re.IGNORECASE), lambda x: float(x)),
-            (re.compile(r"(\d+(?:\.\d+)?)\s*[Gg]bps", re.IGNORECASE), lambda x: float(x) * 1000),
+            (
+                re.compile(r"(\d+(?:\.\d+)?)\s*[Mm]bps", re.IGNORECASE),
+                lambda x: float(x),
+            ),
+            (
+                re.compile(r"(\d+(?:\.\d+)?)\s*[Gg]bps", re.IGNORECASE),
+                lambda x: float(x) * 1000,
+            ),
             (re.compile(r"high\s*bandwidth", re.IGNORECASE), lambda: 100.0),
             (re.compile(r"moderate\s*bandwidth", re.IGNORECASE), lambda: 10.0),
-            (re.compile(r"low\s*bandwidth", re.IGNORECASE), lambda: 1.0)
+            (re.compile(r"low\s*bandwidth", re.IGNORECASE), lambda: 1.0),
         ]
 
         # Service type patterns
@@ -100,31 +116,26 @@ class PerformanceIntentCache:
             "Create a low-latency network slice for AR/VR gaming with guaranteed 10ms latency",
             "Gaming service requiring less than 6.3ms latency and 1 Mbps throughput",
             "Ultra-low latency gaming slice with 5ms latency",
-
             # Video streaming
             "I need a high bandwidth slice for 4K video streaming with at least 25 Mbps",
             "High bandwidth video streaming tolerating up to 20ms latency with 4.57 Mbps",
             "Video streaming service with 10 Mbps bandwidth",
-
             # URLLC scenarios
             "Deploy an ultra-reliable slice for autonomous vehicle communication with 5 nines reliability",
             "Ultra-low latency slice for critical applications with 1ms latency",
             "Mission critical communication for emergency services",
-
             # IoT scenarios
             "Set up IoT monitoring with low bandwidth requirements at the edge",
             "Massive IoT connectivity for smart city sensors",
             "IoT slice with low power requirements",
-
             # eMBB scenarios
             "High bandwidth mobile broadband with 100 Mbps",
             "Enhanced mobile broadband for dense urban areas",
             "Mobile broadband slice with high capacity",
-
             # Thesis-specific scenarios
             "High bandwidth video streaming tolerating up to 20ms latency with 4.57 Mbps",
             "Gaming service requiring less than 6.3ms latency and 0.93 Mbps throughput",
-            "IoT monitoring with 2.77 Mbps bandwidth and 15.7ms latency tolerance"
+            "IoT monitoring with 2.77 Mbps bandwidth and 15.7ms latency tolerance",
         ]
 
         print("Pre-computing common intent patterns...")
@@ -145,14 +156,16 @@ class PerformanceIntentCache:
                     print(f"Error pre-computing intent: {e}")
 
         precompute_time = time.time() - start_time
-        print(f"Pre-computed {self.stats['precomputed']} intent patterns in {precompute_time:.2f}s")
+        print(
+            f"Pre-computed {self.stats['precomputed']} intent patterns in {precompute_time:.2f}s"
+        )
 
     def _compute_hash(self, intent: str) -> str:
         """Compute hash for intent caching"""
         # Normalize intent for consistent hashing
         normalized = intent.lower().strip()
         # Remove extra whitespace
-        normalized = re.sub(r'\s+', ' ', normalized)
+        normalized = re.sub(r"\s+", " ", normalized)
         return hashlib.sha256(normalized.encode()).hexdigest()
 
     def _fast_service_type_detection(self, intent: str) -> Tuple[ServiceType, float]:
@@ -236,7 +249,7 @@ class PerformanceIntentCache:
             service_type=service_type,
             qos_parameters=qos_params,
             placement_hints=placement_hints,
-            confidence=confidence
+            confidence=confidence,
         )
 
         processing_time = time.time() - start_time
@@ -249,7 +262,7 @@ class PerformanceIntentCache:
                     result=result,
                     timestamp=time.time(),
                     hit_count=0,
-                    processing_time=processing_time
+                    processing_time=processing_time,
                 )
                 self._evict_if_needed()
 
@@ -296,7 +309,9 @@ class PerformanceIntentCache:
         # Compute outside of lock to allow concurrent access
         return self._compute_and_cache(intent)
 
-    def batch_process(self, intents: List[str], max_workers: int = 4) -> List[IntentResult]:
+    def batch_process(
+        self, intents: List[str], max_workers: int = 4
+    ) -> List[IntentResult]:
         """
         Process multiple intents in parallel
 
@@ -329,7 +344,7 @@ class PerformanceIntentCache:
                         service_type=ServiceType.EMBB,
                         qos_parameters=self.processor.default_qos[ServiceType.EMBB],
                         placement_hints={},
-                        confidence=0.0
+                        confidence=0.0,
                     )
 
         return results
@@ -340,7 +355,9 @@ class PerformanceIntentCache:
         start_time = time.time()
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
-            futures = [executor.submit(self.process_intent, intent) for intent in intents]
+            futures = [
+                executor.submit(self.process_intent, intent) for intent in intents
+            ]
             for future in concurrent.futures.as_completed(futures):
                 try:
                     future.result()
@@ -358,7 +375,8 @@ class PerformanceIntentCache:
 
             avg_processing_time = (
                 self.stats["total_processing_time"] / self.stats["misses"]
-                if self.stats["misses"] > 0 else 0
+                if self.stats["misses"] > 0
+                else 0
             )
 
             return {
@@ -370,7 +388,7 @@ class PerformanceIntentCache:
                 "misses": self.stats["misses"],
                 "evictions": self.stats["evictions"],
                 "precomputed": self.stats["precomputed"],
-                "avg_processing_time_ms": avg_processing_time * 1000
+                "avg_processing_time_ms": avg_processing_time * 1000,
             }
 
     def clear_cache(self):
@@ -384,7 +402,7 @@ class PerformanceIntentCache:
                 "misses": 0,
                 "evictions": 0,
                 "precomputed": precomputed,
-                "total_processing_time": 0.0
+                "total_processing_time": 0.0,
             }
 
 
@@ -445,7 +463,7 @@ def benchmark_performance():
     cached_miss_avg = sum(cached_times_miss) / len(cached_times_miss)
     cached_hit_avg = sum(cached_times_hit) / len(cached_times_hit)
 
-    print(f"\n=== Performance Benchmark Results ===")
+    print("\n=== Performance Benchmark Results ===")
     print(f"Original processor average: {original_avg*1000:.2f}ms")
     print(f"Cached processor (miss) average: {cached_miss_avg*1000:.2f}ms")
     print(f"Cached processor (hit) average: {cached_hit_avg*1000:.2f}ms")
