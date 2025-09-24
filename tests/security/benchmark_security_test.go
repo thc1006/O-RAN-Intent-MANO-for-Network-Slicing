@@ -8,7 +8,6 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"math"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
