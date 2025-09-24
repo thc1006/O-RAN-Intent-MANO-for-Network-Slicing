@@ -1074,25 +1074,3 @@ func BenchmarkComparisonReport(b *testing.B) {
 }
 
 // calculatePerformanceScore calculates a performance score based on multiple metrics
-func calculatePerformanceScore(results map[string]BenchmarkResult) float64 { // nolint:unused // TODO: implement performance scoring
-	if len(results) == 0 {
-		return 0.0
-	}
-
-	var totalScore float64
-	for _, result := range results {
-		// Score based on operations per second (higher is better)
-		opsScore := math.Log10(result.OpsPerSecond + 1)
-
-		// Penalty for high memory usage
-		memoryPenalty := math.Log10(float64(result.BytesPerOp + 1))
-
-		// Penalty for high allocation rate
-		allocPenalty := math.Log10(float64(result.AllocsPerOp + 1))
-
-		score := opsScore - (memoryPenalty * 0.1) - (allocPenalty * 0.1)
-		totalScore += score
-	}
-
-	return totalScore / float64(len(results))
-}
