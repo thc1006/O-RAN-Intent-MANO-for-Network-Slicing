@@ -805,13 +805,13 @@ func TestFuzzingUnicodeEdgeCases(t *testing.T) {
 	t.Run("unicode_normalization_attacks", func(t *testing.T) {
 		// Test Unicode normalization vulnerabilities
 		unicodeAttacks := []string{
-			"test\u0041\u030A", // A with ring above (Å)
-			"test\u00C5",       // Precomposed Å
-			"test\u2044",       // Fraction slash
-			"test\uFEFF",       // Zero-width no-break space
-			"test\u200B",       // Zero-width space
-			"test\u200C",       // Zero-width non-joiner
-			"test\u200D",       // Zero-width joiner
+			"test\u0041\u030A",  // A with ring above (Å)
+			"test\u00C5",        // Precomposed Å
+			"test\u2044",        // Fraction slash
+			"test\uFEFF",        // Zero-width no-break space
+			"test\u200B",        // Zero-width space
+			"test\u200C",        // Zero-width non-joiner
+			"test\u200D",        // Zero-width joiner
 			"admin\u0041\u030A", // Unicode spoofing attempt
 		}
 
@@ -851,9 +851,9 @@ func TestFuzzingUnicodeEdgeCases(t *testing.T) {
 		// Test bidirectional text override attacks
 		bidiAttacks := []string{
 			"test\u202E" + "gnirts" + "\u202D", // Right-to-left override
-			"test\u061C" + "attack",           // Arabic letter mark
-			"admin\u200F" + "user",            // Right-to-left mark
-			"test\u200E" + "evil",             // Left-to-right mark
+			"test\u061C" + "attack",            // Arabic letter mark
+			"admin\u200F" + "user",             // Right-to-left mark
+			"test\u200E" + "evil",              // Left-to-right mark
 		}
 
 		for _, attack := range bidiAttacks {

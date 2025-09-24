@@ -33,14 +33,14 @@ type MetricsAggregator struct {
 
 // AggregatorConfig holds aggregator configuration
 type AggregatorConfig struct {
-	DataSources      []DataSource       `yaml:"data_sources"`
-	UpdateInterval   time.Duration      `yaml:"update_interval"`
-	RetentionPeriod  time.Duration      `yaml:"retention_period"`
-	Thresholds       map[string]float64 `yaml:"thresholds"`
-	AlertWebhooks    []string           `yaml:"alert_webhooks"`
-	OutputDirectory  string             `yaml:"output_directory"`
-	EnableRealTime   bool               `yaml:"enable_realtime"`
-	MaxHistorySize   int                `yaml:"max_history_size"`
+	DataSources     []DataSource       `yaml:"data_sources"`
+	UpdateInterval  time.Duration      `yaml:"update_interval"`
+	RetentionPeriod time.Duration      `yaml:"retention_period"`
+	Thresholds      map[string]float64 `yaml:"thresholds"`
+	AlertWebhooks   []string           `yaml:"alert_webhooks"`
+	OutputDirectory string             `yaml:"output_directory"`
+	EnableRealTime  bool               `yaml:"enable_realtime"`
+	MaxHistorySize  int                `yaml:"max_history_size"`
 }
 
 // DataSource represents a source of test metrics
@@ -111,11 +111,11 @@ func loadAggregatorConfig(configPath string) (*AggregatorConfig, error) {
 		EnableRealTime:  true,
 		OutputDirectory: "reports/aggregated",
 		Thresholds: map[string]float64{
-			"coverage.overall":           90.0,
-			"test.success_rate":          95.0,
+			"coverage.overall":            90.0,
+			"test.success_rate":           95.0,
 			"performance.deployment_time": 10.0, // minutes
-			"security.critical_vulns":    0.0,
-			"security.high_vulns":        5.0,
+			"security.critical_vulns":     0.0,
+			"security.high_vulns":         5.0,
 		},
 		DataSources: []DataSource{
 			{Name: "unit-tests", Type: "junit", Path: "reports/unit-tests.xml", Format: "xml"},
@@ -300,14 +300,15 @@ func (ma *MetricsAggregator) processDataSource(source DataSource, metrics *TestM
 }
 
 // processJUnitResults processes JUnit XML test results
+// TODO: Implement actual JUnit XML parsing
 func (ma *MetricsAggregator) processJUnitResults(source DataSource, metrics *TestMetrics) error {
 	data, err := os.ReadFile(source.Path)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to read JUnit file %s: %w", source.Path, err)
 	}
 
 	// Parse JUnit XML (simplified implementation)
-	// In a real implementation, use a proper XML parser
+	// In a real implementation, use a proper XML parser like encoding/xml
 	testSuite := &TestSuiteResult{
 		Name:         source.Name,
 		TotalTests:   0,
@@ -318,8 +319,12 @@ func (ma *MetricsAggregator) processJUnitResults(source DataSource, metrics *Tes
 		CoveragePct:  0,
 	}
 
-	// Simulate parsing results
+	// Simulate parsing results based on file content
 	if len(data) > 0 {
+		// This is a placeholder - real implementation would:
+		// 1. Parse XML structure
+		// 2. Extract test counts and results
+		// 3. Calculate durations
 		testSuite.TotalTests = 50
 		testSuite.PassedTests = 47
 		testSuite.FailedTests = 2
@@ -449,99 +454,12 @@ func (ma *MetricsAggregator) checkThresholds(metrics *TestMetrics) error {
 	alerts := make(map[string]*Alert)
 
 	// Check coverage threshold
-	if metrics.CoverageResults != nil {
-		if threshold, exists := ma.config.Thresholds["coverage.overall"]; exists {
-			if metrics.CoverageResults.OverallCoverage < threshold {
-				alerts["coverage.overall"] = &Alert{
-					ID:          "coverage.overall",
-					Type:        "coverage",
-					Threshold:   threshold,
-					ActualValue: metrics.CoverageResults.OverallCoverage,
-					Message:     fmt.Sprintf("Code coverage %.1f%% is below threshold %.1f%%", metrics.CoverageResults.OverallCoverage, threshold),
-					Severity:    "warning",
-					Timestamp:   time.Now(),
-				}
-			}
-		}
-	}
+	ma.checkCoverageThresholds(metrics, alerts)
+	ma.checkTestSuccessThresholds(metrics, alerts)
+	ma.checkSecurityThresholds(metrics, alerts)
+	ma.checkPerformanceThresholds(metrics, alerts)
 
-	// Check test success rate
-	if len(metrics.TestSuiteResults) > 0 {
-		totalTests := 0
-		passedTests := 0
-		for _, suite := range metrics.TestSuiteResults {
-			totalTests += suite.TotalTests
-			passedTests += suite.PassedTests
-		}
-
-		if totalTests > 0 {
-			successRate := float64(passedTests) / float64(totalTests) * 100
-			if threshold, exists := ma.config.Thresholds["test.success_rate"]; exists {
-				if successRate < threshold {
-					alerts["test.success_rate"] = &Alert{
-						ID:          "test.success_rate",
-						Type:        "test",
-						Threshold:   threshold,
-						ActualValue: successRate,
-						Message:     fmt.Sprintf("Test success rate %.1f%% is below threshold %.1f%%", successRate, threshold),
-						Severity:    "error",
-						Timestamp:   time.Now(),
-					}
-				}
-			}
-		}
-	}
-
-	// Check security vulnerabilities
-	if metrics.SecurityResults != nil {
-		if threshold, exists := ma.config.Thresholds["security.critical_vulns"]; exists {
-			criticalVulns := float64(metrics.SecurityResults.VulnerabilityScan.Critical)
-			if criticalVulns > threshold {
-				alerts["security.critical_vulns"] = &Alert{
-					ID:          "security.critical_vulns",
-					Type:        "security",
-					Threshold:   threshold,
-					ActualValue: criticalVulns,
-					Message:     fmt.Sprintf("Critical vulnerabilities %d exceed threshold %d", int(criticalVulns), int(threshold)),
-					Severity:    "critical",
-					Timestamp:   time.Now(),
-				}
-			}
-		}
-
-		if threshold, exists := ma.config.Thresholds["security.high_vulns"]; exists {
-			highVulns := float64(metrics.SecurityResults.VulnerabilityScan.High)
-			if highVulns > threshold {
-				alerts["security.high_vulns"] = &Alert{
-					ID:          "security.high_vulns",
-					Type:        "security",
-					Threshold:   threshold,
-					ActualValue: highVulns,
-					Message:     fmt.Sprintf("High vulnerabilities %d exceed threshold %d", int(highVulns), int(threshold)),
-					Severity:    "warning",
-					Timestamp:   time.Now(),
-				}
-			}
-		}
-	}
-
-	// Check deployment time
-	if metrics.PerformanceData != nil && metrics.PerformanceData.DeploymentTime.AverageTime > 0 {
-		if threshold, exists := ma.config.Thresholds["performance.deployment_time"]; exists {
-			deploymentTime := metrics.PerformanceData.DeploymentTime.AverageTime.Minutes()
-			if deploymentTime > threshold {
-				alerts["performance.deployment_time"] = &Alert{
-					ID:          "performance.deployment_time",
-					Type:        "performance",
-					Threshold:   threshold,
-					ActualValue: deploymentTime,
-					Message:     fmt.Sprintf("Deployment time %.1f minutes exceeds threshold %.1f minutes", deploymentTime, threshold),
-					Severity:    "warning",
-					Timestamp:   time.Now(),
-				}
-			}
-		}
-	}
+	// Finalize and broadcast alerts
 
 	// Update threshold alerts
 	ma.mutex.Lock()
@@ -863,5 +781,127 @@ func (ma *MetricsAggregator) SendUpdate(update *MetricUpdate) {
 		// Update sent successfully
 	default:
 		log.Println("Update channel full, dropping update")
+	}
+}
+
+// checkCoverageThresholds checks code coverage thresholds
+func (ma *MetricsAggregator) checkCoverageThresholds(metrics *TestMetrics, alerts map[string]*Alert) {
+	if metrics.CoverageResults == nil {
+		return
+	}
+
+	threshold, exists := ma.config.Thresholds["coverage.overall"]
+	if !exists || metrics.CoverageResults.OverallCoverage >= threshold {
+		return
+	}
+
+	alerts["coverage.overall"] = &Alert{
+		ID:          "coverage.overall",
+		Type:        "coverage",
+		Threshold:   threshold,
+		ActualValue: metrics.CoverageResults.OverallCoverage,
+		Message:     fmt.Sprintf("Code coverage %.1f%% is below threshold %.1f%%", metrics.CoverageResults.OverallCoverage, threshold),
+		Severity:    "warning",
+		Timestamp:   time.Now(),
+	}
+}
+
+// checkTestSuccessThresholds checks test success rate thresholds
+func (ma *MetricsAggregator) checkTestSuccessThresholds(metrics *TestMetrics, alerts map[string]*Alert) {
+	if len(metrics.TestSuiteResults) == 0 {
+		return
+	}
+
+	totalTests := 0
+	passedTests := 0
+	for _, suite := range metrics.TestSuiteResults {
+		totalTests += suite.TotalTests
+		passedTests += suite.PassedTests
+	}
+
+	if totalTests == 0 {
+		return
+	}
+
+	successRate := float64(passedTests) / float64(totalTests) * 100
+	threshold, exists := ma.config.Thresholds["test.success_rate"]
+	if !exists || successRate >= threshold {
+		return
+	}
+
+	alerts["test.success_rate"] = &Alert{
+		ID:          "test.success_rate",
+		Type:        "test",
+		Threshold:   threshold,
+		ActualValue: successRate,
+		Message:     fmt.Sprintf("Test success rate %.1f%% is below threshold %.1f%%", successRate, threshold),
+		Severity:    "error",
+		Timestamp:   time.Now(),
+	}
+}
+
+// checkSecurityThresholds checks security vulnerability thresholds
+func (ma *MetricsAggregator) checkSecurityThresholds(metrics *TestMetrics, alerts map[string]*Alert) {
+	if metrics.SecurityResults == nil {
+		return
+	}
+
+	// Check critical vulnerabilities
+	if threshold, exists := ma.config.Thresholds["security.critical_vulns"]; exists {
+		criticalVulns := float64(metrics.SecurityResults.VulnerabilityScan.Critical)
+		if criticalVulns > threshold {
+			alerts["security.critical_vulns"] = &Alert{
+				ID:          "security.critical_vulns",
+				Type:        "security",
+				Threshold:   threshold,
+				ActualValue: criticalVulns,
+				Message:     fmt.Sprintf("Critical vulnerabilities %d exceed threshold %d", int(criticalVulns), int(threshold)),
+				Severity:    "critical",
+				Timestamp:   time.Now(),
+			}
+		}
+	}
+
+	// Check high vulnerabilities
+	if threshold, exists := ma.config.Thresholds["security.high_vulns"]; exists {
+		highVulns := float64(metrics.SecurityResults.VulnerabilityScan.High)
+		if highVulns > threshold {
+			alerts["security.high_vulns"] = &Alert{
+				ID:          "security.high_vulns",
+				Type:        "security",
+				Threshold:   threshold,
+				ActualValue: highVulns,
+				Message:     fmt.Sprintf("High vulnerabilities %d exceed threshold %d", int(highVulns), int(threshold)),
+				Severity:    "warning",
+				Timestamp:   time.Now(),
+			}
+		}
+	}
+}
+
+// checkPerformanceThresholds checks performance metric thresholds
+func (ma *MetricsAggregator) checkPerformanceThresholds(metrics *TestMetrics, alerts map[string]*Alert) {
+	if metrics.PerformanceData == nil || metrics.PerformanceData.DeploymentTime.AverageTime == 0 {
+		return
+	}
+
+	threshold, exists := ma.config.Thresholds["performance.deployment_time"]
+	if !exists {
+		return
+	}
+
+	deploymentTime := metrics.PerformanceData.DeploymentTime.AverageTime.Minutes()
+	if deploymentTime <= threshold {
+		return
+	}
+
+	alerts["performance.deployment_time"] = &Alert{
+		ID:          "performance.deployment_time",
+		Type:        "performance",
+		Threshold:   threshold,
+		ActualValue: deploymentTime,
+		Message:     fmt.Sprintf("Deployment time %.1f minutes exceeds threshold %.1f minutes", deploymentTime, threshold),
+		Severity:    "warning",
+		Timestamp:   time.Now(),
 	}
 }

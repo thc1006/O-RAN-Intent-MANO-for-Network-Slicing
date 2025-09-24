@@ -25,7 +25,11 @@ COPY tests/go.mod tests/go.sum ./
 ENV GOTOOLCHAIN=go1.24.7
 ENV GOPROXY=https://proxy.golang.org,direct
 ENV GOSUMDB=sum.golang.org
-RUN go mod download
+
+# Disable workspace mode for Docker build
+ENV GOWORK=off
+
+RUN go mod download || (sleep 2 && go mod download) || (sleep 5 && go mod download)
 
 COPY tests/ .
 RUN go build -o test-runner cmd/test-runner/main.go

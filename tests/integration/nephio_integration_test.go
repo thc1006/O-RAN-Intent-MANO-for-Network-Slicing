@@ -15,6 +15,13 @@ import (
 	manov1alpha1 "github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/adapters/vnf-operator/api/v1alpha1"
 )
 
+// Constants to avoid goconst linter issues
+const (
+	nephioEdgeCluster01     = "edge-cluster-01"
+	nephioRegionalCluster01 = "regional-cluster-01"
+	nephioCentralCluster01  = "central-cluster-01"
+)
+
 // NephioIntegrationSuite manages Nephio package generation and deployment testing
 type NephioIntegrationSuite struct {
 	dynClient         dynamic.Interface // nolint:unused // TODO: integrate with Porch/Config Sync dynamic client
@@ -355,7 +362,7 @@ var _ = Describe("Nephio Package Generation and Deployment Tests", func() {
 	Context("Package Deployment and GitOps Tests", func() {
 		It("should deploy packages via GitOps workflow", func() {
 			vnfSpec := nephioVNFScenarios[0].vnfSpec
-			targetCluster := "edge-cluster-01"
+			targetCluster := nephioEdgeCluster01
 
 			By("Generating package for deployment")
 			packageResult := suite.generatePorchPackage(vnfSpec, targetCluster)
@@ -433,7 +440,7 @@ var _ = Describe("Nephio Package Generation and Deployment Tests", func() {
 
 		It("should handle package rollback scenarios", func() {
 			vnfSpec := nephioVNFScenarios[0].vnfSpec
-			targetCluster := "edge-cluster-01"
+			targetCluster := nephioEdgeCluster01
 
 			By("Deploying initial package version")
 			v1Package := suite.generatePorchPackage(vnfSpec, targetCluster)
@@ -466,7 +473,7 @@ var _ = Describe("Nephio Package Generation and Deployment Tests", func() {
 	Context("Advanced GitOps Scenarios", func() {
 		It("should handle GitOps repository conflicts and resolution", func() {
 			vnfSpec := nephioVNFScenarios[0].vnfSpec
-			targetCluster := "edge-cluster-01"
+			targetCluster := nephioEdgeCluster01
 
 			By("Creating concurrent package updates")
 			// Simulate concurrent modifications to trigger conflicts
@@ -492,7 +499,7 @@ var _ = Describe("Nephio Package Generation and Deployment Tests", func() {
 
 		It("should validate GitOps drift detection and correction", func() {
 			vnfSpec := nephioVNFScenarios[0].vnfSpec
-			targetCluster := "edge-cluster-01"
+			targetCluster := nephioEdgeCluster01
 
 			By("Deploying package via GitOps")
 			packageResult := suite.generatePorchPackage(vnfSpec, targetCluster)

@@ -152,7 +152,7 @@ func runContinuousMonitoring(ctx context.Context, framework *validation.Validati
 	for {
 		select {
 		case <-ctx.Done():
-			log.Printf("Context cancelled, stopping monitoring")
+			log.Printf("Context canceled, stopping monitoring")
 			return nil
 
 		case <-sigChan:

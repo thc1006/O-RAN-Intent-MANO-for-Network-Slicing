@@ -421,6 +421,7 @@ func (acv *ArgoCDValidator) validateArgoCDServer(ctx context.Context) (string, e
 }
 
 // validateApplications validates ArgoCD applications
+// Returns error interface for future error handling capabilities
 func (acv *ArgoCDValidator) validateApplications(ctx context.Context) ([]ApplicationStatus, error) {
 	// Define Application GVR
 	appGVR := schema.GroupVersionResource{
@@ -454,6 +455,7 @@ func (acv *ArgoCDValidator) validateApplications(ctx context.Context) ([]Applica
 }
 
 // parseApplicationStatus parses application status from unstructured object
+// Returns error interface for future parsing error handling
 func (acv *ArgoCDValidator) parseApplicationStatus(app *unstructured.Unstructured) (*ApplicationStatus, error) {
 	status := &ApplicationStatus{
 		Name:      app.GetName(),

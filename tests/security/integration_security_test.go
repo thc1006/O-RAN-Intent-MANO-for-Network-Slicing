@@ -336,11 +336,11 @@ func (suite *IntegrationSecurityTestSuite) testHTTPRequestValidationWorkflow(t *
 func (suite *IntegrationSecurityTestSuite) testFileOperationSecurityWorkflow(t *testing.T) {
 	// Test secure file operations workflow
 	testCases := []struct {
-		name         string
-		operation    string
-		filePath     string
-		shouldPass   bool
-		description  string
+		name        string
+		operation   string
+		filePath    string
+		shouldPass  bool
+		description string
 	}{
 		{
 			name:        "legitimate_temp_file",

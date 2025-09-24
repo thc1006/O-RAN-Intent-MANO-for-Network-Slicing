@@ -8,74 +8,74 @@ import (
 
 func TestValidateHistoryLimit(t *testing.T) {
 	tests := []struct {
-		name            string
-		limit           int
+		name             string
+		limit            int
 		availableHistory int
-		expectedResult  int
-		expectLog       bool
+		expectedResult   int
+		expectLog        bool
 	}{
 		{
-			name:            "Valid normal limit",
-			limit:           50,
+			name:             "Valid normal limit",
+			limit:            50,
 			availableHistory: 100,
-			expectedResult:  50,
-			expectLog:       false,
+			expectedResult:   50,
+			expectLog:        false,
 		},
 		{
-			name:            "Zero limit with small history",
-			limit:           0,
+			name:             "Zero limit with small history",
+			limit:            0,
 			availableHistory: 50,
-			expectedResult:  50,
-			expectLog:       false,
+			expectedResult:   50,
+			expectLog:        false,
 		},
 		{
-			name:            "Zero limit with large history",
-			limit:           0,
+			name:             "Zero limit with large history",
+			limit:            0,
 			availableHistory: 500,
-			expectedResult:  DefaultHistoryLimit,
-			expectLog:       false,
+			expectedResult:   DefaultHistoryLimit,
+			expectLog:        false,
 		},
 		{
-			name:            "Negative limit",
-			limit:           -10,
+			name:             "Negative limit",
+			limit:            -10,
 			availableHistory: 100,
-			expectedResult:  DefaultHistoryLimit,
-			expectLog:       false,
+			expectedResult:   DefaultHistoryLimit,
+			expectLog:        false,
 		},
 		{
-			name:            "Limit exceeding MaxHistoryLimit",
-			limit:           2000,
+			name:             "Limit exceeding MaxHistoryLimit",
+			limit:            2000,
 			availableHistory: 3000,
-			expectedResult:  MaxHistoryLimit,
-			expectLog:       true,
+			expectedResult:   MaxHistoryLimit,
+			expectLog:        true,
 		},
 		{
-			name:            "Limit exceeding AbsoluteMaxHistoryLimit",
-			limit:           50000,
+			name:             "Limit exceeding AbsoluteMaxHistoryLimit",
+			limit:            50000,
 			availableHistory: 60000,
-			expectedResult:  AbsoluteMaxHistoryLimit,
-			expectLog:       true,
+			expectedResult:   AbsoluteMaxHistoryLimit,
+			expectLog:        true,
 		},
 		{
-			name:            "Limit greater than available history",
-			limit:           200,
+			name:             "Limit greater than available history",
+			limit:            200,
 			availableHistory: 100,
-			expectedResult:  100,
-			expectLog:       false,
+			expectedResult:   100,
+			expectLog:        false,
 		},
 		{
-			name:            "Edge case - exactly at MaxHistoryLimit",
-			limit:           MaxHistoryLimit,
+			name:             "Edge case - exactly at MaxHistoryLimit",
+			limit:            MaxHistoryLimit,
 			availableHistory: MaxHistoryLimit + 100,
-			expectedResult:  MaxHistoryLimit,
-			expectLog:       false,
+			expectedResult:   MaxHistoryLimit,
+			expectLog:        false,
 		},
 		{
-			name:            "Edge case - exactly at AbsoluteMaxHistoryLimit",
-			limit:           AbsoluteMaxHistoryLimit,
+			name:             "Edge case - exactly at AbsoluteMaxHistoryLimit",
+			limit:            AbsoluteMaxHistoryLimit,
 			availableHistory: AbsoluteMaxHistoryLimit + 100,
-			expectedResult:  AbsoluteMaxHistoryLimit,
-			expectLog:       false,
+			expectedResult:   AbsoluteMaxHistoryLimit,
+			expectLog:        false,
 		},
 	}
 
@@ -352,7 +352,7 @@ func TestMemoryAllocationLimits(t *testing.T) {
 		{MaxHistoryLimit + 1, MaxHistoryLimit + 1}, // Should log warning but allow up to absolute max
 		{AbsoluteMaxHistoryLimit, AbsoluteMaxHistoryLimit},
 		{AbsoluteMaxHistoryLimit + 1, AbsoluteMaxHistoryLimit},
-		{1000000, AbsoluteMaxHistoryLimit}, // 1 million request capped
+		{1000000, AbsoluteMaxHistoryLimit},   // 1 million request capped
 		{999999999, AbsoluteMaxHistoryLimit}, // Nearly 1 billion request capped
 	}
 

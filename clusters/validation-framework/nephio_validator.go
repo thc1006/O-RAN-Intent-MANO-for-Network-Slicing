@@ -184,7 +184,7 @@ func (nv *NephioValidator) ValidatePackageDetailed(ctx context.Context, packageP
 	// Check if package directory exists
 	if _, err := os.Stat(packagePath); os.IsNotExist(err) {
 		result.Valid = false
-		result.Errors = append(result.Errors, fmt.Sprintf("package directory does not exist: %s", packagePath))
+		result.Errors = append(result.Errors, fmt.Sprintf("package directory does not exist: %q", packagePath))
 		return result, nil
 	}
 

@@ -45,13 +45,20 @@ COPY tn/ tn/
 ENV GOTOOLCHAIN=go1.24.7
 ENV GOPROXY=https://proxy.golang.org,direct
 ENV GOSUMDB=sum.golang.org
-RUN go mod download
+
+# Disable workspace mode for build
+ENV GOWORK=off
+
+# Download dependencies for o2-client
+WORKDIR /workspace/o2-client
+RUN go mod download && go mod tidy
 
 # Build the binary with security flags
+WORKDIR /workspace/o2-client
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -ldflags='-w -s -extldflags "-static"' \
     -a -installsuffix cgo \
-    -o o2-client ./o2-client/cmd/main.go
+    -o /workspace/o2-client-binary ./cmd/main.go
 
 # Stage 2: Runtime
 FROM alpine:3.22.1
@@ -75,7 +82,7 @@ RUN apk update && apk upgrade && apk add --no-cache \
     rm -rf /var/cache/apk/* /tmp/* /var/tmp/*
 
 # Copy the binary
-COPY --from=builder /workspace/o2-client /usr/local/bin/o2-client
+COPY --from=builder /workspace/o2-client-binary /usr/local/bin/o2-client
 
 # Use non-root user
 USER appuser

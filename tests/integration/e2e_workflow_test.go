@@ -24,6 +24,13 @@ import (
 	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security"
 )
 
+// Constants to avoid goconst linter issues
+const (
+	edgeCluster01     = "edge-cluster-01"
+	regionalCluster01 = "regional-cluster-01"
+	centralCluster01  = "central-cluster-01"
+)
+
 // E2EWorkflowSuite represents the complete test environment
 type E2EWorkflowSuite struct {
 	cfg         *rest.Config
@@ -216,7 +223,7 @@ var _ = Describe("E2E Workflow Integration Tests", func() {
 
 	Context("Multi-cluster Deployment Validation", func() {
 		It("should deploy VNFs across edge, regional, and central clusters", func() {
-			clusters := []string{"edge-cluster-01", "regional-cluster-01", "central-cluster-01"}
+			clusters := []string{edgeCluster01, regionalCluster01, centralCluster01}
 
 			for _, cluster := range clusters {
 				By(fmt.Sprintf("Validating deployment to %s", cluster))
@@ -226,7 +233,7 @@ var _ = Describe("E2E Workflow Integration Tests", func() {
 
 		It("should handle cluster failures gracefully", func() {
 			By("Simulating cluster failure")
-			suite.simulateClusterFailure("edge-cluster-01")
+			suite.simulateClusterFailure(edgeCluster01)
 
 			By("Verifying failover to alternative cluster")
 			suite.verifyFailoverBehavior()
@@ -306,7 +313,7 @@ func teardownE2ETestSuite(suite *E2EWorkflowSuite) {
 	}
 }
 
-func (s *E2EWorkflowSuite) processIntentToQoS(intent string, expectedQoS manov1alpha1.QoSRequirements) manov1alpha1.QoSRequirements {
+func (s *E2EWorkflowSuite) processIntentToQoS(_ string, expectedQoS manov1alpha1.QoSRequirements) manov1alpha1.QoSRequirements {
 	// TODO: Implement NLP intent processing
 	// For now, return expected QoS as if processed from intent
 	return expectedQoS
@@ -381,7 +388,7 @@ func (s *E2EWorkflowSuite) deployVNFsToMultipleClusters(packages []PorchPackage,
 	return statuses
 }
 
-func (s *E2EWorkflowSuite) configureNetworkSlice(qos manov1alpha1.QoSRequirements, vnfStatuses []VNFDeploymentStatus) {
+func (s *E2EWorkflowSuite) configureNetworkSlice(_ manov1alpha1.QoSRequirements, _ []VNFDeploymentStatus) {
 	// TODO: Implement network slice configuration using TN manager
 	time.Sleep(5 * time.Second) // Simulate configuration time
 }
@@ -431,14 +438,14 @@ func (s *E2EWorkflowSuite) performThroughputTest() ThroughputMeasurement {
 	}
 }
 
-func (s *E2EWorkflowSuite) selectOptimalCluster(qos manov1alpha1.QoSRequirements, vnfType manov1alpha1.VNFType) string {
+func (s *E2EWorkflowSuite) selectOptimalCluster(qos manov1alpha1.QoSRequirements, _ manov1alpha1.VNFType) string {
 	// Select cluster based on QoS requirements and VNF type
 	if qos.Latency <= 10 {
-		return "edge-cluster-01"
+		return edgeCluster01
 	} else if qos.Bandwidth >= 1000 {
-		return "regional-cluster-01"
+		return regionalCluster01
 	}
-	return "central-cluster-01"
+	return centralCluster01
 }
 
 func (s *E2EWorkflowSuite) createVNFResource(pkg PorchPackage) *manov1alpha1.VNF {
@@ -466,17 +473,17 @@ func (s *E2EWorkflowSuite) createVNFResource(pkg PorchPackage) *manov1alpha1.VNF
 	}
 }
 
-func (s *E2EWorkflowSuite) waitForVNFReady(vnf *manov1alpha1.VNF, timeout time.Duration) error {
+func (s *E2EWorkflowSuite) waitForVNFReady(_ *manov1alpha1.VNF, _ time.Duration) error {
 	// TODO: Implement actual wait logic
 	time.Sleep(2 * time.Second) // Simulate deployment time
 	return nil
 }
 
-func (s *E2EWorkflowSuite) validateClusterDeployment(cluster string) {
+func (s *E2EWorkflowSuite) validateClusterDeployment(_ string) {
 	// TODO: Implement cluster-specific validation
 }
 
-func (s *E2EWorkflowSuite) simulateClusterFailure(cluster string) {
+func (s *E2EWorkflowSuite) simulateClusterFailure(_ string) {
 	// TODO: Implement cluster failure simulation
 }
 
@@ -499,7 +506,10 @@ func (s *E2EWorkflowSuite) validateQoSEnforcement(qos manov1alpha1.QoSRequiremen
 
 func (s *E2EWorkflowSuite) saveTestResults() {
 	resultsDir := "testdata/results"
-	os.MkdirAll(resultsDir, security.SecureDirMode)
+	if err := os.MkdirAll(resultsDir, security.SecureDirMode); err != nil {
+		fmt.Printf("Failed to create results directory: %v\n", err)
+		return
+	}
 
 	timestamp := time.Now().Format("20060102-150405")
 	filename := filepath.Join(resultsDir, fmt.Sprintf("e2e_results_%s.json", timestamp))

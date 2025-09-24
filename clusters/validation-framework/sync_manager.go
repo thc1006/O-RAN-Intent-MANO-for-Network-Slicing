@@ -89,7 +89,7 @@ type PackageSyncStatus struct {
 	RetryCount    int                   `json:"retryCount"`
 	NextRetry     time.Time             `json:"nextRetry,omitempty"`
 	Dependencies  []DependencyStatus    `json:"dependencies,omitempty"`
-	HealthStatus  HealthStatus          `json:"healthStatus"`
+	HealthStatus  PackageHealthStatus   `json:"healthStatus"`
 }
 
 // SyncState represents the state of synchronization
@@ -326,7 +326,7 @@ func (sm *SyncManager) synchronizePackageToCluster(ctx context.Context, packageN
 
 	client, exists := sm.ClusterClients[clusterName]
 	if !exists {
-		result.Errors = append(result.Errors, fmt.Sprintf("cluster client not found: %s", clusterName))
+		result.Errors = append(result.Errors, fmt.Sprintf("cluster client not found: %q", clusterName))
 		result.Duration = time.Since(startTime)
 		return result
 	}
@@ -507,9 +507,20 @@ func (sm *SyncManager) preserveClusterFields(desired, existing *unstructured.Uns
 }
 
 // getPackageFromGit retrieves package content from Git repository
-func (sm *SyncManager) getPackageFromGit(ctx context.Context, packageName string) ([]unstructured.Unstructured, error) {
-	// This would read package files from Git repository
-	// For now, return empty slice as placeholder
+// TODO: Implement actual Git package retrieval logic
+func (sm *SyncManager) getPackageFromGit(_ context.Context, packageName string) ([]unstructured.Unstructured, error) {
+	// This is a placeholder implementation - actual implementation would:
+	// 1. Clone or pull from Git repository
+	// 2. Navigate to package directory
+	// 3. Parse YAML/JSON files into unstructured objects
+	// 4. Return the resources
+
+	if packageName == "" {
+		return nil, fmt.Errorf("package name cannot be empty")
+	}
+
+	// For now, return empty slice but this should be implemented
+	log.Printf("Warning: getPackageFromGit is not implemented, returning empty package for %s", packageName)
 	return []unstructured.Unstructured{}, nil
 }
 

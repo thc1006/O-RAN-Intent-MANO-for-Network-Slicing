@@ -635,8 +635,9 @@ func (g *DefaultPackageGenerator) getQoSPriority(sliceType string) int {
 func parseFloat64(s string) float64 {
 	// Parse bandwidth/latency strings like "4.5Mbps", "10ms"
 	// Simplified implementation - in production, use proper parsing
-	s = strings.Replace(s, "Mbps", "", -1)
-	s = strings.Replace(s, "ms", "", -1)
+	_ = strings.Replace(s, "Mbps", "", -1)
+	_ = strings.Replace(s, "ms", "", -1)
 	// Return default values for now
+	// TODO: Implement actual parsing logic
 	return 5.0
 }

@@ -363,11 +363,11 @@ func handleAPIConfig(w http.ResponseWriter, r *http.Request) {
 		"build_time": BuildTime,
 		"git_commit": GitCommit,
 		"features": map[string]bool{
-			"real_time":    true,
-			"export":       true,
-			"alerts":       true,
-			"history":      true,
-			"aggregation":  true,
+			"real_time":   true,
+			"export":      true,
+			"alerts":      true,
+			"history":     true,
+			"aggregation": true,
 		},
 	}
 
@@ -479,8 +479,8 @@ func handleExportCSV(aggregator *dashboard.MetricsAggregator) http.HandlerFunc {
 	}
 }
 
-func handleExportPDF(aggregator *dashboard.MetricsAggregator) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+func handleExportPDF(_ *dashboard.MetricsAggregator) http.HandlerFunc {
+	return func(w http.ResponseWriter, _ *http.Request) {
 		// PDF export would require additional dependencies
 		http.Error(w, "PDF export not implemented", http.StatusNotImplemented)
 	}

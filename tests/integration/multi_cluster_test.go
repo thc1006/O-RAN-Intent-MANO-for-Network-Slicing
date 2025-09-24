@@ -16,6 +16,14 @@ import (
 	manov1alpha1 "github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/adapters/vnf-operator/api/v1alpha1"
 )
 
+// Constants to avoid goconst linter issues
+const (
+	mcEdgeCluster01     = "edge-cluster-01"
+	mcEdgeCluster02     = "edge-cluster-02"
+	mcRegionalCluster01 = "regional-cluster-01"
+	mcCentralCluster01  = "central-cluster-01"
+)
+
 // ClusterConfig represents a test cluster configuration
 type ClusterConfig struct {
 	Name        string
@@ -117,7 +125,7 @@ type CrossClusterTestResult struct {
 // Test cluster configurations for different deployment scenarios
 var testClusters = []ClusterConfig{
 	{
-		Name:       "edge-cluster-01",
+		Name:       mcEdgeCluster01,
 		Type:       "edge",
 		KubeConfig: "~/.kube/config",
 		Context:    "kind-edge-01",
@@ -137,7 +145,7 @@ var testClusters = []ClusterConfig{
 		},
 	},
 	{
-		Name:       "edge-cluster-02",
+		Name:       mcEdgeCluster02,
 		Type:       "edge",
 		KubeConfig: "~/.kube/config",
 		Context:    "kind-edge-02",
@@ -157,7 +165,7 @@ var testClusters = []ClusterConfig{
 		},
 	},
 	{
-		Name:       "regional-cluster-01",
+		Name:       mcRegionalCluster01,
 		Type:       "regional",
 		KubeConfig: "~/.kube/config",
 		Context:    "kind-regional-01",
@@ -177,7 +185,7 @@ var testClusters = []ClusterConfig{
 		},
 	},
 	{
-		Name:       "central-cluster-01",
+		Name:       mcCentralCluster01,
 		Type:       "central",
 		KubeConfig: "~/.kube/config",
 		Context:    "kind-central-01",
@@ -216,7 +224,7 @@ var deploymentScenarios = []struct {
 				QoS:       QoSRequirements{MaxLatencyMs: 6.3, MinThroughputMbps: 0.93},
 			},
 		},
-		targetClusters:    []string{"edge-cluster-01", "edge-cluster-02"},
+		targetClusters:    []string{mcEdgeCluster01, mcEdgeCluster02},
 		expectedLatency:   6.3,
 		expectedBandwidth: 0.93,
 		maxDeploymentTime: 5 * time.Minute,
@@ -235,7 +243,7 @@ var deploymentScenarios = []struct {
 				QoS:       QoSRequirements{MaxLatencyMs: 15.7, MinThroughputMbps: 2.77},
 			},
 		},
-		targetClusters:    []string{"regional-cluster-01"},
+		targetClusters:    []string{mcRegionalCluster01},
 		expectedLatency:   15.7,
 		expectedBandwidth: 2.77,
 		maxDeploymentTime: 8 * time.Minute,
@@ -249,7 +257,7 @@ var deploymentScenarios = []struct {
 				QoS:       QoSRequirements{MaxLatencyMs: 16.1, MinThroughputMbps: 4.57},
 			},
 		},
-		targetClusters:    []string{"central-cluster-01"},
+		targetClusters:    []string{mcCentralCluster01},
 		expectedLatency:   16.1,
 		expectedBandwidth: 4.57,
 		maxDeploymentTime: 10 * time.Minute,
@@ -337,8 +345,8 @@ var _ = Describe("Multi-Cluster Deployment Integration Tests", func() {
 
 	Context("Cluster Failover and Recovery", func() {
 		It("should handle edge cluster failure with regional backup", func() {
-			primaryCluster := "edge-cluster-01"
-			backupCluster := "regional-cluster-01"
+			primaryCluster := mcEdgeCluster01
+			backupCluster := mcRegionalCluster01
 
 			By("Deploying VNF to primary edge cluster")
 			vnfSpecs := []VNFDeploymentSpec{
@@ -370,7 +378,7 @@ var _ = Describe("Multi-Cluster Deployment Integration Tests", func() {
 		})
 
 		It("should handle cascading failures gracefully", func() {
-			clusters := []string{"edge-cluster-01", "edge-cluster-02", "regional-cluster-01"}
+			clusters := []string{mcEdgeCluster01, mcEdgeCluster02, mcRegionalCluster01}
 
 			By("Deploying VNFs across multiple clusters")
 			for _, cluster := range clusters[:2] { // Deploy to edge clusters
@@ -399,9 +407,9 @@ var _ = Describe("Multi-Cluster Deployment Integration Tests", func() {
 	Context("Cross-Cluster Communication", func() {
 		It("should validate inter-cluster network connectivity", func() {
 			clusterPairs := [][]string{
-				{"edge-cluster-01", "regional-cluster-01"},
-				{"regional-cluster-01", "central-cluster-01"},
-				{"edge-cluster-01", "central-cluster-01"},
+				{mcEdgeCluster01, mcRegionalCluster01},
+				{mcRegionalCluster01, mcCentralCluster01},
+				{mcEdgeCluster01, mcCentralCluster01},
 			}
 
 			for _, pair := range clusterPairs {
@@ -423,8 +431,8 @@ var _ = Describe("Multi-Cluster Deployment Integration Tests", func() {
 			By("Creating cross-cluster network slice")
 			sliceConfig := CrossClusterSliceConfig{
 				Name:          "cross-cluster-test",
-				SourceCluster: "edge-cluster-01",
-				TargetCluster: "regional-cluster-01",
+				SourceCluster: mcEdgeCluster01,
+				TargetCluster: mcRegionalCluster01,
 				BandwidthMbps: 100,
 				MaxLatencyMs:  20,
 			}
@@ -460,15 +468,15 @@ var _ = Describe("Multi-Cluster Deployment Integration Tests", func() {
 				QoS:       QoSRequirements{MaxLatencyMs: 20, MinThroughputMbps: 5},
 			}
 
-			edgeResult := suite.deployVNFsToCluster("edge-cluster-01", []VNFDeploymentSpec{edgeVNF}, 5*time.Minute)
-			regionalResult := suite.deployVNFsToCluster("regional-cluster-01", []VNFDeploymentSpec{bandwidthVNF}, 5*time.Minute)
+			edgeResult := suite.deployVNFsToCluster(mcEdgeCluster01, []VNFDeploymentSpec{edgeVNF}, 5*time.Minute)
+			regionalResult := suite.deployVNFsToCluster(mcRegionalCluster01, []VNFDeploymentSpec{bandwidthVNF}, 5*time.Minute)
 
 			Expect(edgeResult.Success).To(BeTrue())
 			Expect(regionalResult.Success).To(BeTrue())
 
 			// Verify resource utilization is balanced
-			edgeUsage := suite.getClusterResourceUsage("edge-cluster-01")
-			regionalUsage := suite.getClusterResourceUsage("regional-cluster-01")
+			edgeUsage := suite.getClusterResourceUsage(mcEdgeCluster01)
+			regionalUsage := suite.getClusterResourceUsage(mcRegionalCluster01)
 
 			Expect(edgeUsage.UsedCPU).To(BeNumerically("<=", 80),
 				"Edge cluster CPU usage should be reasonable")
@@ -727,8 +735,8 @@ func (s *MultiClusterTestSuite) testCrossClusterConnectivity(sourceCluster, targ
 	if sourceConfig != nil && targetConfig != nil {
 		// Calculate expected latency based on cluster types
 		result.LatencyMs = sourceConfig.Network.BaseLatencyMs + targetConfig.Network.BaseLatencyMs
-		result.ThroughputMbps = min(sourceConfig.Network.MaxThroughputMbps, targetConfig.Network.MaxThroughputMbps) * 0.8
-		result.PacketLoss = max(sourceConfig.Network.PacketLossRate, targetConfig.Network.PacketLossRate)
+		result.ThroughputMbps = minFloat64(sourceConfig.Network.MaxThroughputMbps, targetConfig.Network.MaxThroughputMbps) * 0.8
+		result.PacketLoss = maxFloat64(sourceConfig.Network.PacketLossRate, targetConfig.Network.PacketLossRate)
 		result.Success = true
 	}
 
@@ -813,15 +821,15 @@ type SlicePerformanceResult struct {
 	PacketLoss     float64
 }
 
-// Helper functions
-func min(a, b float64) float64 {
+// Helper functions to avoid builtin redefinition
+func minFloat64(a, b float64) float64 {
 	if a < b {
 		return a
 	}
 	return b
 }
 
-func max(a, b float64) float64 {
+func maxFloat64(a, b float64) float64 {
 	if a > b {
 		return a
 	}
