@@ -1,6 +1,6 @@
 # TN Agent Multi-stage Dockerfile
 # Stage 1: Build
-FROM golang:1.24.0-alpine AS builder
+FROM golang:1.23.6-alpine AS builder
 
 # Security labels and metadata
 LABEL maintainer="O-RAN MANO Team"
@@ -40,7 +40,7 @@ COPY tn/manager/api/v1alpha1/ ./manager/api/v1alpha1/
 COPY pkg/security/ ../pkg/security/
 
 # Download dependencies with explicit toolchain
-ENV GOTOOLCHAIN=go1.24.5
+ENV GOTOOLCHAIN=go1.23.6
 ENV GOPROXY=https://proxy.golang.org,direct
 ENV GOSUMDB=sum.golang.org
 RUN go mod download
@@ -63,7 +63,7 @@ LABEL security.scan="trivy,grype,snyk"
 LABEL security.user="non-root"
 LABEL security.capabilities="NET_ADMIN,NET_RAW"
 LABEL security.base.image="alpine:3.22.1"
-LABEL security.go.version="1.24.5"
+LABEL security.go.version="1.23.6"
 LABEL security.scan.date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 # Install runtime dependencies for network operations, clean cache
