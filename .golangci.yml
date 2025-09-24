@@ -1,13 +1,151 @@
-# golangci-lint configuration v2
-# See: https://golangci-lint.run/usage/configuration/
 version: "2"
 
-run:
-  timeout: 15m
-  issues-exit-code: 1
-  tests: true
-  build-tags: []
-  go: "1.24"
+linters:
+  # 使用明確的 enable 清單，對應 CI 參數中的 linters
+  default: none
+  enable:
+    - gosec
+    - gocritic
+    - revive
+    - staticcheck
+    - unparam
+    - unused
+    - ineffassign
+    - misspell
+    - goconst
+    - gocyclo
+    - govet
+    - errcheck
+    - bodyclose
+    - noctx
+    - rowserrcheck
+    - sqlclosecheck
+    - unconvert
+    - whitespace
+
+  # v2: 原本頂層的 linters-settings → 移到 linters.settings
+  settings:
+    gocyclo:
+      min-complexity: 15
+
+    gosec:
+      severity: medium
+      confidence: medium
+      excludes:
+        - G104  # Errors unhandled
+        - G304  # File path provided as taint input
+
+    misspell:
+      locale: US
+
+    staticcheck:
+      checks: ["all"]
+
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - experimental
+        - opinionated
+        - performance
+        - style
+      disabled-checks:
+        - dupImport
+        - ifElseChain
+        - octalLiteral
+        - whyNoLint
+        - wrapperFunc
+
+    revive:
+      severity: warning
+      rules:
+        - name: blank-imports
+        - name: context-as-argument
+        - name: context-keys-type
+        - name: dot-imports
+        - name: error-return
+        - name: error-strings
+        - name: error-naming
+        - name: exported
+        - name: if-return
+        - name: increment-decrement
+        - name: var-naming
+        - name: var-declaration
+        - name: package-comments
+        - name: range
+        - name: receiver-naming
+        - name: time-naming
+        - name: unexported-return
+        - name: indent-error-flow
+        - name: errorf
+        - name: empty-block
+        - name: superfluous-else
+        - name: unused-parameter
+        - name: unreachable-code
+        - name: redefines-builtin-id
+
+  # v2: issues.exclude-dirs/exclude-rules → 移到 linters.exclusions
+  exclusions:
+    generated: strict
+    # 原本 issues.exclude-dirs → linters.exclusions.paths
+    paths:
+      - vendor/
+      - node_modules/
+      - .git/
+      - tests/golden/
+      - test/testdata/
+      - examples/
+      - docs/
+      - scripts/
+      - .github/
+      - dist/
+      - build/
+      - tmp/
+
+    # 原本 issues.exclude-rules → linters.exclusions.rules
+    rules:
+      - path: _test\.go
+        linters:
+          - gosec
+          - dupl
+          - gocritic
+
+      - path: (testdata|examples|test|tests)/
+        linters:
+          - gosec
+          - gocritic
+
+      - path: \.pb\.go$
+        linters:
+          - gosec
+          - gocritic
+          - golint
+
+      - path: vendor/
+        linters:
+          - gosec
+          - gocritic
+          - golint
+          - stylecheck
+
+# v2: formatters 不能直接寫 gofmt:/goimports:，要用 enable 清單
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    gofmt:
+      simplify: true
+    goimports:
+      local-prefixes:
+        - github.com/thc1006
+
+issues:
+  # v2: output.unique-by-line → issues.uniq-by-line（名稱也從 unique 改成 uniq）
+  uniq-by-line: true
+  max-issues-per-linter: 50
+  max-same-issues: 10
+  new: false
+  fix: false
 
 output:
   formats:
@@ -15,190 +153,24 @@ output:
       path: stderr
     checkstyle:
       path: report.xml
-    # v1 的 colored-line-number 改成 text
     text:
       path: stdout
-      colors: true              # colored-line-number 等價
-      print-issued-lines: true  # 這些選項移到 text 下面
+      colors: true
+      print-issued-lines: true
       print-linter-name: true
-  unique-by-line: true
+  show-stats: true
 
-linters:
-  enable:
-    - gocyclo
-    - gosec
-    - ineffassign
-    - misspell
-    - staticcheck
-    - unused
-    - govet  # renamed from vet
-    - errcheck
-    - bodyclose
-    - noctx
-    - rowserrcheck
-    - sqlclosecheck
-    - unconvert
-    - unparam
-    - whitespace
-    - gocritic
-    - revive
-    - goconst
-  disable:
-    - varnamelen
-    - wrapcheck
-    # goanalysis_metalinter is not a valid linter - removed
-    - exhaustive
-    - exhaustruct
-    - depguard
-    - dupl
-    - forbidigo
-    - funlen
-    - gochecknoglobals
-    - gochecknoinits
-    - gocognit
-    - godot
-    - godox
-    - err113  # renamed from goerr113
-    - gomodguard
-    - goprintffuncname
-    - gosimple
-    - lll
-    - maintidx
-    - makezero
-    - nakedret
-    - nestif
-    - nilerr
-    - nlreturn
-    - nolintlint
-    - nosprintfhostport
-    - paralleltest
-    - prealloc
-    - predeclared
-    - promlinter
-    - stylecheck
-    - tagliatelle
-    - testpackage
-    - thelper
-    - tparallel
-    - wastedassign
-    - wsl
-
-# v2 formatters configuration - separate from linters
-formatters:
-  gofmt:
-    enable: true
-  goimports:
-    enable: true
-
-linters-settings:
-  gocyclo:
-    min-complexity: 15
-
-  gosec:
-    severity: medium
-    confidence: medium
-    excludes:
-      - G104  # Errors unhandled
-      - G304  # File path provided as taint input
-
-  misspell:
-    locale: US
-
-  staticcheck:
-    checks: ["all"]
-
-  gocritic:
-    enabled-tags:
-      - diagnostic
-      - experimental
-      - opinionated
-      - performance
-      - style
-    disabled-checks:
-      - dupImport # https://github.com/go-critic/go-critic/issues/845
-      - ifElseChain
-      - octalLiteral
-      - whyNoLint
-      - wrapperFunc
-
-  revive:
-    severity: warning
-    rules:
-      - name: blank-imports
-      - name: context-as-argument
-      - name: context-keys-type
-      - name: dot-imports
-      - name: error-return
-      - name: error-strings
-      - name: error-naming
-      - name: exported
-      - name: if-return
-      - name: increment-decrement
-      - name: var-naming
-      - name: var-declaration
-      - name: package-comments
-      - name: range
-      - name: receiver-naming
-      - name: time-naming
-      - name: unexported-return
-      - name: indent-error-flow
-      - name: errorf
-      - name: empty-block
-      - name: superfluous-else
-      - name: unused-parameter
-      - name: unreachable-code
-      - name: redefines-builtin-id
-
-issues:
-  # Use exclude-dirs instead of deprecated run.skip-dirs
-  exclude-dirs:
-    - vendor
-    - node_modules
-    - .git
-    - tests/golden
-    - test/testdata
-    - examples
-    - docs
-    - scripts
-    - .github
-    - dist
-    - build
-    - tmp
-
-  exclude-rules:
-    # Exclude some linters from running on tests files
-    - path: _test\.go
-      linters:
-        - gosec
-        - dupl
-        - gocritic
-
-    # Exclude known test packages
-    - path: (testdata|examples|test|tests)/
-      linters:
-        - gosec
-        - gocritic
-
-    # Exclude generated files
-    - path: \.pb\.go$
-      linters:
-        - gosec
-        - gocritic
-        - golint
-
-    # Exclude vendor
-    - path: vendor/
-      linters:
-        - gosec
-        - gocritic
-        - golint
-        - stylecheck
-
-  max-issues-per-linter: 50
-  max-same-issues: 10
-  new: false
-  fix: false
+run:
+  timeout: 15m
+  issues-exit-code: 1
+  tests: true
+  go: "1.24"
 
 severity:
-  default-severity: warning
-  case-sensitive: false
+  # v2: default-severity → default；移除 case-sensitive
+  default: warning
+  rules:
+    - linters: [gocyclo]
+      severity: warning
+    - linters: [gosec]
+      severity: error
