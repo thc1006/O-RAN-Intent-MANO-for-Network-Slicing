@@ -1,0 +1,34 @@
+title = "O-RAN Intent MANO Gitleaks Config"
+
+[allowlist]
+description = "Global allow list"
+paths = [
+    '''tests/security/.*_test\.go''',
+    '''tests/.*_test\.go''',
+    '''deploy/k8s/.*\.yaml''',
+    '''deploy/k8s/.*\.yml''',
+    '''job-logs\.txt''',
+    '''.*\.log''',
+    '''.*\.tmp''',
+    '''build/.*''',
+    '''dist/.*''',
+]
+
+regexes = [
+    '''CKV_K8S_\d+-approved''',
+    '''kubernetes\.io/serviceaccount-token.*''',
+    '''abc123def456''',
+    '''secret123''',
+    '''test-token''',
+    '''dummy-.*''',
+    '''mock-.*''',
+]
+
+commits = [
+    '''53b2ef38d9cd5c56b655de01fe91e03837f2a487''',
+    '''2c0bc4949c237fd9a9d6d71542f3a84f251becb9''',
+]
+
+# Extend config - inherit from default gitleaks config but with our allowlists
+[extend]
+useDefault = true
