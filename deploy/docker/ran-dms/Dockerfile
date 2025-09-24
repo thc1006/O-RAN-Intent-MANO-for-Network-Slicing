@@ -32,7 +32,7 @@ WORKDIR /workspace
 COPY ran-dms/go.mod go.mod
 COPY ran-dms/go.sum go.sum
 
-# Download dependencies with explicit toolchain
+# Download dependencies with flexible toolchain
 ENV GOTOOLCHAIN=go1.24.7
 ENV GOPROXY=https://proxy.golang.org,direct
 ENV GOSUMDB=sum.golang.org

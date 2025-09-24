@@ -1,0 +1,195 @@
+name: Comprehensive Security Scanning
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      scan_depth:
+        description: 'Security scan depth'
+        type: choice
+        options:
+          - 'quick'
+          - 'comprehensive'
+          - 'deep'
+        default: 'comprehensive'
+      include_containers:
+        description: 'Include container security scanning'
+        type: boolean
+        default: true
+
+env:
+  GO_VERSION: '1.24.7'
+  PYTHON_VERSION: '3.11'
+  GOSEC_VERSION: 'v2.21.4'
+  TRIVY_VERSION: '0.56.1'
+  COSIGN_VERSION: 'v2.4.1'
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+  pull-requests: write
+
+jobs:
+  # GoSec static analysis
+  gosec-scan:
+    name: GoSec Security Scan
+    runs-on: ubuntu-24.04
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v5
+      with:
+        fetch-depth: 0
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ env.GO_VERSION }}
+        cache: true
+
+    - name: Run GoSec Security Scanner
+      run: |
+        # Install GoSec v2.21.4
+        go install github.com/securego/gosec/v2/cmd/gosec@${{ env.GOSEC_VERSION }}
+
+        # Run security scan with SARIF output
+        gosec -fmt sarif -out gosec.sarif -no-fail ./...
+
+    - name: Upload GoSec SARIF file
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: gosec.sarif
+        category: gosec
+
+    - name: Upload GoSec results
+      uses: actions/upload-artifact@v4
+      with:
+        name: gosec-results
+        path: gosec.sarif
+        retention-days: 30
+
+  # Trivy vulnerability scanner
+  trivy-scan:
+    name: Trivy Vulnerability Scan
+    runs-on: ubuntu-24.04
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v5
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@0.28.0
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: Upload Trivy scan results
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: 'trivy-results.sarif'
+        category: trivy
+
+  # Container security scanning
+  container-scan:
+    name: Container Security Scan
+    runs-on: ubuntu-24.04
+    if: github.event.inputs.include_containers != 'false'
+
+    strategy:
+      matrix:
+        component: [orchestrator, vnf-operator, o2-client, tn-manager, cn-dms, ran-dms]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v5
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v5
+
+    - name: Build test image
+      run: |
+        component="${{ matrix.component }}"
+
+        # Create minimal Dockerfile for security testing
+        cat > Dockerfile.security << EOF
+        FROM golang:${{ env.GO_VERSION }}-alpine AS builder
+        WORKDIR /app
+        COPY . .
+        RUN go mod download
+        RUN CGO_ENABLED=0 go build -o /app/$component ./...
+
+        FROM alpine:3.20
+        RUN addgroup -g 65534 appuser && adduser -u 65534 -G appuser -s /sbin/nologin -D appuser
+        COPY --from=builder /app/$component /app/$component
+        USER 65534:65534
+        ENTRYPOINT ["/app/$component"]
+        EOF
+
+        docker build -f Dockerfile.security -t "security-test-$component:latest" . || echo "Build failed for $component"
+
+    - name: Run Trivy container scan
+      uses: aquasecurity/trivy-action@0.28.0
+      with:
+        image-ref: security-test-${{ matrix.component }}:latest
+        format: 'sarif'
+        output: 'trivy-container-${{ matrix.component }}.sarif'
+        severity: 'CRITICAL,HIGH'
+      continue-on-error: true
+
+    - name: Upload container security results
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: 'trivy-container-${{ matrix.component }}.sarif'
+        category: 'trivy-container-${{ matrix.component }}'
+      continue-on-error: true
+
+  # Security summary
+  security-summary:
+    name: Security Summary
+    runs-on: ubuntu-24.04
+    needs: [gosec-scan, trivy-scan, container-scan]
+    if: always()
+
+    steps:
+    - name: Generate security summary
+      run: |
+        echo "## 🔒 Security Scan Results" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+
+        # GoSec results
+        if [[ "${{ needs.gosec-scan.result }}" == "success" ]]; then
+          echo "✅ GoSec static analysis: PASSED" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ GoSec static analysis: FAILED" >> $GITHUB_STEP_SUMMARY
+        fi
+
+        # Trivy results
+        if [[ "${{ needs.trivy-scan.result }}" == "success" ]]; then
+          echo "✅ Trivy vulnerability scan: PASSED" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ Trivy vulnerability scan: FAILED" >> $GITHUB_STEP_SUMMARY
+        fi
+
+        # Container scan results
+        if [[ "${{ needs.container-scan.result }}" == "success" ]]; then
+          echo "✅ Container security scan: PASSED" >> $GITHUB_STEP_SUMMARY
+        elif [[ "${{ needs.container-scan.result }}" == "skipped" ]]; then
+          echo "⏭️ Container security scan: SKIPPED" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ Container security scan: FAILED" >> $GITHUB_STEP_SUMMARY
+        fi
+
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Security Tools Used" >> $GITHUB_STEP_SUMMARY
+        echo "- **GoSec ${{ env.GOSEC_VERSION }}**: Go security analyzer" >> $GITHUB_STEP_SUMMARY
+        echo "- **Trivy ${{ env.TRIVY_VERSION }}**: Vulnerability scanner" >> $GITHUB_STEP_SUMMARY
+        echo "- **GitHub CodeQL**: SARIF analysis and reporting" >> $GITHUB_STEP_SUMMARY

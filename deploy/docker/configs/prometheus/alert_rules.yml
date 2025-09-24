@@ -1,0 +1,166 @@
+# Alert rules for O-RAN Intent-MANO monitoring
+groups:
+  - name: oran-mano-services
+    rules:
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service {{ $labels.instance }} is down"
+          description: "{{ $labels.job }} on {{ $labels.instance }} has been down for more than 1 minute."
+
+      - alert: HighMemoryUsage
+        expr: (100 - ((node_memory_MemAvailable_bytes * 100) / node_memory_MemTotal_bytes)) > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage on {{ $labels.instance }}"
+          description: "Memory usage is above 80% on {{ $labels.instance }}"
+
+      - alert: HighCPUUsage
+        expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage on {{ $labels.instance }}"
+          description: "CPU usage is above 80% on {{ $labels.instance }}"
+
+      - alert: DiskSpaceLow
+        expr: ((node_filesystem_size_bytes{fstype!="tmpfs"} - node_filesystem_free_bytes{fstype!="tmpfs"}) / node_filesystem_size_bytes{fstype!="tmpfs"} * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Disk space is running low on {{ $labels.instance }}"
+          description: "Disk usage is above 80% on {{ $labels.instance }}"
+
+  - name: oran-orchestrator
+    rules:
+      - alert: OrchestratorHighLatency
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job="oran-orchestrator"}[5m])) > 0.5
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High latency in orchestrator"
+          description: "95th percentile latency is {{ $value }}s"
+
+      - alert: OrchestratorErrorRate
+        expr: rate(http_requests_total{job="oran-orchestrator",status=~"5.."}[5m]) / rate(http_requests_total{job="oran-orchestrator"}[5m]) > 0.1
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High error rate in orchestrator"
+          description: "Error rate is {{ $value | humanizePercentage }}"
+
+      - alert: OrchestratorIntentProcessingFailure
+        expr: increase(intent_processing_failures_total{job="oran-orchestrator"}[5m]) > 5
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Intent processing failures in orchestrator"
+          description: "{{ $value }} intent processing failures in the last 5 minutes"
+
+  - name: oran-vnf-operator
+    rules:
+      - alert: VNFOperatorReconcileFailures
+        expr: increase(controller_runtime_reconcile_errors_total{job="oran-vnf-operator"}[5m]) > 5
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "VNF operator reconcile failures"
+          description: "{{ $value }} reconcile failures in the last 5 minutes"
+
+      - alert: VNFDeploymentFailures
+        expr: increase(vnf_deployment_failures_total{job="oran-vnf-operator"}[10m]) > 3
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "VNF deployment failures"
+          description: "{{ $value }} VNF deployment failures in the last 10 minutes"
+
+  - name: oran-dms
+    rules:
+      - alert: DMSConnectionFailure
+        expr: up{job=~"oran-.*-dms"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "DMS service is down"
+          description: "{{ $labels.job }} is not responding"
+
+      - alert: DMSHighResponseTime
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job=~"oran-.*-dms"}[5m])) > 1.0
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "DMS high response time"
+          description: "95th percentile response time is {{ $value }}s for {{ $labels.job }}"
+
+  - name: oran-transport-network
+    rules:
+      - alert: TNManagerDown
+        expr: up{job="oran-tn-manager"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "TN Manager is down"
+          description: "Transport Network Manager is not responding"
+
+      - alert: TNAgentDown
+        expr: up{job="oran-tn-agents"} == 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "TN Agent is down"
+          description: "TN Agent {{ $labels.instance }} is not responding"
+
+      - alert: HighNetworkLatency
+        expr: tn_network_latency_ms > 50
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High network latency detected"
+          description: "Network latency is {{ $value }}ms on {{ $labels.instance }}"
+
+      - alert: LowThroughput
+        expr: tn_throughput_mbps < 1.0
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low throughput detected"
+          description: "Throughput is {{ $value }}Mbps on {{ $labels.instance }}"
+
+  - name: o2-interface
+    rules:
+      - alert: O2ClientSyncFailure
+        expr: increase(o2_sync_failures_total{job="oran-o2-client"}[10m]) > 3
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "O2 client sync failures"
+          description: "{{ $value }} O2 sync failures in the last 10 minutes"
+
+      - alert: O2IMSConnectionLoss
+        expr: o2_ims_connection_status == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "O2 IMS connection lost"
+          description: "Connection to O2 IMS is down"

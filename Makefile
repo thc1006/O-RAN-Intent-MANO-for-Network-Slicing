@@ -18,6 +18,7 @@ K3S_CLUSTER := oran-mano-k3s
 PROJECT_ROOT := $(shell pwd)
 
 # Version pins for reproducibility
+GO_VERSION := 1.24.7
 KIND_VERSION := v0.20.0
 K3S_VERSION := v1.28.5+k3s1
 KPT_VERSION := v1.0.0-beta.49

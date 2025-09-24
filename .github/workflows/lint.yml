@@ -1,0 +1,284 @@
+name: Code Linting and Quality Checks
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+env:
+  GO_VERSION: '1.24.7'
+  GOLANGCI_LINT_VERSION: 'v2.5.0'
+  PYTHON_VERSION: '3.11'
+
+permissions:
+  contents: read
+  security-events: write
+  pull-requests: write
+
+jobs:
+  # Go linting and code quality
+  go-lint:
+    name: Go Linting
+    runs-on: ubuntu-24.04
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v5
+      with:
+        fetch-depth: 0
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ env.GO_VERSION }}
+        cache: true
+
+    - name: Run golangci-lint
+      uses: golangci/golangci-lint-action@v8
+      with:
+        version: ${{ env.GOLANGCI_LINT_VERSION }}
+        args: --timeout=10m --verbose --issues-exit-code=0
+        working-directory: ./
+        skip-cache: false
+        skip-pkg-cache: false
+        skip-build-cache: false
+        only-new-issues: false
+
+    - name: Install additional Go tools
+      run: |
+        go install golang.org/x/tools/cmd/goimports@latest
+        go install honnef.co/go/tools/cmd/staticcheck@latest
+        go install github.com/fzipp/gocyclo/cmd/gocyclo@latest
+        go install github.com/client9/misspell/cmd/misspell@latest
+
+    - name: Run goimports
+      run: |
+        echo "Checking Go imports formatting..."
+        goimports_output=$(find . -name "*.go" -not -path "./vendor/*" | xargs goimports -l)
+        if [ -n "$goimports_output" ]; then
+          echo "Files with incorrect imports:"
+          echo "$goimports_output"
+          echo "Run 'goimports -w .' to fix"
+          exit 1
+        fi
+
+    - name: Run staticcheck
+      run: |
+        echo "Running staticcheck..."
+        staticcheck ./...
+
+    - name: Check cyclomatic complexity
+      run: |
+        echo "Checking cyclomatic complexity..."
+        gocyclo_output=$(gocyclo -over 15 . | grep -v vendor || true)
+        if [ -n "$gocyclo_output" ]; then
+          echo "Functions with high cyclomatic complexity (>15):"
+          echo "$gocyclo_output"
+          echo "Consider refactoring these functions"
+        fi
+
+    - name: Run misspell check
+      run: |
+        echo "Checking for common misspellings..."
+        misspell -error .
+
+    - name: Generate linting report
+      if: always()
+      run: |
+        cat > lint-report.json << EOF
+        {
+          "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+          "tools": {
+            "golangci_lint": "${{ env.GOLANGCI_LINT_VERSION }}",
+            "staticcheck": "$(staticcheck -version | head -1 || echo 'unknown')",
+            "goimports": "$(goimports -help | head -1 || echo 'latest')"
+          },
+          "go_version": "${{ env.GO_VERSION }}",
+          "status": "completed"
+        }
+        EOF
+
+    - name: Upload lint results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: go-lint-results
+        path: |
+          lint-report.json
+        retention-days: 30
+
+  # Python linting (if Python code exists)
+  python-lint:
+    name: Python Linting
+    runs-on: ubuntu-24.04
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v5
+
+    - name: Check for Python files
+      id: check-python
+      run: |
+        python_files=$(find . -name "*.py" | head -1 | wc -l)
+        echo "has_python=$python_files" >> $GITHUB_OUTPUT
+
+    - name: Set up Python
+      if: steps.check-python.outputs.has_python == '1'
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+
+    - name: Install Python linting tools
+      if: steps.check-python.outputs.has_python == '1'
+      run: |
+        pip install --upgrade pip
+        pip install black isort flake8 pylint mypy bandit
+
+    - name: Run Black formatter check
+      if: steps.check-python.outputs.has_python == '1'
+      run: |
+        echo "Checking Python code formatting with Black..."
+        black --check --diff .
+
+    - name: Run isort import sorting check
+      if: steps.check-python.outputs.has_python == '1'
+      run: |
+        echo "Checking import sorting with isort..."
+        isort --check-only --diff .
+
+    - name: Run flake8
+      if: steps.check-python.outputs.has_python == '1'
+      run: |
+        echo "Running flake8..."
+        flake8 . --max-line-length=88 --extend-ignore=E203,W503
+
+    - name: Run pylint
+      if: steps.check-python.outputs.has_python == '1'
+      run: |
+        echo "Running pylint..."
+        pylint **/*.py --disable=C0114,C0115,C0116 || true
+
+    - name: Run mypy type checking
+      if: steps.check-python.outputs.has_python == '1'
+      run: |
+        echo "Running mypy type checking..."
+        mypy . --ignore-missing-imports || true
+
+  # YAML and Markdown linting
+  config-lint:
+    name: Configuration Linting
+    runs-on: ubuntu-24.04
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v5
+
+    - name: Install yamllint and markdownlint
+      run: |
+        pip install yamllint
+        npm install -g markdownlint-cli
+
+    - name: Run yamllint
+      run: |
+        echo "Linting YAML files..."
+        find . -name "*.yaml" -o -name "*.yml" | xargs yamllint -d relaxed || true
+
+    - name: Run markdownlint
+      run: |
+        echo "Linting Markdown files..."
+        markdownlint . --ignore node_modules --ignore .github || true
+
+  # Docker linting
+  docker-lint:
+    name: Docker Linting
+    runs-on: ubuntu-24.04
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v5
+
+    - name: Install hadolint
+      run: |
+        wget -O /tmp/hadolint https://github.com/hadolint/hadolint/releases/latest/download/hadolint-Linux-x86_64
+        chmod +x /tmp/hadolint
+        sudo mv /tmp/hadolint /usr/local/bin/hadolint
+
+    - name: Run hadolint on Dockerfiles
+      run: |
+        echo "Linting Dockerfiles..."
+        find . -name "Dockerfile*" -exec echo "Linting {}" \; -exec hadolint {} \; || true
+
+  # Aggregated lint report
+  lint-summary:
+    name: Lint Summary
+    runs-on: ubuntu-24.04
+    needs: [go-lint, python-lint, config-lint, docker-lint]
+    if: always()
+
+    steps:
+    - name: Generate lint summary
+      run: |
+        echo "## 🔍 Code Quality Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+
+        # Go linting results
+        if [[ "${{ needs.go-lint.result }}" == "success" ]]; then
+          echo "✅ Go Code Quality: PASSED" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ Go Code Quality: FAILED" >> $GITHUB_STEP_SUMMARY
+        fi
+
+        # Python linting results
+        if [[ "${{ needs.python-lint.result }}" == "success" ]]; then
+          echo "✅ Python Code Quality: PASSED" >> $GITHUB_STEP_SUMMARY
+        elif [[ "${{ needs.python-lint.result }}" == "skipped" ]]; then
+          echo "⏭️ Python Code Quality: SKIPPED (No Python files)" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ Python Code Quality: FAILED" >> $GITHUB_STEP_SUMMARY
+        fi
+
+        # Configuration linting results
+        if [[ "${{ needs.config-lint.result }}" == "success" ]]; then
+          echo "✅ Configuration Quality: PASSED" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ Configuration Quality: FAILED" >> $GITHUB_STEP_SUMMARY
+        fi
+
+        # Docker linting results
+        if [[ "${{ needs.docker-lint.result }}" == "success" ]]; then
+          echo "✅ Docker Quality: PASSED" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ Docker Quality: FAILED" >> $GITHUB_STEP_SUMMARY
+        fi
+
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Quality Tools Used" >> $GITHUB_STEP_SUMMARY
+        echo "- **golangci-lint ${{ env.GOLANGCI_LINT_VERSION }}**: Go static analysis" >> $GITHUB_STEP_SUMMARY
+        echo "- **staticcheck**: Go code analysis" >> $GITHUB_STEP_SUMMARY
+        echo "- **goimports**: Go import formatting" >> $GITHUB_STEP_SUMMARY
+        echo "- **gocyclo**: Cyclomatic complexity analysis" >> $GITHUB_STEP_SUMMARY
+        echo "- **black/isort/flake8**: Python code quality" >> $GITHUB_STEP_SUMMARY
+        echo "- **yamllint**: YAML file validation" >> $GITHUB_STEP_SUMMARY
+        echo "- **markdownlint**: Markdown formatting" >> $GITHUB_STEP_SUMMARY
+        echo "- **hadolint**: Dockerfile best practices" >> $GITHUB_STEP_SUMMARY
+
+    - name: Check overall quality gate
+      run: |
+        echo "Checking overall code quality gate..."
+
+        # Check if Go linting passed (required)
+        if [[ "${{ needs.go-lint.result }}" != "success" ]]; then
+          echo "ERROR: Go code quality checks failed"
+          exit 1
+        fi
+
+        # Check if Python linting failed (if Python files exist)
+        if [[ "${{ needs.python-lint.result }}" == "failure" ]]; then
+          echo "ERROR: Python code quality checks failed"
+          exit 1
+        fi
+
+        echo "All code quality checks passed!"

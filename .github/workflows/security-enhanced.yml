@@ -38,7 +38,7 @@ jobs:
   # Pre-commit security validation
   pre-commit-security:
     name: Pre-commit Security Checks
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: github.event_name == 'pull_request'
 
     steps:
@@ -84,7 +84,7 @@ jobs:
   # SLSA Build Provenance
   slsa-provenance:
     name: SLSA Build Provenance
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [pre-commit-security]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
@@ -134,7 +134,7 @@ jobs:
   # Advanced Code Security Analysis
   advanced-code-security:
     name: Advanced Code Security Analysis
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: github.event.inputs.scan_type == 'all' || github.event.inputs.scan_type == 'code' || github.event.inputs.scan_type == ''
 
     strategy:
@@ -246,7 +246,7 @@ jobs:
   # Infrastructure Security Deep Scan
   infrastructure-security-deep:
     name: Infrastructure Security Deep Scan
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: github.event.inputs.scan_type == 'all' || github.event.inputs.scan_type == 'infrastructure' || github.event.inputs.scan_type == ''
 
     steps:
@@ -345,7 +345,7 @@ jobs:
   # Container Security with Multiple Scanners
   container-security-matrix:
     name: Container Security Matrix Scan
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: github.event.inputs.scan_type == 'all' || github.event.inputs.scan_type == 'containers' || github.event.inputs.scan_type == ''
 
     strategy:
@@ -427,7 +427,7 @@ jobs:
   # Security Metrics and Reporting
   security-metrics:
     name: Security Metrics Collection
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [pre-commit-security, advanced-code-security, infrastructure-security-deep, container-security-matrix]
     if: always()
 
@@ -650,7 +650,7 @@ jobs:
   # Security test validation
   security-test-validation:
     name: Security Test Validation
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: github.event_name == 'pull_request'
 
     steps:

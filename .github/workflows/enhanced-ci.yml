@@ -94,7 +94,7 @@ jobs:
   # Pre-flight validation and change detection
   pre-flight:
     name: Pre-flight Validation & Change Detection
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       should-run-tests: ${{ steps.changes.outputs.should-run }}
       go-modules-changed: ${{ steps.changes.outputs.go-modules }}
@@ -269,7 +269,7 @@ jobs:
   # Comprehensive code quality and security analysis
   code-quality:
     name: Code Quality & Security Analysis
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: pre-flight
     if: needs.pre-flight.outputs.should-run-tests == 'true'
 
@@ -721,7 +721,7 @@ jobs:
   # Enhanced unit tests with comprehensive coverage
   unit-tests:
     name: Unit Tests & Coverage Analysis
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [pre-flight, code-quality]
     if: needs.pre-flight.outputs.should-run-tests == 'true'
 
@@ -1102,7 +1102,7 @@ jobs:
   # Quality gate validation job
   quality-gates:
     name: Quality Gates Validation
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [pre-flight, code-quality, unit-tests]
     if: always() && needs.pre-flight.outputs.should-run-tests == 'true'
 
@@ -1203,7 +1203,7 @@ jobs:
   # Dashboard Generation and Publishing Job
   dashboard-publishing:
     name: Generate and Publish Test Dashboard
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [quality-gates]
     if: always() && (github.ref == 'refs/heads/main' || github.event_name == 'schedule')
 

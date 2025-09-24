@@ -1,9 +1,9 @@
 # VNF Operator Multi-stage Dockerfile
 # Stage 1: Build with Go 1.24.7
-# Note: Using golang:latest and setting GOTOOLCHAIN to go1.24.7
-FROM golang:alpine AS builder
+# Note: Using golang:1.24.7-alpine as per project requirements
+FROM golang:1.24.7-alpine AS builder
 
-# Force Go 1.24.7 via GOTOOLCHAIN
+# Set Go environment for 1.24.7
 ENV GOTOOLCHAIN=go1.24.7
 ENV GO124TELEMETRY=off
 ENV GOPROXY=https://proxy.golang.org,direct

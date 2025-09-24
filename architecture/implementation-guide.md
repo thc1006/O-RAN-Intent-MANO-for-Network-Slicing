@@ -151,7 +151,7 @@ go mod tidy
 
 # Create Dockerfile
 cat > Dockerfile <<EOF
-FROM golang:1.21-alpine AS builder
+FROM golang:1.22-alpine AS builder
 WORKDIR /workspace
 COPY go.mod go.sum ./
 RUN go mod download

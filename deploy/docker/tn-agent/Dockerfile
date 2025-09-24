@@ -56,7 +56,7 @@ COPY tn/ .
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -ldflags='-w -s -extldflags "-static"' \
     -a -installsuffix cgo \
-    -o tn-agent cmd/agent/main.go
+    -o tn-agent agent/main.go
 
 # Stage 2: Runtime
 FROM alpine:3.22.1
@@ -67,7 +67,7 @@ LABEL security.scan="trivy,grype,snyk"
 LABEL security.user="non-root"
 LABEL security.capabilities="NET_ADMIN,NET_RAW"
 LABEL security.base.image="alpine:3.22.1"
-LABEL security.go.version="1.23.6"
+LABEL security.go.version="1.24.7"
 LABEL security.scan.date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 # Install runtime dependencies for network operations, clean cache

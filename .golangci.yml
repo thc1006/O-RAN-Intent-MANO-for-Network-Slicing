@@ -164,7 +164,7 @@ run:
   timeout: 15m
   issues-exit-code: 1
   tests: true
-  go: "1.24"
+  go: "1.24.7"
 
 severity:
   # v2: default-severity → default；移除 case-sensitive

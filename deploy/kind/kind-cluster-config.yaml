@@ -1,0 +1,107 @@
+# Kind cluster configuration for O-RAN Intent-MANO
+# Single node cluster with proper networking and ports
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: oran-mano
+nodes:
+- role: control-plane
+  kubeadmConfigPatches:
+  - |
+    kind: InitConfiguration
+    nodeRegistration:
+      kubeletExtraArgs:
+        node-labels: "ingress-ready=true"
+  extraPortMappings:
+  # Orchestrator
+  - containerPort: 30080
+    hostPort: 8080
+    protocol: TCP
+  - containerPort: 30090
+    hostPort: 9090
+    protocol: TCP
+  # VNF Operator
+  - containerPort: 30081
+    hostPort: 8081
+    protocol: TCP
+  - containerPort: 30082
+    hostPort: 8082
+    protocol: TCP
+  # O2 Client
+  - containerPort: 30083
+    hostPort: 8083
+    protocol: TCP
+  # TN Manager
+  - containerPort: 30084
+    hostPort: 8084
+    protocol: TCP
+  # TN Agents
+  - containerPort: 30085
+    hostPort: 8085
+    protocol: TCP
+  - containerPort: 30086
+    hostPort: 8086
+    protocol: TCP
+  # RAN DMS
+  - containerPort: 30087
+    hostPort: 8087
+    protocol: TCP
+  - containerPort: 30443
+    hostPort: 8443
+    protocol: TCP
+  # CN DMS
+  - containerPort: 30088
+    hostPort: 8088
+    protocol: TCP
+  - containerPort: 30444
+    hostPort: 8444
+    protocol: TCP
+  # Prometheus
+  - containerPort: 30090
+    hostPort: 9090
+    protocol: TCP
+  # Grafana
+  - containerPort: 30000
+    hostPort: 3000
+    protocol: TCP
+  # iPerf3 servers
+  - containerPort: 30201
+    hostPort: 5201
+    protocol: TCP
+  - containerPort: 30202
+    hostPort: 5202
+    protocol: TCP
+  extraMounts:
+  - hostPath: /tmp/oran-mano-data
+    containerPath: /data
+    readOnly: false
+    selinuxRelabel: false
+    propagation: None
+networking:
+  # Use different CIDR to avoid conflicts with Docker Compose
+  podSubnet: "10.244.0.0/16"
+  serviceSubnet: "10.96.0.0/16"
+  # Disable default CNI, we'll install Kube-OVN
+  disableDefaultCNI: true
+  kubeProxyMode: "iptables"
+containerdConfigPatches:
+- |-
+  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."localhost:5000"]
+    endpoint = ["http://localhost:5000"]
+  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."registry.localhost:5000"]
+    endpoint = ["http://localhost:5000"]
+kubeadmConfigPatches:
+- |
+  kind: ClusterConfiguration
+  controllerManager:
+    extraArgs:
+      bind-address: 0.0.0.0
+  scheduler:
+    extraArgs:
+      bind-address: 0.0.0.0
+  etcd:
+    local:
+      extraArgs:
+        listen-metrics-urls: http://0.0.0.0:2381
+- |
+  kind: KubeProxyConfiguration
+  metricsBindAddress: 0.0.0.0:10249
