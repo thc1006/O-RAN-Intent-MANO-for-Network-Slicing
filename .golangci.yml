@@ -26,13 +26,10 @@ output:
 linters:
   enable:
     - gocyclo
-    - gofmt
-    - goimports
     - gosec
     - ineffassign
     - misspell
     - staticcheck
-    - typecheck
     - unused
     - govet  # renamed from vet
     - errcheck
@@ -85,6 +82,13 @@ linters:
     - tparallel
     - wastedassign
     - wsl
+
+# v2 formatters configuration - separate from linters
+formatters:
+  gofmt:
+    enable: true
+  goimports:
+    enable: true
 
 linters-settings:
   gocyclo:
