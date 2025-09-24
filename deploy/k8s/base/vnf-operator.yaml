@@ -36,6 +36,9 @@ spec:
         container.apparmor.security.beta.kubernetes.io/vnf-operator: runtime/default
         security.kubernetes.io/network-policy: "oran-vnf-operator-network-policy"
         security.kubernetes.io/pod-security-standard: "restricted"
+        # Security exception for CKV_K8S_38 - Service account token required for operator functionality
+        security.kubernetes.io/serviceaccount-token-exception: "operator-required"
+        security.kubernetes.io/justification: "VNF operator requires API access for managing VNF lifecycle and resources"
     spec:
       serviceAccountName: oran-vnf-operator
       automountServiceAccountToken: true

@@ -36,6 +36,9 @@ spec:
         container.apparmor.security.beta.kubernetes.io/orchestrator: runtime/default
         security.kubernetes.io/network-policy: "oran-orchestrator-network-policy"
         security.kubernetes.io/pod-security-standard: "restricted"
+        # Security exception for CKV_K8S_38 - Service account token required for orchestrator functionality
+        security.kubernetes.io/serviceaccount-token-exception: "orchestrator-required"
+        security.kubernetes.io/justification: "Orchestrator requires API access for managing network slices and coordinating components"
     spec:
       serviceAccountName: oran-orchestrator
       automountServiceAccountToken: true
