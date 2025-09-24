@@ -147,7 +147,7 @@ jobs:
 
     - name: Upload SARIF file
       if: always()
-      uses: github/codeql-action/upload-sarif@v4
+      uses: github/codeql-action/upload-sarif@v3
       with:
         sarif_file: gosec.sarif
         category: 'gosec-ci'
@@ -418,7 +418,7 @@ jobs:
         exit-code: '0'
 
     - name: Upload Trivy scan results
-      uses: github/codeql-action/upload-sarif@v4
+      uses: github/codeql-action/upload-sarif@v3
       if: always()
       with:
         sarif_file: 'trivy-results-${{ matrix.component }}.sarif'
