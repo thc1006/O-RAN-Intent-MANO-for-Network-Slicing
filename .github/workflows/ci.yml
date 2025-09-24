@@ -281,7 +281,21 @@ jobs:
           echo "No go.mod found, skipping dependency installation for ${{ matrix.component }}"
         fi
 
-    - name: Run unit tests
+    - name: Install setup-envtest
+      run: |
+        go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
+
+    - name: Download envtest binaries and export KUBEBUILDER_ASSETS
+      shell: bash
+      run: |
+        # Use K8s version consistent with KUBECTL_VERSION
+        K8S_VERSION=1.28.0
+        # Download kube-apiserver/etcd/kubectl binaries and get env vars
+        eval "$(setup-envtest use -p env ${K8S_VERSION})"
+        # Make available to next steps
+        echo "KUBEBUILDER_ASSETS=${ENVTEST_KUBEBUILDER_ASSETS}" >> $GITHUB_ENV
+
+    - name: Run unit/integration tests
       working-directory: ${{ env.COMPONENT_PATH }}
       run: |
         if [ -f go.mod ]; then
