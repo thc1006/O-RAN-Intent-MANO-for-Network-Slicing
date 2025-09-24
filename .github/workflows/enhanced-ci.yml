@@ -131,10 +131,8 @@ jobs:
           if echo "$changed_files" | grep -v -E '\.(md|txt)$|^docs/' | grep -q .; then
             echo 'docs-only=false' >> $GITHUB_OUTPUT
           else
-            cat >> $GITHUB_OUTPUT << 'EOF'
-docs-only=true
-should-run=false
-EOF
+            echo "docs-only=true" >> $GITHUB_OUTPUT
+            echo "should-run=false" >> $GITHUB_OUTPUT
           fi
 
           # Check for specific file type changes
