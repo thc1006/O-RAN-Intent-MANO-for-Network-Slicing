@@ -19,7 +19,7 @@ import logging
 import re
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, TextIO, cast
 
 import jsonschema
 
@@ -127,7 +127,7 @@ class IntentToQoSMapper:
         normalized_intent = self._normalize_intent(intent)
 
         # Score each pattern based on keyword matches
-        pattern_scores = {}
+        pattern_scores: Dict[str, Dict[str, Any]] = {}
 
         for pattern_name, pattern_data in self.intent_patterns.items():
             score = 0
@@ -155,16 +155,20 @@ class IntentToQoSMapper:
                 pattern_scores.keys(), key=lambda k: int(pattern_scores[k]["score"])
             )
             logger.debug(
-                f"Matched pattern '{best_pattern}' with keywords: {pattern_scores[best_pattern]['keywords']}"
+                f"Matched pattern '{best_pattern}' with keywords: "
+                f"{pattern_scores[best_pattern]['keywords']}"
             )
-            return best_pattern, pattern_scores[best_pattern]["qos"]
+            return best_pattern, cast(
+                Dict[str, Any], pattern_scores[best_pattern]['qos']
+            )
 
         # Default to balanced if no patterns match
         logger.warning(
             f"No pattern matched for intent: '{intent}'. Using balanced profile."
         )
-        balanced_qos = self.intent_patterns["balanced"]["qos"]
-        return "balanced", dict(balanced_qos) if isinstance(balanced_qos, dict) else {}
+        return 'balanced', cast(
+            Dict[str, Any], self.intent_patterns['balanced']['qos'].copy()
+        )
 
     def _enhance_qos_parameters(
         self, qos: Dict[str, Any], intent: str
@@ -273,6 +277,7 @@ def write_jsonl_output(
     results: List[Dict[str, Any]], output_file: Optional[str] = None
 ) -> None:
     """Write results to JSONL format (one JSON object per line)."""
+    file_handle: TextIO
     if output_file:
         output_path = Path(output_file)
         logger.info("Writing results to %s", output_file)
@@ -306,7 +311,8 @@ def write_jsonl_output(
 def main():
     """Main entry point for the intent-to-QoS mapping CLI."""
     parser = argparse.ArgumentParser(
-        description="Map natural language intents to QoS parameters for O-RAN network slices"
+        description="Map natural language intents to QoS parameters for O-RAN "
+        "network slices"
     )
 
     parser.add_argument(
