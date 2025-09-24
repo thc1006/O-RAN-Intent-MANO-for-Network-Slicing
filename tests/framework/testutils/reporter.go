@@ -19,13 +19,13 @@ const (
 
 // TestReporter provides comprehensive test reporting capabilities
 type TestReporter struct {
-	StartTime   time.Time
-	Results     []TestResult
-	Summary     TestSummary
-	OutputDir   string
-	JUnitPath   string
-	JSONPath    string
-	HTMLPath    string
+	StartTime    time.Time
+	Results      []TestResult
+	Summary      TestSummary
+	OutputDir    string
+	JUnitPath    string
+	JSONPath     string
+	HTMLPath     string
 	CoveragePath string
 }
 
@@ -44,19 +44,19 @@ type TestResult struct {
 
 // TestSummary provides an overview of test execution
 type TestSummary struct {
-	TotalTests      int                    `json:"total_tests"`
-	PassedTests     int                    `json:"passed_tests"`
-	FailedTests     int                    `json:"failed_tests"`
-	SkippedTests    int                    `json:"skipped_tests"`
-	Duration        time.Duration          `json:"duration"`
-	StartTime       time.Time              `json:"start_time"`
-	EndTime         time.Time              `json:"end_time"`
-	Coverage        float64                `json:"coverage"`
-	SuccessRate     float64                `json:"success_rate"`
-	Categories      map[string]int         `json:"categories"`
-	Performance     *PerformanceMetrics    `json:"performance,omitempty"`
-	Thresholds      map[string]interface{} `json:"thresholds"`
-	ThresholdsMet   bool                   `json:"thresholds_met"`
+	TotalTests    int                    `json:"total_tests"`
+	PassedTests   int                    `json:"passed_tests"`
+	FailedTests   int                    `json:"failed_tests"`
+	SkippedTests  int                    `json:"skipped_tests"`
+	Duration      time.Duration          `json:"duration"`
+	StartTime     time.Time              `json:"start_time"`
+	EndTime       time.Time              `json:"end_time"`
+	Coverage      float64                `json:"coverage"`
+	SuccessRate   float64                `json:"success_rate"`
+	Categories    map[string]int         `json:"categories"`
+	Performance   *PerformanceMetrics    `json:"performance,omitempty"`
+	Thresholds    map[string]interface{} `json:"thresholds"`
+	ThresholdsMet bool                   `json:"thresholds_met"`
 }
 
 // PerformanceMetrics tracks performance-related metrics
@@ -88,11 +88,11 @@ func NewTestReporter() *TestReporter {
 		Summary: TestSummary{
 			Categories: make(map[string]int),
 			Thresholds: map[string]interface{}{
-				"coverage_threshold":      90.0,
-				"success_rate_threshold":  95.0,
-				"max_deployment_time_s":   600, // 10 minutes
-				"min_throughput_mbps":     0.9, // Thesis target for lowest QoS
-				"max_latency_ms":          20.0, // Thesis target
+				"coverage_threshold":     90.0,
+				"success_rate_threshold": 95.0,
+				"max_deployment_time_s":  600,  // 10 minutes
+				"min_throughput_mbps":    0.9,  // Thesis target for lowest QoS
+				"max_latency_ms":         20.0, // Thesis target
 			},
 		},
 	}

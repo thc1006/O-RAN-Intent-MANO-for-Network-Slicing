@@ -39,16 +39,16 @@ type DriftDetector struct {
 
 // DriftResult represents the result of drift detection
 type DriftResult struct {
-	Resource      ResourceIdentifier    `json:"resource"`
-	HasDrift      bool                  `json:"hasDrift"`
-	DriftType     DriftType            `json:"driftType"`
-	Changes       []FieldChange        `json:"changes"`
-	Severity      DriftSeverity        `json:"severity"`
-	DetectedAt    time.Time            `json:"detectedAt"`
-	LastChecked   time.Time            `json:"lastChecked"`
-	DesiredState  map[string]interface{} `json:"desiredState,omitempty"`
-	ActualState   map[string]interface{} `json:"actualState,omitempty"`
-	Checksum      string               `json:"checksum"`
+	Resource     ResourceIdentifier     `json:"resource"`
+	HasDrift     bool                   `json:"hasDrift"`
+	DriftType    DriftType              `json:"driftType"`
+	Changes      []FieldChange          `json:"changes"`
+	Severity     DriftSeverity          `json:"severity"`
+	DetectedAt   time.Time              `json:"detectedAt"`
+	LastChecked  time.Time              `json:"lastChecked"`
+	DesiredState map[string]interface{} `json:"desiredState,omitempty"`
+	ActualState  map[string]interface{} `json:"actualState,omitempty"`
+	Checksum     string                 `json:"checksum"`
 }
 
 // ResourceIdentifier uniquely identifies a Kubernetes resource
@@ -90,13 +90,13 @@ type FieldChange struct {
 
 // DriftScanResult represents the result of a complete drift scan
 type DriftScanResult struct {
-	ScanID       string        `json:"scanId"`
-	Timestamp    time.Time     `json:"timestamp"`
-	Duration     time.Duration `json:"duration"`
-	TotalResources int         `json:"totalResources"`
-	DriftedResources int       `json:"driftedResources"`
-	Results      []DriftResult `json:"results"`
-	Summary      DriftSummary  `json:"summary"`
+	ScanID           string        `json:"scanId"`
+	Timestamp        time.Time     `json:"timestamp"`
+	Duration         time.Duration `json:"duration"`
+	TotalResources   int           `json:"totalResources"`
+	DriftedResources int           `json:"driftedResources"`
+	Results          []DriftResult `json:"results"`
+	Summary          DriftSummary  `json:"summary"`
 }
 
 // DriftSummary provides a summary of drift detection results
@@ -616,8 +616,8 @@ func (dd *DriftDetector) filterSystemAnnotations(annotations interface{}) interf
 		for key, value := range annotMap {
 			// Keep only user-managed annotations
 			if !strings.HasPrefix(key, "kubectl.kubernetes.io/") &&
-			   !strings.HasPrefix(key, "deployment.kubernetes.io/") &&
-			   !strings.HasPrefix(key, "pv.kubernetes.io/") {
+				!strings.HasPrefix(key, "deployment.kubernetes.io/") &&
+				!strings.HasPrefix(key, "pv.kubernetes.io/") {
 				filtered[key] = value
 			}
 		}
@@ -693,9 +693,9 @@ func (dd *DriftDetector) isCriticalResource(resource ResourceIdentifier) bool {
 
 	// Check if it's an O-RAN component
 	if strings.Contains(resource.Name, "ran-") ||
-	   strings.Contains(resource.Name, "cn-") ||
-	   strings.Contains(resource.Name, "tn-") ||
-	   strings.Contains(resource.Name, "orchestrator") {
+		strings.Contains(resource.Name, "cn-") ||
+		strings.Contains(resource.Name, "tn-") ||
+		strings.Contains(resource.Name, "orchestrator") {
 		return true
 	}
 

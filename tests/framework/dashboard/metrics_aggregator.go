@@ -514,11 +514,7 @@ func (ma *MetricsAggregator) saveAggregatedMetrics(metrics *TestMetrics) error {
 	// Save summary report
 	summaryPath := filepath.Join(ma.config.OutputDirectory, "summary.txt")
 	summary := ma.generateSummaryReport(metrics)
-	if err := os.WriteFile(summaryPath, []byte(summary), security.SecureFileMode); err != nil {
-		return err
-	}
-
-	return nil
+	return os.WriteFile(summaryPath, []byte(summary), security.SecureFileMode)
 }
 
 // generateSummaryReport generates a text summary report
@@ -886,12 +882,8 @@ func (ma *MetricsAggregator) checkPerformanceThresholds(metrics *TestMetrics, al
 	}
 
 	threshold, exists := ma.config.Thresholds["performance.deployment_time"]
-	if !exists {
-		return
-	}
-
 	deploymentTime := metrics.PerformanceData.DeploymentTime.AverageTime.Minutes()
-	if deploymentTime <= threshold {
+	if !exists || deploymentTime <= threshold {
 		return
 	}
 

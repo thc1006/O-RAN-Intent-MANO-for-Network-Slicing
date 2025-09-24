@@ -14,7 +14,7 @@ import (
 
 // QoSTestProfile represents a QoS testing configuration based on thesis targets
 type QoSTestProfile struct {
-	Name                 string  `json:"name"`
+	Name                string  `json:"name"`
 	SliceType           string  `json:"slice_type"`
 	TargetLatencyMs     float64 `json:"target_latency_ms"`
 	TargetBandwidthMbps float64 `json:"target_bandwidth_mbps"`
@@ -26,17 +26,17 @@ type QoSTestProfile struct {
 
 // QoSMeasurement represents measured QoS parameters
 type QoSMeasurement struct {
-	Timestamp           time.Time `json:"timestamp"`
-	TestProfile         string    `json:"test_profile"`
-	MeasuredLatencyMs   float64   `json:"measured_latency_ms"`
-	MeasuredBandwidthMbps float64 `json:"measured_bandwidth_mbps"`
-	JitterMs            float64   `json:"jitter_ms"`
-	PacketLossPercent   float64   `json:"packet_loss_percent"`
-	ThroughputConsistency float64 `json:"throughput_consistency"`
-	LatencyVariation    float64   `json:"latency_variation"`
-	TestDuration        time.Duration `json:"test_duration"`
-	ValidationPassed    bool      `json:"validation_passed"`
-	DeviationDetails    map[string]float64 `json:"deviation_details"`
+	Timestamp             time.Time          `json:"timestamp"`
+	TestProfile           string             `json:"test_profile"`
+	MeasuredLatencyMs     float64            `json:"measured_latency_ms"`
+	MeasuredBandwidthMbps float64            `json:"measured_bandwidth_mbps"`
+	JitterMs              float64            `json:"jitter_ms"`
+	PacketLossPercent     float64            `json:"packet_loss_percent"`
+	ThroughputConsistency float64            `json:"throughput_consistency"`
+	LatencyVariation      float64            `json:"latency_variation"`
+	TestDuration          time.Duration      `json:"test_duration"`
+	ValidationPassed      bool               `json:"validation_passed"`
+	DeviationDetails      map[string]float64 `json:"deviation_details"`
 }
 
 // QoSValidationSuite manages QoS parameter validation tests
@@ -50,108 +50,108 @@ type QoSValidationSuite struct {
 
 // QoSTestResults aggregates all QoS test results
 type QoSTestResults struct {
-	TestSuiteStart    time.Time                    `json:"test_suite_start"`
-	TestSuiteEnd      time.Time                    `json:"test_suite_end"`
-	ProfileResults    map[string][]QoSMeasurement  `json:"profile_results"`
-	ValidationSummary QoSValidationSummary         `json:"validation_summary"`
+	TestSuiteStart     time.Time                   `json:"test_suite_start"`
+	TestSuiteEnd       time.Time                   `json:"test_suite_end"`
+	ProfileResults     map[string][]QoSMeasurement `json:"profile_results"`
+	ValidationSummary  QoSValidationSummary        `json:"validation_summary"`
 	PerformanceMetrics QoSPerformanceMetrics       `json:"performance_metrics"`
-	Recommendations   []string                     `json:"recommendations"`
+	Recommendations    []string                    `json:"recommendations"`
 }
 
 // QoSValidationSummary provides overall validation results
 type QoSValidationSummary struct {
-	TotalTests         int     `json:"total_tests"`
-	PassedTests        int     `json:"passed_tests"`
-	FailedTests        int     `json:"failed_tests"`
-	OverallSuccessRate float64 `json:"overall_success_rate"`
-	LatencyCompliance  float64 `json:"latency_compliance_rate"`
-	BandwidthCompliance float64 `json:"bandwidth_compliance_rate"`
-	CriticalFailures   []string `json:"critical_failures"`
+	TotalTests          int      `json:"total_tests"`
+	PassedTests         int      `json:"passed_tests"`
+	FailedTests         int      `json:"failed_tests"`
+	OverallSuccessRate  float64  `json:"overall_success_rate"`
+	LatencyCompliance   float64  `json:"latency_compliance_rate"`
+	BandwidthCompliance float64  `json:"bandwidth_compliance_rate"`
+	CriticalFailures    []string `json:"critical_failures"`
 }
 
 // QoSPerformanceMetrics provides detailed performance analysis
 type QoSPerformanceMetrics struct {
-	AverageLatencyMs      float64 `json:"average_latency_ms"`
-	P95LatencyMs          float64 `json:"p95_latency_ms"`
-	P99LatencyMs          float64 `json:"p99_latency_ms"`
-	AverageBandwidthMbps  float64 `json:"average_bandwidth_mbps"`
-	PeakBandwidthMbps     float64 `json:"peak_bandwidth_mbps"`
-	MinBandwidthMbps      float64 `json:"min_bandwidth_mbps"`
-	BandwidthStability    float64 `json:"bandwidth_stability"`
-	LatencyStability      float64 `json:"latency_stability"`
-	NetworkEfficiency     float64 `json:"network_efficiency"`
+	AverageLatencyMs     float64 `json:"average_latency_ms"`
+	P95LatencyMs         float64 `json:"p95_latency_ms"`
+	P99LatencyMs         float64 `json:"p99_latency_ms"`
+	AverageBandwidthMbps float64 `json:"average_bandwidth_mbps"`
+	PeakBandwidthMbps    float64 `json:"peak_bandwidth_mbps"`
+	MinBandwidthMbps     float64 `json:"min_bandwidth_mbps"`
+	BandwidthStability   float64 `json:"bandwidth_stability"`
+	LatencyStability     float64 `json:"latency_stability"`
+	NetworkEfficiency    float64 `json:"network_efficiency"`
 }
 
 // NetworkSlice represents a network slice with QoS parameters
 type NetworkSlice struct {
-	ID         string        `json:"id"`
+	ID         string         `json:"id"`
 	QoSProfile QoSTestProfile `json:"qos_profile"`
-	Priority   int           `json:"priority"`
-	CreatedAt  time.Time     `json:"created_at"`
-	Status     string        `json:"status"`
+	Priority   int            `json:"priority"`
+	CreatedAt  time.Time      `json:"created_at"`
+	Status     string         `json:"status"`
 }
 
 // QoS test profiles based on thesis performance targets
 var qosTestProfiles = []QoSTestProfile{
 	{
 		Name:                "uRLLC_UltraLowLatency",
-		SliceType:          "uRLLC",
-		TargetLatencyMs:    6.3,
+		SliceType:           "uRLLC",
+		TargetLatencyMs:     6.3,
 		TargetBandwidthMbps: 0.93,
-		TolerancePercent:   10.0,
-		TestDurationSec:    60,
-		PacketSizeBytes:    64,
-		Description:        "Ultra-reliable low-latency communication profile for mission-critical applications",
+		TolerancePercent:    10.0,
+		TestDurationSec:     60,
+		PacketSizeBytes:     64,
+		Description:         "Ultra-reliable low-latency communication profile for mission-critical applications",
 	},
 	{
 		Name:                "mIoT_Balanced",
-		SliceType:          "mIoT",
-		TargetLatencyMs:    15.7,
+		SliceType:           "mIoT",
+		TargetLatencyMs:     15.7,
 		TargetBandwidthMbps: 2.77,
-		TolerancePercent:   15.0,
-		TestDurationSec:    120,
-		PacketSizeBytes:    512,
-		Description:        "Balanced profile for massive IoT applications with moderate requirements",
+		TolerancePercent:    15.0,
+		TestDurationSec:     120,
+		PacketSizeBytes:     512,
+		Description:         "Balanced profile for massive IoT applications with moderate requirements",
 	},
 	{
 		Name:                "eMBB_HighBandwidth",
-		SliceType:          "eMBB",
-		TargetLatencyMs:    16.1,
+		SliceType:           "eMBB",
+		TargetLatencyMs:     16.1,
 		TargetBandwidthMbps: 4.57,
-		TolerancePercent:   12.0,
-		TestDurationSec:    180,
-		PacketSizeBytes:    1500,
-		Description:        "Enhanced mobile broadband profile for high-bandwidth applications",
+		TolerancePercent:    12.0,
+		TestDurationSec:     180,
+		PacketSizeBytes:     1500,
+		Description:         "Enhanced mobile broadband profile for high-bandwidth applications",
 	},
 	{
 		Name:                "Edge_Gaming",
-		SliceType:          "uRLLC",
-		TargetLatencyMs:    5.0,
+		SliceType:           "uRLLC",
+		TargetLatencyMs:     5.0,
 		TargetBandwidthMbps: 1.5,
-		TolerancePercent:   8.0,
-		TestDurationSec:    300,
-		PacketSizeBytes:    128,
-		Description:        "Ultra-low latency profile for real-time gaming and AR/VR applications",
+		TolerancePercent:    8.0,
+		TestDurationSec:     300,
+		PacketSizeBytes:     128,
+		Description:         "Ultra-low latency profile for real-time gaming and AR/VR applications",
 	},
 	{
 		Name:                "Industrial_Automation",
-		SliceType:          "uRLLC",
-		TargetLatencyMs:    3.0,
+		SliceType:           "uRLLC",
+		TargetLatencyMs:     3.0,
 		TargetBandwidthMbps: 2.0,
-		TolerancePercent:   5.0,
-		TestDurationSec:    120,
-		PacketSizeBytes:    256,
-		Description:        "Industrial automation profile with stringent latency requirements",
+		TolerancePercent:    5.0,
+		TestDurationSec:     120,
+		PacketSizeBytes:     256,
+		Description:         "Industrial automation profile with stringent latency requirements",
 	},
 	{
 		Name:                "Video_Streaming",
-		SliceType:          "eMBB",
-		TargetLatencyMs:    20.0,
+		SliceType:           "eMBB",
+		TargetLatencyMs:     20.0,
 		TargetBandwidthMbps: 10.0,
-		TolerancePercent:   20.0,
-		TestDurationSec:    240,
-		PacketSizeBytes:    1500,
-		Description:        "High-bandwidth video streaming profile with relaxed latency",
+		TolerancePercent:    20.0,
+		TestDurationSec:     240,
+		PacketSizeBytes:     1500,
+		Description:         "High-bandwidth video streaming profile with relaxed latency",
 	},
 }
 
@@ -176,7 +176,7 @@ var _ = Describe("QoS Parameter Validation Tests", func() {
 
 				tolerance := profile.TargetLatencyMs * (profile.TolerancePercent / 100.0)
 				upperBound := profile.TargetLatencyMs + tolerance
-				lowerBound := max(0, profile.TargetLatencyMs - tolerance)
+				lowerBound := max(0, profile.TargetLatencyMs-tolerance)
 
 				Expect(measurement.MeasuredLatencyMs).To(BeNumerically(">=", lowerBound),
 					"Latency should be above lower bound")
@@ -336,21 +336,21 @@ var _ = Describe("QoS Parameter Validation Tests", func() {
 		It("should validate QoS across multi-hop network paths", func() {
 			testPaths := []NetworkPath{
 				{
-					Name:        "edge-to-regional",
-					SourceType:  "edge",
-					TargetType:  "regional",
+					Name:         "edge-to-regional",
+					SourceType:   "edge",
+					TargetType:   "regional",
 					ExpectedHops: 2,
 				},
 				{
-					Name:        "edge-to-central",
-					SourceType:  "edge",
-					TargetType:  "central",
+					Name:         "edge-to-central",
+					SourceType:   "edge",
+					TargetType:   "central",
 					ExpectedHops: 3,
 				},
 				{
-					Name:        "regional-to-central",
-					SourceType:  "regional",
-					TargetType:  "central",
+					Name:         "regional-to-central",
+					SourceType:   "regional",
+					TargetType:   "central",
 					ExpectedHops: 2,
 				},
 			}
@@ -607,7 +607,7 @@ func (s *QoSValidationSuite) measurePathQoS(path NetworkPath, profile QoSTestPro
 func (s *QoSValidationSuite) validateSLA(profile QoSTestProfile, duration time.Duration) SLAValidationResult {
 	result := SLAValidationResult{
 		ProfileName:            profile.Name,
-		TestDuration:          duration,
+		TestDuration:           duration,
 		ViolationRecoveryTimes: make([]float64, 0),
 	}
 
@@ -711,10 +711,10 @@ type NetworkPath struct {
 }
 
 type SLAValidationResult struct {
-	ProfileName            string    `json:"profile_name"`
-	TestDuration          time.Duration `json:"test_duration"`
-	ComplianceRate        float64   `json:"compliance_rate"`
-	TotalViolations       int       `json:"total_violations"`
-	MaxViolationDuration  float64   `json:"max_violation_duration_sec"`
-	ViolationRecoveryTimes []float64 `json:"violation_recovery_times"`
+	ProfileName            string        `json:"profile_name"`
+	TestDuration           time.Duration `json:"test_duration"`
+	ComplianceRate         float64       `json:"compliance_rate"`
+	TotalViolations        int           `json:"total_violations"`
+	MaxViolationDuration   float64       `json:"max_violation_duration_sec"`
+	ViolationRecoveryTimes []float64     `json:"violation_recovery_times"`
 }

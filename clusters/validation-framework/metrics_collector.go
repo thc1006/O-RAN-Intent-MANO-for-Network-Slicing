@@ -21,10 +21,10 @@ import (
 
 // MetricsCollector collects performance and operational metrics
 type MetricsCollector struct {
-	MonitoringConfig MonitoringConfig
+	MonitoringConfig  MonitoringConfig
 	PerformanceConfig PerformanceConfig
-	PrometheusClient *PrometheusClient
-	httpClient       *http.Client
+	PrometheusClient  *PrometheusClient
+	httpClient        *http.Client
 }
 
 // PrometheusClient provides Prometheus query capabilities
@@ -35,28 +35,28 @@ type PrometheusClient struct {
 
 // MetricsData holds collected metrics
 type MetricsData struct {
-	DeploymentTime    time.Duration `json:"deploymentTime"`
-	ThroughputMbps    []float64     `json:"throughputMbps"`
-	PingRTTMs         []float64     `json:"pingRttMs"`
-	CPUUtilization    float64       `json:"cpuUtilization"`
-	MemoryUtilization float64       `json:"memoryUtilization"`
-	NetworkLatency    time.Duration `json:"networkLatency"`
-	PacketLoss        float64       `json:"packetLoss"`
-	ErrorRate         float64       `json:"errorRate"`
-	ResponseTime      time.Duration `json:"responseTime"`
-	Timestamp         time.Time     `json:"timestamp"`
+	DeploymentTime    time.Duration  `json:"deploymentTime"`
+	ThroughputMbps    []float64      `json:"throughputMbps"`
+	PingRTTMs         []float64      `json:"pingRttMs"`
+	CPUUtilization    float64        `json:"cpuUtilization"`
+	MemoryUtilization float64        `json:"memoryUtilization"`
+	NetworkLatency    time.Duration  `json:"networkLatency"`
+	PacketLoss        float64        `json:"packetLoss"`
+	ErrorRate         float64        `json:"errorRate"`
+	ResponseTime      time.Duration  `json:"responseTime"`
+	Timestamp         time.Time      `json:"timestamp"`
 	ClusterMetrics    ClusterMetrics `json:"clusterMetrics"`
 }
 
 // ClusterMetrics holds cluster-level metrics
 type ClusterMetrics struct {
-	NodeCount        int                     `json:"nodeCount"`
-	PodCount         int                     `json:"podCount"`
-	ServiceCount     int                     `json:"serviceCount"`
-	ResourceUsage    ResourceUsageMetrics    `json:"resourceUsage"`
-	NetworkMetrics   NetworkMetrics          `json:"networkMetrics"`
-	StorageMetrics   StorageMetrics          `json:"storageMetrics"`
-	ApplicationMetrics []ApplicationMetrics  `json:"applicationMetrics"`
+	NodeCount          int                  `json:"nodeCount"`
+	PodCount           int                  `json:"podCount"`
+	ServiceCount       int                  `json:"serviceCount"`
+	ResourceUsage      ResourceUsageMetrics `json:"resourceUsage"`
+	NetworkMetrics     NetworkMetrics       `json:"networkMetrics"`
+	StorageMetrics     StorageMetrics       `json:"storageMetrics"`
+	ApplicationMetrics []ApplicationMetrics `json:"applicationMetrics"`
 }
 
 // ResourceUsageMetrics holds resource usage information
@@ -68,43 +68,43 @@ type ResourceUsageMetrics struct {
 
 // ResourceMetric represents a resource metric
 type ResourceMetric struct {
-	Used      float64 `json:"used"`
-	Total     float64 `json:"total"`
+	Used       float64 `json:"used"`
+	Total      float64 `json:"total"`
 	Percentage float64 `json:"percentage"`
-	Unit      string  `json:"unit"`
+	Unit       string  `json:"unit"`
 }
 
 // NetworkMetrics holds network-related metrics
 type NetworkMetrics struct {
-	BytesIn         float64 `json:"bytesIn"`
-	BytesOut        float64 `json:"bytesOut"`
-	PacketsIn       float64 `json:"packetsIn"`
-	PacketsOut      float64 `json:"packetsOut"`
-	ErrorsIn        float64 `json:"errorsIn"`
-	ErrorsOut       float64 `json:"errorsOut"`
-	DroppedIn       float64 `json:"droppedIn"`
-	DroppedOut      float64 `json:"droppedOut"`
+	BytesIn    float64 `json:"bytesIn"`
+	BytesOut   float64 `json:"bytesOut"`
+	PacketsIn  float64 `json:"packetsIn"`
+	PacketsOut float64 `json:"packetsOut"`
+	ErrorsIn   float64 `json:"errorsIn"`
+	ErrorsOut  float64 `json:"errorsOut"`
+	DroppedIn  float64 `json:"droppedIn"`
+	DroppedOut float64 `json:"droppedOut"`
 }
 
 // StorageMetrics holds storage-related metrics
 type StorageMetrics struct {
-	PVCCount        int            `json:"pvcCount"`
-	PVCount         int            `json:"pvCount"`
-	StorageClasses  []string       `json:"storageClasses"`
-	Usage           ResourceMetric `json:"usage"`
+	PVCCount       int            `json:"pvcCount"`
+	PVCount        int            `json:"pvCount"`
+	StorageClasses []string       `json:"storageClasses"`
+	Usage          ResourceMetric `json:"usage"`
 }
 
 // ApplicationMetrics holds application-specific metrics
 type ApplicationMetrics struct {
-	Name         string  `json:"name"`
-	Namespace    string  `json:"namespace"`
-	Type         string  `json:"type"` // ran, cn, tn, orchestrator
-	CPU          float64 `json:"cpu"`
-	Memory       float64 `json:"memory"`
-	Replicas     int     `json:"replicas"`
-	ReadyReplicas int    `json:"readyReplicas"`
-	RestartCount int     `json:"restartCount"`
-	Uptime       time.Duration `json:"uptime"`
+	Name          string        `json:"name"`
+	Namespace     string        `json:"namespace"`
+	Type          string        `json:"type"` // ran, cn, tn, orchestrator
+	CPU           float64       `json:"cpu"`
+	Memory        float64       `json:"memory"`
+	Replicas      int           `json:"replicas"`
+	ReadyReplicas int           `json:"readyReplicas"`
+	RestartCount  int           `json:"restartCount"`
+	Uptime        time.Duration `json:"uptime"`
 }
 
 // PrometheusResponse represents Prometheus query response
@@ -115,8 +115,8 @@ type PrometheusResponse struct {
 
 // PrometheusResponseData represents Prometheus response data
 type PrometheusResponseData struct {
-	ResultType string                   `json:"resultType"`
-	Result     []PrometheusQueryResult  `json:"result"`
+	ResultType string                  `json:"resultType"`
+	Result     []PrometheusQueryResult `json:"result"`
 }
 
 // PrometheusQueryResult represents a single query result
@@ -366,7 +366,10 @@ func (mc *MetricsCollector) collectApplicationMetrics(ctx context.Context, clust
 		if err != nil {
 			continue // Skip if metrics not available
 		}
-		clusterMetrics.ApplicationMetrics = append(clusterMetrics.ApplicationMetrics, appMetrics...)
+		// Optimize append by checking length first
+		if len(appMetrics) > 0 {
+			clusterMetrics.ApplicationMetrics = append(clusterMetrics.ApplicationMetrics, appMetrics...)
+		}
 	}
 
 	return nil
@@ -382,7 +385,8 @@ func (mc *MetricsCollector) collectAppTypeMetrics(ctx context.Context, clusterNa
 		return apps, err
 	}
 
-	for _, result := range deploymentsResp.Data.Result {
+	for i := range deploymentsResp.Data.Result {
+		result := &deploymentsResp.Data.Result[i]
 		appName := result.Metric["deployment"]
 		namespace := result.Metric["namespace"]
 
@@ -481,7 +485,7 @@ func (mc *MetricsCollector) queryPrometheus(ctx context.Context, query string) (
 
 	fullURL := fmt.Sprintf("%s?%s", queryURL, params.Encode())
 
-	req, err := http.NewRequestWithContext(ctx, "GET", fullURL, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", fullURL, http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -570,7 +574,8 @@ func (mc *MetricsCollector) collectMetricsServerData(ctx context.Context, metric
 
 	var totalCPU, usedCPU, totalMemory, usedMemory resource.Quantity
 
-	for _, nodeMetric := range nodeMetrics.Items {
+	for i := range nodeMetrics.Items {
+		nodeMetric := &nodeMetrics.Items[i]
 		cpu := nodeMetric.Usage["cpu"]
 		memory := nodeMetric.Usage["memory"]
 
@@ -621,14 +626,18 @@ func (mc *MetricsCollector) exportPrometheusFormat(metrics *MetricsData) ([]byte
 	lines = append(lines, fmt.Sprintf("oran_deployment_time_seconds %f %d", metrics.DeploymentTime.Seconds(), timestamp))
 
 	// Export throughput metrics
+	throughputLines := make([]string, 0, len(metrics.ThroughputMbps))
 	for i, throughput := range metrics.ThroughputMbps {
-		lines = append(lines, fmt.Sprintf("oran_throughput_mbps{qos_class=\"%d\"} %f %d", i, throughput, timestamp))
+		throughputLines = append(throughputLines, fmt.Sprintf("oran_throughput_mbps{qos_class=\"%d\"} %f %d", i, throughput, timestamp))
 	}
+	lines = append(lines, throughputLines...)
 
 	// Export RTT metrics
+	rttLines := make([]string, 0, len(metrics.PingRTTMs))
 	for i, rtt := range metrics.PingRTTMs {
-		lines = append(lines, fmt.Sprintf("oran_ping_rtt_ms{qos_class=\"%d\"} %f %d", i, rtt, timestamp))
+		rttLines = append(rttLines, fmt.Sprintf("oran_ping_rtt_ms{qos_class=\"%d\"} %f %d", i, rtt, timestamp))
 	}
+	lines = append(lines, rttLines...)
 
 	// Export CPU and memory utilization
 	lines = append(lines, fmt.Sprintf("oran_cpu_utilization_percent %f %d", metrics.CPUUtilization, timestamp))

@@ -65,13 +65,13 @@ func (c *Client) GetAvailableSites(_ context.Context) ([]string, error) {
 
 // DeploymentStatus represents the status of a deployed function
 type DeploymentStatus struct {
-	Name            string
-	Type            string
-	Cluster         string
-	Namespace       string
-	Status          string
-	IPAddress       string
-	Metrics         map[string]float64
+	Name      string
+	Type      string
+	Cluster   string
+	Namespace string
+	Status    string
+	IPAddress string
+	Metrics   map[string]float64
 }
 
 // GetDeploymentStatus retrieves the status of a deployment

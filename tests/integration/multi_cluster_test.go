@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
+	"github.com/onsi/ginkgo/v2"
+	"github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
@@ -264,39 +264,39 @@ var deploymentScenarios = []struct {
 	},
 }
 
-var _ = Describe("Multi-Cluster Deployment Integration Tests", func() {
+var _ = ginkgo.Describe("Multi-Cluster Deployment Integration Tests", func() {
 	var suite *MultiClusterTestSuite
 
-	BeforeEach(func() {
+	ginkgo.BeforeEach(func() {
 		suite = setupMultiClusterTestSuite()
 	})
 
-	AfterEach(func() {
+	ginkgo.AfterEach(func() {
 		teardownMultiClusterTestSuite(suite)
 	})
 
-	Context("Cluster Validation and Health Checks", func() {
-		It("should validate all test clusters are available and healthy", func() {
+	ginkgo.Context("Cluster Validation and Health Checks", func() {
+		ginkgo.It("should validate all test clusters are available and healthy", func() {
 			for _, clusterConfig := range testClusters {
-				By(fmt.Sprintf("Validating cluster %s (%s)", clusterConfig.Name, clusterConfig.Type))
+				ginkgo.By(fmt.Sprintf("Validating cluster %s (%s)", clusterConfig.Name, clusterConfig.Type))
 
 				validation := suite.validateCluster(clusterConfig.Name)
 				suite.testResults.ClustersValidated[clusterConfig.Name] = validation
 
-				Expect(validation.Available).To(BeTrue(),
+				gomega.Expect(validation.Available).To(gomega.BeTrue(),
 					"Cluster %s should be available", clusterConfig.Name)
-				Expect(validation.HealthCheck).To(BeTrue(),
+				gomega.Expect(validation.HealthCheck).To(gomega.BeTrue(),
 					"Cluster %s should pass health check", clusterConfig.Name)
-				Expect(validation.ResourceCheck).To(BeTrue(),
+				gomega.Expect(validation.ResourceCheck).To(gomega.BeTrue(),
 					"Cluster %s should have sufficient resources", clusterConfig.Name)
-				Expect(validation.NetworkCheck).To(BeTrue(),
+				gomega.Expect(validation.NetworkCheck).To(gomega.BeTrue(),
 					"Cluster %s should pass network connectivity check", clusterConfig.Name)
 			}
 		})
 
-		It("should measure and validate cluster network characteristics", func() {
+		ginkgo.It("should measure and validate cluster network characteristics", func() {
 			for _, cluster := range testClusters {
-				By(fmt.Sprintf("Measuring network profile for %s", cluster.Name))
+				ginkgo.By(fmt.Sprintf("Measuring network profile for %s", cluster.Name))
 
 				profile := suite.measureNetworkProfile(cluster.Name)
 
@@ -304,51 +304,51 @@ var _ = Describe("Multi-Cluster Deployment Integration Tests", func() {
 				expectedLatency := cluster.Network.BaseLatencyMs
 				tolerance := expectedLatency * 0.20 // 20% tolerance
 
-				Expect(profile.BaseLatencyMs).To(BeNumerically("~", expectedLatency, tolerance),
+				gomega.Expect(profile.BaseLatencyMs).To(gomega.BeNumerically("~", expectedLatency, tolerance),
 					"Cluster %s latency should be within tolerance", cluster.Name)
 			}
 		})
 	})
 
-	Context("VNF Deployment Across Clusters", func() {
+	ginkgo.Context("VNF Deployment Across Clusters", func() {
 		for _, scenario := range deploymentScenarios {
-			It(fmt.Sprintf("should deploy VNFs for scenario: %s", scenario.name), func() {
+			ginkgo.It(fmt.Sprintf("should deploy VNFs for scenario: %s", scenario.name), func() {
 				deploymentStart := time.Now()
 
 				for _, targetCluster := range scenario.targetClusters {
-					By(fmt.Sprintf("Deploying VNFs to cluster %s", targetCluster))
+					ginkgo.By(fmt.Sprintf("Deploying VNFs to cluster %s", targetCluster))
 
 					result := suite.deployVNFsToCluster(targetCluster, scenario.vnfSpecs, scenario.maxDeploymentTime)
 					suite.testResults.DeploymentResults = append(suite.testResults.DeploymentResults, result)
 
-					Expect(result.Success).To(BeTrue(),
+					gomega.Expect(result.Success).To(gomega.BeTrue(),
 						"VNF deployment to %s should succeed", targetCluster)
-					Expect(result.DeploymentTime).To(BeNumerically("<=", scenario.maxDeploymentTime),
+					gomega.Expect(result.DeploymentTime).To(gomega.BeNumerically("<=", scenario.maxDeploymentTime),
 						"Deployment time should be within limit")
 
 					// Validate all VNFs are deployed and ready
-					Expect(len(result.VNFsDeployed)).To(Equal(len(scenario.vnfSpecs)),
+					gomega.Expect(len(result.VNFsDeployed)).To(gomega.Equal(len(scenario.vnfSpecs)),
 						"All VNFs should be deployed")
 
 					for _, vnfStatus := range result.VNFsDeployed {
-						Expect(vnfStatus.Status).To(Equal("Ready"),
+						gomega.Expect(vnfStatus.Status).To(gomega.Equal("Ready"),
 							"VNF %s should be ready", vnfStatus.VNFName)
 					}
 				}
 
 				totalDeploymentTime := time.Since(deploymentStart)
-				Expect(totalDeploymentTime).To(BeNumerically("<=", 10*time.Minute),
+				gomega.Expect(totalDeploymentTime).To(gomega.BeNumerically("<=", 10*time.Minute),
 					"Total multi-cluster deployment should complete within 10 minutes")
 			})
 		}
 	})
 
-	Context("Cluster Failover and Recovery", func() {
-		It("should handle edge cluster failure with regional backup", func() {
+	ginkgo.Context("Cluster Failover and Recovery", func() {
+		ginkgo.It("should handle edge cluster failure with regional backup", func() {
 			primaryCluster := mcEdgeCluster01
 			backupCluster := mcRegionalCluster01
 
-			By("Deploying VNF to primary edge cluster")
+			ginkgo.By("Deploying VNF to primary edge cluster")
 			vnfSpecs := []VNFDeploymentSpec{
 				{
 					VNFType:   manov1alpha1.VNFTypeUPF,
@@ -358,29 +358,29 @@ var _ = Describe("Multi-Cluster Deployment Integration Tests", func() {
 			}
 
 			primaryResult := suite.deployVNFsToCluster(primaryCluster, vnfSpecs, 5*time.Minute)
-			Expect(primaryResult.Success).To(BeTrue())
+			gomega.Expect(primaryResult.Success).To(gomega.BeTrue())
 
-			By("Simulating primary cluster failure")
+			ginkgo.By("Simulating primary cluster failure")
 			suite.simulateClusterFailure(primaryCluster)
 
-			By("Triggering failover to backup cluster")
+			ginkgo.By("Triggering failover to backup cluster")
 			failoverStart := time.Now()
 			failoverResult := suite.performFailover(primaryCluster, backupCluster, vnfSpecs)
 			failoverResult.FailoverTime = time.Since(failoverStart)
 
 			suite.testResults.FailoverTests = append(suite.testResults.FailoverTests, failoverResult)
 
-			Expect(failoverResult.Success).To(BeTrue(), "Failover should succeed")
-			Expect(failoverResult.FailoverTime).To(BeNumerically("<=", 2*time.Minute),
+			gomega.Expect(failoverResult.Success).To(gomega.BeTrue(), "Failover should succeed")
+			gomega.Expect(failoverResult.FailoverTime).To(gomega.BeNumerically("<=", 2*time.Minute),
 				"Failover should complete within 2 minutes")
-			Expect(failoverResult.ServiceContinuity).To(BeTrue(),
+			gomega.Expect(failoverResult.ServiceContinuity).To(gomega.BeTrue(),
 				"Service should maintain continuity during failover")
 		})
 
-		It("should handle cascading failures gracefully", func() {
+		ginkgo.It("should handle cascading failures gracefully", func() {
 			clusters := []string{mcEdgeCluster01, mcEdgeCluster02, mcRegionalCluster01}
 
-			By("Deploying VNFs across multiple clusters")
+			ginkgo.By("Deploying VNFs across multiple clusters")
 			for _, cluster := range clusters[:2] { // Deploy to edge clusters
 				vnfSpecs := []VNFDeploymentSpec{
 					{
@@ -389,23 +389,23 @@ var _ = Describe("Multi-Cluster Deployment Integration Tests", func() {
 					},
 				}
 				result := suite.deployVNFsToCluster(cluster, vnfSpecs, 3*time.Minute)
-				Expect(result.Success).To(BeTrue())
+				gomega.Expect(result.Success).To(gomega.BeTrue())
 			}
 
-			By("Simulating cascading failures")
+			ginkgo.By("Simulating cascading failures")
 			suite.simulateClusterFailure(clusters[0])
 			time.Sleep(30 * time.Second)
 			suite.simulateClusterFailure(clusters[1])
 
-			By("Verifying regional cluster handles the load")
+			ginkgo.By("Verifying regional cluster handles the load")
 			regionalStatus := suite.checkClusterHealth(clusters[2])
-			Expect(regionalStatus.Available).To(BeTrue())
-			Expect(regionalStatus.ResourceCheck).To(BeTrue())
+			gomega.Expect(regionalStatus.Available).To(gomega.BeTrue())
+			gomega.Expect(regionalStatus.ResourceCheck).To(gomega.BeTrue())
 		})
 	})
 
-	Context("Cross-Cluster Communication", func() {
-		It("should validate inter-cluster network connectivity", func() {
+	ginkgo.Context("Cross-Cluster Communication", func() {
+		ginkgo.It("should validate inter-cluster network connectivity", func() {
 			clusterPairs := [][]string{
 				{mcEdgeCluster01, mcRegionalCluster01},
 				{mcRegionalCluster01, mcCentralCluster01},
@@ -413,22 +413,22 @@ var _ = Describe("Multi-Cluster Deployment Integration Tests", func() {
 			}
 
 			for _, pair := range clusterPairs {
-				By(fmt.Sprintf("Testing connectivity between %s and %s", pair[0], pair[1]))
+				ginkgo.By(fmt.Sprintf("Testing connectivity between %s and %s", pair[0], pair[1]))
 
 				result := suite.testCrossClusterConnectivity(pair[0], pair[1])
 				suite.testResults.CrossClusterTests = append(suite.testResults.CrossClusterTests, result)
 
-				Expect(result.Success).To(BeTrue(),
+				gomega.Expect(result.Success).To(gomega.BeTrue(),
 					"Cross-cluster connectivity should work")
-				Expect(result.LatencyMs).To(BeNumerically(">", 0),
+				gomega.Expect(result.LatencyMs).To(gomega.BeNumerically(">", 0),
 					"Should measure non-zero latency")
-				Expect(result.ThroughputMbps).To(BeNumerically(">", 0),
+				gomega.Expect(result.ThroughputMbps).To(gomega.BeNumerically(">", 0),
 					"Should measure non-zero throughput")
 			}
 		})
 
-		It("should validate end-to-end slice performance across clusters", func() {
-			By("Creating cross-cluster network slice")
+		ginkgo.It("should validate end-to-end slice performance across clusters", func() {
+			ginkgo.By("Creating cross-cluster network slice")
 			sliceConfig := CrossClusterSliceConfig{
 				Name:          "cross-cluster-test",
 				SourceCluster: mcEdgeCluster01,
@@ -438,21 +438,21 @@ var _ = Describe("Multi-Cluster Deployment Integration Tests", func() {
 			}
 
 			slice := suite.createCrossClusterSlice(sliceConfig)
-			Expect(slice).NotTo(BeNil())
+			gomega.Expect(slice).NotTo(gomega.BeNil())
 
-			By("Validating slice performance")
+			ginkgo.By("Validating slice performance")
 			performance := suite.validateSlicePerformance(slice)
 
-			Expect(performance.LatencyMs).To(BeNumerically("<=", sliceConfig.MaxLatencyMs),
+			gomega.Expect(performance.LatencyMs).To(gomega.BeNumerically("<=", sliceConfig.MaxLatencyMs),
 				"Slice latency should meet requirements")
-			Expect(performance.ThroughputMbps).To(BeNumerically(">=", sliceConfig.BandwidthMbps*0.8),
+			gomega.Expect(performance.ThroughputMbps).To(gomega.BeNumerically(">=", sliceConfig.BandwidthMbps*0.8),
 				"Slice throughput should meet 80% of requirements")
 		})
 	})
 
-	Context("Resource Management and Load Distribution", func() {
-		It("should distribute load optimally across clusters", func() {
-			By("Deploying multiple VNFs with different requirements")
+	ginkgo.Context("Resource Management and Load Distribution", func() {
+		ginkgo.It("should distribute load optimally across clusters", func() {
+			ginkgo.By("Deploying multiple VNFs with different requirements")
 
 			// High-latency sensitive VNF should go to edge
 			edgeVNF := VNFDeploymentSpec{
@@ -471,24 +471,24 @@ var _ = Describe("Multi-Cluster Deployment Integration Tests", func() {
 			edgeResult := suite.deployVNFsToCluster(mcEdgeCluster01, []VNFDeploymentSpec{edgeVNF}, 5*time.Minute)
 			regionalResult := suite.deployVNFsToCluster(mcRegionalCluster01, []VNFDeploymentSpec{bandwidthVNF}, 5*time.Minute)
 
-			Expect(edgeResult.Success).To(BeTrue())
-			Expect(regionalResult.Success).To(BeTrue())
+			gomega.Expect(edgeResult.Success).To(gomega.BeTrue())
+			gomega.Expect(regionalResult.Success).To(gomega.BeTrue())
 
 			// Verify resource utilization is balanced
 			edgeUsage := suite.getClusterResourceUsage(mcEdgeCluster01)
 			regionalUsage := suite.getClusterResourceUsage(mcRegionalCluster01)
 
-			Expect(edgeUsage.UsedCPU).To(BeNumerically("<=", 80),
+			gomega.Expect(edgeUsage.UsedCPU).To(gomega.BeNumerically("<=", 80),
 				"Edge cluster CPU usage should be reasonable")
-			Expect(regionalUsage.UsedCPU).To(BeNumerically("<=", 80),
+			gomega.Expect(regionalUsage.UsedCPU).To(gomega.BeNumerically("<=", 80),
 				"Regional cluster CPU usage should be reasonable")
 		})
 	})
 })
 
 func TestMultiClusterDeployment(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "Multi-Cluster Deployment Integration Suite")
+	gomega.RegisterFailHandler(ginkgo.Fail)
+	ginkgo.RunSpecs(t, "Multi-Cluster Deployment Integration Suite")
 }
 
 func setupMultiClusterTestSuite() *MultiClusterTestSuite {
@@ -602,7 +602,7 @@ func (s *MultiClusterTestSuite) checkClusterResources(clusterName string) bool {
 	return len(nodes.Items) > 0
 }
 
-func (s *MultiClusterTestSuite) checkClusterNetwork(clusterName string) bool {
+func (s *MultiClusterTestSuite) checkClusterNetwork(_ string) bool {
 	// TODO: Implement network connectivity check
 	return true
 }
@@ -613,7 +613,7 @@ func (s *MultiClusterTestSuite) measureNetworkProfile(clusterName string) Networ
 	return cluster.Network
 }
 
-func (s *MultiClusterTestSuite) deployVNFsToCluster(clusterName string, vnfSpecs []VNFDeploymentSpec, maxTime time.Duration) ClusterDeploymentResult {
+func (s *MultiClusterTestSuite) deployVNFsToCluster(clusterName string, vnfSpecs []VNFDeploymentSpec, _ time.Duration) ClusterDeploymentResult {
 	deploymentStart := time.Now()
 	result := ClusterDeploymentResult{
 		ClusterName:  clusterName,
@@ -752,7 +752,7 @@ func (s *MultiClusterTestSuite) createCrossClusterSlice(config CrossClusterSlice
 	}
 }
 
-func (s *MultiClusterTestSuite) validateSlicePerformance(slice *CrossClusterSlice) SlicePerformanceResult {
+func (s *MultiClusterTestSuite) validateSlicePerformance(_ *CrossClusterSlice) SlicePerformanceResult {
 	// TODO: Implement slice performance validation
 	return SlicePerformanceResult{
 		LatencyMs:      15.0,

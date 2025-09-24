@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
+	"github.com/onsi/ginkgo/v2"
+	"github.com/onsi/gomega"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	manov1alpha1 "github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/adapters/vnf-operator/api/v1alpha1"
@@ -301,21 +301,21 @@ type VNFPerformanceTarget struct {
 	MaxReadinessTime  time.Duration
 }
 
-var _ = Describe("VNF Operator Lifecycle Tests", func() {
+var _ = ginkgo.Describe("VNF Operator Lifecycle Tests", func() {
 	var suite *VNFLifecycleSuite
 
-	BeforeEach(func() {
+	ginkgo.BeforeEach(func() {
 		suite = setupVNFLifecycleSuite()
 	})
 
-	AfterEach(func() {
+	ginkgo.AfterEach(func() {
 		teardownVNFLifecycleSuite(suite)
 	})
 
-	Context("Complete VNF Lifecycle Tests", func() {
+	ginkgo.Context("Complete VNF Lifecycle Tests", func() {
 		for _, scenario := range vnfLifecycleScenarios {
-			It(fmt.Sprintf("should complete full lifecycle for %s", scenario.name), func() {
-				By(fmt.Sprintf("Testing complete lifecycle for %s (%s)", scenario.vnfSpec.Type, scenario.description))
+			ginkgo.It(fmt.Sprintf("should complete full lifecycle for %s", scenario.name), func() {
+				ginkgo.By(fmt.Sprintf("Testing complete lifecycle for %s (%s)", scenario.vnfSpec.Type, scenario.description))
 
 				lifecycleStart := time.Now()
 				lifecycleResult := suite.testCompleteVNFLifecycle(scenario.vnfSpec, scenario.targetMetrics)
@@ -323,44 +323,44 @@ var _ = Describe("VNF Operator Lifecycle Tests", func() {
 
 				suite.testResults.LifecycleTests = append(suite.testResults.LifecycleTests, lifecycleResult)
 
-				Expect(lifecycleResult.Success).To(BeTrue(), "Complete VNF lifecycle should succeed")
+				gomega.Expect(lifecycleResult.Success).To(gomega.BeTrue(), "Complete VNF lifecycle should succeed")
 
 				// Validate timing requirements
-				Expect(lifecycleResult.CreationTime).To(BeNumerically("<=", scenario.targetMetrics.MaxCreationTime),
+				gomega.Expect(lifecycleResult.CreationTime).To(gomega.BeNumerically("<=", scenario.targetMetrics.MaxCreationTime),
 					"VNF creation should meet timing requirements")
-				Expect(lifecycleResult.DeploymentTime).To(BeNumerically("<=", scenario.targetMetrics.MaxDeploymentTime),
+				gomega.Expect(lifecycleResult.DeploymentTime).To(gomega.BeNumerically("<=", scenario.targetMetrics.MaxDeploymentTime),
 					"VNF deployment should meet timing requirements")
-				Expect(lifecycleResult.ReadinessTime).To(BeNumerically("<=", scenario.targetMetrics.MaxReadinessTime),
+				gomega.Expect(lifecycleResult.ReadinessTime).To(gomega.BeNumerically("<=", scenario.targetMetrics.MaxReadinessTime),
 					"VNF readiness should meet timing requirements")
 
 				// Validate phases
-				Expect(len(lifecycleResult.LifecyclePhases)).To(BeNumerically(">=", 5),
+				gomega.Expect(len(lifecycleResult.LifecyclePhases)).To(gomega.BeNumerically(">=", 5),
 					"Should have multiple lifecycle phases")
 
 				for _, phase := range lifecycleResult.LifecyclePhases {
-					Expect(phase.Successful).To(BeTrue(), "Phase %s should succeed", phase.Phase)
+					gomega.Expect(phase.Successful).To(gomega.BeTrue(), "Phase %s should succeed", phase.Phase)
 				}
 
 				// Validate resource utilization
-				Expect(lifecycleResult.ResourceUtilization.CPUUsage).To(BeNumerically("<=", 80.0),
+				gomega.Expect(lifecycleResult.ResourceUtilization.CPUUsage).To(gomega.BeNumerically("<=", 80.0),
 					"CPU usage should be reasonable")
-				Expect(lifecycleResult.ResourceUtilization.MemoryUsage).To(BeNumerically("<=", 80.0),
+				gomega.Expect(lifecycleResult.ResourceUtilization.MemoryUsage).To(gomega.BeNumerically("<=", 80.0),
 					"Memory usage should be reasonable")
 
-				By(fmt.Sprintf("✓ Lifecycle completed: Creation=%v, Deployment=%v, Readiness=%v",
+				ginkgo.By(fmt.Sprintf("✓ Lifecycle completed: Creation=%v, Deployment=%v, Readiness=%v",
 					lifecycleResult.CreationTime, lifecycleResult.DeploymentTime, lifecycleResult.ReadinessTime))
 			})
 		}
 
-		It("should handle concurrent VNF lifecycle operations", func() {
-			By("Initiating concurrent VNF lifecycle tests")
+		ginkgo.It("should handle concurrent VNF lifecycle operations", func() {
+			ginkgo.By("Initiating concurrent VNF lifecycle tests")
 
 			concurrentCount := 3
 			done := make(chan VNFLifecycleTestResult, concurrentCount)
 
 			for i := 0; i < concurrentCount; i++ {
 				go func(index int) {
-					defer GinkgoRecover()
+					defer ginkgo.GinkgoRecover()
 					scenario := vnfLifecycleScenarios[index%len(vnfLifecycleScenarios)]
 
 					// Modify name to avoid conflicts
@@ -382,252 +382,252 @@ var _ = Describe("VNF Operator Lifecycle Tests", func() {
 				suite.testResults.LifecycleTests = append(suite.testResults.LifecycleTests, result)
 			}
 
-			Expect(successCount).To(Equal(concurrentCount), "All concurrent lifecycles should succeed")
+			gomega.Expect(successCount).To(gomega.Equal(concurrentCount), "All concurrent lifecycles should succeed")
 		})
 	})
 
-	Context("VNF Operator Behavior Tests", func() {
-		It("should handle VNF creation events efficiently", func() {
-			By("Testing VNF operator response to creation events")
+	ginkgo.Context("VNF Operator Behavior Tests", func() {
+		ginkgo.It("should handle VNF creation events efficiently", func() {
+			ginkgo.By("Testing VNF operator response to creation events")
 
 			operatorResult := suite.testVNFOperatorCreationHandling()
 			suite.testResults.OperatorTests = append(suite.testResults.OperatorTests, operatorResult)
 
-			Expect(operatorResult.Success).To(BeTrue(), "Operator should handle creation events")
-			Expect(operatorResult.ResponseTime).To(BeNumerically("<=", 5*time.Second),
+			gomega.Expect(operatorResult.Success).To(gomega.BeTrue(), "Operator should handle creation events")
+			gomega.Expect(operatorResult.ResponseTime).To(gomega.BeNumerically("<=", 5*time.Second),
 				"Operator should respond within 5 seconds")
-			Expect(operatorResult.ReconcileLoops).To(BeNumerically(">=", 1),
+			gomega.Expect(operatorResult.ReconcileLoops).To(gomega.BeNumerically(">=", 1),
 				"Should have at least one reconcile loop")
 
 			// Validate controller metrics
-			Expect(operatorResult.ControllerMetrics.ReconcileRate).To(BeNumerically(">", 0),
+			gomega.Expect(operatorResult.ControllerMetrics.ReconcileRate).To(gomega.BeNumerically(">", 0),
 				"Should have positive reconcile rate")
-			Expect(operatorResult.ControllerMetrics.ErrorRate).To(BeNumerically("<=", 5.0),
+			gomega.Expect(operatorResult.ControllerMetrics.ErrorRate).To(gomega.BeNumerically("<=", 5.0),
 				"Error rate should be low")
 		})
 
-		It("should handle VNF update events correctly", func() {
+		ginkgo.It("should handle VNF update events correctly", func() {
 			vnfSpec := vnfLifecycleScenarios[0].vnfSpec
 			vnfSpec.Name = "test-vnf-update"
 
-			By("Creating initial VNF")
+			ginkgo.By("Creating initial VNF")
 			createResult := suite.createVNF(vnfSpec)
-			Expect(createResult.Success).To(BeTrue())
+			gomega.Expect(createResult.Success).To(gomega.BeTrue())
 
-			By("Updating VNF specification")
+			ginkgo.By("Updating VNF specification")
 			updatedSpec := vnfSpec
 			updatedSpec.Resources.CPUCores = 6 // Increase CPU
 
 			operatorResult := suite.testVNFOperatorUpdateHandling(vnfSpec.Name, updatedSpec)
 			suite.testResults.OperatorTests = append(suite.testResults.OperatorTests, operatorResult)
 
-			Expect(operatorResult.Success).To(BeTrue(), "Operator should handle updates")
-			Expect(operatorResult.EventsHandled).To(BeNumerically(">=", 1),
+			gomega.Expect(operatorResult.Success).To(gomega.BeTrue(), "Operator should handle updates")
+			gomega.Expect(operatorResult.EventsHandled).To(gomega.BeNumerically(">=", 1),
 				"Should handle update events")
 		})
 
-		It("should handle VNF deletion events gracefully", func() {
+		ginkgo.It("should handle VNF deletion events gracefully", func() {
 			vnfSpec := vnfLifecycleScenarios[0].vnfSpec
 			vnfSpec.Name = "test-vnf-deletion"
 
-			By("Creating VNF for deletion test")
+			ginkgo.By("Creating VNF for deletion test")
 			createResult := suite.createVNF(vnfSpec)
-			Expect(createResult.Success).To(BeTrue())
+			gomega.Expect(createResult.Success).To(gomega.BeTrue())
 
-			By("Testing deletion handling")
+			ginkgo.By("Testing deletion handling")
 			operatorResult := suite.testVNFOperatorDeletionHandling(vnfSpec.Name)
 			suite.testResults.OperatorTests = append(suite.testResults.OperatorTests, operatorResult)
 
-			Expect(operatorResult.Success).To(BeTrue(), "Operator should handle deletion")
-			Expect(operatorResult.ResponseTime).To(BeNumerically("<=", 10*time.Second),
+			gomega.Expect(operatorResult.Success).To(gomega.BeTrue(), "Operator should handle deletion")
+			gomega.Expect(operatorResult.ResponseTime).To(gomega.BeNumerically("<=", 10*time.Second),
 				"Deletion should complete within 10 seconds")
 		})
 	})
 
-	Context("VNF Scaling Tests", func() {
-		It("should scale VNF instances up and down", func() {
+	ginkgo.Context("VNF Scaling Tests", func() {
+		ginkgo.It("should scale VNF instances up and down", func() {
 			vnfSpec := vnfLifecycleScenarios[1].vnfSpec // Use AMF for scaling test
 			vnfSpec.Name = "test-vnf-scaling"
 
-			By("Creating VNF for scaling test")
+			ginkgo.By("Creating VNF for scaling test")
 			createResult := suite.createVNF(vnfSpec)
-			Expect(createResult.Success).To(BeTrue())
+			gomega.Expect(createResult.Success).To(gomega.BeTrue())
 
-			By("Scaling up VNF instances")
+			ginkgo.By("Scaling up VNF instances")
 			scaleUpResult := suite.testVNFScaling(vnfSpec.Name, 1, 3) // Scale from 1 to 3
 			suite.testResults.ScaleTests = append(suite.testResults.ScaleTests, scaleUpResult)
 
-			Expect(scaleUpResult.Success).To(BeTrue(), "Scale up should succeed")
-			Expect(scaleUpResult.ScaleTime).To(BeNumerically("<=", 2*time.Minute),
+			gomega.Expect(scaleUpResult.Success).To(gomega.BeTrue(), "Scale up should succeed")
+			gomega.Expect(scaleUpResult.ScaleTime).To(gomega.BeNumerically("<=", 2*time.Minute),
 				"Scale up should complete within 2 minutes")
 
-			By("Scaling down VNF instances")
+			ginkgo.By("Scaling down VNF instances")
 			scaleDownResult := suite.testVNFScaling(vnfSpec.Name, 3, 1) // Scale from 3 to 1
 			suite.testResults.ScaleTests = append(suite.testResults.ScaleTests, scaleDownResult)
 
-			Expect(scaleDownResult.Success).To(BeTrue(), "Scale down should succeed")
-			Expect(scaleDownResult.ScaleTime).To(BeNumerically("<=", 1*time.Minute),
+			gomega.Expect(scaleDownResult.Success).To(gomega.BeTrue(), "Scale down should succeed")
+			gomega.Expect(scaleDownResult.ScaleTime).To(gomega.BeNumerically("<=", 1*time.Minute),
 				"Scale down should complete within 1 minute")
 
 			// Validate resource impact
-			Expect(scaleUpResult.ResourceImpact.CPUDelta).To(BeNumerically(">", 0),
+			gomega.Expect(scaleUpResult.ResourceImpact.CPUDelta).To(gomega.BeNumerically(">", 0),
 				"Scale up should increase CPU usage")
-			Expect(scaleDownResult.ResourceImpact.CPUDelta).To(BeNumerically("<", 0),
+			gomega.Expect(scaleDownResult.ResourceImpact.CPUDelta).To(gomega.BeNumerically("<", 0),
 				"Scale down should decrease CPU usage")
 		})
 
-		It("should handle auto-scaling based on load", func() {
+		ginkgo.It("should handle auto-scaling based on load", func() {
 			vnfSpec := vnfLifecycleScenarios[0].vnfSpec
 			vnfSpec.Name = "test-vnf-autoscale"
 
-			By("Creating VNF with auto-scaling configuration")
+			ginkgo.By("Creating VNF with auto-scaling configuration")
 			createResult := suite.createVNFWithAutoScaling(vnfSpec)
-			Expect(createResult.Success).To(BeTrue())
+			gomega.Expect(createResult.Success).To(gomega.BeTrue())
 
-			By("Simulating high load to trigger scale up")
+			ginkgo.By("Simulating high load to trigger scale up")
 			loadResult := suite.simulateHighLoad(vnfSpec.Name)
-			Expect(loadResult.AutoScaleTriggered).To(BeTrue(), "Auto-scale should be triggered")
+			gomega.Expect(loadResult.AutoScaleTriggered).To(gomega.BeTrue(), "Auto-scale should be triggered")
 
-			By("Validating auto-scale behavior")
+			ginkgo.By("Validating auto-scale behavior")
 			autoScaleResult := suite.validateAutoScaling(vnfSpec.Name)
 			suite.testResults.ScaleTests = append(suite.testResults.ScaleTests, autoScaleResult)
 
-			Expect(autoScaleResult.Success).To(BeTrue(), "Auto-scaling should work correctly")
+			gomega.Expect(autoScaleResult.Success).To(gomega.BeTrue(), "Auto-scaling should work correctly")
 		})
 	})
 
-	Context("VNF Upgrade and Migration Tests", func() {
-		It("should perform rolling upgrade with zero downtime", func() {
+	ginkgo.Context("VNF Upgrade and Migration Tests", func() {
+		ginkgo.It("should perform rolling upgrade with zero downtime", func() {
 			vnfSpec := vnfLifecycleScenarios[0].vnfSpec
 			vnfSpec.Name = "test-vnf-upgrade"
 
-			By("Creating VNF for upgrade test")
+			ginkgo.By("Creating VNF for upgrade test")
 			createResult := suite.createVNF(vnfSpec)
-			Expect(createResult.Success).To(BeTrue())
+			gomega.Expect(createResult.Success).To(gomega.BeTrue())
 
-			By("Performing rolling upgrade")
+			ginkgo.By("Performing rolling upgrade")
 			upgradeResult := suite.testVNFUpgrade(vnfSpec.Name, "v1.0.0", "v1.1.0", "rolling")
 			suite.testResults.UpgradeTests = append(suite.testResults.UpgradeTests, upgradeResult)
 
-			Expect(upgradeResult.Success).To(BeTrue(), "Rolling upgrade should succeed")
-			Expect(upgradeResult.DowntimeDuration).To(BeNumerically("<=", 30*time.Second),
+			gomega.Expect(upgradeResult.Success).To(gomega.BeTrue(), "Rolling upgrade should succeed")
+			gomega.Expect(upgradeResult.DowntimeDuration).To(gomega.BeNumerically("<=", 30*time.Second),
 				"Rolling upgrade should have minimal downtime")
-			Expect(upgradeResult.RollbackCapable).To(BeTrue(),
+			gomega.Expect(upgradeResult.RollbackCapable).To(gomega.BeTrue(),
 				"Should be capable of rollback")
 
 			// Validate data migration if required
 			if upgradeResult.DataMigration.Required {
-				Expect(upgradeResult.DataMigration.DataIntegrity).To(BeTrue(),
+				gomega.Expect(upgradeResult.DataMigration.DataIntegrity).To(gomega.BeTrue(),
 					"Data integrity should be maintained")
-				Expect(upgradeResult.DataMigration.BackupCreated).To(BeTrue(),
+				gomega.Expect(upgradeResult.DataMigration.BackupCreated).To(gomega.BeTrue(),
 					"Backup should be created before migration")
 			}
 		})
 
-		It("should handle blue-green deployment upgrade", func() {
+		ginkgo.It("should handle blue-green deployment upgrade", func() {
 			vnfSpec := vnfLifecycleScenarios[1].vnfSpec
 			vnfSpec.Name = "test-vnf-bluegreen"
 
-			By("Creating VNF for blue-green upgrade")
+			ginkgo.By("Creating VNF for blue-green upgrade")
 			createResult := suite.createVNF(vnfSpec)
-			Expect(createResult.Success).To(BeTrue())
+			gomega.Expect(createResult.Success).To(gomega.BeTrue())
 
-			By("Performing blue-green upgrade")
+			ginkgo.By("Performing blue-green upgrade")
 			upgradeResult := suite.testVNFUpgrade(vnfSpec.Name, "v2.0.0", "v2.1.0", "blue-green")
 			suite.testResults.UpgradeTests = append(suite.testResults.UpgradeTests, upgradeResult)
 
-			Expect(upgradeResult.Success).To(BeTrue(), "Blue-green upgrade should succeed")
-			Expect(upgradeResult.DowntimeDuration).To(BeNumerically("<=", 10*time.Second),
+			gomega.Expect(upgradeResult.Success).To(gomega.BeTrue(), "Blue-green upgrade should succeed")
+			gomega.Expect(upgradeResult.DowntimeDuration).To(gomega.BeNumerically("<=", 10*time.Second),
 				"Blue-green upgrade should have near-zero downtime")
 		})
 
-		It("should handle upgrade rollback scenarios", func() {
+		ginkgo.It("should handle upgrade rollback scenarios", func() {
 			vnfSpec := vnfLifecycleScenarios[0].vnfSpec
 			vnfSpec.Name = "test-vnf-rollback"
 
-			By("Creating VNF and performing initial upgrade")
+			ginkgo.By("Creating VNF and performing initial upgrade")
 			createResult := suite.createVNF(vnfSpec)
-			Expect(createResult.Success).To(BeTrue())
+			gomega.Expect(createResult.Success).To(gomega.BeTrue())
 
 			upgradeResult := suite.testVNFUpgrade(vnfSpec.Name, "v1.0.0", "v1.1.0-beta", "rolling")
-			Expect(upgradeResult.Success).To(BeTrue())
+			gomega.Expect(upgradeResult.Success).To(gomega.BeTrue())
 
-			By("Simulating upgrade failure and rollback")
+			ginkgo.By("Simulating upgrade failure and rollback")
 			rollbackResult := suite.testVNFUpgradeRollback(vnfSpec.Name, "v1.0.0")
 			suite.testResults.UpgradeTests = append(suite.testResults.UpgradeTests, rollbackResult)
 
-			Expect(rollbackResult.Success).To(BeTrue(), "Rollback should succeed")
-			Expect(rollbackResult.UpgradeTime).To(BeNumerically("<=", 3*time.Minute),
+			gomega.Expect(rollbackResult.Success).To(gomega.BeTrue(), "Rollback should succeed")
+			gomega.Expect(rollbackResult.UpgradeTime).To(gomega.BeNumerically("<=", 3*time.Minute),
 				"Rollback should complete quickly")
 		})
 	})
 
-	Context("VNF Failure and Recovery Tests", func() {
-		It("should detect and recover from pod failures", func() {
+	ginkgo.Context("VNF Failure and Recovery Tests", func() {
+		ginkgo.It("should detect and recover from pod failures", func() {
 			vnfSpec := vnfLifecycleScenarios[0].vnfSpec
 			vnfSpec.Name = "test-vnf-pod-failure"
 
-			By("Creating VNF for failure testing")
+			ginkgo.By("Creating VNF for failure testing")
 			createResult := suite.createVNF(vnfSpec)
-			Expect(createResult.Success).To(BeTrue())
+			gomega.Expect(createResult.Success).To(gomega.BeTrue())
 
-			By("Simulating pod failure")
+			ginkgo.By("Simulating pod failure")
 			failureResult := suite.testVNFPodFailure(vnfSpec.Name)
 			suite.testResults.FailureTests = append(suite.testResults.FailureTests, failureResult)
 
-			Expect(failureResult.Success).To(BeTrue(), "Pod failure recovery should succeed")
-			Expect(failureResult.DetectionTime).To(BeNumerically("<=", 30*time.Second),
+			gomega.Expect(failureResult.Success).To(gomega.BeTrue(), "Pod failure recovery should succeed")
+			gomega.Expect(failureResult.DetectionTime).To(gomega.BeNumerically("<=", 30*time.Second),
 				"Failure should be detected quickly")
-			Expect(failureResult.RecoveryTime).To(BeNumerically("<=", 2*time.Minute),
+			gomega.Expect(failureResult.RecoveryTime).To(gomega.BeNumerically("<=", 2*time.Minute),
 				"Recovery should complete within 2 minutes")
-			Expect(failureResult.AutoRecovery).To(BeTrue(),
+			gomega.Expect(failureResult.AutoRecovery).To(gomega.BeTrue(),
 				"Should support automatic recovery")
 		})
 
-		It("should handle node failures gracefully", func() {
+		ginkgo.It("should handle node failures gracefully", func() {
 			vnfSpec := vnfLifecycleScenarios[1].vnfSpec
 			vnfSpec.Name = "test-vnf-node-failure"
 
-			By("Creating VNF for node failure testing")
+			ginkgo.By("Creating VNF for node failure testing")
 			createResult := suite.createVNF(vnfSpec)
-			Expect(createResult.Success).To(BeTrue())
+			gomega.Expect(createResult.Success).To(gomega.BeTrue())
 
-			By("Simulating node failure")
+			ginkgo.By("Simulating node failure")
 			failureResult := suite.testVNFNodeFailure(vnfSpec.Name)
 			suite.testResults.FailureTests = append(suite.testResults.FailureTests, failureResult)
 
-			Expect(failureResult.Success).To(BeTrue(), "Node failure recovery should succeed")
-			Expect(failureResult.RecoveryTime).To(BeNumerically("<=", 5*time.Minute),
+			gomega.Expect(failureResult.Success).To(gomega.BeTrue(), "Node failure recovery should succeed")
+			gomega.Expect(failureResult.RecoveryTime).To(gomega.BeNumerically("<=", 5*time.Minute),
 				"Node failure recovery should complete within 5 minutes")
 
 			// Validate service impact
-			Expect(failureResult.ServiceImpact.ServiceDowntime).To(BeNumerically("<=", 2*time.Minute),
+			gomega.Expect(failureResult.ServiceImpact.ServiceDowntime).To(gomega.BeNumerically("<=", 2*time.Minute),
 				"Service downtime should be minimized")
-			Expect(failureResult.ServiceImpact.DataLossOccurred).To(BeFalse(),
+			gomega.Expect(failureResult.ServiceImpact.DataLossOccurred).To(gomega.BeFalse(),
 				"No data loss should occur")
 		})
 
-		It("should handle network partition scenarios", func() {
+		ginkgo.It("should handle network partition scenarios", func() {
 			vnfSpec := vnfLifecycleScenarios[2].vnfSpec
 			vnfSpec.Name = "test-vnf-network-partition"
 
-			By("Creating VNF for network partition testing")
+			ginkgo.By("Creating VNF for network partition testing")
 			createResult := suite.createVNF(vnfSpec)
-			Expect(createResult.Success).To(BeTrue())
+			gomega.Expect(createResult.Success).To(gomega.BeTrue())
 
-			By("Simulating network partition")
+			ginkgo.By("Simulating network partition")
 			failureResult := suite.testVNFNetworkPartition(vnfSpec.Name)
 			suite.testResults.FailureTests = append(suite.testResults.FailureTests, failureResult)
 
-			Expect(failureResult.Success).To(BeTrue(), "Network partition recovery should succeed")
-			Expect(failureResult.ServiceImpact.UserImpactLevel).To(Equal("minimal"),
+			gomega.Expect(failureResult.Success).To(gomega.BeTrue(), "Network partition recovery should succeed")
+			gomega.Expect(failureResult.ServiceImpact.UserImpactLevel).To(gomega.Equal("minimal"),
 				"User impact should be minimal")
 		})
 	})
 
-	Context("Performance and Resource Management", func() {
-		It("should meet performance targets for VNF operations", func() {
-			By("Running performance benchmark for VNF operations")
+	ginkgo.Context("Performance and Resource Management", func() {
+		ginkgo.It("should meet performance targets for VNF operations", func() {
+			ginkgo.By("Running performance benchmark for VNF operations")
 
 			performanceResults := make([]VNFLifecycleTestResult, 0)
 			iterations := 10
@@ -639,7 +639,7 @@ var _ = Describe("VNF Operator Lifecycle Tests", func() {
 				result := suite.testCompleteVNFLifecycle(vnfSpec, vnfLifecycleScenarios[0].targetMetrics)
 				performanceResults = append(performanceResults, result)
 
-				Expect(result.Success).To(BeTrue(), "Performance test iteration should succeed")
+				gomega.Expect(result.Success).To(gomega.BeTrue(), "Performance test iteration should succeed")
 			}
 
 			// Calculate performance metrics
@@ -651,26 +651,26 @@ var _ = Describe("VNF Operator Lifecycle Tests", func() {
 			suite.testResults.PerformanceMetrics.AverageDeploymentTimeMs = float64(avgDeploymentTime.Milliseconds())
 			suite.testResults.PerformanceMetrics.SuccessRate = successRate
 
-			Expect(avgCreationTime).To(BeNumerically("<=", 45*time.Second),
+			gomega.Expect(avgCreationTime).To(gomega.BeNumerically("<=", 45*time.Second),
 				"Average creation time should meet target")
-			Expect(avgDeploymentTime).To(BeNumerically("<=", 3*time.Minute),
+			gomega.Expect(avgDeploymentTime).To(gomega.BeNumerically("<=", 3*time.Minute),
 				"Average deployment time should meet target")
-			Expect(successRate).To(BeNumerically(">=", 95.0),
+			gomega.Expect(successRate).To(gomega.BeNumerically(">=", 95.0),
 				"Success rate should be at least 95%")
 
-			By(fmt.Sprintf("✓ Performance metrics: Creation=%.1fs, Deployment=%.1fs, Success=%.1f%%",
+			ginkgo.By(fmt.Sprintf("✓ Performance metrics: Creation=%.1fs, Deployment=%.1fs, Success=%.1f%%",
 				avgCreationTime.Seconds(), avgDeploymentTime.Seconds(), successRate))
 		})
 
-		It("should manage resources efficiently under load", func() {
-			By("Testing resource management under concurrent load")
+		ginkgo.It("should manage resources efficiently under load", func() {
+			ginkgo.By("Testing resource management under concurrent load")
 
 			concurrentVNFs := 5
 			done := make(chan VNFResourceUtilization, concurrentVNFs)
 
 			for i := 0; i < concurrentVNFs; i++ {
 				go func(index int) {
-					defer GinkgoRecover()
+					defer ginkgo.GinkgoRecover()
 					vnfSpec := vnfLifecycleScenarios[index%len(vnfLifecycleScenarios)].vnfSpec
 					vnfSpec.Name = fmt.Sprintf("load-test-vnf-%d", index)
 
@@ -691,17 +691,17 @@ var _ = Describe("VNF Operator Lifecycle Tests", func() {
 			avgCPU := totalCPU / float64(concurrentVNFs)
 			avgMemory := totalMemory / float64(concurrentVNFs)
 
-			Expect(avgCPU).To(BeNumerically("<=", 70.0),
+			gomega.Expect(avgCPU).To(gomega.BeNumerically("<=", 70.0),
 				"Average CPU usage under load should be reasonable")
-			Expect(avgMemory).To(BeNumerically("<=", 70.0),
+			gomega.Expect(avgMemory).To(gomega.BeNumerically("<=", 70.0),
 				"Average memory usage under load should be reasonable")
 		})
 	})
 })
 
 func TestVNFLifecycle(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "VNF Operator Lifecycle Integration Suite")
+	gomega.RegisterFailHandler(ginkgo.Fail)
+	ginkgo.RunSpecs(t, "VNF Operator Lifecycle Integration Suite")
 }
 
 // VNFLifecycleSuite implementation
