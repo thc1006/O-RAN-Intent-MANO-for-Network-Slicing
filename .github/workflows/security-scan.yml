@@ -101,6 +101,9 @@ jobs:
           SCRIPT_OPTS="$SCRIPT_OPTS --verbose"
         fi
 
+        # Make script executable
+        chmod +x ./scripts/security-check.sh
+
         # Run security check
         ./scripts/security-check.sh $SCRIPT_OPTS
       continue-on-error: true
