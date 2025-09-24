@@ -22,7 +22,7 @@ RUN apk update && apk upgrade && apk add --no-cache \
 WORKDIR /workspace
 COPY tests/go.mod tests/go.sum ./
 # Download dependencies with explicit toolchain
-ENV GOTOOLCHAIN=go1.24.5
+ENV GOTOOLCHAIN=auto
 ENV GOPROXY=https://proxy.golang.org,direct
 ENV GOSUMDB=sum.golang.org
 RUN go mod download

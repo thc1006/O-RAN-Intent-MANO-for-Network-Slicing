@@ -40,7 +40,7 @@ COPY tn/manager/api/v1alpha1/ ./manager/api/v1alpha1/
 COPY pkg/security/ ../pkg/security/
 
 # Download dependencies with explicit toolchain
-ENV GOTOOLCHAIN=go1.24.5
+ENV GOTOOLCHAIN=auto
 ENV GOPROXY=https://proxy.golang.org,direct
 ENV GOSUMDB=sum.golang.org
 RUN go mod download
