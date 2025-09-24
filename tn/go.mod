@@ -2,7 +2,6 @@ module github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tn
 
 go 1.24.7
 
-
 replace (
 	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security => ../pkg/security
 	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tn/manager/api/v1alpha1 => ./manager/api/v1alpha1
