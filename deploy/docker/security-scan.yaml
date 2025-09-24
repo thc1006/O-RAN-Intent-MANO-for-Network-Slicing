@@ -58,7 +58,7 @@ security-policies:
       - "alpine:3.20"
       - "debian:12-slim"
       - "gcr.io/distroless/static:nonroot"
-      - "golang:1.23.6-alpine"
+      - "golang:1.24.7-alpine"
     denied:
       - "alpine:3.18"
       - "ubuntu:18.04"

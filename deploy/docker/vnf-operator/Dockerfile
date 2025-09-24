@@ -1,6 +1,6 @@
 # VNF Operator Multi-stage Dockerfile
 # Stage 1: Build
-FROM golang:1.23.6-alpine AS builder
+FROM golang:1.24.7-alpine AS builder
 
 # Security labels and metadata
 LABEL maintainer="O-RAN MANO Team"
@@ -40,7 +40,7 @@ COPY pkg/security ../pkg/security
 COPY adapters/vnf-operator/api /workspace/api
 
 # Download dependencies with explicit toolchain
-ENV GOTOOLCHAIN=go1.23.6
+ENV GOTOOLCHAIN=go1.24.7
 ENV GOPROXY=https://proxy.golang.org,direct
 ENV GOSUMDB=sum.golang.org
 RUN go mod download
