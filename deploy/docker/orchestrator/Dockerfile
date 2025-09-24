@@ -3,7 +3,7 @@
 # Build context: orchestrator directory (./orchestrator) with minimal dependencies
 
 # Stage 1: Build
-FROM golang:1.23-alpine AS builder
+FROM golang:1.22.10-alpine AS builder
 
 # Security and build metadata
 LABEL org.opencontainers.image.title="O-RAN Orchestrator"
@@ -62,7 +62,7 @@ FROM scratch AS runtime
 LABEL org.opencontainers.image.title="O-RAN Orchestrator Runtime"
 LABEL org.opencontainers.image.base.name="scratch"
 LABEL security.user="nobody"
-LABEL security.go.version="1.23"
+LABEL security.go.version="1.22.10"
 
 # Copy required certificates for HTTPS calls
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/

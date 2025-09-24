@@ -1,7 +1,7 @@
 # Simple Test Framework Dockerfile
-FROM golang:1.24.7-alpine AS builder
+FROM golang:1.22.10-alpine AS builder
 
-ENV GOTOOLCHAIN=go1.24.7
+ENV GOTOOLCHAIN=go1.22.10
 ENV GO124TELEMETRY=off
 
 WORKDIR /workspace
@@ -18,7 +18,7 @@ import (
 )
 
 func main() {
-	fmt.Println("O-RAN Test Framework v1.0.0 - Go 1.24.7")
+	fmt.Println("O-RAN Test Framework v1.0.0 - Go 1.22.10")
 	
 	// Simple HTTP server for health checks
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
