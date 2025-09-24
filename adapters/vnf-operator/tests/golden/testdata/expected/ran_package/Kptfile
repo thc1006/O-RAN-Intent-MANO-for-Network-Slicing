@@ -1,0 +1,25 @@
+apiVersion: kpt.dev/v1
+kind: Kptfile
+metadata:
+  name: test-vnf-RAN-ran-package
+  annotations:
+    config.kubernetes.io/local-config: "true"
+    vnf-type: RAN
+    vnf-version: 1.0.0
+info:
+  description: Porch package for test-vnf-RAN VNF
+pipeline:
+  mutators:
+    - image: gcr.io/kpt-fn/set-namespace:v0.4.1
+      configPath: ""
+      config:
+        name: oran-system
+    - image: gcr.io/kpt-fn/set-labels:v0.2.0
+      configPath: ""
+      config:
+        vnf-type: RAN
+        vnf-version: 1.0.0
+  validators:
+    - image: gcr.io/kpt-fn/kubeval:v0.3
+      configPath: ""
+      config: {}
