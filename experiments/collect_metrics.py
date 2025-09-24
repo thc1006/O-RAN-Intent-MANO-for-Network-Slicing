@@ -47,7 +47,11 @@ class MetricsCollector:
         """Execute kubectl command and return output"""
         try:
             result = subprocess.run(
-                f"kubectl {cmd}", shell=True, capture_output=True, text=True, timeout=10
+                f"kubectl {cmd}",
+                shell=True,
+                capture_output=True,
+                text=True,
+                timeout=10
             )
             return result.stdout.strip()
         except subprocess.TimeoutExpired:
@@ -87,7 +91,9 @@ class MetricsCollector:
                         total_cpu += float(cpu_str) / 1000.0
 
                         # Parse memory (convert to MB)
-                        mem_str = parts[2].replace("Mi", "").replace("Gi", "000")
+                        mem_str = parts[2].replace("Mi", "").replace(
+                            "Gi", "000"
+                        )
                         total_memory += float(mem_str)
 
             metrics["cpu"] = round(total_cpu, 3)
@@ -118,13 +124,22 @@ class MetricsCollector:
                     if node_json:
                         try:
                             node_data = json.loads(node_json)
-                            mem_capacity = node_data["status"]["capacity"]["memory"]
+                            mem_capacity = node_data["status"]["capacity"][
+                                "memory"
+                            ]
                             # Convert Ki to MB
-                            mem_capacity_mb = int(mem_capacity.replace("Ki", "")) / 1024
-                            mem_used_mb = mem_capacity_mb * float(mem_percent) / 100
+                            mem_capacity_mb = (
+                                int(mem_capacity.replace("Ki", "")) / 1024
+                            )
+                            mem_used_mb = (
+                                mem_capacity_mb * float(mem_percent) / 100
+                            )
                             memory_usage[node] = round(mem_used_mb, 2)
                         except (json.JSONDecodeError, KeyError) as e:
-                            print(f"Error getting node capacity: {e}", file=sys.stderr)
+                            print(
+                                f"Error getting node capacity: {e}",
+                                file=sys.stderr,
+                            )
 
         return memory_usage
 
@@ -136,7 +151,12 @@ class MetricsCollector:
 
         # Initial state
         timeline.append(
-            {"t": 0, "event": "Monitoring started", "cpu": 0, "state": "Pending"}
+            {
+                "t": 0,
+                "event": "Monitoring started",
+                "cpu": 0,
+                "state": "Pending",
+            }
         )
 
         # Monitor for 3 minutes
@@ -146,7 +166,8 @@ class MetricsCollector:
 
             # Get pod status
             pod_json = self.run_kubectl(
-                f"get pod -n {namespace} -l scenario={scenario},app=smf -o json"
+                f"get pod -n {namespace} -l scenario={scenario},app=smf "
+                f"-o json"
             )
 
             if pod_json:
@@ -158,14 +179,18 @@ class MetricsCollector:
 
                         # Get CPU usage
                         metrics = self.run_kubectl(
-                            f"top pod {pod['metadata']['name']} -n {namespace} --no-headers"
+                            f"top pod {pod['metadata']['name']} "
+                            f"-n {namespace} "
+                            f"--no-headers"
                         )
 
                         cpu_usage = 0
                         if metrics:
                             parts = metrics.split()
                             if len(parts) >= 2:
-                                cpu_usage = float(parts[1].replace("m", "")) / 1000.0
+                                cpu_usage = (
+                                    float(parts[1].replace("m", "")) / 1000.0
+                                )
 
                         # Check for bottleneck pattern (high CPU during init)
                         elapsed = time.time() - start_time
@@ -175,21 +200,30 @@ class MetricsCollector:
                             timeline.append(
                                 {
                                     "t": elapsed,
-                                    "event": "High CPU detected - SMF initialization",
+                                    "event": "High CPU detected - SMF "
+                                    "initialization",
                                     "cpu": cpu_usage,
                                     "state": phase,
                                 }
                             )
 
                             # This is the bottleneck
-                            if self.metrics["bottlenecks"]["smf_init_delay"] == 0:
-                                self.metrics["bottlenecks"]["smf_init_delay"] = elapsed
+                            if (
+                                self.metrics["bottlenecks"]["smf_init_delay"]
+                                == 0
+                            ):
+                                self.metrics["bottlenecks"][
+                                    "smf_init_delay"
+                                ] = elapsed
 
                         # Record ready state
                         if phase == "Running":
                             conditions = pod["status"].get("conditions", [])
                             for cond in conditions:
-                                if cond["type"] == "Ready" and cond["status"] == "True":
+                                if (
+                                    cond["type"] == "Ready"
+                                    and cond["status"] == "True"
+                                ):
                                     timeline.append(
                                         {
                                             "t": elapsed,
@@ -216,7 +250,9 @@ class MetricsCollector:
             # Collect SMO metrics
             smo_metrics = self.collect_smo_metrics()
             self.metrics["resources"]["smo"]["cpu"].append(smo_metrics["cpu"])
-            self.metrics["resources"]["smo"]["memory"].append(smo_metrics["memory"])
+            self.metrics["resources"]["smo"]["memory"].append(
+                smo_metrics["memory"]
+            )
 
             # Collect pod count
             pods_output = self.run_kubectl(
@@ -234,7 +270,9 @@ class MetricsCollector:
 
             time.sleep(interval)
 
-    def process_intent(self, scenario: str, input_file: str, output_file: str) -> None:
+    def process_intent(
+        self, scenario: str, input_file: str, output_file: str
+    ) -> None:
         """Simulate intent processing and generate configuration"""
         print(f"Processing intent for scenario: {scenario}")
 
@@ -256,7 +294,10 @@ class MetricsCollector:
                 "jitter": 2.0,
                 "reliability": 99.9,
             }
-            config["placement"] = {"type": "edge", "zones": ["edge-1", "edge-2"]}
+            config["placement"] = {
+                "type": "edge",
+                "zones": ["edge-1", "edge-2"],
+            }
         elif scenario == "urllc":
             config["qos"] = {
                 "bandwidth": 0.93,
@@ -286,7 +327,10 @@ class MetricsCollector:
 
         # Initialize scenario metrics if not exists
         if scenario not in self.metrics["scenarios"]:
-            self.metrics["scenarios"][scenario] = {"domains": {}, "total_time": 0}
+            self.metrics["scenarios"][scenario] = {
+                "domains": {},
+                "total_time": 0,
+            }
 
         # Record domain start time
         self.metrics["scenarios"][scenario]["domains"][domain] = {
@@ -296,7 +340,9 @@ class MetricsCollector:
             "pod_count": 0,
         }
 
-    def validate_results(self, target_series: Dict[str, Dict]) -> Dict[str, Any]:
+    def validate_results(
+        self, target_series: Dict[str, Dict]
+    ) -> Dict[str, Any]:
         """Validate results against target thresholds"""
         validation = {
             "series_type": (
@@ -311,7 +357,9 @@ class MetricsCollector:
 
         for scenario, targets in target_series.items():
             if scenario in self.metrics["scenarios"]:
-                actual_time = self.metrics["scenarios"][scenario].get("total_time", 0)
+                actual_time = self.metrics["scenarios"][scenario].get(
+                    "total_time", 0
+                )
                 target_time = targets["target"]
                 tolerance = targets["tolerance"]
 
@@ -329,7 +377,8 @@ class MetricsCollector:
                 if not passed:
                     validation["passed"] = False
                     validation["failures"].append(
-                        f"{scenario}: {actual_time}s (target: {target_time}±{tolerance}s)"
+                        f"{scenario}: {actual_time}s "
+                        f"(target: {target_time}±{tolerance}s)"
                     )
 
         # Check SMF bottleneck
@@ -344,7 +393,9 @@ class MetricsCollector:
             validation["smo_cpu_peak"] = peak_cpu
             if peak_cpu > 2.0:  # 2 cores threshold
                 validation["passed"] = False
-                validation["failures"].append(f"SMO CPU exceeded: {peak_cpu} cores")
+                validation["failures"].append(
+                    f"SMO CPU exceeded: {peak_cpu} cores"
+                )
 
         return validation
 
@@ -505,7 +556,9 @@ class MetricsCollector:
         # Build O-Cloud memory list
         ocloud_memory = ""
         for node, mem in (
-            self.metrics["resources"]["ocloud"].get("memory_per_node", {}).items()
+            self.metrics["resources"]["ocloud"]
+            .get("memory_per_node", {})
+            .items()
         ):
             ocloud_memory += f"<li>{node}: {mem} MB</li>"
 
@@ -513,7 +566,9 @@ class MetricsCollector:
         html_filled = html_content.format(
             timestamp=self.metrics["timestamp"],
             validation_class="pass" if validation.get("passed") else "fail",
-            validation_status="PASSED" if validation.get("passed") else "FAILED",
+            validation_status="PASSED"
+            if validation.get("passed")
+            else "FAILED",
             series_type=validation.get("series_type", "unknown"),
             validation_details=", ".join(validation.get("failures", []))
             or "All checks passed",
@@ -522,7 +577,9 @@ class MetricsCollector:
             smf_timeline=smf_timeline or "<p>No bottleneck detected</p>",
             smo_cpu_peak=self.metrics["resources"]["smo"].get("cpu_peak", 0),
             smo_cpu_avg=self.metrics["resources"]["smo"].get("cpu_avg", 0),
-            smo_mem_peak=self.metrics["resources"]["smo"].get("memory_peak", 0),
+            smo_mem_peak=self.metrics["resources"]["smo"].get(
+                "memory_peak", 0
+            ),
             smo_mem_avg=self.metrics["resources"]["smo"].get("memory_avg", 0),
             ocloud_memory=ocloud_memory or "<li>No data</li>",
         )
@@ -534,13 +591,19 @@ class MetricsCollector:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="E2E Deployment Metrics Collection")
+    parser = argparse.ArgumentParser(
+        description="E2E Deployment Metrics Collection"
+    )
 
     subparsers = parser.add_subparsers(dest="command", help="Command to run")
 
     # Process intent command
-    intent_parser = subparsers.add_parser("process_intent", help="Process intent")
-    intent_parser.add_argument("--scenario", required=True, help="Scenario name")
+    intent_parser = subparsers.add_parser(
+        "process_intent", help="Process intent"
+    )
+    intent_parser.add_argument(
+        "--scenario", required=True, help="Scenario name"
+    )
     intent_parser.add_argument("--input", required=True, help="Input file")
     intent_parser.add_argument("--output", required=True, help="Output file")
 
@@ -548,18 +611,26 @@ def main():
     collect_parser = subparsers.add_parser(
         "start_collection", help="Start metrics collection"
     )
-    collect_parser.add_argument("--domain", required=True, help="Domain (ran/tn/cn)")
-    collect_parser.add_argument("--scenario", required=True, help="Scenario name")
+    collect_parser.add_argument(
+        "--domain", required=True, help="Domain (ran/tn/cn)"
+    )
+    collect_parser.add_argument(
+        "--scenario", required=True, help="Scenario name"
+    )
 
     # Monitor SMF command
-    smf_parser = subparsers.add_parser("monitor_smf", help="Monitor SMF bottleneck")
+    smf_parser = subparsers.add_parser(
+        "monitor_smf", help="Monitor SMF bottleneck"
+    )
     smf_parser.add_argument("--scenario", required=True, help="Scenario name")
 
     # Continuous collection command
     continuous_parser = subparsers.add_parser(
         "continuous", help="Continuous metrics collection"
     )
-    continuous_parser.add_argument("--output", required=True, help="Output file")
+    continuous_parser.add_argument(
+        "--output", required=True, help="Output file"
+    )
     continuous_parser.add_argument(
         "--interval", type=int, default=5, help="Collection interval"
     )
@@ -582,7 +653,9 @@ def main():
     )
     report_parser.add_argument("--metrics", required=True, help="Metrics file")
     report_parser.add_argument("--timers", help="Timers file")
-    report_parser.add_argument("--output", required=True, help="Output JSON file")
+    report_parser.add_argument(
+        "--output", required=True, help="Output JSON file"
+    )
     report_parser.add_argument("--html", help="Output HTML file")
 
     args = parser.parse_args()
@@ -624,7 +697,9 @@ def main():
         ocloud_memory = collector.collect_ocloud_memory(nodes)
 
         collector.metrics["resources"]["smo"]["final"] = smo_metrics
-        collector.metrics["resources"]["ocloud"]["memory_per_node"] = ocloud_memory
+        collector.metrics["resources"]["ocloud"][
+            "memory_per_node"
+        ] = ocloud_memory
 
         with open(args.output, "w") as f:
             json.dump(collector.metrics, f, indent=2)

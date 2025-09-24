@@ -55,7 +55,9 @@ def assert_overall_status(report: Dict[str, Any]) -> bool:
         return False
 
 
-def assert_deployment_time(report: Dict[str, Any], max_time_minutes: int = 10) -> bool:
+def assert_deployment_time(
+    report: Dict[str, Any], max_time_minutes: int = 10
+) -> bool:
     """Assert that all deployment times are under the specified limit."""
     max_time_seconds = max_time_minutes * 60
     all_passed = True
@@ -76,11 +78,13 @@ def assert_deployment_time(report: Dict[str, Any], max_time_minutes: int = 10) -
 
         if within_limit and actual_time <= max_time_seconds:
             logging.info(
-                f"✅ {profile_name}: Deployment time {actual_time}s < {max_time_seconds}s"
+                f"✅ {profile_name}: Deployment time {actual_time}s < "
+                f"{max_time_seconds}s"
             )
         else:
             logging.error(
-                f"❌ {profile_name}: Deployment time {actual_time}s >= {max_time_seconds}s"
+                f"❌ {profile_name}: Deployment time {actual_time}s >= "
+                f"{max_time_seconds}s"
             )
             all_passed = False
 
@@ -90,7 +94,8 @@ def assert_deployment_time(report: Dict[str, Any], max_time_minutes: int = 10) -
 def assert_bandwidth_targets(
     report: Dict[str, Any], tolerance_percent: float = 10.0
 ) -> bool:
-    """Assert that all bandwidth measurements are within tolerance of targets."""
+    """Assert that all bandwidth measurements are within tolerance of
+    targets."""
     all_passed = True
 
     profiles = report.get("profiles", {})
@@ -112,12 +117,14 @@ def assert_bandwidth_targets(
         if within_tolerance:
             logging.info(
                 f"✅ {profile_name}: Bandwidth {actual_mbps:.2f}Mbps "
-                f"(expected: {expected_mbps:.2f}Mbps, deviation: {deviation_percent:.1f}%)"
+                f"(expected: {expected_mbps:.2f}Mbps, "
+                f"deviation: {deviation_percent:.1f}%)"
             )
         else:
             logging.error(
                 f"❌ {profile_name}: Bandwidth {actual_mbps:.2f}Mbps "
-                f"(expected: {expected_mbps:.2f}Mbps, deviation: {deviation_percent:.1f}%)"
+                f"(expected: {expected_mbps:.2f}Mbps, "
+                f"deviation: {deviation_percent:.1f}%)"
             )
             all_passed = False
 
@@ -149,12 +156,14 @@ def assert_latency_targets(
         if within_tolerance:
             logging.info(
                 f"✅ {profile_name}: Latency {actual_ms:.1f}ms "
-                f"(expected: {expected_ms:.1f}ms, deviation: {deviation_percent:.1f}%)"
+                f"(expected: {expected_ms:.1f}ms, "
+                f"deviation: {deviation_percent:.1f}%)"
             )
         else:
             logging.error(
                 f"❌ {profile_name}: Latency {actual_ms:.1f}ms "
-                f"(expected: {expected_ms:.1f}ms, deviation: {deviation_percent:.1f}%)"
+                f"(expected: {expected_ms:.1f}ms, "
+                f"deviation: {deviation_percent:.1f}%)"
             )
             all_passed = False
 
@@ -191,7 +200,9 @@ def assert_no_critical_issues(report: Dict[str, Any]) -> bool:
         return False
 
 
-def run_all_assertions(report: Dict[str, Any], args: argparse.Namespace) -> bool:
+def run_all_assertions(
+    report: Dict[str, Any], args: argparse.Namespace
+) -> bool:
     """Run all assertions and return overall result."""
     logging.info("Running performance threshold assertions...")
 
@@ -201,9 +212,18 @@ def run_all_assertions(report: Dict[str, Any], args: argparse.Namespace) -> bool
             "Deployment Time",
             lambda: assert_deployment_time(report, args.max_deploy_minutes),
         ),
-        ("Bandwidth Targets", lambda: assert_bandwidth_targets(report, args.tolerance)),
-        ("Latency Targets", lambda: assert_latency_targets(report, args.tolerance)),
-        ("Success Rate", lambda: assert_success_rate(report, args.min_success_rate)),
+        (
+            "Bandwidth Targets",
+            lambda: assert_bandwidth_targets(report, args.tolerance),
+        ),
+        (
+            "Latency Targets",
+            lambda: assert_latency_targets(report, args.tolerance),
+        ),
+        (
+            "Success Rate",
+            lambda: assert_success_rate(report, args.min_success_rate),
+        ),
         ("Critical Issues", lambda: assert_no_critical_issues(report)),
     ]
 
@@ -234,9 +254,13 @@ def run_all_assertions(report: Dict[str, Any], args: argparse.Namespace) -> bool
     logging.info(f"ASSERTION SUMMARY: {passed_count}/{total_count} passed")
 
     if all_passed:
-        logging.info("🎉 All assertions PASSED! System meets performance targets.")
+        logging.info(
+            "🎉 All assertions PASSED! System meets performance targets."
+        )
     else:
-        logging.error("💥 One or more assertions FAILED! System does not meet targets.")
+        logging.error(
+            "💥 One or more assertions FAILED! System does not meet targets."
+        )
 
     logging.info(f"{'='*50}")
 
