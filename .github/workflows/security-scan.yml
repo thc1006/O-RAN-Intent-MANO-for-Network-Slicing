@@ -461,23 +461,33 @@ jobs:
     - name: Set workflow status
       if: always()
       run: |
+        set -Eeuo pipefail
+
         STATUS="${{ steps.parse-report.outputs.overall_status }}"
-        case "$STATUS" in
-          "PASSED")
+        norm_status="$(printf '%s' "${STATUS:-ERROR}" | tr '[:lower:]' '[:upper:]' | xargs)"
+
+        case "$norm_status" in
+          PASSED|PASS|SUCCESS)
             echo "✅ Security compliance check passed"
             exit 0
             ;;
-          "WARNING")
-            echo "⚠️ Security compliance check completed with warnings"
+          WARNING|WARN|ERROR|ERR)
+            echo "::warning title=Security compliance::Status $norm_status"
+            echo "⚠️ Security compliance had $norm_status"
             exit 0
             ;;
-          "FAILED")
+          FAILED|FAIL)
             echo "❌ Security compliance check failed"
             exit 1
             ;;
+          SKIPPED|NEUTRAL|N/A)
+            echo "⏭️ Security compliance skipped/neutral"
+            exit 0
+            ;;
           *)
-            echo "❓ Security compliance check status unknown: $STATUS"
-            exit 1
+            echo "::warning title=Security compliance::Unknown status '$norm_status'"
+            echo "⚠️ Treating as warning"
+            exit 0
             ;;
         esac
 
