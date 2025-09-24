@@ -92,31 +92,31 @@ func TestSecureSubprocessExecutor_SecureExecute(t *testing.T) {
 		errorText string
 	}{
 		{
-			name:    "command not in allowlist",
-			command: "unknown_command",
-			args:    []string{},
-			wantErr: true,
+			name:      "command not in allowlist",
+			command:   "unknown_command",
+			args:      []string{},
+			wantErr:   true,
 			errorText: "command not in allowlist",
 		},
 		{
-			name:    "too many arguments",
-			command: "ping",
-			args:    make([]string, 20), // More than ping's MaxArgs (15)
-			wantErr: true,
+			name:      "too many arguments",
+			command:   "ping",
+			args:      make([]string, 20), // More than ping's MaxArgs (15)
+			wantErr:   true,
 			errorText: "too many arguments",
 		},
 		{
-			name:    "invalid argument - dangerous characters",
-			command: "ping",
-			args:    []string{"-c", "3", "example.com; rm -rf /"},
-			wantErr: true,
+			name:      "invalid argument - dangerous characters",
+			command:   "ping",
+			args:      []string{"-c", "3", "example.com; rm -rf /"},
+			wantErr:   true,
 			errorText: "argument validation failed",
 		},
 		{
-			name:    "echo command with simple args (should work if registered)",
-			command: "echo",
-			args:    []string{"hello"},
-			wantErr: true, // Will fail because echo is not in default allowlist
+			name:      "echo command with simple args (should work if registered)",
+			command:   "echo",
+			args:      []string{"hello"},
+			wantErr:   true, // Will fail because echo is not in default allowlist
 			errorText: "command not in allowlist",
 		},
 	}
@@ -304,7 +304,7 @@ func TestSecureSubprocessExecutor_ArgumentValidation(t *testing.T) {
 		Description: "Test command",
 	}
 
-	executor.RegisterCommand(cmd)
+	_ = executor.RegisterCommand(cmd)
 
 	tests := []struct {
 		name    string
@@ -361,7 +361,7 @@ func TestSecureSubprocessExecutor_Timeout(t *testing.T) {
 		Description: "Sleep command for timeout testing",
 	}
 
-	executor.RegisterCommand(shortTimeoutCmd)
+	_ = executor.RegisterCommand(shortTimeoutCmd)
 
 	ctx := context.Background()
 
@@ -436,7 +436,7 @@ func BenchmarkSecureSubprocessExecutor_ArgumentValidation(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		executor.validateArguments(cmd, args)
+		_ = executor.validateArguments(cmd, args)
 	}
 }
 
@@ -445,7 +445,7 @@ func BenchmarkValidateIPerfArgs(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		ValidateIPerfArgs(args)
+		_ = ValidateIPerfArgs(args)
 	}
 }
 
@@ -454,7 +454,7 @@ func BenchmarkValidateCommandArgument(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		ValidateCommandArgument(arg)
+		_ = ValidateCommandArgument(arg)
 	}
 }
 

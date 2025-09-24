@@ -157,8 +157,10 @@ validate_go_security() {
         # Parse results
         local issues_count
         issues_count=$(jq -r '.Stats.files_scanned // 0' "$gosec_output" 2>/dev/null || echo "0")
-        local found_issues
-        found_issues=$(jq -r '.Issues | length' "$gosec_output" 2>/dev/null || echo "0")
+        local found_issues=0
+        if [[ -f "$gosec_output" ]]; then
+            found_issues=$(jq -r '.Issues | length' "$gosec_output" 2>/dev/null || echo "0")
+        fi
 
         if [[ $found_issues -gt 0 ]]; then
             warning "Found $found_issues security issues in Go code"
@@ -193,6 +195,7 @@ validate_go_security() {
     else
         error "gosec scan failed"
         SECURITY_REPORT["go_security_scan"]="ERROR"
+        found_issues=0
     fi
 
     SECURITY_REPORT["total_issues"]=$((${SECURITY_REPORT["total_issues"]} + found_issues))

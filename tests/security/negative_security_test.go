@@ -211,13 +211,13 @@ func (suite *NegativeSecurityTestSuite) testInputValidationViolations(t *testing
 			"172.16.0.1`whoami`",
 			"192.168.1.1$(id)",
 			"127.0.0.1\ncat /etc/shadow",
-			"999.999.999.999",    // Invalid range
-			"192.168.1.256",      // Invalid octet
-			"192.168.1",          // Incomplete
-			"192.168.1.1.1",      // Too many octets
-			"192.168.1.1/24",     // CIDR notation not allowed
-			"192.168.1.1:8080",   // Port not allowed
-			"fe80::1; rm -rf /",  // IPv6 with injection
+			"999.999.999.999",   // Invalid range
+			"192.168.1.256",     // Invalid octet
+			"192.168.1",         // Incomplete
+			"192.168.1.1.1",     // Too many octets
+			"192.168.1.1/24",    // CIDR notation not allowed
+			"192.168.1.1:8080",  // Port not allowed
+			"fe80::1; rm -rf /", // IPv6 with injection
 			"::1 && cat /etc/passwd",
 		}
 
@@ -229,10 +229,10 @@ func (suite *NegativeSecurityTestSuite) testInputValidationViolations(t *testing
 
 	t.Run("malicious_ports", func(t *testing.T) {
 		maliciousPorts := []int{
-			-1,      // Negative
-			0,       // Zero
-			65536,   // Too high
-			999999,  // Way too high
+			-1,     // Negative
+			0,      // Zero
+			65536,  // Too high
+			999999, // Way too high
 		}
 
 		for _, port := range maliciousPorts {
@@ -255,8 +255,8 @@ func (suite *NegativeSecurityTestSuite) testInputValidationViolations(t *testing
 			"'$(dangerous_command)'",
 			"\"$(evil_command)\"",
 			strings.Repeat("A", 1000), // Buffer overflow attempt
-			"test\x00hidden",           // Null byte injection
-			"unicode\u0000injection",   // Unicode null
+			"test\x00hidden",          // Null byte injection
+			"unicode\u0000injection",  // Unicode null
 			"format%s%s%s%s",          // Format string attack
 			"test\r\ninjected",        // CRLF injection
 		}
@@ -399,11 +399,11 @@ func (suite *NegativeSecurityTestSuite) testDenialOfServiceViolations(t *testing
 			args    []string
 		}{
 			{"yes", []string{}},                              // Infinite output
-			{"cat", []string{"/dev/urandom"}},               // Infinite random data
-			{"find", []string{"/", "-name", "*"}},           // Filesystem exhaustion
+			{"cat", []string{"/dev/urandom"}},                // Infinite random data
+			{"find", []string{"/", "-name", "*"}},            // Filesystem exhaustion
 			{"dd", []string{"if=/dev/zero", "of=/dev/null"}}, // CPU/IO exhaustion
-			{"fork", []string{}},                            // Fork bomb attempt
-			{":(){ :|:& };:", []string{}},                   // Classic fork bomb
+			{"fork", []string{}},                             // Fork bomb attempt
+			{":(){ :|:& };:", []string{}},                    // Classic fork bomb
 		}
 
 		for _, cmd := range dosCommands {
@@ -425,7 +425,7 @@ func (suite *NegativeSecurityTestSuite) testDenialOfServiceViolations(t *testing
 			Description: "Sleep command with short timeout",
 		}
 
-		suite.executor.RegisterCommand(shortTimeoutCmd)
+		_ = suite.executor.RegisterCommand(shortTimeoutCmd)
 
 		// Try to run command that exceeds timeout
 		start := time.Now()
@@ -580,15 +580,15 @@ func (suite *NegativeSecurityTestSuite) fuzzIPAddresses(t *testing.T, iterations
 			"%d.%d.%d.%d`whoami`",
 			"%d.%d.%d.%d$(id)",
 			"%d.%d.%d.%d\nmalicious",
-			"%d.%d.%d.999", // Invalid octet
-			"%d.%d.%d",     // Incomplete
+			"%d.%d.%d.999",   // Invalid octet
+			"%d.%d.%d",       // Incomplete
 			"%d.%d.%d.%d.%d", // Too many octets
 		}
 
 		pattern := patterns[i%len(patterns)]
 
 		// Generate random octets (some invalid)
-		oct1 := i % 300        // 0-299 (some invalid)
+		oct1 := i % 300 // 0-299 (some invalid)
 		oct2 := (i * 2) % 300
 		oct3 := (i * 3) % 300
 		oct4 := (i * 4) % 300
@@ -656,10 +656,10 @@ func testMaliciousHTTPRequests(t *testing.T) {
 	server := NewSecureHTTPServer(nil)
 
 	maliciousRequests := []struct {
-		name   string
-		method string
-		path   string
-		body   string
+		name    string
+		method  string
+		path    string
+		body    string
 		headers map[string]string
 	}{
 		{
@@ -693,17 +693,17 @@ func testMaliciousHTTPRequests(t *testing.T) {
 			body:   "",
 		},
 		{
-			name:   "command_injection_body",
-			method: "PUT",
-			path:   "/config",
-			body:   `{"config": "; rm -rf /"}`,
+			name:    "command_injection_body",
+			method:  "PUT",
+			path:    "/config",
+			body:    `{"config": "; rm -rf /"}`,
 			headers: map[string]string{"Content-Type": "application/json"},
 		},
 		{
-			name:   "oversized_request",
-			method: "PUT",
-			path:   "/config",
-			body:   strings.Repeat("A", 10*1024*1024), // 10MB
+			name:    "oversized_request",
+			method:  "PUT",
+			path:    "/config",
+			body:    strings.Repeat("A", 10*1024*1024), // 10MB
 			headers: map[string]string{"Content-Type": "application/json"},
 		},
 	}
@@ -768,8 +768,8 @@ func testHTTPHeaderInjection(t *testing.T) {
 			for headerName := range w.Header() {
 				assert.False(t,
 					strings.Contains(headerName, "Malicious") ||
-					strings.Contains(headerName, "Evil") ||
-					strings.Contains(headerName, "Set-Cookie"),
+						strings.Contains(headerName, "Evil") ||
+						strings.Contains(headerName, "Set-Cookie"),
 					"Injected header should not be present: %s", headerName)
 			}
 		})
@@ -910,7 +910,7 @@ func (suite *NegativeSecurityTestSuite) testTimingAttackResistance(t *testing.T)
 	var validTimes []time.Duration
 	for _, input := range validInputs {
 		start := time.Now()
-		suite.validator.ValidateCommandArgument(input)
+		_ = suite.validator.ValidateCommandArgument(input) // Timing test - error not relevant
 		validTimes = append(validTimes, time.Since(start))
 	}
 
@@ -918,7 +918,7 @@ func (suite *NegativeSecurityTestSuite) testTimingAttackResistance(t *testing.T)
 	var invalidTimes []time.Duration
 	for _, input := range invalidInputs {
 		start := time.Now()
-		suite.validator.ValidateCommandArgument(input)
+		_ = suite.validator.ValidateCommandArgument(input) // Timing test - error not relevant
 		invalidTimes = append(invalidTimes, time.Since(start))
 	}
 
@@ -994,7 +994,7 @@ func (suite *NegativeSecurityTestSuite) testStateConfusionAttacks(t *testing.T) 
 			"test$((1+1))",
 			"test${HOME}",
 			"test$[1+1]",
-			"test\\$(echo safe)", // Escaped
+			"test\\$(echo safe)",  // Escaped
 			"test\\`echo safe\\`", // Escaped
 		}
 
@@ -1013,7 +1013,7 @@ func BenchmarkSecurityViolationDetection(b *testing.B) {
 		maliciousArg := "test; rm -rf /"
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			suite.validator.ValidateCommandArgument(maliciousArg)
+			_ = suite.validator.ValidateCommandArgument(maliciousArg) // Benchmark test - error expected
 		}
 	})
 
@@ -1021,7 +1021,7 @@ func BenchmarkSecurityViolationDetection(b *testing.B) {
 		maliciousPath := "../../../etc/passwd"
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			suite.validator.ValidateFilePath(maliciousPath)
+			_ = suite.validator.ValidateFilePath(maliciousPath) // Benchmark test - error expected
 		}
 	})
 
@@ -1029,7 +1029,7 @@ func BenchmarkSecurityViolationDetection(b *testing.B) {
 		maliciousIP := "127.0.0.1; cat /etc/passwd"
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			suite.validator.ValidateIPAddress(maliciousIP)
+			_ = suite.validator.ValidateIPAddress(maliciousIP)
 		}
 	})
 }

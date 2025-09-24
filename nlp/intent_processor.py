@@ -6,13 +6,14 @@ Translates natural language intents into QoS parameters for network slicing
 
 import json
 import re
-from typing import Dict, List, Optional, Tuple
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from enum import Enum
+from typing import Dict, Tuple
 
 
 class ServiceType(Enum):
     """Network slice service types"""
+
     EMBB = "enhanced_mobile_broadband"  # High bandwidth
     URLLC = "ultra_reliable_low_latency"  # Low latency
     MMTC = "massive_machine_type_communication"  # IoT
@@ -26,6 +27,7 @@ class ServiceType(Enum):
 @dataclass
 class QoSParameters:
     """QoS parameters for network slice"""
+
     max_latency_ms: float
     min_throughput_mbps: float
     max_packet_loss_rate: float
@@ -41,6 +43,7 @@ class QoSParameters:
 @dataclass
 class IntentResult:
     """Result of intent processing"""
+
     original_intent: str
     service_type: ServiceType
     qos_parameters: QoSParameters
@@ -54,7 +57,7 @@ class IntentResult:
             "service_type": self.service_type.value,
             "qos_parameters": asdict(self.qos_parameters),
             "placement_hints": self.placement_hints,
-            "confidence": self.confidence
+            "confidence": self.confidence,
         }
         return json.dumps(data, indent=2)
 
@@ -67,62 +70,109 @@ class IntentProcessor:
         # Keywords for service type detection
         self.service_keywords = {
             ServiceType.GAMING: [
-                "gaming", "game", "ar/vr", "vr", "ar", "augmented", "virtual",
-                "interactive", "real-time gaming", "cloud gaming"
+                "gaming",
+                "game",
+                "ar/vr",
+                "vr",
+                "ar",
+                "augmented",
+                "virtual",
+                "interactive",
+                "real-time gaming",
+                "cloud gaming",
             ],
             ServiceType.VIDEO: [
-                "video", "streaming", "4k", "8k", "hd", "ultra-hd", "broadcast",
-                "live stream", "media", "content delivery"
+                "video",
+                "streaming",
+                "4k",
+                "8k",
+                "hd",
+                "ultra-hd",
+                "broadcast",
+                "live stream",
+                "media",
+                "content delivery",
             ],
             ServiceType.URLLC: [
-                "ultra-low latency", "low latency", "critical", "real-time",
-                "autonomous", "vehicle", "v2x", "industrial", "automation",
-                "robotics", "surgery", "telemedicine"
+                "ultra-low latency",
+                "low latency",
+                "critical",
+                "real-time",
+                "autonomous",
+                "vehicle",
+                "v2x",
+                "industrial",
+                "automation",
+                "robotics",
+                "surgery",
+                "telemedicine",
             ],
             ServiceType.EMBB: [
-                "high bandwidth", "broadband", "high throughput", "capacity",
-                "data intensive", "mobile broadband", "high speed"
+                "high bandwidth",
+                "broadband",
+                "high throughput",
+                "capacity",
+                "data intensive",
+                "mobile broadband",
+                "high speed",
             ],
             ServiceType.VOICE: [
-                "voice", "voip", "call", "telephony", "audio", "conference"
+                "voice",
+                "voip",
+                "call",
+                "telephony",
+                "audio",
+                "conference",
             ],
             ServiceType.IOT: [
-                "iot", "sensor", "monitoring", "smart city", "smart home",
-                "telemetry", "metering", "tracking"
+                "iot",
+                "sensor",
+                "monitoring",
+                "smart city",
+                "smart home",
+                "telemetry",
+                "metering",
+                "tracking",
             ],
             ServiceType.CRITICAL: [
-                "mission critical", "emergency", "public safety", "first responder",
-                "critical communication"
+                "mission critical",
+                "emergency",
+                "public safety",
+                "first responder",
+                "critical communication",
             ],
             ServiceType.MMTC: [
-                "massive iot", "massive connectivity", "machine type", "m2m",
-                "sensor network"
-            ]
+                "massive iot",
+                "massive connectivity",
+                "machine type",
+                "m2m",
+                "sensor network",
+            ],
         }
 
         # QoS requirement patterns
         self.qos_patterns = {
             "latency": [
-                (r"(\d+)\s*ms\s*latency", lambda x: float(x)),
-                (r"latency\s*[<≤]\s*(\d+)\s*ms", lambda x: float(x)),
+                (r"(\d+)\s*ms\s*latency", float),
+                (r"latency\s*[<≤]\s*(\d+)\s*ms", float),
                 (r"ultra[-\s]?low\s*latency", lambda: 10.0),
                 (r"low\s*latency", lambda: 20.0),
-                (r"moderate\s*latency", lambda: 50.0)
+                (r"moderate\s*latency", lambda: 50.0),
             ],
             "throughput": [
-                (r"(\d+\.?\d*)\s*[Mm]bps", lambda x: float(x)),
+                (r"(\d+\.?\d*)\s*[Mm]bps", float),
                 (r"(\d+\.?\d*)\s*[Gg]bps", lambda x: float(x) * 1000),
                 (r"high\s*bandwidth", lambda: 100.0),
                 (r"moderate\s*bandwidth", lambda: 10.0),
-                (r"low\s*bandwidth", lambda: 1.0)
+                (r"low\s*bandwidth", lambda: 1.0),
             ],
             "reliability": [
-                (r"(\d+\.?\d*)\s*%\s*reliability", lambda x: float(x)),
-                (r"(\d+)\s*nines", lambda x: 100 - 10**(-int(x)) * 100),
+                (r"(\d+\.?\d*)\s*%\s*reliability", float),
+                (r"(\d+)\s*nines", lambda x: 100 - 10 ** (-int(x)) * 100),
                 (r"ultra[-\s]?reliable", lambda: 99.999),
                 (r"high\s*reliability", lambda: 99.99),
-                (r"moderate\s*reliability", lambda: 99.9)
-            ]
+                (r"moderate\s*reliability", lambda: 99.9),
+            ],
         }
 
         # Default QoS profiles for service types
@@ -133,7 +183,7 @@ class IntentProcessor:
                 max_packet_loss_rate=0.001,
                 max_jitter_ms=2.0,
                 reliability_percent=99.9,
-                priority=8
+                priority=8,
             ),
             ServiceType.VIDEO: QoSParameters(
                 max_latency_ms=100.0,
@@ -141,7 +191,7 @@ class IntentProcessor:
                 max_packet_loss_rate=0.01,
                 max_jitter_ms=10.0,
                 reliability_percent=99.0,
-                priority=6
+                priority=6,
             ),
             ServiceType.URLLC: QoSParameters(
                 max_latency_ms=5.0,
@@ -149,7 +199,7 @@ class IntentProcessor:
                 max_packet_loss_rate=0.00001,
                 max_jitter_ms=1.0,
                 reliability_percent=99.999,
-                priority=10
+                priority=10,
             ),
             ServiceType.EMBB: QoSParameters(
                 max_latency_ms=50.0,
@@ -157,7 +207,7 @@ class IntentProcessor:
                 max_packet_loss_rate=0.001,
                 max_jitter_ms=5.0,
                 reliability_percent=99.9,
-                priority=7
+                priority=7,
             ),
             ServiceType.VOICE: QoSParameters(
                 max_latency_ms=20.0,
@@ -165,7 +215,7 @@ class IntentProcessor:
                 max_packet_loss_rate=0.001,
                 max_jitter_ms=3.0,
                 reliability_percent=99.99,
-                priority=8
+                priority=8,
             ),
             ServiceType.IOT: QoSParameters(
                 max_latency_ms=1000.0,
@@ -173,7 +223,7 @@ class IntentProcessor:
                 max_packet_loss_rate=0.01,
                 max_jitter_ms=100.0,
                 reliability_percent=99.0,
-                priority=3
+                priority=3,
             ),
             ServiceType.CRITICAL: QoSParameters(
                 max_latency_ms=10.0,
@@ -181,7 +231,7 @@ class IntentProcessor:
                 max_packet_loss_rate=0.00001,
                 max_jitter_ms=1.0,
                 reliability_percent=99.999,
-                priority=10
+                priority=10,
             ),
             ServiceType.MMTC: QoSParameters(
                 max_latency_ms=10000.0,
@@ -189,8 +239,8 @@ class IntentProcessor:
                 max_packet_loss_rate=0.1,
                 max_jitter_ms=1000.0,
                 reliability_percent=95.0,
-                priority=2
-            )
+                priority=2,
+            ),
         }
 
     def process_intent(self, intent: str) -> IntentResult:
@@ -226,7 +276,7 @@ class IntentProcessor:
             service_type=service_type,
             qos_parameters=qos_params,
             placement_hints=placement_hints,
-            confidence=confidence
+            confidence=confidence,
         )
 
     def _detect_service_type(self, intent: str) -> Tuple[ServiceType, float]:
@@ -245,7 +295,7 @@ class IntentProcessor:
             # Default to EMBB if no specific type detected
             return ServiceType.EMBB, 0.5
 
-        best_type = max(scores, key=scores.get)
+        best_type = max(scores, key=lambda k: scores[k])
         max_score = scores[best_type]
         confidence = min(max_score / 3.0, 1.0)  # Normalize confidence
 
@@ -263,7 +313,13 @@ class IntentProcessor:
                 if match.groups():
                     extracted["max_latency_ms"] = extractor(match.group(1))
                 else:
-                    extracted["max_latency_ms"] = extractor()
+                    # Handle lambda functions that expect no arguments
+                    if callable(extractor):
+                        try:
+                            extracted["max_latency_ms"] = extractor()
+                        except TypeError:
+                            # If it fails, try with empty string
+                            extracted["max_latency_ms"] = extractor("")
                 matches_found += 1
                 break
 
@@ -274,7 +330,13 @@ class IntentProcessor:
                 if match.groups():
                     extracted["min_throughput_mbps"] = extractor(match.group(1))
                 else:
-                    extracted["min_throughput_mbps"] = extractor()
+                    # Handle lambda functions that expect no arguments
+                    if callable(extractor):
+                        try:
+                            extracted["min_throughput_mbps"] = extractor()
+                        except TypeError:
+                            # If it fails, try with empty string
+                            extracted["min_throughput_mbps"] = extractor("")
                 matches_found += 1
                 break
 
@@ -285,7 +347,13 @@ class IntentProcessor:
                 if match.groups():
                     extracted["reliability_percent"] = extractor(match.group(1))
                 else:
-                    extracted["reliability_percent"] = extractor()
+                    # Handle lambda functions that expect no arguments
+                    if callable(extractor):
+                        try:
+                            extracted["reliability_percent"] = extractor()
+                        except TypeError:
+                            # If it fails, try with empty string
+                            extracted["reliability_percent"] = extractor("")
                 matches_found += 1
                 break
 
@@ -310,11 +378,11 @@ class IntentProcessor:
 
     def _get_base_qos(self, service_type: ServiceType) -> QoSParameters:
         """Get base QoS parameters for service type"""
-        return QoSParameters(
-            **asdict(self.default_qos[service_type])
-        )
+        return QoSParameters(**asdict(self.default_qos[service_type]))
 
-    def _merge_qos_parameters(self, base: QoSParameters, extracted: Dict) -> QoSParameters:
+    def _merge_qos_parameters(
+        self, base: QoSParameters, extracted: Dict
+    ) -> QoSParameters:
         """Merge extracted QoS parameters with base parameters"""
         params = asdict(base)
         params.update(extracted)
@@ -325,7 +393,9 @@ class IntentProcessor:
         hints = {}
 
         # Edge placement
-        if any(word in intent for word in ["edge", "near user", "close to user", "local"]):
+        if any(
+            word in intent for word in ["edge", "near user", "close to user", "local"]
+        ):
             hints["cloud_type"] = "edge"
         elif any(word in intent for word in ["regional", "metro", "city"]):
             hints["cloud_type"] = "regional"
@@ -336,7 +406,7 @@ class IntentProcessor:
         location_patterns = [
             (r"in\s+(\w+)\s+region", "region"),
             (r"at\s+(\w+)\s+site", "site"),
-            (r"near\s+(\w+)", "near")
+            (r"near\s+(\w+)", "near"),
         ]
 
         for pattern, hint_type in location_patterns:
@@ -352,6 +422,21 @@ class IntentProcessor:
 
         return hints
 
+    # Public wrapper methods to avoid protected member access
+    def get_base_qos(self, service_type: ServiceType) -> QoSParameters:
+        """Public wrapper for getting base QoS parameters"""
+        return self._get_base_qos(service_type)
+
+    def merge_qos_parameters(
+        self, base: QoSParameters, extracted: Dict
+    ) -> QoSParameters:
+        """Public wrapper for merging QoS parameters"""
+        return self._merge_qos_parameters(base, extracted)
+
+    def extract_placement_hints(self, intent: str) -> Dict[str, str]:
+        """Public wrapper for extracting placement hints"""
+        return self._extract_placement_hints(intent)
+
 
 def main():
     """Example usage of IntentProcessor"""
@@ -361,11 +446,11 @@ def main():
     test_intents = [
         "Create a low-latency network slice for AR/VR gaming with guaranteed 10ms latency",
         "I need a high bandwidth slice for 4K video streaming with at least 25 Mbps",
-        "Deploy an ultra-reliable slice for autonomous vehicle communication with 5 nines reliability",
+        "Deploy ultra-reliable slice for autonomous vehicles with 5 nines reliability",
         "Set up IoT monitoring with low bandwidth requirements at the edge",
         "Mission critical communication for emergency services with ultra-low latency",
         "Gaming service requiring less than 6.3ms latency and 1 Mbps throughput",
-        "High bandwidth video streaming tolerating up to 20ms latency with 4.57 Mbps"
+        "High bandwidth video streaming tolerating up to 20ms latency with 4.57 Mbps",
     ]
 
     for intent in test_intents:
@@ -374,7 +459,7 @@ def main():
         result = processor.process_intent(intent)
         print(f"Service Type: {result.service_type.value}")
         print(f"Confidence: {result.confidence:.2f}")
-        print(f"QoS Parameters:")
+        print("QoS Parameters:")
         print(f"  Max Latency: {result.qos_parameters.max_latency_ms} ms")
         print(f"  Min Throughput: {result.qos_parameters.min_throughput_mbps} Mbps")
         print(f"  Max Packet Loss: {result.qos_parameters.max_packet_loss_rate}")

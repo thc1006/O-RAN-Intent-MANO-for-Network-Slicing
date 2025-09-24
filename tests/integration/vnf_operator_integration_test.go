@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"reflect"
+	// "reflect" // Unused for now
 	"testing"
 	"time"
 
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
+	"github.com/onsi/ginkgo/v2"
+	"github.com/onsi/gomega"
+
 	// appsv1 "k8s.io/api/apps/v1" // Commented out, not used yet
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -26,13 +27,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	vnfv1alpha1 "github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/adapters/vnf-operator/api/v1alpha1"
-	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security"
+	// "github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security" // Unused for now
 )
 
 func TestAPIs(t *testing.T) {
-	RegisterFailHandler(Fail)
+	gomega.RegisterFailHandler(ginkgo.Fail)
 
-	RunSpecs(t, "VNF Operator Integration Suite")
+	ginkgo.RunSpecs(t, "VNF Operator Integration Suite")
 }
 
 var (
@@ -43,12 +44,12 @@ var (
 	cancel    context.CancelFunc
 )
 
-var _ = BeforeSuite(func() {
-	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
+var _ = ginkgo.BeforeSuite(func() {
+	logf.SetLogger(zap.New(zap.WriteTo(ginkgo.GinkgoWriter), zap.UseDevMode(true)))
 
 	ctx, cancel = context.WithCancel(context.TODO())
 
-	By("bootstrapping test environment")
+	ginkgo.By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
 		CRDDirectoryPaths:     []string{filepath.Join("..", "..", "config", "crd", "bases")},
 		ErrorIfCRDPathMissing: false,
@@ -65,35 +66,35 @@ var _ = BeforeSuite(func() {
 		// Use envtest
 		var err error
 		cfg, err = testEnv.Start()
-		Expect(err).NotTo(HaveOccurred())
-		Expect(cfg).NotTo(BeNil())
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
+		gomega.Expect(cfg).NotTo(gomega.BeNil())
 	} else {
 		// Use existing cluster
 		var err error
 		cfg, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
-		Expect(err).NotTo(HaveOccurred())
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	}
 
 	err := vnfv1alpha1.AddToScheme(runtime.NewScheme())
-	Expect(err).NotTo(HaveOccurred())
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 	k8sClient, err = client.New(cfg, client.Options{})
-	Expect(err).NotTo(HaveOccurred())
-	Expect(k8sClient).NotTo(BeNil())
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
+	gomega.Expect(k8sClient).NotTo(gomega.BeNil())
 })
 
-var _ = AfterSuite(func() {
+var _ = ginkgo.AfterSuite(func() {
 	cancel()
 	if testEnv != nil {
-		By("tearing down the test environment")
+		ginkgo.By("tearing down the test environment")
 		err := testEnv.Stop()
-		Expect(err).NotTo(HaveOccurred())
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	}
 })
 
-var _ = Describe("VNF Operator", func() {
-	Context("When deploying VNFs", func() {
-		It("Should create and manage VNF resources", func() {
+var _ = ginkgo.Describe("VNF Operator", func() {
+	ginkgo.Context("When deploying VNFs", func() {
+		ginkgo.It("Should create and manage VNF resources", func() {
 			ctx := context.Background()
 			namespaceName := "vnf-test"
 			vnfName := "test-vnf"
@@ -106,7 +107,7 @@ var _ = Describe("VNF Operator", func() {
 			}
 			err := k8sClient.Create(ctx, namespace)
 			if !errors.IsAlreadyExists(err) {
-				Expect(err).NotTo(HaveOccurred())
+				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			}
 
 			// Define a VNF resource
@@ -132,9 +133,9 @@ var _ = Describe("VNF Operator", func() {
 						StorageGB: 10,
 					},
 					QoS: vnfv1alpha1.QoSRequirements{
-						Bandwidth:  100.0,
-						Latency:    10.0,
-						SliceType:  "uRLLC",
+						Bandwidth: 100.0,
+						Latency:   10.0,
+						SliceType: "uRLLC",
 					},
 					Placement: vnfv1alpha1.PlacementRequirements{
 						CloudType: "edge",
@@ -144,28 +145,28 @@ var _ = Describe("VNF Operator", func() {
 				},
 			}
 
-			By("Creating the VNF resource")
-			Expect(k8sClient.Create(ctx, vnf)).Should(Succeed())
+			ginkgo.By("Creating the VNF resource")
+			gomega.Expect(k8sClient.Create(ctx, vnf)).Should(gomega.Succeed())
 
 			lookupKey := types.NamespacedName{Name: vnfName, Namespace: namespaceName}
 			createdVNF := &vnfv1alpha1.VNF{}
 
 			// Get the created VNF
-			Eventually(func() bool {
+			gomega.Eventually(func() bool {
 				err := k8sClient.Get(ctx, lookupKey, createdVNF)
 				return err == nil
-			}, time.Second*10, time.Millisecond*250).Should(BeTrue())
+			}, time.Second*10, time.Millisecond*250).Should(gomega.BeTrue())
 
 			// Validate that the QoS was set properly
-			Expect(createdVNF.Spec.QoS.Bandwidth).To(Equal(100.0))
-			Expect(createdVNF.Spec.QoS.SliceType).To(Equal("uRLLC"))
+			gomega.Expect(createdVNF.Spec.QoS.Bandwidth).To(gomega.Equal(100.0))
+			gomega.Expect(createdVNF.Spec.QoS.SliceType).To(gomega.Equal("uRLLC"))
 
 			// Update the Status to simulate controller processing
 			createdVNF.Status.Phase = "Creating"
-			Expect(k8sClient.Status().Update(ctx, createdVNF)).Should(Succeed())
+			gomega.Expect(k8sClient.Status().Update(ctx, createdVNF)).Should(gomega.Succeed())
 
 			// Simulate successful deployment
-			Eventually(func() bool {
+			gomega.Eventually(func() bool {
 				err := k8sClient.Get(ctx, lookupKey, createdVNF)
 				if err != nil {
 					return false
@@ -173,37 +174,37 @@ var _ = Describe("VNF Operator", func() {
 				createdVNF.Status.Phase = "Running"
 				err = k8sClient.Status().Update(ctx, createdVNF)
 				return err == nil
-			}, time.Second*10, time.Millisecond*250).Should(BeTrue())
+			}, time.Second*10, time.Millisecond*250).Should(gomega.BeTrue())
 
 			// Verify the phase is updated
-			Eventually(func() string {
+			gomega.Eventually(func() string {
 				err := k8sClient.Get(ctx, lookupKey, createdVNF)
 				if err != nil {
 					return ""
 				}
 				return createdVNF.Status.Phase
-			}, time.Second*10, time.Millisecond*250).Should(Equal("Running"))
+			}, time.Second*10, time.Millisecond*250).Should(gomega.Equal("Running"))
 
 			// Clean up
-			By("Deleting the VNF resource")
-			Eventually(func() error {
+			ginkgo.By("Deleting the VNF resource")
+			gomega.Eventually(func() error {
 				vnf := &vnfv1alpha1.VNF{}
 				if err := k8sClient.Get(ctx, lookupKey, vnf); err != nil {
 					return err
 				}
 				return k8sClient.Delete(ctx, vnf)
-			}, time.Second*10, time.Millisecond*250).Should(Succeed())
+			}, time.Second*10, time.Millisecond*250).Should(gomega.Succeed())
 
 			// Verify deletion
-			Eventually(func() bool {
+			gomega.Eventually(func() bool {
 				err := k8sClient.Get(ctx, lookupKey, &vnfv1alpha1.VNF{})
 				return errors.IsNotFound(err)
-			}, time.Second*10, time.Millisecond*250).Should(BeTrue())
+			}, time.Second*10, time.Millisecond*250).Should(gomega.BeTrue())
 		})
 	})
 
-	Context("Resource Management", func() {
-		It("Should validate resource requirements", func() {
+	ginkgo.Context("Resource Management", func() {
+		ginkgo.It("Should validate resource requirements", func() {
 			vnf := &vnfv1alpha1.VNF{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "resource-test-vnf",
@@ -224,16 +225,16 @@ var _ = Describe("VNF Operator", func() {
 
 			// Validate CPU
 			cpuQty := resource.MustParse(vnf.Spec.Resources.CPU)
-			Expect(cpuQty.String()).To(Equal("2"))
+			gomega.Expect(cpuQty.String()).To(gomega.Equal("2"))
 
 			// Validate Memory
 			memQty := resource.MustParse(vnf.Spec.Resources.Memory)
-			Expect(memQty.String()).To(Equal("4Gi"))
+			gomega.Expect(memQty.String()).To(gomega.Equal("4Gi"))
 		})
 	})
 
-	Context("QoS Validation", func() {
-		It("Should validate QoS requirements", func() {
+	ginkgo.Context("QoS Validation", func() {
+		ginkgo.It("Should validate QoS requirements", func() {
 			testCases := []struct {
 				name        string
 				qos         vnfv1alpha1.QoSRequirements
@@ -269,11 +270,11 @@ var _ = Describe("VNF Operator", func() {
 			}
 
 			for _, tc := range testCases {
-				By(fmt.Sprintf("Testing %s", tc.name))
+				ginkgo.By(fmt.Sprintf("Testing %s", tc.name))
 				// Basic validation
-				Expect(tc.qos.Bandwidth).To(BeNumerically(">", 0))
-				Expect(tc.qos.Latency).To(BeNumerically(">", 0))
-				Expect(tc.qos.SliceType).To(Or(Equal("eMBB"), Equal("uRLLC"), Equal("mIoT"), Equal("balanced")))
+				gomega.Expect(tc.qos.Bandwidth).To(gomega.BeNumerically(">", 0))
+				gomega.Expect(tc.qos.Latency).To(gomega.BeNumerically(">", 0))
+				gomega.Expect(tc.qos.SliceType).To(gomega.Or(gomega.Equal("eMBB"), gomega.Equal("uRLLC"), gomega.Equal("mIoT"), gomega.Equal("balanced")))
 			}
 		})
 	})
@@ -316,115 +317,58 @@ func waitForVNFPhase(ctx context.Context, client client.Client, vnf *vnfv1alpha1
 }
 
 func waitForCondition(ctx context.Context, timeout time.Duration, condition func() (bool, error)) error {
-	deadline := time.Now().Add(timeout)
-	for time.Now().Before(deadline) {
-		done, err := condition()
-		if err != nil {
-			return err
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-ticker.C:
+			done, err := condition()
+			if err != nil {
+				return err
+			}
+			if done {
+				return nil
+			}
 		}
-		if done {
-			return nil
-		}
-		time.Sleep(time.Second)
 	}
-	return fmt.Errorf("condition not met within timeout")
 }
 
 // Benchmark tests
-var _ = Describe("VNF Operator Performance", func() {
-	Context("Deployment Speed", func() {
-		It("Should deploy VNF within SLA time", func() {
+var _ = ginkgo.Describe("VNF Operator Performance", func() {
+	ginkgo.Context("Deployment Speed", func() {
+		ginkgo.It("Should deploy VNF within SLA time", func() {
 			startTime := time.Now()
 			vnf := createTestVNF("perf-vnf", "default")
 
 			err := k8sClient.Create(ctx, vnf)
-			Expect(err).NotTo(HaveOccurred())
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			err = waitForVNFPhase(ctx, k8sClient, vnf, "Running", 5*time.Minute)
-			Expect(err).NotTo(HaveOccurred())
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			deploymentTime := time.Since(startTime)
-			By(fmt.Sprintf("Deployment completed in %v", deploymentTime))
+			ginkgo.By(fmt.Sprintf("Deployment completed in %v", deploymentTime))
 
 			// Target: E2E deploy time <10 min (thesis requirement)
-			Expect(deploymentTime).To(BeNumerically("<", 10*time.Minute))
+			gomega.Expect(deploymentTime).To(gomega.BeNumerically("<", 10*time.Minute))
 
 			// Cleanup
 			err = k8sClient.Delete(ctx, vnf)
-			Expect(err).NotTo(HaveOccurred())
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 		})
 	})
 })
 
 // Test utilities for checking cluster connectivity
-func isClusterAvailable() bool { // nolint:unused // TODO: implement cluster connectivity checks
-	home, _ := os.UserHomeDir()
-	kubeconfig := filepath.Join(home, ".kube", "config")
-
-	if _, err := os.Stat(kubeconfig); os.IsNotExist(err) {
-		return false
-	}
-
-	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
-	if err != nil {
-		return false
-	}
-
-	client, err := client.New(config, client.Options{})
-	if err != nil {
-		return false
-	}
-
-	// Try to list namespaces as a connectivity check
-	namespaces := &corev1.NamespaceList{}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	err = client.List(ctx, namespaces)
-	return err == nil
-}
 
 // Test data generation helpers
-func generateTestData(dataType string) interface{} { // nolint:unused // TODO: implement test data generation
-	switch dataType {
-	case "vnf":
-		return createTestVNF("generated-vnf", "default")
-	case "qos":
-		return vnfv1alpha1.QoSRequirements{
-			Bandwidth: 10.0,
-			Latency:   5.0,
-			SliceType: "balanced",
-		}
-	default:
-		return nil
-	}
-}
 
 // Validation helpers
-func validateVNFSpec(vnf *vnfv1alpha1.VNF) error { // nolint:unused // TODO: implement VNF spec validation
-	v := reflect.ValueOf(vnf.Spec)
-	t := v.Type()
-
-	for i := 0; i < v.NumField(); i++ {
-		field := v.Field(i)
-		fieldType := t.Field(i)
-
-		// Check for zero values in required fields
-		if fieldType.Tag.Get("required") == "true" && field.IsZero() {
-			return fmt.Errorf("required field %s is empty", fieldType.Name)
-		}
-	}
-
-	return nil
-}
 
 // File system helpers for test artifacts
-func writeTestArtifact(filename string, content []byte) error { // nolint:unused // TODO: implement test artifact writing
-	artifactDir := filepath.Join(".", "test-artifacts")
-	if err := os.MkdirAll(artifactDir, security.PrivateDirMode); err != nil {
-		return err
-	}
-
-	filePath := filepath.Join(artifactDir, filename)
-	return os.WriteFile(filePath, content, security.SecureFileMode)
-}

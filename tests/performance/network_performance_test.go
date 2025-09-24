@@ -10,38 +10,38 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
-	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security"
+	// "k8s.io/client-go/kubernetes" // Unused for now
 )
 
 // NetworkPerformanceTarget represents thesis performance targets
 type NetworkPerformanceTarget struct {
-	SliceType           string  `json:"slice_type"`
-	TargetLatencyMs     float64 `json:"target_latency_ms"`
-	TargetBandwidthMbps float64 `json:"target_bandwidth_mbps"`
-	MaxJitterMs         float64 `json:"max_jitter_ms"`
+	SliceType            string  `json:"slice_type"`
+	TargetLatencyMs      float64 `json:"target_latency_ms"`
+	TargetBandwidthMbps  float64 `json:"target_bandwidth_mbps"`
+	MaxJitterMs          float64 `json:"max_jitter_ms"`
 	MaxPacketLossPercent float64 `json:"max_packet_loss_percent"`
-	Description         string  `json:"description"`
+	Description          string  `json:"description"`
 }
 
 // PerformanceMeasurement represents actual measured performance
 type PerformanceMeasurement struct {
-	Timestamp           time.Time `json:"timestamp"`
-	TestScenario        string    `json:"test_scenario"`
-	SliceType          string    `json:"slice_type"`
-	SourceNode         string    `json:"source_node"`
-	TargetNode         string    `json:"target_node"`
-	AvgLatencyMs       float64   `json:"avg_latency_ms"`
-	MeasuredLatencyMs  float64   `json:"measured_latency_ms"`
-	MeasuredBandwidthMbps float64 `json:"measured_bandwidth_mbps"`
-	JitterMs           float64   `json:"jitter_ms"`
-	PacketLossPercent  float64   `json:"packet_loss_percent"`
-	TestDurationSec    int       `json:"test_duration_sec"`
-	ValidationPassed   bool      `json:"validation_passed"`
-	DeviationPercent   float64   `json:"deviation_percent"`
-	TestMetadata       map[string]interface{} `json:"test_metadata"`
+	Timestamp             time.Time              `json:"timestamp"`
+	TestScenario          string                 `json:"test_scenario"`
+	SliceType             string                 `json:"slice_type"`
+	SourceNode            string                 `json:"source_node"`
+	TargetNode            string                 `json:"target_node"`
+	AvgLatencyMs          float64                `json:"avg_latency_ms"`
+	MeasuredLatencyMs     float64                `json:"measured_latency_ms"`
+	MeasuredBandwidthMbps float64                `json:"measured_bandwidth_mbps"`
+	JitterMs              float64                `json:"jitter_ms"`
+	PacketLossPercent     float64                `json:"packet_loss_percent"`
+	TestDurationSec       int                    `json:"test_duration_sec"`
+	ValidationPassed      bool                   `json:"validation_passed"`
+	DeviationPercent      float64                `json:"deviation_percent"`
+	TestMetadata          map[string]interface{} `json:"test_metadata"`
 }
 
 // IPerf3Result represents iperf3 JSON output structure
@@ -53,18 +53,18 @@ type IPerf3Result struct {
 	} `json:"start"`
 	End struct {
 		SumSent struct {
-			Start       float64 `json:"start"`
-			End         float64 `json:"end"`
-			Seconds     float64 `json:"seconds"`
-			Bytes       int64   `json:"bytes"`
-			BitsPerSec  float64 `json:"bits_per_second"`
+			Start      float64 `json:"start"`
+			End        float64 `json:"end"`
+			Seconds    float64 `json:"seconds"`
+			Bytes      int64   `json:"bytes"`
+			BitsPerSec float64 `json:"bits_per_second"`
 		} `json:"sum_sent"`
 		SumReceived struct {
-			Start       float64 `json:"start"`
-			End         float64 `json:"end"`
-			Seconds     float64 `json:"seconds"`
-			Bytes       int64   `json:"bytes"`
-			BitsPerSec  float64 `json:"bits_per_second"`
+			Start      float64 `json:"start"`
+			End        float64 `json:"end"`
+			Seconds    float64 `json:"seconds"`
+			Bytes      int64   `json:"bytes"`
+			BitsPerSec float64 `json:"bits_per_second"`
 		} `json:"sum_received"`
 		CPUUtilizationPercent struct {
 			HostTotal    float64 `json:"host_total"`
@@ -79,51 +79,51 @@ type IPerf3Result struct {
 
 // PingResult represents ping command output parsing
 type PingResult struct {
-	PacketsSent      int     `json:"packets_sent"`
-	PacketsReceived  int     `json:"packets_received"`
+	PacketsSent       int     `json:"packets_sent"`
+	PacketsReceived   int     `json:"packets_received"`
 	PacketLossPercent float64 `json:"packet_loss_percent"`
-	MinLatencyMs     float64 `json:"min_latency_ms"`
-	AvgLatencyMs     float64 `json:"avg_latency_ms"`
-	MaxLatencyMs     float64 `json:"max_latency_ms"`
-	StdDevMs         float64 `json:"std_dev_ms"`
+	MinLatencyMs      float64 `json:"min_latency_ms"`
+	AvgLatencyMs      float64 `json:"avg_latency_ms"`
+	MaxLatencyMs      float64 `json:"max_latency_ms"`
+	StdDevMs          float64 `json:"std_dev_ms"`
 }
 
 // Thesis performance targets from research paper
 var thesisPerformanceTargets = []NetworkPerformanceTarget{
 	{
-		SliceType:           "uRLLC",
-		TargetLatencyMs:     6.3,
-		TargetBandwidthMbps: 0.93,
-		MaxJitterMs:         1.0,
+		SliceType:            "uRLLC",
+		TargetLatencyMs:      6.3,
+		TargetBandwidthMbps:  0.93,
+		MaxJitterMs:          1.0,
 		MaxPacketLossPercent: 0.01,
-		Description:         "Ultra-reliable low-latency communication - autonomous vehicles, industrial automation",
+		Description:          "Ultra-reliable low-latency communication - autonomous vehicles, industrial automation",
 	},
 	{
-		SliceType:           "mIoT",
-		TargetLatencyMs:     15.7,
-		TargetBandwidthMbps: 2.77,
-		MaxJitterMs:         3.0,
+		SliceType:            "mIoT",
+		TargetLatencyMs:      15.7,
+		TargetBandwidthMbps:  2.77,
+		MaxJitterMs:          3.0,
 		MaxPacketLossPercent: 0.1,
-		Description:         "Massive IoT - balanced performance for smart city applications",
+		Description:          "Massive IoT - balanced performance for smart city applications",
 	},
 	{
-		SliceType:           "eMBB",
-		TargetLatencyMs:     16.1,
-		TargetBandwidthMbps: 4.57,
-		MaxJitterMs:         5.0,
+		SliceType:            "eMBB",
+		TargetLatencyMs:      16.1,
+		TargetBandwidthMbps:  4.57,
+		MaxJitterMs:          5.0,
 		MaxPacketLossPercent: 0.1,
-		Description:         "Enhanced mobile broadband - high-bandwidth video streaming",
+		Description:          "Enhanced mobile broadband - high-bandwidth video streaming",
 	},
 }
 
 // Test scenarios covering different network configurations
 var networkTestScenarios = []struct {
-	name            string
-	sourceCluster   string
-	targetCluster   string
+	name               string
+	sourceCluster      string
+	targetCluster      string
 	networkSliceConfig NetworkSliceConfig
-	expectedTarget  NetworkPerformanceTarget
-	testDuration    time.Duration
+	expectedTarget     NetworkPerformanceTarget
+	testDuration       time.Duration
 }{
 	{
 		name:          "Edge_UltraLowLatency_IntraCluster",
@@ -480,7 +480,6 @@ func TestNetworkPerformance(t *testing.T) {
 // NetworkPerformanceSuite implementation
 
 type NetworkPerformanceSuite struct {
-	clientset   kubernetes.Interface // nolint:unused // TODO: integrate with k8s client for performance tests
 	testContext context.Context
 	testCancel  context.CancelFunc
 	results     []PerformanceMeasurement
@@ -674,18 +673,18 @@ func (s *NetworkPerformanceSuite) performIperf3Test(sourcePod, targetPod *corev1
 	return IPerf3Result{
 		End: struct {
 			SumSent struct {
-				Start       float64 `json:"start"`
-				End         float64 `json:"end"`
-				Seconds     float64 `json:"seconds"`
-				Bytes       int64   `json:"bytes"`
-				BitsPerSec  float64 `json:"bits_per_second"`
+				Start      float64 `json:"start"`
+				End        float64 `json:"end"`
+				Seconds    float64 `json:"seconds"`
+				Bytes      int64   `json:"bytes"`
+				BitsPerSec float64 `json:"bits_per_second"`
 			} `json:"sum_sent"`
 			SumReceived struct {
-				Start       float64 `json:"start"`
-				End         float64 `json:"end"`
-				Seconds     float64 `json:"seconds"`
-				Bytes       int64   `json:"bytes"`
-				BitsPerSec  float64 `json:"bits_per_second"`
+				Start      float64 `json:"start"`
+				End        float64 `json:"end"`
+				Seconds    float64 `json:"seconds"`
+				Bytes      int64   `json:"bytes"`
+				BitsPerSec float64 `json:"bits_per_second"`
 			} `json:"sum_received"`
 			CPUUtilizationPercent struct {
 				HostTotal    float64 `json:"host_total"`
@@ -697,11 +696,11 @@ func (s *NetworkPerformanceSuite) performIperf3Test(sourcePod, targetPod *corev1
 			} `json:"cpu_utilization_percent"`
 		}{
 			SumReceived: struct {
-				Start       float64 `json:"start"`
-				End         float64 `json:"end"`
-				Seconds     float64 `json:"seconds"`
-				Bytes       int64   `json:"bytes"`
-				BitsPerSec  float64 `json:"bits_per_second"`
+				Start      float64 `json:"start"`
+				End        float64 `json:"end"`
+				Seconds    float64 `json:"seconds"`
+				Bytes      int64   `json:"bytes"`
+				BitsPerSec float64 `json:"bits_per_second"`
 			}{
 				BitsPerSec: 2770000, // 2.77 Mbps
 			},
@@ -734,9 +733,9 @@ func (s *NetworkPerformanceSuite) generateBackgroundTraffic(sourcePod, targetPod
 func (s *NetworkPerformanceSuite) induceNetworkStress(loadPercent int) NetworkStressJob {
 	// TODO: Implement network stress induction
 	return NetworkStressJob{
-		ID:            "stress-001",
-		LoadPercent:   loadPercent,
-		StartTime:     time.Now(),
+		ID:          "stress-001",
+		LoadPercent: loadPercent,
+		StartTime:   time.Now(),
 	}
 }
 
@@ -758,8 +757,15 @@ func (s *NetworkPerformanceSuite) generatePerformanceReport() {
 		"performance_results": s.results,
 	}
 
-	data, _ := json.MarshalIndent(reportData, "", "  ")
-	os.WriteFile("testdata/performance_report.json", data, security.SecureFileMode)
+	data, err := json.MarshalIndent(reportData, "", "  ")
+	if err != nil {
+		fmt.Printf("Failed to marshal performance report: %v\n", err)
+		return
+	}
+
+	if err := os.WriteFile("testdata/performance_report.json", data, security.SecureFileMode); err != nil {
+		fmt.Printf("Failed to write performance report: %v\n", err)
+	}
 }
 
 type NetworkStressJob struct {

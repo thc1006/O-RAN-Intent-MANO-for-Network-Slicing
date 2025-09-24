@@ -29,14 +29,14 @@ type SyncManager struct {
 
 // SyncConfig holds synchronization configuration
 type SyncConfig struct {
-	Enabled           bool                    `yaml:"enabled"`
-	SyncInterval      time.Duration           `yaml:"syncInterval"`
-	MaxRetries        int                     `yaml:"maxRetries"`
-	RetryBackoff      time.Duration           `yaml:"retryBackoff"`
-	ConflictStrategy  ConflictStrategy        `yaml:"conflictStrategy"`
-	PackageGroups     []PackageGroup          `yaml:"packageGroups"`
-	Dependencies      []PackageDependency     `yaml:"dependencies"`
-	HealthChecks      []HealthCheck           `yaml:"healthChecks"`
+	Enabled          bool                `yaml:"enabled"`
+	SyncInterval     time.Duration       `yaml:"syncInterval"`
+	MaxRetries       int                 `yaml:"maxRetries"`
+	RetryBackoff     time.Duration       `yaml:"retryBackoff"`
+	ConflictStrategy ConflictStrategy    `yaml:"conflictStrategy"`
+	PackageGroups    []PackageGroup      `yaml:"packageGroups"`
+	Dependencies     []PackageDependency `yaml:"dependencies"`
+	HealthChecks     []HealthCheck       `yaml:"healthChecks"`
 }
 
 // ConflictStrategy defines how to handle sync conflicts
@@ -61,48 +61,48 @@ type PackageGroup struct {
 
 // PackageDependency defines dependencies between packages
 type PackageDependency struct {
-	Package      string   `yaml:"package"`
-	DependsOn    []string `yaml:"dependsOn"`
-	WaitTimeout  time.Duration `yaml:"waitTimeout"`
+	Package     string        `yaml:"package"`
+	DependsOn   []string      `yaml:"dependsOn"`
+	WaitTimeout time.Duration `yaml:"waitTimeout"`
 }
 
 // HealthCheck defines health checks for synchronized packages
 type HealthCheck struct {
-	Name        string        `yaml:"name"`
-	Package     string        `yaml:"package"`
-	Type        string        `yaml:"type"` // endpoint, resource, command
-	Target      string        `yaml:"target"`
-	Interval    time.Duration `yaml:"interval"`
-	Timeout     time.Duration `yaml:"timeout"`
-	Retries     int           `yaml:"retries"`
+	Name     string        `yaml:"name"`
+	Package  string        `yaml:"package"`
+	Type     string        `yaml:"type"` // endpoint, resource, command
+	Target   string        `yaml:"target"`
+	Interval time.Duration `yaml:"interval"`
+	Timeout  time.Duration `yaml:"timeout"`
+	Retries  int           `yaml:"retries"`
 }
 
 // PackageSyncStatus represents the synchronization status of a package/cluster
 type PackageSyncStatus struct {
-	Package       string                `json:"package"`
-	Cluster       string                `json:"cluster"`
-	Status        SyncState             `json:"status"`
-	LastSync      time.Time             `json:"lastSync"`
-	LastSuccess   time.Time             `json:"lastSuccess"`
-	Version       string                `json:"version"`
-	Errors        []SyncError           `json:"errors,omitempty"`
-	RetryCount    int                   `json:"retryCount"`
-	NextRetry     time.Time             `json:"nextRetry,omitempty"`
-	Dependencies  []DependencyStatus    `json:"dependencies,omitempty"`
-	HealthStatus  HealthStatus          `json:"healthStatus"`
+	Package      string              `json:"package"`
+	Cluster      string              `json:"cluster"`
+	Status       SyncState           `json:"status"`
+	LastSync     time.Time           `json:"lastSync"`
+	LastSuccess  time.Time           `json:"lastSuccess"`
+	Version      string              `json:"version"`
+	Errors       []SyncError         `json:"errors,omitempty"`
+	RetryCount   int                 `json:"retryCount"`
+	NextRetry    time.Time           `json:"nextRetry,omitempty"`
+	Dependencies []DependencyStatus  `json:"dependencies,omitempty"`
+	HealthStatus PackageHealthStatus `json:"healthStatus"`
 }
 
 // SyncState represents the state of synchronization
 type SyncState string
 
 const (
-	SyncStateUnknown      SyncState = "unknown"
-	SyncStatePending      SyncState = "pending"
-	SyncStateInProgress   SyncState = "in_progress"
-	SyncStateSynced       SyncState = "synced"
-	SyncStateFailed       SyncState = "failed"
-	SyncStateConflict     SyncState = "conflict"
-	SyncStateWaiting      SyncState = "waiting"
+	SyncStateUnknown    SyncState = "unknown"
+	SyncStatePending    SyncState = "pending"
+	SyncStateInProgress SyncState = "in_progress"
+	SyncStateSynced     SyncState = "synced"
+	SyncStateFailed     SyncState = "failed"
+	SyncStateConflict   SyncState = "conflict"
+	SyncStateWaiting    SyncState = "waiting"
 )
 
 // SyncError represents a synchronization error
@@ -123,53 +123,53 @@ type DependencyStatus struct {
 
 // HealthStatus represents health check status
 type PackageHealthStatus struct {
-	Status      string    `json:"status"`
-	LastCheck   time.Time `json:"lastCheck"`
-	CheckCount  int       `json:"checkCount"`
-	FailCount   int       `json:"failCount"`
-	Message     string    `json:"message,omitempty"`
+	Status     string    `json:"status"`
+	LastCheck  time.Time `json:"lastCheck"`
+	CheckCount int       `json:"checkCount"`
+	FailCount  int       `json:"failCount"`
+	Message    string    `json:"message,omitempty"`
 }
 
 // SyncOperationResult represents the result of a synchronization operation
 type SyncOperationResult struct {
-	SyncID       string                `json:"syncId"`
-	Timestamp    time.Time             `json:"timestamp"`
-	Duration     time.Duration         `json:"duration"`
-	Success      bool                  `json:"success"`
+	SyncID         string              `json:"syncId"`
+	Timestamp      time.Time           `json:"timestamp"`
+	Duration       time.Duration       `json:"duration"`
+	Success        bool                `json:"success"`
 	PackagesSynced int                 `json:"packagesSynced"`
 	PackagesFailed int                 `json:"packagesFailed"`
-	Results      []PackageSyncResult   `json:"results"`
-	Conflicts    []SyncConflict        `json:"conflicts,omitempty"`
+	Results        []PackageSyncResult `json:"results"`
+	Conflicts      []SyncConflict      `json:"conflicts,omitempty"`
 }
 
 // PackageSyncResult represents the sync result for a single package
 type PackageSyncResult struct {
-	Package   string        `json:"package"`
-	Cluster   string        `json:"cluster"`
-	Success   bool          `json:"success"`
-	Duration  time.Duration `json:"duration"`
-	Version   string        `json:"version"`
-	Actions   []SyncAction  `json:"actions"`
-	Errors    []string      `json:"errors,omitempty"`
+	Package  string        `json:"package"`
+	Cluster  string        `json:"cluster"`
+	Success  bool          `json:"success"`
+	Duration time.Duration `json:"duration"`
+	Version  string        `json:"version"`
+	Actions  []SyncAction  `json:"actions"`
+	Errors   []string      `json:"errors,omitempty"`
 }
 
 // SyncAction represents an action taken during sync
 type SyncAction struct {
-	Type        string    `json:"type"`        // create, update, delete, skip
-	Resource    string    `json:"resource"`
-	Reason      string    `json:"reason"`
-	Timestamp   time.Time `json:"timestamp"`
+	Type      string    `json:"type"` // create, update, delete, skip
+	Resource  string    `json:"resource"`
+	Reason    string    `json:"reason"`
+	Timestamp time.Time `json:"timestamp"`
 }
 
 // SyncConflict represents a synchronization conflict
 type SyncConflict struct {
-	Package      string                 `json:"package"`
-	Cluster      string                 `json:"cluster"`
-	Resource     string                 `json:"resource"`
-	ConflictType string                 `json:"conflictType"`
-	GitVersion   map[string]interface{} `json:"gitVersion"`
+	Package        string                 `json:"package"`
+	Cluster        string                 `json:"cluster"`
+	Resource       string                 `json:"resource"`
+	ConflictType   string                 `json:"conflictType"`
+	GitVersion     map[string]interface{} `json:"gitVersion"`
 	ClusterVersion map[string]interface{} `json:"clusterVersion"`
-	Resolution   string                 `json:"resolution,omitempty"`
+	Resolution     string                 `json:"resolution,omitempty"`
 }
 
 // NewSyncManager creates a new sync manager
@@ -318,15 +318,15 @@ func (sm *SyncManager) synchronizePackageToCluster(ctx context.Context, packageN
 	startTime := time.Now()
 
 	result := PackageSyncResult{
-		Package:   packageName,
-		Cluster:   clusterName,
-		Actions:   make([]SyncAction, 0),
-		Errors:    make([]string, 0),
+		Package: packageName,
+		Cluster: clusterName,
+		Actions: make([]SyncAction, 0),
+		Errors:  make([]string, 0),
 	}
 
 	client, exists := sm.ClusterClients[clusterName]
 	if !exists {
-		result.Errors = append(result.Errors, fmt.Sprintf("cluster client not found: %s", clusterName))
+		result.Errors = append(result.Errors, fmt.Sprintf("cluster client not found: %q", clusterName))
 		result.Duration = time.Since(startTime)
 		return result
 	}
@@ -507,9 +507,20 @@ func (sm *SyncManager) preserveClusterFields(desired, existing *unstructured.Uns
 }
 
 // getPackageFromGit retrieves package content from Git repository
-func (sm *SyncManager) getPackageFromGit(ctx context.Context, packageName string) ([]unstructured.Unstructured, error) {
-	// This would read package files from Git repository
-	// For now, return empty slice as placeholder
+// TODO: Implement actual Git package retrieval logic
+func (sm *SyncManager) getPackageFromGit(_ context.Context, packageName string) ([]unstructured.Unstructured, error) {
+	// This is a placeholder implementation - actual implementation would:
+	// 1. Clone or pull from Git repository
+	// 2. Navigate to package directory
+	// 3. Parse YAML/JSON files into unstructured objects
+	// 4. Return the resources
+
+	if packageName == "" {
+		return nil, fmt.Errorf("package name cannot be empty")
+	}
+
+	// For now, return empty slice but this should be implemented
+	log.Printf("Warning: getPackageFromGit is not implemented, returning empty package for %s", packageName)
 	return []unstructured.Unstructured{}, nil
 }
 
@@ -702,8 +713,8 @@ func (sm *SyncManager) filterSystemAnnotations(annotations map[string]string) ma
 	for key, value := range annotations {
 		// Skip system annotations
 		if !strings.HasPrefix(key, "kubectl.kubernetes.io/") &&
-		   !strings.HasPrefix(key, "deployment.kubernetes.io/") &&
-		   !strings.HasPrefix(key, "pv.kubernetes.io/") {
+			!strings.HasPrefix(key, "deployment.kubernetes.io/") &&
+			!strings.HasPrefix(key, "pv.kubernetes.io/") {
 			filtered[key] = value
 		}
 	}

@@ -84,7 +84,7 @@ func TestIperfIntegration_ServerLifecycle(t *testing.T) {
 		}
 
 		// Cleanup
-		suite.manager.StopServer(port)
+		_ = suite.manager.StopServer(port)
 	})
 }
 
@@ -173,7 +173,7 @@ func TestIperfIntegration_ServerErrorHandling(t *testing.T) {
 		port := findAvailablePort(t, 15201, 15210)
 		listener, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 		require.NoError(t, err)
-		defer listener.Close()
+		defer func() { _ = listener.Close() }()
 
 		// Try to start iperf server on the same port
 		err = suite.manager.StartServer(port)
@@ -205,7 +205,7 @@ func TestIperfIntegration_ClientTesting(t *testing.T) {
 		}
 		t.Fatalf("Failed to start test server: %v", err)
 	}
-	defer suite.manager.StopServer(port)
+	defer func() { _ = suite.manager.StopServer(port) }()
 
 	// Wait for server to be ready
 	time.Sleep(1 * time.Second)
@@ -292,7 +292,7 @@ func TestIperfIntegration_ThroughputTesting(t *testing.T) {
 		}
 		t.Fatalf("Failed to start test server: %v", err)
 	}
-	defer suite.manager.StopServer(port)
+	defer func() { _ = suite.manager.StopServer(port) }()
 
 	// Wait for server to be ready
 	time.Sleep(1 * time.Second)
@@ -455,7 +455,7 @@ func TestIperfIntegration_ConcurrentOperations(t *testing.T) {
 			}
 			t.Fatalf("Failed to start test server: %v", err)
 		}
-		defer suite.manager.StopServer(port)
+		defer func() { _ = suite.manager.StopServer(port) }()
 
 		// Wait for server to be ready
 		time.Sleep(1 * time.Second)
@@ -670,7 +670,7 @@ func isPortListening(port int) bool {
 	if err != nil {
 		return false
 	}
-	conn.Close()
+	_ = conn.Close()
 	return true
 }
 
@@ -710,7 +710,7 @@ func BenchmarkIperfIntegration_ServerOperations(b *testing.B) {
 			}
 
 			// Stop server
-			suite.manager.StopServer(port)
+			_ = suite.manager.StopServer(port)
 			i++
 		}
 	})
@@ -735,7 +735,7 @@ func BenchmarkIperfIntegration_ClientTest(b *testing.B) {
 		}
 		b.Fatalf("Failed to start benchmark server: %v", err)
 	}
-	defer suite.manager.StopServer(port)
+	defer func() { _ = suite.manager.StopServer(port) }()
 
 	// Wait for server to be ready
 	time.Sleep(1 * time.Second)

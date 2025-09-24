@@ -21,10 +21,10 @@ import (
 
 // MetricsCollector collects performance and operational metrics
 type MetricsCollector struct {
-	MonitoringConfig MonitoringConfig
+	MonitoringConfig  MonitoringConfig
 	PerformanceConfig PerformanceConfig
-	PrometheusClient *PrometheusClient
-	httpClient       *http.Client
+	PrometheusClient  *PrometheusClient
+	httpClient        *http.Client
 }
 
 // PrometheusClient provides Prometheus query capabilities
@@ -35,28 +35,28 @@ type PrometheusClient struct {
 
 // MetricsData holds collected metrics
 type MetricsData struct {
-	DeploymentTime    time.Duration `json:"deploymentTime"`
-	ThroughputMbps    []float64     `json:"throughputMbps"`
-	PingRTTMs         []float64     `json:"pingRttMs"`
-	CPUUtilization    float64       `json:"cpuUtilization"`
-	MemoryUtilization float64       `json:"memoryUtilization"`
-	NetworkLatency    time.Duration `json:"networkLatency"`
-	PacketLoss        float64       `json:"packetLoss"`
-	ErrorRate         float64       `json:"errorRate"`
-	ResponseTime      time.Duration `json:"responseTime"`
-	Timestamp         time.Time     `json:"timestamp"`
+	DeploymentTime    time.Duration  `json:"deploymentTime"`
+	ThroughputMbps    []float64      `json:"throughputMbps"`
+	PingRTTMs         []float64      `json:"pingRttMs"`
+	CPUUtilization    float64        `json:"cpuUtilization"`
+	MemoryUtilization float64        `json:"memoryUtilization"`
+	NetworkLatency    time.Duration  `json:"networkLatency"`
+	PacketLoss        float64        `json:"packetLoss"`
+	ErrorRate         float64        `json:"errorRate"`
+	ResponseTime      time.Duration  `json:"responseTime"`
+	Timestamp         time.Time      `json:"timestamp"`
 	ClusterMetrics    ClusterMetrics `json:"clusterMetrics"`
 }
 
 // ClusterMetrics holds cluster-level metrics
 type ClusterMetrics struct {
-	NodeCount        int                     `json:"nodeCount"`
-	PodCount         int                     `json:"podCount"`
-	ServiceCount     int                     `json:"serviceCount"`
-	ResourceUsage    ResourceUsageMetrics    `json:"resourceUsage"`
-	NetworkMetrics   NetworkMetrics          `json:"networkMetrics"`
-	StorageMetrics   StorageMetrics          `json:"storageMetrics"`
-	ApplicationMetrics []ApplicationMetrics  `json:"applicationMetrics"`
+	NodeCount          int                  `json:"nodeCount"`
+	PodCount           int                  `json:"podCount"`
+	ServiceCount       int                  `json:"serviceCount"`
+	ResourceUsage      ResourceUsageMetrics `json:"resourceUsage"`
+	NetworkMetrics     NetworkMetrics       `json:"networkMetrics"`
+	StorageMetrics     StorageMetrics       `json:"storageMetrics"`
+	ApplicationMetrics []ApplicationMetrics `json:"applicationMetrics"`
 }
 
 // ResourceUsageMetrics holds resource usage information
@@ -68,43 +68,43 @@ type ResourceUsageMetrics struct {
 
 // ResourceMetric represents a resource metric
 type ResourceMetric struct {
-	Used      float64 `json:"used"`
-	Total     float64 `json:"total"`
+	Used       float64 `json:"used"`
+	Total      float64 `json:"total"`
 	Percentage float64 `json:"percentage"`
-	Unit      string  `json:"unit"`
+	Unit       string  `json:"unit"`
 }
 
 // NetworkMetrics holds network-related metrics
 type NetworkMetrics struct {
-	BytesIn         float64 `json:"bytesIn"`
-	BytesOut        float64 `json:"bytesOut"`
-	PacketsIn       float64 `json:"packetsIn"`
-	PacketsOut      float64 `json:"packetsOut"`
-	ErrorsIn        float64 `json:"errorsIn"`
-	ErrorsOut       float64 `json:"errorsOut"`
-	DroppedIn       float64 `json:"droppedIn"`
-	DroppedOut      float64 `json:"droppedOut"`
+	BytesIn    float64 `json:"bytesIn"`
+	BytesOut   float64 `json:"bytesOut"`
+	PacketsIn  float64 `json:"packetsIn"`
+	PacketsOut float64 `json:"packetsOut"`
+	ErrorsIn   float64 `json:"errorsIn"`
+	ErrorsOut  float64 `json:"errorsOut"`
+	DroppedIn  float64 `json:"droppedIn"`
+	DroppedOut float64 `json:"droppedOut"`
 }
 
 // StorageMetrics holds storage-related metrics
 type StorageMetrics struct {
-	PVCCount        int            `json:"pvcCount"`
-	PVCount         int            `json:"pvCount"`
-	StorageClasses  []string       `json:"storageClasses"`
-	Usage           ResourceMetric `json:"usage"`
+	PVCCount       int            `json:"pvcCount"`
+	PVCount        int            `json:"pvCount"`
+	StorageClasses []string       `json:"storageClasses"`
+	Usage          ResourceMetric `json:"usage"`
 }
 
 // ApplicationMetrics holds application-specific metrics
 type ApplicationMetrics struct {
-	Name         string  `json:"name"`
-	Namespace    string  `json:"namespace"`
-	Type         string  `json:"type"` // ran, cn, tn, orchestrator
-	CPU          float64 `json:"cpu"`
-	Memory       float64 `json:"memory"`
-	Replicas     int     `json:"replicas"`
-	ReadyReplicas int    `json:"readyReplicas"`
-	RestartCount int     `json:"restartCount"`
-	Uptime       time.Duration `json:"uptime"`
+	Name          string        `json:"name"`
+	Namespace     string        `json:"namespace"`
+	Type          string        `json:"type"` // ran, cn, tn, orchestrator
+	CPU           float64       `json:"cpu"`
+	Memory        float64       `json:"memory"`
+	Replicas      int           `json:"replicas"`
+	ReadyReplicas int           `json:"readyReplicas"`
+	RestartCount  int           `json:"restartCount"`
+	Uptime        time.Duration `json:"uptime"`
 }
 
 // PrometheusResponse represents Prometheus query response
@@ -115,8 +115,8 @@ type PrometheusResponse struct {
 
 // PrometheusResponseData represents Prometheus response data
 type PrometheusResponseData struct {
-	ResultType string                   `json:"resultType"`
-	Result     []PrometheusQueryResult  `json:"result"`
+	ResultType string                  `json:"resultType"`
+	Result     []PrometheusQueryResult `json:"result"`
 }
 
 // PrometheusQueryResult represents a single query result
@@ -213,7 +213,7 @@ func (mc *MetricsCollector) collectPerformanceMetrics(ctx context.Context, metri
 // collectClusterMetrics collects cluster-level metrics from Prometheus
 func (mc *MetricsCollector) collectClusterMetrics(ctx context.Context, metrics *MetricsData, clusterName string) error {
 	// Collect CPU utilization
-	cpuUsage, err := mc.queryPrometheus(ctx, fmt.Sprintf(`100 - (avg(irate(node_cpu_seconds_total{mode="idle",cluster="%s"}[5m])) * 100)`, clusterName))
+	cpuUsage, err := mc.queryPrometheus(ctx, fmt.Sprintf(`100 - (avg(irate(node_cpu_seconds_total{mode="idle",cluster=%q}[5m])) * 100)`, clusterName))
 	if err == nil && len(cpuUsage.Data.Result) > 0 {
 		if value, err := mc.parsePrometheusValue(cpuUsage.Data.Result[0].Value); err == nil {
 			metrics.CPUUtilization = value
@@ -221,7 +221,7 @@ func (mc *MetricsCollector) collectClusterMetrics(ctx context.Context, metrics *
 	}
 
 	// Collect memory utilization
-	memUsage, err := mc.queryPrometheus(ctx, fmt.Sprintf(`100 * (1 - ((node_memory_MemAvailable_bytes{cluster="%s"} or node_memory_MemFree_bytes{cluster="%s"}) / node_memory_MemTotal_bytes{cluster="%s"}))`, clusterName, clusterName, clusterName))
+	memUsage, err := mc.queryPrometheus(ctx, fmt.Sprintf(`100 * (1 - ((node_memory_MemAvailable_bytes{cluster=%q} or node_memory_MemFree_bytes{cluster=%q}) / node_memory_MemTotal_bytes{cluster=%q}))`, clusterName, clusterName, clusterName))
 	if err == nil && len(memUsage.Data.Result) > 0 {
 		if value, err := mc.parsePrometheusValue(memUsage.Data.Result[0].Value); err == nil {
 			metrics.MemoryUtilization = value
@@ -244,7 +244,7 @@ func (mc *MetricsCollector) collectClusterMetrics(ctx context.Context, metrics *
 // collectClusterResourceMetrics collects cluster resource usage metrics
 func (mc *MetricsCollector) collectClusterResourceMetrics(ctx context.Context, clusterMetrics *ClusterMetrics, clusterName string) error {
 	// Collect node count
-	nodeCountResp, err := mc.queryPrometheus(ctx, fmt.Sprintf(`count(kube_node_info{cluster="%s"})`, clusterName))
+	nodeCountResp, err := mc.queryPrometheus(ctx, fmt.Sprintf(`count(kube_node_info{cluster=%q})`, clusterName))
 	if err == nil && len(nodeCountResp.Data.Result) > 0 {
 		if value, err := mc.parsePrometheusValue(nodeCountResp.Data.Result[0].Value); err == nil {
 			clusterMetrics.NodeCount = int(value)
@@ -252,7 +252,7 @@ func (mc *MetricsCollector) collectClusterResourceMetrics(ctx context.Context, c
 	}
 
 	// Collect pod count
-	podCountResp, err := mc.queryPrometheus(ctx, fmt.Sprintf(`count(kube_pod_info{cluster="%s"})`, clusterName))
+	podCountResp, err := mc.queryPrometheus(ctx, fmt.Sprintf(`count(kube_pod_info{cluster=%q})`, clusterName))
 	if err == nil && len(podCountResp.Data.Result) > 0 {
 		if value, err := mc.parsePrometheusValue(podCountResp.Data.Result[0].Value); err == nil {
 			clusterMetrics.PodCount = int(value)
@@ -260,7 +260,7 @@ func (mc *MetricsCollector) collectClusterResourceMetrics(ctx context.Context, c
 	}
 
 	// Collect service count
-	serviceCountResp, err := mc.queryPrometheus(ctx, fmt.Sprintf(`count(kube_service_info{cluster="%s"})`, clusterName))
+	serviceCountResp, err := mc.queryPrometheus(ctx, fmt.Sprintf(`count(kube_service_info{cluster=%q})`, clusterName))
 	if err == nil && len(serviceCountResp.Data.Result) > 0 {
 		if value, err := mc.parsePrometheusValue(serviceCountResp.Data.Result[0].Value); err == nil {
 			clusterMetrics.ServiceCount = int(value)
@@ -281,8 +281,8 @@ func (mc *MetricsCollector) collectResourceUsage(ctx context.Context, clusterNam
 	usage := ResourceUsageMetrics{}
 
 	// CPU usage
-	cpuUsedResp, _ := mc.queryPrometheus(ctx, fmt.Sprintf(`sum(rate(container_cpu_usage_seconds_total{cluster="%s"}[5m]))`, clusterName))
-	cpuTotalResp, _ := mc.queryPrometheus(ctx, fmt.Sprintf(`sum(kube_node_status_allocatable{resource="cpu",cluster="%s"})`, clusterName))
+	cpuUsedResp, _ := mc.queryPrometheus(ctx, fmt.Sprintf(`sum(rate(container_cpu_usage_seconds_total{cluster=%q}[5m]))`, clusterName))
+	cpuTotalResp, _ := mc.queryPrometheus(ctx, fmt.Sprintf(`sum(kube_node_status_allocatable{resource="cpu",cluster=%q})`, clusterName))
 
 	if len(cpuUsedResp.Data.Result) > 0 && len(cpuTotalResp.Data.Result) > 0 {
 		if used, err := mc.parsePrometheusValue(cpuUsedResp.Data.Result[0].Value); err == nil {
@@ -298,8 +298,8 @@ func (mc *MetricsCollector) collectResourceUsage(ctx context.Context, clusterNam
 	}
 
 	// Memory usage
-	memUsedResp, _ := mc.queryPrometheus(ctx, fmt.Sprintf(`sum(container_memory_usage_bytes{cluster="%s"})`, clusterName))
-	memTotalResp, _ := mc.queryPrometheus(ctx, fmt.Sprintf(`sum(kube_node_status_allocatable{resource="memory",cluster="%s"})`, clusterName))
+	memUsedResp, _ := mc.queryPrometheus(ctx, fmt.Sprintf(`sum(container_memory_usage_bytes{cluster=%q})`, clusterName))
+	memTotalResp, _ := mc.queryPrometheus(ctx, fmt.Sprintf(`sum(kube_node_status_allocatable{resource="memory",cluster=%q})`, clusterName))
 
 	if len(memUsedResp.Data.Result) > 0 && len(memTotalResp.Data.Result) > 0 {
 		if used, err := mc.parsePrometheusValue(memUsedResp.Data.Result[0].Value); err == nil {
@@ -322,7 +322,7 @@ func (mc *MetricsCollector) collectNetworkMetrics(ctx context.Context, clusterNa
 	metrics := NetworkMetrics{}
 
 	// Bytes in
-	bytesInResp, _ := mc.queryPrometheus(ctx, fmt.Sprintf(`sum(rate(node_network_receive_bytes_total{cluster="%s"}[5m]))`, clusterName))
+	bytesInResp, _ := mc.queryPrometheus(ctx, fmt.Sprintf(`sum(rate(node_network_receive_bytes_total{cluster=%q}[5m]))`, clusterName))
 	if len(bytesInResp.Data.Result) > 0 {
 		if value, err := mc.parsePrometheusValue(bytesInResp.Data.Result[0].Value); err == nil {
 			metrics.BytesIn = value
@@ -330,7 +330,7 @@ func (mc *MetricsCollector) collectNetworkMetrics(ctx context.Context, clusterNa
 	}
 
 	// Bytes out
-	bytesOutResp, _ := mc.queryPrometheus(ctx, fmt.Sprintf(`sum(rate(node_network_transmit_bytes_total{cluster="%s"}[5m]))`, clusterName))
+	bytesOutResp, _ := mc.queryPrometheus(ctx, fmt.Sprintf(`sum(rate(node_network_transmit_bytes_total{cluster=%q}[5m]))`, clusterName))
 	if len(bytesOutResp.Data.Result) > 0 {
 		if value, err := mc.parsePrometheusValue(bytesOutResp.Data.Result[0].Value); err == nil {
 			metrics.BytesOut = value
@@ -338,7 +338,7 @@ func (mc *MetricsCollector) collectNetworkMetrics(ctx context.Context, clusterNa
 	}
 
 	// Packets in
-	packetsInResp, _ := mc.queryPrometheus(ctx, fmt.Sprintf(`sum(rate(node_network_receive_packets_total{cluster="%s"}[5m]))`, clusterName))
+	packetsInResp, _ := mc.queryPrometheus(ctx, fmt.Sprintf(`sum(rate(node_network_receive_packets_total{cluster=%q}[5m]))`, clusterName))
 	if len(packetsInResp.Data.Result) > 0 {
 		if value, err := mc.parsePrometheusValue(packetsInResp.Data.Result[0].Value); err == nil {
 			metrics.PacketsIn = value
@@ -346,7 +346,7 @@ func (mc *MetricsCollector) collectNetworkMetrics(ctx context.Context, clusterNa
 	}
 
 	// Packets out
-	packetsOutResp, _ := mc.queryPrometheus(ctx, fmt.Sprintf(`sum(rate(node_network_transmit_packets_total{cluster="%s"}[5m]))`, clusterName))
+	packetsOutResp, _ := mc.queryPrometheus(ctx, fmt.Sprintf(`sum(rate(node_network_transmit_packets_total{cluster=%q}[5m]))`, clusterName))
 	if len(packetsOutResp.Data.Result) > 0 {
 		if value, err := mc.parsePrometheusValue(packetsOutResp.Data.Result[0].Value); err == nil {
 			metrics.PacketsOut = value
@@ -366,7 +366,10 @@ func (mc *MetricsCollector) collectApplicationMetrics(ctx context.Context, clust
 		if err != nil {
 			continue // Skip if metrics not available
 		}
-		clusterMetrics.ApplicationMetrics = append(clusterMetrics.ApplicationMetrics, appMetrics...)
+		// Optimize append by checking length first
+		if len(appMetrics) > 0 {
+			clusterMetrics.ApplicationMetrics = append(clusterMetrics.ApplicationMetrics, appMetrics...)
+		}
 	}
 
 	return nil
@@ -377,12 +380,13 @@ func (mc *MetricsCollector) collectAppTypeMetrics(ctx context.Context, clusterNa
 	var apps []ApplicationMetrics
 
 	// Query for deployments with specific labels
-	deploymentsResp, err := mc.queryPrometheus(ctx, fmt.Sprintf(`kube_deployment_status_replicas{cluster="%s",app_type="%s"}`, clusterName, appType))
+	deploymentsResp, err := mc.queryPrometheus(ctx, fmt.Sprintf(`kube_deployment_status_replicas{cluster=%q,app_type=%q}`, clusterName, appType))
 	if err != nil {
 		return apps, err
 	}
 
-	for _, result := range deploymentsResp.Data.Result {
+	for i := range deploymentsResp.Data.Result {
+		result := &deploymentsResp.Data.Result[i]
 		appName := result.Metric["deployment"]
 		namespace := result.Metric["namespace"]
 
@@ -398,7 +402,7 @@ func (mc *MetricsCollector) collectAppTypeMetrics(ctx context.Context, clusterNa
 		}
 
 		// Get ready replicas
-		readyResp, _ := mc.queryPrometheus(ctx, fmt.Sprintf(`kube_deployment_status_replicas_ready{cluster="%s",deployment="%s",namespace="%s"}`, clusterName, appName, namespace))
+		readyResp, _ := mc.queryPrometheus(ctx, fmt.Sprintf(`kube_deployment_status_replicas_ready{cluster=%q,deployment=%q,namespace=%q}`, clusterName, appName, namespace))
 		if len(readyResp.Data.Result) > 0 {
 			if value, err := mc.parsePrometheusValue(readyResp.Data.Result[0].Value); err == nil {
 				app.ReadyReplicas = int(value)
@@ -406,7 +410,7 @@ func (mc *MetricsCollector) collectAppTypeMetrics(ctx context.Context, clusterNa
 		}
 
 		// Get CPU usage
-		cpuResp, _ := mc.queryPrometheus(ctx, fmt.Sprintf(`sum(rate(container_cpu_usage_seconds_total{cluster="%s",pod=~"%s-.*"}[5m]))`, clusterName, appName))
+		cpuResp, _ := mc.queryPrometheus(ctx, fmt.Sprintf(`sum(rate(container_cpu_usage_seconds_total{cluster=%q,pod=~%q}[5m]))`, clusterName, appName+"-.*"))
 		if len(cpuResp.Data.Result) > 0 {
 			if value, err := mc.parsePrometheusValue(cpuResp.Data.Result[0].Value); err == nil {
 				app.CPU = value
@@ -414,7 +418,7 @@ func (mc *MetricsCollector) collectAppTypeMetrics(ctx context.Context, clusterNa
 		}
 
 		// Get memory usage
-		memResp, _ := mc.queryPrometheus(ctx, fmt.Sprintf(`sum(container_memory_usage_bytes{cluster="%s",pod=~"%s-.*"})`, clusterName, appName))
+		memResp, _ := mc.queryPrometheus(ctx, fmt.Sprintf(`sum(container_memory_usage_bytes{cluster=%q,pod=~%q})`, clusterName, appName+"-.*"))
 		if len(memResp.Data.Result) > 0 {
 			if value, err := mc.parsePrometheusValue(memResp.Data.Result[0].Value); err == nil {
 				app.Memory = value / (1024 * 1024) // Convert to MB
@@ -437,7 +441,7 @@ func (mc *MetricsCollector) collectRTTMetrics(ctx context.Context, clusterName s
 // collectNetworkLatency collects network latency metrics
 func (mc *MetricsCollector) collectNetworkLatency(ctx context.Context, clusterName string) (time.Duration, error) {
 	// Query Prometheus for network latency metrics
-	latencyResp, err := mc.queryPrometheus(ctx, fmt.Sprintf(`histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{cluster="%s"}[5m]))`, clusterName))
+	latencyResp, err := mc.queryPrometheus(ctx, fmt.Sprintf(`histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{cluster=%q}[5m]))`, clusterName))
 	if err == nil && len(latencyResp.Data.Result) > 0 {
 		if value, err := mc.parsePrometheusValue(latencyResp.Data.Result[0].Value); err == nil {
 			return time.Duration(value * float64(time.Second)), nil
@@ -450,7 +454,7 @@ func (mc *MetricsCollector) collectNetworkLatency(ctx context.Context, clusterNa
 // collectPacketLoss collects packet loss metrics
 func (mc *MetricsCollector) collectPacketLoss(ctx context.Context, clusterName string) (float64, error) {
 	// Query for packet loss metrics
-	lossResp, err := mc.queryPrometheus(ctx, fmt.Sprintf(`rate(node_network_receive_drop_total{cluster="%s"}[5m]) / rate(node_network_receive_packets_total{cluster="%s"}[5m]) * 100`, clusterName, clusterName))
+	lossResp, err := mc.queryPrometheus(ctx, fmt.Sprintf(`rate(node_network_receive_drop_total{cluster=%q}[5m]) / rate(node_network_receive_packets_total{cluster=%q}[5m]) * 100`, clusterName, clusterName))
 	if err == nil && len(lossResp.Data.Result) > 0 {
 		if value, err := mc.parsePrometheusValue(lossResp.Data.Result[0].Value); err == nil {
 			return value, nil
@@ -481,7 +485,7 @@ func (mc *MetricsCollector) queryPrometheus(ctx context.Context, query string) (
 
 	fullURL := fmt.Sprintf("%s?%s", queryURL, params.Encode())
 
-	req, err := http.NewRequestWithContext(ctx, "GET", fullURL, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", fullURL, http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -490,7 +494,13 @@ func (mc *MetricsCollector) queryPrometheus(ctx context.Context, query string) (
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute query: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			// Log error but don't fail the operation
+			// In production, you might want to use a proper logger here
+			_ = err // Explicitly ignore for now
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("prometheus query failed with status %d", resp.StatusCode)
@@ -570,7 +580,8 @@ func (mc *MetricsCollector) collectMetricsServerData(ctx context.Context, metric
 
 	var totalCPU, usedCPU, totalMemory, usedMemory resource.Quantity
 
-	for _, nodeMetric := range nodeMetrics.Items {
+	for i := range nodeMetrics.Items {
+		nodeMetric := &nodeMetrics.Items[i]
 		cpu := nodeMetric.Usage["cpu"]
 		memory := nodeMetric.Usage["memory"]
 
@@ -621,14 +632,18 @@ func (mc *MetricsCollector) exportPrometheusFormat(metrics *MetricsData) ([]byte
 	lines = append(lines, fmt.Sprintf("oran_deployment_time_seconds %f %d", metrics.DeploymentTime.Seconds(), timestamp))
 
 	// Export throughput metrics
+	throughputLines := make([]string, 0, len(metrics.ThroughputMbps))
 	for i, throughput := range metrics.ThroughputMbps {
-		lines = append(lines, fmt.Sprintf("oran_throughput_mbps{qos_class=\"%d\"} %f %d", i, throughput, timestamp))
+		throughputLines = append(throughputLines, fmt.Sprintf("oran_throughput_mbps{qos_class=\"%d\"} %f %d", i, throughput, timestamp))
 	}
+	lines = append(lines, throughputLines...)
 
 	// Export RTT metrics
+	rttLines := make([]string, 0, len(metrics.PingRTTMs))
 	for i, rtt := range metrics.PingRTTMs {
-		lines = append(lines, fmt.Sprintf("oran_ping_rtt_ms{qos_class=\"%d\"} %f %d", i, rtt, timestamp))
+		rttLines = append(rttLines, fmt.Sprintf("oran_ping_rtt_ms{qos_class=\"%d\"} %f %d", i, rtt, timestamp))
 	}
+	lines = append(lines, rttLines...)
 
 	// Export CPU and memory utilization
 	lines = append(lines, fmt.Sprintf("oran_cpu_utilization_percent %f %d", metrics.CPUUtilization, timestamp))

@@ -1,8 +1,8 @@
-# TN Manager Multi-stage Dockerfile
+# TN Manager Multi-stage Dockerfile (2025 Best Practices)
 # Stage 1: Build
-FROM golang:1.24.7-alpine AS builder
+FROM golang:1.22.10-alpine AS builder
 
-# Security labels and metadata
+# Security and metadata labels
 LABEL maintainer="O-RAN MANO Team"
 LABEL org.opencontainers.image.title="TN Manager"
 LABEL org.opencontainers.image.description="Transport Network Manager"
@@ -11,90 +11,76 @@ LABEL org.opencontainers.image.vendor="O-RAN Alliance"
 LABEL org.opencontainers.image.licenses="Apache-2.0"
 LABEL org.opencontainers.image.url="https://o-ran.org"
 LABEL security.scan="trivy,grype,snyk"
-LABEL security.distroless="false"
+LABEL security.distroless="true"
 LABEL security.user="non-root"
 
-# Security: Use non-root user for build
-RUN adduser -D -s /bin/sh appuser
-
-# Install security updates and necessary tools, clean cache
-RUN apk update && apk upgrade && apk add --no-cache \
+# Install build dependencies with cache mount
+RUN --mount=type=cache,target=/var/cache/apk \
+    apk add --no-cache \
     git \
     ca-certificates \
     tzdata && \
-    update-ca-certificates && \
-    rm -rf /var/cache/apk/* /tmp/* /var/tmp/*
+    update-ca-certificates
 
 # Set working directory
 WORKDIR /workspace
 
-# Copy go mod files first for better layer caching
-COPY tn/go.mod tn/go.sum ./
+# Copy go mod files from project root for layer caching
+COPY go.mod go.sum ./
 
-# Copy the manager API module (required by replace directive)
-COPY tn/manager/api/v1alpha1/ ./manager/api/v1alpha1/
+# Copy required source code for tn module
+COPY pkg/ pkg/
+COPY tn/ tn/
 
-# Copy pkg/security module before downloading dependencies
-# This is needed because go.mod has a replace directive pointing to ../pkg/security
-COPY pkg/security/ ../pkg/security/
+# Set Go environment for reproducible builds
+ENV GO111MODULE=on \
+    GOPROXY=https://proxy.golang.org,direct \
+    GOSUMDB=sum.golang.org \
+    GOWORK=off
 
-# Download dependencies with explicit toolchain
-ENV GOTOOLCHAIN=go1.24.7
-ENV GOPROXY=https://proxy.golang.org,direct
-ENV GOSUMDB=sum.golang.org
-RUN go mod download
+# Download dependencies with cache mount
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    go mod download
 
-# Copy full source code
-COPY tn/ .
-
-# Build the binary with security flags
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
-    -ldflags='-w -s -extldflags "-static"' \
+# Build static binary with optimizations and trimpath
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+    -trimpath \
+    -ldflags="-s -w -extldflags '-static'" \
     -a -installsuffix cgo \
-    -o tn-manager cmd/manager/main.go
+    -o /workspace/tn-manager ./tn/cmd/manager/main.go
 
-# Stage 2: Runtime
-FROM alpine:3.22.1
+# Stage 2: Minimal runtime (scratch-based)
+FROM scratch AS runtime
 
-# Security labels
+# Security and runtime labels
 LABEL org.opencontainers.image.title="TN Manager Runtime"
 LABEL security.scan="trivy,grype,snyk"
 LABEL security.user="non-root"
-LABEL security.base.image="alpine:3.22.1"
-LABEL security.go.version="1.23.6"
-LABEL security.scan.date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+LABEL security.base.image="scratch"
+LABEL security.go.version="1.22.10"
 
-# Install runtime dependencies, clean cache
-RUN apk update && apk upgrade && apk add --no-cache \
-    ca-certificates \
-    iproute2 \
-    iptables \
-    curl \
-    dumb-init && \
-    update-ca-certificates && \
-    adduser -D -s /bin/sh -u 10007 appuser && \
-    rm -rf /var/cache/apk/* /tmp/* /var/tmp/*
+# Copy CA certificates from builder
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
-# Copy the binary
+# Copy timezone data
+COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
+
+# Copy passwd for nobody user
+COPY --from=builder /etc/passwd /etc/passwd
+
+# Copy the static binary
 COPY --from=builder /workspace/tn-manager /usr/local/bin/tn-manager
 
-# Create necessary directories with proper permissions
-RUN mkdir -p /var/log/tn-manager && \
-    chown appuser:appuser /var/log/tn-manager
+# Use nobody user for security
+USER nobody:nobody
 
-# Use non-root user (Note: May need elevated privileges for network operations via K8s security context)
-USER appuser
-
-# Create volume for config
-VOLUME ["/config", "/var/log/tn-manager"]
-
-# Expose ports
+# Expose application ports
 EXPOSE 8080 9090
 
-# Health check with improved security
-HEALTHCHECK --interval=30s --timeout=10s --start-period=45s --retries=3 \
-    CMD curl -f --max-time 5 --retry 2 --retry-delay 1 http://localhost:8080/health || exit 1
-
-# Security: Run as non-root with dumb-init
-ENTRYPOINT ["/usr/bin/dumb-init", "--"]
-CMD ["/usr/local/bin/tn-manager", "--config=/config/tn-manager.yaml"]
+# Note: Network operations will be handled via K8s security context
+# Run the application
+ENTRYPOINT ["/usr/local/bin/tn-manager"]
+CMD ["--config=/config/tn-manager.yaml"]

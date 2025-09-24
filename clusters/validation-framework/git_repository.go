@@ -34,34 +34,34 @@ type GitAuth struct {
 
 // GitCommit represents a Git commit
 type GitCommit struct {
-	Hash      string    `json:"hash"`
-	Author    string    `json:"author"`
-	Email     string    `json:"email"`
-	Date      time.Time `json:"date"`
-	Message   string    `json:"message"`
-	Files     []string  `json:"files"`
+	Hash    string    `json:"hash"`
+	Author  string    `json:"author"`
+	Email   string    `json:"email"`
+	Date    time.Time `json:"date"`
+	Message string    `json:"message"`
+	Files   []string  `json:"files"`
 }
 
 // GitStatus represents Git repository status
 type GitStatus struct {
-	Branch         string            `json:"branch"`
-	Ahead          int               `json:"ahead"`
-	Behind         int               `json:"behind"`
-	Modified       []string          `json:"modified"`
-	Added          []string          `json:"added"`
-	Deleted        []string          `json:"deleted"`
-	Untracked      []string          `json:"untracked"`
-	Staged         []string          `json:"staged"`
-	Clean          bool              `json:"clean"`
-	LastCommit     GitCommit         `json:"lastCommit"`
-	RemoteURL      string            `json:"remoteUrl"`
-	Tags           []string          `json:"tags"`
-	Remotes        map[string]string `json:"remotes"`
+	Branch     string            `json:"branch"`
+	Ahead      int               `json:"ahead"`
+	Behind     int               `json:"behind"`
+	Modified   []string          `json:"modified"`
+	Added      []string          `json:"added"`
+	Deleted    []string          `json:"deleted"`
+	Untracked  []string          `json:"untracked"`
+	Staged     []string          `json:"staged"`
+	Clean      bool              `json:"clean"`
+	LastCommit GitCommit         `json:"lastCommit"`
+	RemoteURL  string            `json:"remoteUrl"`
+	Tags       []string          `json:"tags"`
+	Remotes    map[string]string `json:"remotes"`
 }
 
 // GitSyncStatus represents synchronization status
 type GitSyncStatus struct {
-	Status        string    `json:"status"`        // synced, ahead, behind, diverged
+	Status        string    `json:"status"` // synced, ahead, behind, diverged
 	LastSync      time.Time `json:"lastSync"`
 	LocalCommit   string    `json:"localCommit"`
 	RemoteCommit  string    `json:"remoteCommit"`
@@ -156,7 +156,9 @@ func (gr *GitRepository) configureSSHAuth() error {
 	if err := security.ValidateEnvironmentValue(sshCmd); err != nil {
 		return fmt.Errorf("invalid SSH command: %w", err)
 	}
-	os.Setenv("GIT_SSH_COMMAND", sshCmd)
+	if err := os.Setenv("GIT_SSH_COMMAND", sshCmd); err != nil {
+		return fmt.Errorf("failed to set GIT_SSH_COMMAND: %w", err)
+	}
 
 	return nil
 }
@@ -187,7 +189,7 @@ func (gr *GitRepository) validateRepository() error {
 }
 
 // GetCurrentBranch returns the current Git branch
-func (gr *GitRepository) GetCurrentBranch() (string, error) {
+func (gr *GitRepository) GetCurrentBranch() (branch string, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -201,7 +203,7 @@ func (gr *GitRepository) GetCurrentBranch() (string, error) {
 }
 
 // GetLastCommit returns the last commit information
-func (gr *GitRepository) GetLastCommit() (string, error) {
+func (gr *GitRepository) GetLastCommit() (commit string, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -244,7 +246,10 @@ func (gr *GitRepository) GetLastCommitInfo() (*GitCommit, error) {
 
 	var files []string
 	if len(filesOutput) > 0 {
-		files = strings.Split(strings.TrimSpace(string(filesOutput)), "\n")
+		trimmed := strings.TrimSpace(string(filesOutput))
+		if trimmed != "" {
+			files = strings.Split(trimmed, "\n")
+		}
 	}
 
 	return &GitCommit{
@@ -258,7 +263,7 @@ func (gr *GitRepository) GetLastCommitInfo() (*GitCommit, error) {
 }
 
 // IsClean returns true if the repository has no uncommitted changes
-func (gr *GitRepository) IsClean() (bool, error) {
+func (gr *GitRepository) IsClean() (isClean bool, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -268,7 +273,8 @@ func (gr *GitRepository) IsClean() (bool, error) {
 		return false, fmt.Errorf("failed to check git status: %w", err)
 	}
 
-	return len(strings.TrimSpace(string(output))) == 0, nil
+	trimmed := strings.TrimSpace(string(output))
+	return trimmed == "", nil
 }
 
 // GetStatus returns detailed Git repository status
@@ -356,7 +362,7 @@ func (gr *GitRepository) GetStatus() (*GitStatus, error) {
 }
 
 // getAheadBehind gets the ahead/behind count compared to remote
-func (gr *GitRepository) getAheadBehind() (int, int, error) {
+func (gr *GitRepository) getAheadBehind() (ahead int, behind int, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
@@ -371,12 +377,12 @@ func (gr *GitRepository) getAheadBehind() (int, int, error) {
 		return 0, 0, fmt.Errorf("unexpected rev-list output")
 	}
 
-	ahead, err := strconv.Atoi(parts[0])
+	ahead, err = strconv.Atoi(parts[0])
 	if err != nil {
 		return 0, 0, err
 	}
 
-	behind, err := strconv.Atoi(parts[1])
+	behind, err = strconv.Atoi(parts[1])
 	if err != nil {
 		return 0, 0, err
 	}
@@ -385,7 +391,7 @@ func (gr *GitRepository) getAheadBehind() (int, int, error) {
 }
 
 // getRemoteURL gets the remote URL
-func (gr *GitRepository) getRemoteURL() (string, error) {
+func (gr *GitRepository) getRemoteURL() (url string, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -399,7 +405,7 @@ func (gr *GitRepository) getRemoteURL() (string, error) {
 }
 
 // getTags gets repository tags
-func (gr *GitRepository) getTags() ([]string, error) {
+func (gr *GitRepository) getTags() (tags []string, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -417,7 +423,7 @@ func (gr *GitRepository) getTags() ([]string, error) {
 }
 
 // getRemotes gets all remotes
-func (gr *GitRepository) getRemotes() (map[string]string, error) {
+func (gr *GitRepository) getRemotes() (remotes map[string]string, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -427,7 +433,7 @@ func (gr *GitRepository) getRemotes() (map[string]string, error) {
 		return nil, err
 	}
 
-	remotes := make(map[string]string)
+	remotes = make(map[string]string)
 	scanner := bufio.NewScanner(strings.NewReader(string(output)))
 
 	for scanner.Scan() {
@@ -442,7 +448,7 @@ func (gr *GitRepository) getRemotes() (map[string]string, error) {
 }
 
 // GetSyncStatus returns the synchronization status with remote
-func (gr *GitRepository) GetSyncStatus() (string, time.Time, error) {
+func (gr *GitRepository) GetSyncStatus() (status string, lastSync time.Time, err error) {
 	// Fetch latest from remote
 	if err := gr.fetchRemote(); err != nil {
 		return "unknown", time.Time{}, err
@@ -454,7 +460,6 @@ func (gr *GitRepository) GetSyncStatus() (string, time.Time, error) {
 		return "unknown", time.Time{}, err
 	}
 
-	var status string
 	switch {
 	case ahead == 0 && behind == 0:
 		status = "synced"
@@ -468,7 +473,6 @@ func (gr *GitRepository) GetSyncStatus() (string, time.Time, error) {
 
 	// Get last fetch time (approximate using .git/FETCH_HEAD)
 	fetchHeadPath := filepath.Join(gr.LocalPath, ".git", "FETCH_HEAD")
-	var lastSync time.Time
 	if info, err := os.Stat(fetchHeadPath); err == nil {
 		lastSync = info.ModTime()
 	}
@@ -561,7 +565,7 @@ func (gr *GitRepository) SwitchBranch(branchName string) error {
 }
 
 // GetDiff returns the diff between two commits
-func (gr *GitRepository) GetDiff(fromCommit, toCommit string) (string, error) {
+func (gr *GitRepository) GetDiff(fromCommit, toCommit string) (diff string, err error) {
 	// Validate commit references for security
 	if err := security.ValidateGitRef(fromCommit); err != nil {
 		return "", fmt.Errorf("invalid from commit: %w", err)
@@ -583,7 +587,7 @@ func (gr *GitRepository) GetDiff(fromCommit, toCommit string) (string, error) {
 }
 
 // GetChangedFiles returns files changed between two commits
-func (gr *GitRepository) GetChangedFiles(fromCommit, toCommit string) ([]string, error) {
+func (gr *GitRepository) GetChangedFiles(fromCommit, toCommit string) (files []string, err error) {
 	// Validate commit references for security
 	if err := security.ValidateGitRef(fromCommit); err != nil {
 		return nil, fmt.Errorf("invalid from commit: %w", err)
@@ -633,7 +637,7 @@ func (gr *GitRepository) Reset(commit string, hard bool) error {
 }
 
 // GetCommitHistory returns commit history
-func (gr *GitRepository) GetCommitHistory(limit int) ([]GitCommit, error) {
+func (gr *GitRepository) GetCommitHistory(limit int) (commits []GitCommit, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -647,7 +651,6 @@ func (gr *GitRepository) GetCommitHistory(limit int) ([]GitCommit, error) {
 		return nil, fmt.Errorf("failed to get commit history: %w", err)
 	}
 
-	var commits []GitCommit
 	scanner := bufio.NewScanner(strings.NewReader(string(output)))
 
 	for scanner.Scan() {

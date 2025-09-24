@@ -4,13 +4,14 @@ Tests canonical intents, boundary conditions, and invalid inputs.
 """
 
 import json
-import pytest
 from pathlib import Path
-from jsonschema import validate, ValidationError, Draft7Validator
+
+import pytest
+from jsonschema import Draft7Validator, ValidationError, validate
 
 # Load schema from file
 SCHEMA_PATH = Path(__file__).parent.parent / "schema.json"
-with open(SCHEMA_PATH) as f:
+with open(SCHEMA_PATH, encoding="utf-8") as f:
     QOS_SCHEMA = json.load(f)
 
 # Create validator instance
@@ -27,18 +28,18 @@ class TestCanonicalIntents:
             {
                 "name": "eMBB - High bandwidth, relaxed latency",
                 "qos": {"bandwidth": 5, "latency": 9, "slice_type": "eMBB"},
-                "expected": (5, 9)
+                "expected": (5, 9),
             },
             {
                 "name": "Balanced - Medium bandwidth, moderate latency",
                 "qos": {"bandwidth": 3, "latency": 9, "slice_type": "balanced"},
-                "expected": (3, 9)
+                "expected": (3, 9),
             },
             {
                 "name": "uRLLC - Low bandwidth, ultra-low latency",
                 "qos": {"bandwidth": 1, "latency": 1, "slice_type": "uRLLC"},
-                "expected": (1, 1)
-            }
+                "expected": (1, 1),
+            },
         ]
 
     def test_canonical_intents_valid(self, canonical_intents):
@@ -60,7 +61,12 @@ class TestCanonicalIntents:
 
     def test_canonical_intent_urllc(self):
         """Test uRLLC specific configuration."""
-        urllc_qos = {"bandwidth": 1, "latency": 1, "slice_type": "uRLLC", "reliability": 99.99}
+        urllc_qos = {
+            "bandwidth": 1,
+            "latency": 1,
+            "slice_type": "uRLLC",
+            "reliability": 99.99,
+        }
         validate(instance=urllc_qos, schema=QOS_SCHEMA)
         assert urllc_qos["bandwidth"] == 1
         assert urllc_qos["latency"] == 1
@@ -103,9 +109,9 @@ class TestBoundaryConditions:
     def test_all_boundaries(self):
         """Test all combinations of boundary values."""
         boundary_cases = [
-            {"bandwidth": 1, "latency": 1},   # Min-Min
+            {"bandwidth": 1, "latency": 1},  # Min-Min
             {"bandwidth": 1, "latency": 10},  # Min-Max
-            {"bandwidth": 5, "latency": 1},   # Max-Min
+            {"bandwidth": 5, "latency": 1},  # Max-Min
             {"bandwidth": 5, "latency": 10},  # Max-Max
         ]
 
@@ -258,7 +264,7 @@ class TestOptionalFields:
             "jitter": 2,
             "packet_loss": 0.1,
             "reliability": 99.9,
-            "slice_type": "eMBB"
+            "slice_type": "eMBB",
         }
         validate(instance=qos, schema=QOS_SCHEMA)
 
@@ -271,11 +277,7 @@ class TestOptionalFields:
 
     def test_additional_properties_rejected(self):
         """Test that additional properties are rejected."""
-        qos = {
-            "bandwidth": 3,
-            "latency": 5,
-            "unknown_field": "value"
-        }
+        qos = {"bandwidth": 3, "latency": 5, "unknown_field": "value"}
         with pytest.raises(ValidationError) as exc_info:
             validate(instance=qos, schema=QOS_SCHEMA)
         assert "additional" in str(exc_info.value).lower()

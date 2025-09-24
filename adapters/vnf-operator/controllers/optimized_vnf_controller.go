@@ -15,8 +15,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -28,15 +28,21 @@ import (
 
 const (
 	optimizedVnfFinalizer = "mano.oran.io/optimized-finalizer"
+
+	// Status constants
+	statusPending  = "Pending"
+	statusCreating = "Creating"
+	statusRunning  = "Running"
+	statusFailed   = "Failed"
 )
 
 // OptimizedVNFReconciler provides high-performance VNF reconciliation
 type OptimizedVNFReconciler struct {
 	client.Client
-	Scheme           *runtime.Scheme
-	PorchTranslator  *translator.PorchTranslator
-	DMSClient        dms.Client
-	GitOpsClient     gitops.Client
+	Scheme          *runtime.Scheme
+	PorchTranslator *translator.PorchTranslator
+	DMSClient       dms.Client
+	GitOpsClient    gitops.Client
 
 	// Performance optimizations
 	reconcileCache   map[string]*ReconcileResult
@@ -74,15 +80,15 @@ type BatchOperation struct {
 
 // PerformanceMetrics tracks reconciliation performance
 type PerformanceMetrics struct {
-	TotalReconciles       int64
-	SuccessfulReconciles  int64
-	FailedReconciles      int64
-	CacheHits             int64
-	AvgReconcileTimeMs    float64
-	BatchOperations       int64
-	ConcurrentReconciles  int64
-	PeakConcurrency       int64
-	mutex                 sync.Mutex
+	TotalReconciles      int64
+	SuccessfulReconciles int64
+	FailedReconciles     int64
+	CacheHits            int64
+	AvgReconcileTimeMs   float64
+	BatchOperations      int64
+	ConcurrentReconciles int64
+	PeakConcurrency      int64
+	mutex                sync.Mutex
 }
 
 // NewOptimizedVNFReconciler creates an optimized VNF reconciler
@@ -93,16 +99,15 @@ func NewOptimizedVNFReconciler(
 	dmsClient dms.Client,
 	gitopsClient gitops.Client,
 ) *OptimizedVNFReconciler {
-
 	maxConcurrency := 10 // Configurable based on cluster size
 
 	return &OptimizedVNFReconciler{
-		Client:           client,
-		Scheme:           scheme,
-		PorchTranslator:  porchTranslator,
-		DMSClient:        dmsClient,
-		GitOpsClient:     gitopsClient,
-		reconcileCache:   make(map[string]*ReconcileResult),
+		Client:                  client,
+		Scheme:                  scheme,
+		PorchTranslator:         porchTranslator,
+		DMSClient:               dmsClient,
+		GitOpsClient:            gitopsClient,
+		reconcileCache:          make(map[string]*ReconcileResult),
 		maxConcurrentReconciles: maxConcurrency,
 		reconcileSemaphore:      make(chan struct{}, maxConcurrency),
 		batchProcessor: &BatchProcessor{
@@ -161,7 +166,7 @@ func (r *OptimizedVNFReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}
 
 	// Handle deletion
-	if vnf.ObjectMeta.DeletionTimestamp != nil {
+	if vnf.DeletionTimestamp != nil {
 		return r.handleDeletion(ctx, vnf)
 	}
 
@@ -183,13 +188,13 @@ func (r *OptimizedVNFReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	var err error
 
 	switch vnf.Status.Phase {
-	case "Pending":
+	case statusPending:
 		result, err = r.handlePendingOptimized(ctx, vnf)
-	case "Creating":
+	case statusCreating:
 		result, err = r.handleCreatingOptimized(ctx, vnf)
-	case "Running":
+	case statusRunning:
 		result, err = r.handleRunningOptimized(ctx, vnf)
-	case "Failed":
+	case statusFailed:
 		result, err = r.handleFailedOptimized(ctx, vnf)
 	default:
 		log.Info("Unknown phase", "phase", vnf.Status.Phase)
@@ -243,7 +248,7 @@ func (r *OptimizedVNFReconciler) handleCreatingOptimized(ctx context.Context, vn
 
 	// Update status efficiently
 	vnf.Status.DMSDeploymentID = deploymentID
-	vnf.Status.Phase = "Running"
+	vnf.Status.Phase = statusRunning
 	vnf.Status.LastReconcileTime = &metav1.Time{Time: time.Now()}
 	r.setCondition(vnf, "Deployed", metav1.ConditionTrue, "Success",
 		fmt.Sprintf("Deployed via DMS: %s", deploymentID))
@@ -290,7 +295,7 @@ func (r *OptimizedVNFReconciler) handleFailedOptimized(ctx context.Context, vnf 
 	// Check if generation changed (user updated spec)
 	if vnf.Generation != vnf.Status.ObservedGeneration {
 		log.Info("Spec updated, retrying deployment", "name", vnf.Name)
-		vnf.Status.Phase = "Pending"
+		vnf.Status.Phase = statusPending
 		vnf.Status.ObservedGeneration = vnf.Generation
 		if err := r.Status().Update(ctx, vnf); err != nil {
 			return ctrl.Result{}, err
@@ -385,7 +390,7 @@ func (r *OptimizedVNFReconciler) fastValidateVNF(vnf *manov1alpha1.VNF) error {
 	return nil
 }
 
-func (r *OptimizedVNFReconciler) shouldBatchOperation(vnf *manov1alpha1.VNF, operation string) bool {
+func (r *OptimizedVNFReconciler) shouldBatchOperation(vnf *manov1alpha1.VNF, _ string) bool {
 	// Batch non-critical operations for efficiency
 	if vnf.Spec.QoS.Latency > 15 { // Not ultra-low latency
 		return true
@@ -420,7 +425,7 @@ func (r *OptimizedVNFReconciler) processTranslationAndPush(ctx context.Context, 
 	}
 
 	// Update status
-	vnf.Status.Phase = "Creating"
+	vnf.Status.Phase = statusCreating
 	vnf.Status.PorchPackageRevision = revision
 	r.setCondition(vnf, "PackageCreated", metav1.ConditionTrue, "Success",
 		fmt.Sprintf("Package pushed to Porch: %s", revision))
@@ -462,8 +467,8 @@ func (r *OptimizedVNFReconciler) monitorDeployment(ctx context.Context, vnf *man
 		return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
 	}
 
-	if status == "Failed" {
-		vnf.Status.Phase = "Failed"
+	if status == statusFailed {
+		vnf.Status.Phase = statusFailed
 		r.setCondition(vnf, "DeploymentFailed", metav1.ConditionTrue, "DMSFailure",
 			"DMS deployment reported failure")
 
@@ -540,7 +545,7 @@ func (r *OptimizedVNFReconciler) asyncStatusCheck(ctx context.Context, vnf *mano
 		return // Ignore errors in async check
 	}
 
-	if status == "Failed" {
+	if status == statusFailed {
 		// Trigger immediate reconciliation for failure handling
 		// This would typically involve enqueueing the VNF for reconciliation
 		log.FromContext(ctx).Info("Async check detected failure", "vnf", vnf.Name)
@@ -548,7 +553,7 @@ func (r *OptimizedVNFReconciler) asyncStatusCheck(ctx context.Context, vnf *mano
 }
 
 func (r *OptimizedVNFReconciler) initializeStatus(ctx context.Context, vnf *manov1alpha1.VNF) (ctrl.Result, error) {
-	vnf.Status.Phase = "Pending"
+	vnf.Status.Phase = statusPending
 	vnf.Status.ObservedGeneration = vnf.Generation
 	if err := r.Status().Update(ctx, vnf); err != nil {
 		return ctrl.Result{}, err
@@ -622,7 +627,7 @@ func (r *OptimizedVNFReconciler) updateStatusWithError(ctx context.Context, vnf 
 	log := log.FromContext(ctx)
 	log.Error(err, "VNF reconciliation failed", "reason", reason)
 
-	vnf.Status.Phase = "Failed"
+	vnf.Status.Phase = statusFailed
 	r.setCondition(vnf, reason, metav1.ConditionFalse, "Error", err.Error())
 
 	if statusErr := r.Status().Update(ctx, vnf); statusErr != nil {
@@ -678,14 +683,14 @@ func (r *OptimizedVNFReconciler) GetMetrics() *PerformanceMetrics {
 
 	// Return a copy
 	return &PerformanceMetrics{
-		TotalReconciles:       r.metricsCollector.TotalReconciles,
-		SuccessfulReconciles:  r.metricsCollector.SuccessfulReconciles,
-		FailedReconciles:      r.metricsCollector.FailedReconciles,
-		CacheHits:             r.metricsCollector.CacheHits,
-		AvgReconcileTimeMs:    r.metricsCollector.AvgReconcileTimeMs,
-		BatchOperations:       r.metricsCollector.BatchOperations,
-		ConcurrentReconciles:  r.metricsCollector.ConcurrentReconciles,
-		PeakConcurrency:       r.metricsCollector.PeakConcurrency,
+		TotalReconciles:      r.metricsCollector.TotalReconciles,
+		SuccessfulReconciles: r.metricsCollector.SuccessfulReconciles,
+		FailedReconciles:     r.metricsCollector.FailedReconciles,
+		CacheHits:            r.metricsCollector.CacheHits,
+		AvgReconcileTimeMs:   r.metricsCollector.AvgReconcileTimeMs,
+		BatchOperations:      r.metricsCollector.BatchOperations,
+		ConcurrentReconciles: r.metricsCollector.ConcurrentReconciles,
+		PeakConcurrency:      r.metricsCollector.PeakConcurrency,
 	}
 }
 

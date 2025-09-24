@@ -1,0 +1,61 @@
+# Simple Test Framework Dockerfile
+FROM golang:1.22.10-alpine AS builder
+
+ENV GOTOOLCHAIN=go1.22.10
+ENV GO124TELEMETRY=off
+
+WORKDIR /workspace
+
+# Create simple test runner without unused imports
+RUN cat > main.go <<'EOL'
+package main
+
+import (
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+)
+
+func main() {
+	fmt.Println("O-RAN Test Framework v1.0.0 - Go 1.22.10")
+	
+	// Simple HTTP server for health checks
+	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
+	})
+
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("Test Framework Ready"))
+	})
+
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	fmt.Printf("Test Framework starting on port %s...\n", port)
+	log.Fatal(http.ListenAndServe(":"+port, nil))
+}
+EOL
+
+RUN go mod init test-runner && go build -o test-runner main.go
+
+# Runtime stage
+FROM alpine:3.22.1
+
+RUN apk add --no-cache ca-certificates curl dumb-init && \
+    adduser -D -s /bin/sh -u 10005 tester
+
+COPY --from=builder /workspace/test-runner /usr/local/bin/test-runner
+
+USER tester
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+ENTRYPOINT ["/usr/bin/dumb-init", "--"]
+CMD ["/usr/local/bin/test-runner"]

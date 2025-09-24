@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
+	"github.com/onsi/ginkgo/v2"
+	"github.com/onsi/gomega"
 
 	o2types "github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/o2-client/pkg/models"
 )
@@ -99,7 +99,8 @@ type ValidationResult struct {
 }
 
 // O2 test scenarios covering various interface operations
-var o2TestScenarios = []struct { // nolint:unused // TODO: implement additional test scenarios
+/* // nolint:unused // TODO: implement additional test scenarios
+var o2TestScenarios = []struct {
 	name         string
 	description  string
 	testType     string // "o2ims", "o2dms", "integration"
@@ -142,44 +143,45 @@ var o2TestScenarios = []struct { // nolint:unused // TODO: implement additional 
 		operations:   []string{"discover", "select", "create", "deploy", "validate", "cleanup"},
 	},
 }
+*/
 
-var _ = Describe("O2 Interface Integration Tests", func() {
+var _ = ginkgo.Describe("O2 Interface Integration Tests", func() {
 	var suite *O2InterfaceTestSuite
 
-	BeforeEach(func() {
+	ginkgo.BeforeEach(func() {
 		suite = setupO2InterfaceTestSuite()
 	})
 
-	AfterEach(func() {
+	ginkgo.AfterEach(func() {
 		teardownO2InterfaceTestSuite(suite)
 	})
 
-	Context("O2IMS Infrastructure Management Service Tests", func() {
-		It("should discover and inventory infrastructure resources", func() {
-			By("Testing infrastructure discovery via O2IMS")
+	ginkgo.Context("O2IMS Infrastructure Management Service Tests", func() {
+		ginkgo.It("should discover and inventory infrastructure resources", func() {
+			ginkgo.By("Testing infrastructure discovery via O2IMS")
 
 			result := suite.testInfrastructureDiscovery()
 			suite.testResults.O2IMSTests = append(suite.testResults.O2IMSTests, result)
 
-			Expect(result.Success).To(BeTrue(), "Infrastructure discovery should succeed")
-			Expect(result.ResponseStatus).To(Equal(200), "Should return HTTP 200")
-			Expect(result.ResponseTime).To(BeNumerically("<=", 5*time.Second),
+			gomega.Expect(result.Success).To(gomega.BeTrue(), "Infrastructure discovery should succeed")
+			gomega.Expect(result.ResponseStatus).To(gomega.Equal(200), "Should return HTTP 200")
+			gomega.Expect(result.ResponseTime).To(gomega.BeNumerically("<=", 5*time.Second),
 				"Response time should be under 5 seconds")
 
 			// Validate response structure
 			infraResources := result.ResponsePayload.([]o2types.InfrastructureResource)
-			Expect(len(infraResources)).To(BeNumerically(">", 0),
+			gomega.Expect(len(infraResources)).To(gomega.BeNumerically(">", 0),
 				"Should discover at least one infrastructure resource")
 
 			for _, resource := range infraResources {
-				Expect(resource.ID).NotTo(BeEmpty(), "Resource should have valid ID")
-				Expect(resource.Type).NotTo(BeEmpty(), "Resource should have valid type")
-				Expect(resource.Status).To(Equal("available"), "Resource should be available")
+				gomega.Expect(resource.ID).NotTo(gomega.BeEmpty(), "Resource should have valid ID")
+				gomega.Expect(resource.Type).NotTo(gomega.BeEmpty(), "Resource should have valid type")
+				gomega.Expect(resource.Status).To(gomega.Equal("available"), "Resource should be available")
 			}
 		})
 
-		It("should manage resource pools effectively", func() {
-			By("Creating a new resource pool")
+		ginkgo.It("should manage resource pools effectively", func() {
+			ginkgo.By("Creating a new resource pool")
 
 			poolSpec := o2types.ResourcePoolSpec{
 				Name:        "test-pool-01",
@@ -203,47 +205,47 @@ var _ = Describe("O2 Interface Integration Tests", func() {
 			createResult := suite.testResourcePoolCreate(poolSpec)
 			suite.testResults.O2IMSTests = append(suite.testResults.O2IMSTests, createResult)
 
-			Expect(createResult.Success).To(BeTrue(), "Resource pool creation should succeed")
-			Expect(createResult.ResponseStatus).To(Equal(201), "Should return HTTP 201")
+			gomega.Expect(createResult.Success).To(gomega.BeTrue(), "Resource pool creation should succeed")
+			gomega.Expect(createResult.ResponseStatus).To(gomega.Equal(201), "Should return HTTP 201")
 
 			poolID := createResult.ResponsePayload.(o2types.ResourcePool).ID
 
-			By("Updating the resource pool")
+			ginkgo.By("Updating the resource pool")
 			updateSpec := poolSpec
 			updateSpec.Description = "Updated test resource pool"
 
 			updateResult := suite.testResourcePoolUpdate(poolID, updateSpec)
 			suite.testResults.O2IMSTests = append(suite.testResults.O2IMSTests, updateResult)
 
-			Expect(updateResult.Success).To(BeTrue(), "Resource pool update should succeed")
+			gomega.Expect(updateResult.Success).To(gomega.BeTrue(), "Resource pool update should succeed")
 
-			By("Listing resource pools")
+			ginkgo.By("Listing resource pools")
 			listResult := suite.testResourcePoolList()
 			suite.testResults.O2IMSTests = append(suite.testResults.O2IMSTests, listResult)
 
-			Expect(listResult.Success).To(BeTrue(), "Resource pool listing should succeed")
+			gomega.Expect(listResult.Success).To(gomega.BeTrue(), "Resource pool listing should succeed")
 
 			pools := listResult.ResponsePayload.([]o2types.ResourcePool)
 			found := false
 			for _, pool := range pools {
 				if pool.ID == poolID {
 					found = true
-					Expect(pool.Spec.Description).To(Equal(updateSpec.Description),
+					gomega.Expect(pool.Spec.Description).To(gomega.Equal(updateSpec.Description),
 						"Pool should reflect updated description")
 					break
 				}
 			}
-			Expect(found).To(BeTrue(), "Created pool should be in the list")
+			gomega.Expect(found).To(gomega.BeTrue(), "Created pool should be in the list")
 
-			By("Deleting the resource pool")
+			ginkgo.By("Deleting the resource pool")
 			deleteResult := suite.testResourcePoolDelete(poolID)
 			suite.testResults.O2IMSTests = append(suite.testResults.O2IMSTests, deleteResult)
 
-			Expect(deleteResult.Success).To(BeTrue(), "Resource pool deletion should succeed")
+			gomega.Expect(deleteResult.Success).To(gomega.BeTrue(), "Resource pool deletion should succeed")
 		})
 
-		It("should handle subscription and notification mechanisms", func() {
-			By("Creating a subscription for infrastructure events")
+		ginkgo.It("should handle subscription and notification mechanisms", func() {
+			ginkgo.By("Creating a subscription for infrastructure events")
 
 			subscriptionSpec := o2types.SubscriptionSpec{
 				Filter: o2types.EventFilter{
@@ -257,25 +259,25 @@ var _ = Describe("O2 Interface Integration Tests", func() {
 			subscribeResult := suite.testEventSubscription(subscriptionSpec)
 			suite.testResults.O2IMSTests = append(suite.testResults.O2IMSTests, subscribeResult)
 
-			Expect(subscribeResult.Success).To(BeTrue(), "Event subscription should succeed")
+			gomega.Expect(subscribeResult.Success).To(gomega.BeTrue(), "Event subscription should succeed")
 
 			subscriptionID := subscribeResult.ResponsePayload.(o2types.Subscription).ID
 
-			By("Validating subscription is active")
+			ginkgo.By("Validating subscription is active")
 			validateResult := suite.testSubscriptionValidation(subscriptionID)
-			Expect(validateResult.Success).To(BeTrue(), "Subscription should be active")
+			gomega.Expect(validateResult.Success).To(gomega.BeTrue(), "Subscription should be active")
 
-			By("Unsubscribing from events")
+			ginkgo.By("Unsubscribing from events")
 			unsubscribeResult := suite.testEventUnsubscription(subscriptionID)
 			suite.testResults.O2IMSTests = append(suite.testResults.O2IMSTests, unsubscribeResult)
 
-			Expect(unsubscribeResult.Success).To(BeTrue(), "Event unsubscription should succeed")
+			gomega.Expect(unsubscribeResult.Success).To(gomega.BeTrue(), "Event unsubscription should succeed")
 		})
 	})
 
-	Context("O2DMS Deployment Management Service Tests", func() {
-		It("should handle complete VNF deployment lifecycle", func() {
-			By("Creating VNF deployment request")
+	ginkgo.Context("O2DMS Deployment Management Service Tests", func() {
+		ginkgo.It("should handle complete VNF deployment lifecycle", func() {
+			ginkgo.By("Creating VNF deployment request")
 
 			vnfSpec := o2types.VNFDeploymentSpec{
 				Name:       "test-upf-vnf",
@@ -293,49 +295,49 @@ var _ = Describe("O2 Interface Integration Tests", func() {
 			createResult := suite.testVNFDeploymentCreate(vnfSpec)
 			suite.testResults.O2DMSTests = append(suite.testResults.O2DMSTests, createResult)
 
-			Expect(createResult.Success).To(BeTrue(), "VNF deployment creation should succeed")
-			Expect(createResult.ResponseStatus).To(Equal(201), "Should return HTTP 201")
+			gomega.Expect(createResult.Success).To(gomega.BeTrue(), "VNF deployment creation should succeed")
+			gomega.Expect(createResult.ResponseStatus).To(gomega.Equal(201), "Should return HTTP 201")
 
 			deploymentID := createResult.ResponsePayload.(o2types.VNFDeployment).ID
 
-			By("Deploying the VNF")
+			ginkgo.By("Deploying the VNF")
 			deployResult := suite.testVNFDeploy(deploymentID)
 			suite.testResults.O2DMSTests = append(suite.testResults.O2DMSTests, deployResult)
 
-			Expect(deployResult.Success).To(BeTrue(), "VNF deployment should succeed")
+			gomega.Expect(deployResult.Success).To(gomega.BeTrue(), "VNF deployment should succeed")
 
-			By("Waiting for deployment to complete")
+			ginkgo.By("Waiting for deployment to complete")
 			deploymentStatus := suite.waitForDeploymentComplete(deploymentID, 10*time.Minute)
-			Expect(deploymentStatus).To(Equal("deployed"), "VNF should reach deployed state")
+			gomega.Expect(deploymentStatus).To(gomega.Equal("deployed"), "VNF should reach deployed state")
 
-			By("Validating VNF is operational")
+			ginkgo.By("Validating VNF is operational")
 			operationalResult := suite.testVNFOperationalValidation(deploymentID)
-			Expect(operationalResult.Success).To(BeTrue(), "VNF should be operational")
+			gomega.Expect(operationalResult.Success).To(gomega.BeTrue(), "VNF should be operational")
 
-			By("Updating VNF configuration")
+			ginkgo.By("Updating VNF configuration")
 			updateSpec := vnfSpec
 			updateSpec.Parameters["cpu"] = "6"
 
 			updateResult := suite.testVNFDeploymentUpdate(deploymentID, updateSpec)
 			suite.testResults.O2DMSTests = append(suite.testResults.O2DMSTests, updateResult)
 
-			Expect(updateResult.Success).To(BeTrue(), "VNF update should succeed")
+			gomega.Expect(updateResult.Success).To(gomega.BeTrue(), "VNF update should succeed")
 
-			By("Undeploying the VNF")
+			ginkgo.By("Undeploying the VNF")
 			undeployResult := suite.testVNFUndeploy(deploymentID)
 			suite.testResults.O2DMSTests = append(suite.testResults.O2DMSTests, undeployResult)
 
-			Expect(undeployResult.Success).To(BeTrue(), "VNF undeployment should succeed")
+			gomega.Expect(undeployResult.Success).To(gomega.BeTrue(), "VNF undeployment should succeed")
 
-			By("Deleting the VNF deployment")
+			ginkgo.By("Deleting the VNF deployment")
 			deleteResult := suite.testVNFDeploymentDelete(deploymentID)
 			suite.testResults.O2DMSTests = append(suite.testResults.O2DMSTests, deleteResult)
 
-			Expect(deleteResult.Success).To(BeTrue(), "VNF deployment deletion should succeed")
+			gomega.Expect(deleteResult.Success).To(gomega.BeTrue(), "VNF deployment deletion should succeed")
 		})
 
-		It("should handle CNF containerized deployments", func() {
-			By("Creating CNF deployment with Helm charts")
+		ginkgo.It("should handle CNF containerized deployments", func() {
+			ginkgo.By("Creating CNF deployment with Helm charts")
 
 			cnfSpec := o2types.CNFDeploymentSpec{
 				Name:       "test-amf-cnf",
@@ -358,54 +360,54 @@ var _ = Describe("O2 Interface Integration Tests", func() {
 			createResult := suite.testCNFDeploymentCreate(cnfSpec)
 			suite.testResults.O2DMSTests = append(suite.testResults.O2DMSTests, createResult)
 
-			Expect(createResult.Success).To(BeTrue(), "CNF deployment creation should succeed")
+			gomega.Expect(createResult.Success).To(gomega.BeTrue(), "CNF deployment creation should succeed")
 
 			deploymentID := createResult.ResponsePayload.(o2types.CNFDeployment).ID
 
-			By("Deploying the CNF")
+			ginkgo.By("Deploying the CNF")
 			deployResult := suite.testCNFDeploy(deploymentID)
 			suite.testResults.O2DMSTests = append(suite.testResults.O2DMSTests, deployResult)
 
-			Expect(deployResult.Success).To(BeTrue(), "CNF deployment should succeed")
+			gomega.Expect(deployResult.Success).To(gomega.BeTrue(), "CNF deployment should succeed")
 
-			By("Scaling the CNF")
+			ginkgo.By("Scaling the CNF")
 			scaleResult := suite.testCNFScale(deploymentID, 5) // Scale to 5 replicas
 			suite.testResults.O2DMSTests = append(suite.testResults.O2DMSTests, scaleResult)
 
-			Expect(scaleResult.Success).To(BeTrue(), "CNF scaling should succeed")
+			gomega.Expect(scaleResult.Success).To(gomega.BeTrue(), "CNF scaling should succeed")
 
-			By("Validating scaled deployment")
+			ginkgo.By("Validating scaled deployment")
 			scaledStatus := suite.validateCNFScale(deploymentID, 5)
-			Expect(scaledStatus).To(BeTrue(), "CNF should be scaled correctly")
+			gomega.Expect(scaledStatus).To(gomega.BeTrue(), "CNF should be scaled correctly")
 
-			By("Cleaning up CNF deployment")
+			ginkgo.By("Cleaning up CNF deployment")
 			deleteResult := suite.testCNFDeploymentDelete(deploymentID)
 			suite.testResults.O2DMSTests = append(suite.testResults.O2DMSTests, deleteResult)
 
-			Expect(deleteResult.Success).To(BeTrue(), "CNF deployment deletion should succeed")
+			gomega.Expect(deleteResult.Success).To(gomega.BeTrue(), "CNF deployment deletion should succeed")
 		})
 	})
 
-	Context("End-to-End O2 Integration Tests", func() {
-		It("should complete infrastructure discovery to VNF deployment workflow", func() {
-			By("Phase 1: Infrastructure Discovery")
+	ginkgo.Context("End-to-End O2 Integration Tests", func() {
+		ginkgo.It("should complete infrastructure discovery to VNF deployment workflow", func() {
+			ginkgo.By("Phase 1: Infrastructure Discovery")
 			discoveryStart := time.Now()
 
 			infraResult := suite.testInfrastructureDiscovery()
-			Expect(infraResult.Success).To(BeTrue(), "Infrastructure discovery should succeed")
+			gomega.Expect(infraResult.Success).To(gomega.BeTrue(), "Infrastructure discovery should succeed")
 
 			discoveryDuration := time.Since(discoveryStart)
 
-			By("Phase 2: Resource Pool Selection")
+			ginkgo.By("Phase 2: Resource Pool Selection")
 			selectionStart := time.Now()
 
 			infraResources := infraResult.ResponsePayload.([]o2types.InfrastructureResource)
 			selectedResource := suite.selectOptimalResource(infraResources, "edge", 4, "8Gi")
-			Expect(selectedResource).NotTo(BeNil(), "Should find suitable infrastructure resource")
+			gomega.Expect(selectedResource).NotTo(gomega.BeNil(), "Should find suitable infrastructure resource")
 
 			selectionDuration := time.Since(selectionStart)
 
-			By("Phase 3: VNF Deployment Creation")
+			ginkgo.By("Phase 3: VNF Deployment Creation")
 			creationStart := time.Now()
 
 			vnfSpec := o2types.VNFDeploymentSpec{
@@ -419,31 +421,31 @@ var _ = Describe("O2 Interface Integration Tests", func() {
 			}
 
 			createResult := suite.testVNFDeploymentCreate(vnfSpec)
-			Expect(createResult.Success).To(BeTrue(), "VNF creation should succeed")
+			gomega.Expect(createResult.Success).To(gomega.BeTrue(), "VNF creation should succeed")
 
 			creationDuration := time.Since(creationStart)
 			deploymentID := createResult.ResponsePayload.(o2types.VNFDeployment).ID
 
-			By("Phase 4: VNF Deployment")
+			ginkgo.By("Phase 4: VNF Deployment")
 			deploymentStart := time.Now()
 
 			deployResult := suite.testVNFDeploy(deploymentID)
-			Expect(deployResult.Success).To(BeTrue(), "VNF deployment should succeed")
+			gomega.Expect(deployResult.Success).To(gomega.BeTrue(), "VNF deployment should succeed")
 
 			deploymentStatus := suite.waitForDeploymentComplete(deploymentID, 8*time.Minute)
-			Expect(deploymentStatus).To(Equal("deployed"), "VNF should be deployed")
+			gomega.Expect(deploymentStatus).To(gomega.Equal("deployed"), "VNF should be deployed")
 
 			deploymentDuration := time.Since(deploymentStart)
 
-			By("Phase 5: Validation")
+			ginkgo.By("Phase 5: Validation")
 			validationStart := time.Now()
 
 			operationalResult := suite.testVNFOperationalValidation(deploymentID)
-			Expect(operationalResult.Success).To(BeTrue(), "VNF should be operational")
+			gomega.Expect(operationalResult.Success).To(gomega.BeTrue(), "VNF should be operational")
 
 			validationDuration := time.Since(validationStart)
 
-			By("Phase 6: Cleanup")
+			ginkgo.By("Phase 6: Cleanup")
 			cleanupStart := time.Now()
 
 			suite.testVNFUndeploy(deploymentID)
@@ -466,14 +468,14 @@ var _ = Describe("O2 Interface Integration Tests", func() {
 			suite.testResults.IntegrationTests = append(suite.testResults.IntegrationTests, integrationResult)
 
 			// Validate total time is within acceptable limits (< 10 minutes for E2E)
-			Expect(integrationResult.TotalDuration).To(BeNumerically("<=", 10*time.Minute),
+			gomega.Expect(integrationResult.TotalDuration).To(gomega.BeNumerically("<=", 10*time.Minute),
 				"E2E workflow should complete within 10 minutes")
 
-			By(fmt.Sprintf("✓ E2E workflow completed in %v", integrationResult.TotalDuration))
+			ginkgo.By(fmt.Sprintf("✓ E2E workflow completed in %v", integrationResult.TotalDuration))
 		})
 
-		It("should handle concurrent multi-VNF deployments", func() {
-			By("Initiating concurrent VNF deployments")
+		ginkgo.It("should handle concurrent multi-VNF deployments", func() {
+			ginkgo.By("Initiating concurrent VNF deployments")
 
 			vnfSpecs := []o2types.VNFDeploymentSpec{
 				{
@@ -498,7 +500,7 @@ var _ = Describe("O2 Interface Integration Tests", func() {
 			// Create all deployments
 			for _, spec := range vnfSpecs {
 				createResult := suite.testVNFDeploymentCreate(spec)
-				Expect(createResult.Success).To(BeTrue())
+				gomega.Expect(createResult.Success).To(gomega.BeTrue())
 				deploymentIDs = append(deploymentIDs, createResult.ResponsePayload.(o2types.VNFDeployment).ID)
 			}
 
@@ -506,9 +508,9 @@ var _ = Describe("O2 Interface Integration Tests", func() {
 			concurrentStart := time.Now()
 			for _, deploymentID := range deploymentIDs {
 				go func(id string) {
-					defer GinkgoRecover()
+					defer ginkgo.GinkgoRecover()
 					deployResult := suite.testVNFDeploy(id)
-					Expect(deployResult.Success).To(BeTrue())
+					gomega.Expect(deployResult.Success).To(gomega.BeTrue())
 				}(deploymentID)
 			}
 
@@ -523,8 +525,8 @@ var _ = Describe("O2 Interface Integration Tests", func() {
 
 			concurrentDuration := time.Since(concurrentStart)
 
-			Expect(allDeployed).To(BeTrue(), "All concurrent deployments should succeed")
-			Expect(concurrentDuration).To(BeNumerically("<=", 10*time.Minute),
+			gomega.Expect(allDeployed).To(gomega.BeTrue(), "All concurrent deployments should succeed")
+			gomega.Expect(concurrentDuration).To(gomega.BeNumerically("<=", 10*time.Minute),
 				"Concurrent deployments should complete within 10 minutes")
 
 			// Cleanup
@@ -535,9 +537,9 @@ var _ = Describe("O2 Interface Integration Tests", func() {
 		})
 	})
 
-	Context("O2 Interface Performance and Reliability", func() {
-		It("should meet performance requirements for API operations", func() {
-			By("Measuring O2IMS API performance")
+	ginkgo.Context("O2 Interface Performance and Reliability", func() {
+		ginkgo.It("should meet performance requirements for API operations", func() {
+			ginkgo.By("Measuring O2IMS API performance")
 
 			performanceStart := time.Now()
 			responseTimes := make([]time.Duration, 0)
@@ -549,8 +551,8 @@ var _ = Describe("O2 Interface Integration Tests", func() {
 				callDuration := time.Since(callStart)
 				responseTimes = append(responseTimes, callDuration)
 
-				Expect(result.Success).To(BeTrue(), "API call should succeed")
-				Expect(callDuration).To(BeNumerically("<=", 2*time.Second),
+				gomega.Expect(result.Success).To(gomega.BeTrue(), "API call should succeed")
+				gomega.Expect(callDuration).To(gomega.BeNumerically("<=", 2*time.Second),
 					"Individual API call should be under 2 seconds")
 			}
 
@@ -563,15 +565,15 @@ var _ = Describe("O2 Interface Integration Tests", func() {
 				ThroughputRequestsPerSec: 50.0 / time.Since(performanceStart).Seconds(),
 			}
 
-			Expect(avgResponseTime).To(BeNumerically("<=", 500*time.Millisecond),
+			gomega.Expect(avgResponseTime).To(gomega.BeNumerically("<=", 500*time.Millisecond),
 				"Average response time should be under 500ms")
 
-			Expect(p95ResponseTime).To(BeNumerically("<=", 1*time.Second),
+			gomega.Expect(p95ResponseTime).To(gomega.BeNumerically("<=", 1*time.Second),
 				"P95 response time should be under 1 second")
 		})
 
-		It("should handle error conditions gracefully", func() {
-			By("Testing invalid resource requests")
+		ginkgo.It("should handle error conditions gracefully", func() {
+			ginkgo.By("Testing invalid resource requests")
 
 			invalidSpec := o2types.VNFDeploymentSpec{
 				Name:       "", // Invalid empty name
@@ -580,21 +582,21 @@ var _ = Describe("O2 Interface Integration Tests", func() {
 			}
 
 			errorResult := suite.testVNFDeploymentCreate(invalidSpec)
-			Expect(errorResult.Success).To(BeFalse(), "Invalid request should fail")
-			Expect(errorResult.ResponseStatus).To(Equal(400), "Should return HTTP 400 for bad request")
+			gomega.Expect(errorResult.Success).To(gomega.BeFalse(), "Invalid request should fail")
+			gomega.Expect(errorResult.ResponseStatus).To(gomega.Equal(400), "Should return HTTP 400 for bad request")
 
-			By("Testing non-existent resource operations")
+			ginkgo.By("Testing non-existent resource operations")
 
 			nonExistentResult := suite.testVNFDeploymentGet("non-existent-id")
-			Expect(nonExistentResult.Success).To(BeFalse(), "Non-existent resource request should fail")
-			Expect(nonExistentResult.ResponseStatus).To(Equal(404), "Should return HTTP 404 for not found")
+			gomega.Expect(nonExistentResult.Success).To(gomega.BeFalse(), "Non-existent resource request should fail")
+			gomega.Expect(nonExistentResult.ResponseStatus).To(gomega.Equal(404), "Should return HTTP 404 for not found")
 		})
 	})
 })
 
 func TestO2Interface(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "O2 Interface Integration Suite")
+	gomega.RegisterFailHandler(ginkgo.Fail)
+	ginkgo.RunSpecs(t, "O2 Interface Integration Suite")
 }
 
 // O2InterfaceTestSuite implementation
@@ -871,7 +873,7 @@ func (s *O2InterfaceTestSuite) testVNFDeploy(deploymentID string) O2DMSTestResul
 	return result
 }
 
-func (s *O2InterfaceTestSuite) waitForDeploymentComplete(deploymentID string, timeout time.Duration) string {
+func (s *O2InterfaceTestSuite) waitForDeploymentComplete(_ string, timeout time.Duration) string {
 	// TODO: Implement actual deployment status polling
 	time.Sleep(5 * time.Second) // Simulate deployment time
 	return "deployed"
@@ -1027,7 +1029,7 @@ func (s *O2InterfaceTestSuite) testCNFScale(deploymentID string, replicas int) O
 	return result
 }
 
-func (s *O2InterfaceTestSuite) validateCNFScale(deploymentID string, expectedReplicas int) bool {
+func (s *O2InterfaceTestSuite) validateCNFScale(_ string, expectedReplicas int) bool {
 	// TODO: Implement actual CNF scale validation
 	return true
 }
@@ -1051,7 +1053,7 @@ func (s *O2InterfaceTestSuite) testCNFDeploymentDelete(deploymentID string) O2DM
 
 // Utility methods
 
-func (s *O2InterfaceTestSuite) selectOptimalResource(resources []o2types.InfrastructureResource, location string, cpu int, memory string) *o2types.InfrastructureResource {
+func (s *O2InterfaceTestSuite) selectOptimalResource(resources []o2types.InfrastructureResource, location string, _ int, memory string) *o2types.InfrastructureResource {
 	for _, resource := range resources {
 		if strings.Contains(resource.Location, location) && resource.Status == "available" {
 			return &resource

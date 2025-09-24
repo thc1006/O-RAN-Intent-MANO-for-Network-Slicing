@@ -732,143 +732,171 @@ func (csm *ConfigSyncManager) buildRootSyncSpec(spec RootSyncSpec) map[string]in
 	}
 
 	if spec.Git != nil {
-		gitSpec := map[string]interface{}{
-			"repo": spec.Git.Repo,
-		}
-
-		if spec.Git.Branch != "" {
-			gitSpec["branch"] = spec.Git.Branch
-		}
-
-		if spec.Git.Revision != "" {
-			gitSpec["revision"] = spec.Git.Revision
-		}
-
-		if spec.Git.Dir != "" {
-			gitSpec["dir"] = spec.Git.Dir
-		}
-
-		if spec.Git.Auth != "" {
-			gitSpec["auth"] = spec.Git.Auth
-		}
-
-		if spec.Git.SecretRef != nil {
-			secretRef := map[string]interface{}{
-				"name": spec.Git.SecretRef.Name,
-			}
-			if spec.Git.SecretRef.Key != "" {
-				secretRef["key"] = spec.Git.SecretRef.Key
-			}
-			gitSpec["secretRef"] = secretRef
-		}
-
-		if spec.Git.GCPServiceAccountEmail != "" {
-			gitSpec["gcpServiceAccountEmail"] = spec.Git.GCPServiceAccountEmail
-		}
-
-		if spec.Git.NoSSLVerify {
-			gitSpec["noSSLVerify"] = true
-		}
-
-		if spec.Git.CACertSecretRef != nil {
-			caCertRef := map[string]interface{}{
-				"name": spec.Git.CACertSecretRef.Name,
-			}
-			if spec.Git.CACertSecretRef.Key != "" {
-				caCertRef["key"] = spec.Git.CACertSecretRef.Key
-			}
-			gitSpec["caCertSecretRef"] = caCertRef
-		}
-
-		result["git"] = gitSpec
+		result["git"] = csm.buildGitSyncSpec(spec.Git)
 	}
 
 	if spec.OCI != nil {
-		ociSpec := map[string]interface{}{
-			"image": spec.OCI.Image,
-		}
-
-		if spec.OCI.Dir != "" {
-			ociSpec["dir"] = spec.OCI.Dir
-		}
-
-		if spec.OCI.Auth != "" {
-			ociSpec["auth"] = spec.OCI.Auth
-		}
-
-		if spec.OCI.GCPServiceAccountEmail != "" {
-			ociSpec["gcpServiceAccountEmail"] = spec.OCI.GCPServiceAccountEmail
-		}
-
-		result["oci"] = ociSpec
+		result["oci"] = csm.buildOCISyncSpec(spec.OCI)
 	}
 
 	if spec.Override != nil {
-		overrideSpec := map[string]interface{}{}
+		result["override"] = csm.buildOverrideSpec(spec.Override)
+	}
 
-		if spec.Override.StatusMode != "" {
-			overrideSpec["statusMode"] = spec.Override.StatusMode
+	return result
+}
+
+// buildGitSyncSpec builds Git sync specification
+func (csm *ConfigSyncManager) buildGitSyncSpec(git *GitSyncSpec) map[string]interface{} {
+	gitSpec := map[string]interface{}{
+		"repo": git.Repo,
+	}
+
+	if git.Branch != "" {
+		gitSpec["branch"] = git.Branch
+	}
+
+	if git.Revision != "" {
+		gitSpec["revision"] = git.Revision
+	}
+
+	if git.Dir != "" {
+		gitSpec["dir"] = git.Dir
+	}
+
+	if git.Auth != "" {
+		gitSpec["auth"] = git.Auth
+	}
+
+	if git.SecretRef != nil {
+		gitSpec["secretRef"] = csm.buildSecretReference(git.SecretRef)
+	}
+
+	if git.GCPServiceAccountEmail != "" {
+		gitSpec["gcpServiceAccountEmail"] = git.GCPServiceAccountEmail
+	}
+
+	if git.NoSSLVerify {
+		gitSpec["noSSLVerify"] = true
+	}
+
+	if git.CACertSecretRef != nil {
+		gitSpec["caCertSecretRef"] = csm.buildSecretReference(git.CACertSecretRef)
+	}
+
+	return gitSpec
+}
+
+// buildOCISyncSpec builds OCI sync specification
+func (csm *ConfigSyncManager) buildOCISyncSpec(oci *OCISyncSpec) map[string]interface{} {
+	ociSpec := map[string]interface{}{
+		"image": oci.Image,
+	}
+
+	if oci.Dir != "" {
+		ociSpec["dir"] = oci.Dir
+	}
+
+	if oci.Auth != "" {
+		ociSpec["auth"] = oci.Auth
+	}
+
+	if oci.GCPServiceAccountEmail != "" {
+		ociSpec["gcpServiceAccountEmail"] = oci.GCPServiceAccountEmail
+	}
+
+	return ociSpec
+}
+
+// buildOverrideSpec builds override specification
+func (csm *ConfigSyncManager) buildOverrideSpec(override *OverrideSpec) map[string]interface{} {
+	overrideSpec := map[string]interface{}{}
+
+	if override.StatusMode != "" {
+		overrideSpec["statusMode"] = override.StatusMode
+	}
+
+	if override.ReconcileTimeout != nil {
+		overrideSpec["reconcileTimeout"] = *override.ReconcileTimeout
+	}
+
+	if override.APIServerTimeout != nil {
+		overrideSpec["apiServerTimeout"] = *override.APIServerTimeout
+	}
+
+	if len(override.Resources) > 0 {
+		overrideSpec["resources"] = csm.buildResourceOverrides(override.Resources)
+	}
+
+	if override.GitSyncDepth != nil {
+		overrideSpec["gitSyncDepth"] = *override.GitSyncDepth
+	}
+
+	if override.EnableShellInRendering {
+		overrideSpec["enableShellInRendering"] = true
+	}
+
+	return overrideSpec
+}
+
+// buildSecretReference builds secret reference specification
+func (csm *ConfigSyncManager) buildSecretReference(secretRef *SecretReference) map[string]interface{} {
+	ref := map[string]interface{}{
+		"name": secretRef.Name,
+	}
+
+	if secretRef.Key != "" {
+		ref["key"] = secretRef.Key
+	}
+
+	return ref
+}
+
+// buildResourceOverrides builds resource override specifications
+func (csm *ConfigSyncManager) buildResourceOverrides(resources []ResourceOverride) []map[string]interface{} {
+	result := make([]map[string]interface{}, len(resources))
+
+	for i, resource := range resources {
+		resourceSpec := map[string]interface{}{
+			"kind": resource.Kind,
 		}
 
-		if spec.Override.ReconcileTimeout != nil {
-			overrideSpec["reconcileTimeout"] = *spec.Override.ReconcileTimeout
+		if resource.Group != "" {
+			resourceSpec["group"] = resource.Group
 		}
 
-		if spec.Override.APIServerTimeout != nil {
-			overrideSpec["apiServerTimeout"] = *spec.Override.APIServerTimeout
+		if resource.Version != "" {
+			resourceSpec["version"] = resource.Version
 		}
 
-		if len(spec.Override.Resources) > 0 {
-			resources := make([]map[string]interface{}, len(spec.Override.Resources))
-			for i, resource := range spec.Override.Resources {
-				resourceSpec := map[string]interface{}{
-					"kind": resource.Kind,
-				}
-
-				if resource.Group != "" {
-					resourceSpec["group"] = resource.Group
-				}
-
-				if resource.Version != "" {
-					resourceSpec["version"] = resource.Version
-				}
-
-				if resource.ContainerResources != nil {
-					containerRes := map[string]interface{}{}
-
-					if resource.ContainerResources.CPURequest != "" {
-						containerRes["cpuRequest"] = resource.ContainerResources.CPURequest
-					}
-
-					if resource.ContainerResources.CPULimit != "" {
-						containerRes["cpuLimit"] = resource.ContainerResources.CPULimit
-					}
-
-					if resource.ContainerResources.MemoryRequest != "" {
-						containerRes["memoryRequest"] = resource.ContainerResources.MemoryRequest
-					}
-
-					if resource.ContainerResources.MemoryLimit != "" {
-						containerRes["memoryLimit"] = resource.ContainerResources.MemoryLimit
-					}
-
-					resourceSpec["containerResources"] = containerRes
-				}
-
-				resources[i] = resourceSpec
-			}
-			overrideSpec["resources"] = resources
+		if resource.ContainerResources != nil {
+			resourceSpec["containerResources"] = csm.buildContainerResources(resource.ContainerResources)
 		}
 
-		if spec.Override.GitSyncDepth != nil {
-			overrideSpec["gitSyncDepth"] = *spec.Override.GitSyncDepth
-		}
+		result[i] = resourceSpec
+	}
 
-		if spec.Override.EnableShellInRendering {
-			overrideSpec["enableShellInRendering"] = true
-		}
+	return result
+}
 
-		result["override"] = overrideSpec
+// buildContainerResources builds container resources specification
+func (csm *ConfigSyncManager) buildContainerResources(containerRes *ContainerResourcesSpec) map[string]interface{} {
+	result := map[string]interface{}{}
+
+	if containerRes.CPURequest != "" {
+		result["cpuRequest"] = containerRes.CPURequest
+	}
+
+	if containerRes.CPULimit != "" {
+		result["cpuLimit"] = containerRes.CPULimit
+	}
+
+	if containerRes.MemoryRequest != "" {
+		result["memoryRequest"] = containerRes.MemoryRequest
+	}
+
+	if containerRes.MemoryLimit != "" {
+		result["memoryLimit"] = containerRes.MemoryLimit
 	}
 
 	return result
@@ -1093,7 +1121,22 @@ func (csm *ConfigSyncManager) parseRootSyncStatus(status map[string]interface{})
 func (csm *ConfigSyncManager) parseSyncStatus(obj *unstructured.Unstructured) (*SyncStatusReport, error) {
 	report := &SyncStatusReport{}
 
-	// Parse metadata
+	csm.parseSyncStatusMetadata(obj, report)
+
+	status, found, err := unstructured.NestedMap(obj.Object, "status")
+	if err != nil || !found {
+		report.Overall = "Unknown"
+		return report, nil
+	}
+
+	csm.parseSyncStatusDetails(status, report)
+	csm.parseSyncStatusConditions(status, report)
+
+	return report, nil
+}
+
+// parseSyncStatusMetadata parses metadata from sync status object
+func (csm *ConfigSyncManager) parseSyncStatusMetadata(obj *unstructured.Unstructured, report *SyncStatusReport) {
 	if name, found, err := unstructured.NestedString(obj.Object, "metadata", "name"); err == nil && found {
 		report.Name = name
 	}
@@ -1105,49 +1148,57 @@ func (csm *ConfigSyncManager) parseSyncStatus(obj *unstructured.Unstructured) (*
 	if kind, found, err := unstructured.NestedString(obj.Object, "kind"); err == nil && found {
 		report.Type = kind
 	}
+}
 
-	// Parse status
-	status, found, err := unstructured.NestedMap(obj.Object, "status")
-	if err != nil || !found {
-		report.Overall = "Unknown"
-		return report, nil
-	}
-
+// parseSyncStatusDetails parses status details
+func (csm *ConfigSyncManager) parseSyncStatusDetails(status map[string]interface{}, report *SyncStatusReport) {
 	// Determine overall status
 	report.Overall = csm.determineOverallStatus(status)
 
 	if lastSyncedCommit, found, err := unstructured.NestedString(status, "lastSyncedCommit"); err == nil && found {
 		report.LastSyncedCommit = lastSyncedCommit
 	}
+}
 
-	// Parse conditions
-	if conditions, found, err := unstructured.NestedSlice(status, "conditions"); err == nil && found {
-		for _, conditionInterface := range conditions {
-			if condition, ok := conditionInterface.(map[string]interface{}); ok {
-				syncCondition := RootSyncCondition{}
-
-				if condType, found, err := unstructured.NestedString(condition, "type"); err == nil && found {
-					syncCondition.Type = condType
-				}
-
-				if condStatus, found, err := unstructured.NestedString(condition, "status"); err == nil && found {
-					syncCondition.Status = condStatus
-				}
-
-				if reason, found, err := unstructured.NestedString(condition, "reason"); err == nil && found {
-					syncCondition.Reason = reason
-				}
-
-				if message, found, err := unstructured.NestedString(condition, "message"); err == nil && found {
-					syncCondition.Message = message
-				}
-
-				report.Conditions = append(report.Conditions, syncCondition)
-			}
-		}
+// parseSyncStatusConditions parses sync status conditions
+func (csm *ConfigSyncManager) parseSyncStatusConditions(status map[string]interface{}, report *SyncStatusReport) {
+	conditions, found, err := unstructured.NestedSlice(status, "conditions")
+	if err != nil || !found {
+		return
 	}
 
-	return report, nil
+	for _, conditionInterface := range conditions {
+		condition, ok := conditionInterface.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		syncCondition := csm.parseSingleCondition(condition)
+		report.Conditions = append(report.Conditions, syncCondition)
+	}
+}
+
+// parseSingleCondition parses a single sync condition
+func (csm *ConfigSyncManager) parseSingleCondition(condition map[string]interface{}) RootSyncCondition {
+	syncCondition := RootSyncCondition{}
+
+	if condType, found, err := unstructured.NestedString(condition, "type"); err == nil && found {
+		syncCondition.Type = condType
+	}
+
+	if condStatus, found, err := unstructured.NestedString(condition, "status"); err == nil && found {
+		syncCondition.Status = condStatus
+	}
+
+	if reason, found, err := unstructured.NestedString(condition, "reason"); err == nil && found {
+		syncCondition.Reason = reason
+	}
+
+	if message, found, err := unstructured.NestedString(condition, "message"); err == nil && found {
+		syncCondition.Message = message
+	}
+
+	return syncCondition
 }
 
 // determineOverallStatus determines overall sync status

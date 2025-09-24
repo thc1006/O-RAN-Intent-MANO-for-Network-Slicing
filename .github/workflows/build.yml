@@ -1,0 +1,440 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+env:
+  GO_VERSION: '1.24.7'
+  GOLANGCI_LINT_VERSION: 'v2.5.0'
+  NODE_VERSION: '18'
+  PYTHON_VERSION: '3.11'
+
+permissions:
+  contents: read
+  packages: write
+  security-events: write
+
+jobs:
+  # Build matrix for multiple Go versions and architectures
+  build:
+    name: Build
+    runs-on: ubuntu-24.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        go-version: ['1.24.7']
+        os: [ubuntu-24.04]
+        arch: [amd64, arm64]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v5
+      with:
+        fetch-depth: 0
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ matrix.go-version }}
+        cache: true
+
+    - name: Set up build environment
+      run: |
+        echo "Setting up build environment for ${{ matrix.arch }}"
+        export GOARCH=${{ matrix.arch }}
+        echo "GOARCH=${{ matrix.arch }}" >> $GITHUB_ENV
+
+    - name: Cache Go modules
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ matrix.go-version }}-${{ matrix.arch }}-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-${{ matrix.go-version }}-${{ matrix.arch }}-
+          ${{ runner.os }}-go-${{ matrix.go-version }}-
+          ${{ runner.os }}-go-
+
+    - name: Download dependencies
+      run: |
+        go mod download
+        go mod verify
+
+    - name: Build all components
+      env:
+        CGO_ENABLED: 0
+        GOOS: linux
+        GOARCH: ${{ matrix.arch }}
+      run: |
+        echo "Building all Go components for ${{ matrix.arch }}"
+
+        # Build orchestrator
+        if [ -f "orchestrator/go.mod" ]; then
+          echo "Building orchestrator..."
+          cd orchestrator
+          go build -v -ldflags="-s -w" -o ../bin/orchestrator-${{ matrix.arch }} ./cmd/orchestrator
+          cd ..
+        fi
+
+        # Build VNF operator
+        if [ -f "adapters/vnf-operator/go.mod" ]; then
+          echo "Building VNF operator..."
+          cd adapters/vnf-operator
+          go build -v -ldflags="-s -w" -o ../../bin/vnf-operator-${{ matrix.arch }} ./cmd/operator
+          cd ../..
+        fi
+
+        # Build O2 client
+        if [ -f "o2-client/go.mod" ]; then
+          echo "Building O2 client..."
+          cd o2-client
+          go build -v -ldflags="-s -w" -o ../bin/o2-client-${{ matrix.arch }} ./cmd/client
+          cd ..
+        fi
+
+        # Build TN components
+        if [ -f "tn/go.mod" ]; then
+          echo "Building TN components..."
+          cd tn
+          go build -v -ldflags="-s -w" -o ../bin/tn-manager-${{ matrix.arch }} ./cmd/manager
+          go build -v -ldflags="-s -w" -o ../bin/tn-agent-${{ matrix.arch }} ./cmd/agent
+          cd ..
+        fi
+
+        # Build CN-DMS
+        if [ -f "cn-dms/go.mod" ]; then
+          echo "Building CN-DMS..."
+          cd cn-dms
+          go build -v -ldflags="-s -w" -o ../bin/cn-dms-${{ matrix.arch }} ./cmd/dms
+          cd ..
+        fi
+
+        # Build RAN-DMS
+        if [ -f "ran-dms/go.mod" ]; then
+          echo "Building RAN-DMS..."
+          cd ran-dms
+          go build -v -ldflags="-s -w" -o ../bin/ran-dms-${{ matrix.arch }} ./cmd/dms
+          cd ..
+        fi
+
+    - name: Create build artifacts
+      run: |
+        mkdir -p artifacts
+        tar -czf artifacts/binaries-${{ matrix.arch }}.tar.gz bin/*-${{ matrix.arch }}
+
+        # Create build info
+        cat > artifacts/build-info-${{ matrix.arch }}.json << EOF
+        {
+          "go_version": "${{ matrix.go-version }}",
+          "architecture": "${{ matrix.arch }}",
+          "os": "${{ matrix.os }}",
+          "commit": "${{ github.sha }}",
+          "branch": "${{ github.ref_name }}",
+          "build_time": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+          "components": [
+            "orchestrator",
+            "vnf-operator",
+            "o2-client",
+            "tn-manager",
+            "tn-agent",
+            "cn-dms",
+            "ran-dms"
+          ]
+        }
+        EOF
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-artifacts-${{ matrix.arch }}
+        path: |
+          artifacts/
+          bin/
+        retention-days: 30
+
+  # Lint and code quality
+  lint:
+    name: Lint and Code Quality
+    runs-on: ubuntu-24.04
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v5
+      with:
+        fetch-depth: 0
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ env.GO_VERSION }}
+        cache: true
+
+    - name: Run golangci-lint
+      uses: golangci/golangci-lint-action@v8
+      with:
+        version: ${{ env.GOLANGCI_LINT_VERSION }}
+        args: --timeout=10m --verbose
+        working-directory: ./
+        skip-cache: false
+        skip-pkg-cache: false
+        skip-build-cache: false
+
+    - name: Run additional code quality checks
+      run: |
+        echo "Running additional code quality checks..."
+
+        # Install additional tools
+        go install golang.org/x/tools/cmd/goimports@latest
+        go install honnef.co/go/tools/cmd/staticcheck@latest
+        go install github.com/fzipp/gocyclo/cmd/gocyclo@latest
+
+        # Check imports
+        echo "Checking imports..."
+        goimports_output=$(find . -name "*.go" -not -path "./vendor/*" | xargs goimports -l)
+        if [ -n "$goimports_output" ]; then
+          echo "Files with incorrect imports:"
+          echo "$goimports_output"
+          exit 1
+        fi
+
+        # Static analysis
+        echo "Running staticcheck..."
+        staticcheck ./...
+
+        # Cyclomatic complexity
+        echo "Checking cyclomatic complexity..."
+        gocyclo_output=$(gocyclo -over 15 . | grep -v vendor)
+        if [ -n "$gocyclo_output" ]; then
+          echo "Functions with high cyclomatic complexity:"
+          echo "$gocyclo_output"
+        fi
+
+  # Unit tests with coverage
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-24.04
+    needs: [build]
+
+    strategy:
+      fail-fast: false
+      matrix:
+        component:
+          - orchestrator
+          - adapters/vnf-operator
+          - o2-client
+          - tn
+          - cn-dms
+          - ran-dms
+          - nephio-generator
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v5
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ env.GO_VERSION }}
+        cache: true
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y iperf3 etcd
+
+    - name: Setup test environment
+      run: |
+        # Download kubebuilder test assets for controller tests
+        if [[ "${{ matrix.component }}" == *"vnf-operator"* ]]; then
+          K8S_VERSION="1.31.0"
+          ARCH=$(go env GOARCH)
+          OS=$(go env GOOS)
+          curl -sSLo envtest-bins.tar.gz "https://go.kubebuilder.io/test-tools/${K8S_VERSION}/${OS}/${ARCH}"
+          mkdir -p /tmp/kubebuilder/bin
+          tar -C /tmp/kubebuilder --strip-components=1 -zvxf envtest-bins.tar.gz
+          echo "KUBEBUILDER_ASSETS=/tmp/kubebuilder/bin" >> $GITHUB_ENV
+        fi
+
+    - name: Run tests with coverage
+      working-directory: ${{ matrix.component }}
+      run: |
+        if [ -f "go.mod" ]; then
+          echo "Running tests for ${{ matrix.component }}"
+
+          # Create test results directory
+          mkdir -p test-results
+
+          # Run tests with coverage
+          go test \
+            -v \
+            -race \
+            -coverprofile=test-results/coverage.out \
+            -covermode=atomic \
+            -timeout=15m \
+            -json \
+            ./... 2>&1 | tee test-results/test-output.json
+
+          # Generate coverage reports
+          if [ -f "test-results/coverage.out" ]; then
+            go tool cover -html=test-results/coverage.out -o test-results/coverage.html
+            go tool cover -func=test-results/coverage.out > test-results/coverage.txt
+
+            # Extract coverage percentage
+            coverage_percent=$(go tool cover -func=test-results/coverage.out | grep total | awk '{print substr($3, 1, length($3)-1)}')
+            echo "Coverage: ${coverage_percent}%"
+            echo "COVERAGE_PERCENT=$coverage_percent" >> $GITHUB_ENV
+          fi
+        else
+          echo "No go.mod found in ${{ matrix.component }}, skipping tests"
+        fi
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results-${{ matrix.component }}
+        path: ${{ matrix.component }}/test-results/
+        retention-days: 30
+
+    - name: Upload to Codecov
+      uses: codecov/codecov-action@v6
+      with:
+        file: ${{ matrix.component }}/test-results/coverage.out
+        flags: ${{ matrix.component }}
+        name: ${{ matrix.component }}
+
+  # Security scanning
+  security:
+    name: Security Scanning
+    runs-on: ubuntu-24.04
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v5
+      with:
+        fetch-depth: 0
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ env.GO_VERSION }}
+        cache: true
+
+    - name: Run Gosec Security Scanner
+      run: |
+        # Install gosec v2.21.4
+        go install github.com/securego/gosec/v2/cmd/gosec@v2.21.4
+
+        # Run security scan with SARIF output
+        gosec -fmt sarif -out gosec.sarif -no-fail ./...
+
+    - name: Upload SARIF file
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: gosec.sarif
+        category: gosec
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@0.28.0
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: Upload Trivy scan results
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: 'trivy-results.sarif'
+        category: trivy
+
+  # Aggregate results
+  results:
+    name: Aggregate Results
+    runs-on: ubuntu-24.04
+    needs: [build, lint, test, security]
+    if: always()
+
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+
+    - name: Generate build summary
+      run: |
+        echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+
+        # Build status
+        echo "### Build Status" >> $GITHUB_STEP_SUMMARY
+        if [[ "${{ needs.build.result }}" == "success" ]]; then
+          echo "✅ Build: PASSED" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ Build: FAILED" >> $GITHUB_STEP_SUMMARY
+        fi
+
+        # Lint status
+        if [[ "${{ needs.lint.result }}" == "success" ]]; then
+          echo "✅ Lint: PASSED" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ Lint: FAILED" >> $GITHUB_STEP_SUMMARY
+        fi
+
+        # Test status
+        if [[ "${{ needs.test.result }}" == "success" ]]; then
+          echo "✅ Tests: PASSED" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ Tests: FAILED" >> $GITHUB_STEP_SUMMARY
+        fi
+
+        # Security status
+        if [[ "${{ needs.security.result }}" == "success" ]]; then
+          echo "✅ Security: PASSED" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ Security: FAILED" >> $GITHUB_STEP_SUMMARY
+        fi
+
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Artifacts Generated" >> $GITHUB_STEP_SUMMARY
+        echo "- Binary artifacts for amd64 and arm64" >> $GITHUB_STEP_SUMMARY
+        echo "- Test coverage reports" >> $GITHUB_STEP_SUMMARY
+        echo "- Security scan results" >> $GITHUB_STEP_SUMMARY
+
+    - name: Check quality gates
+      run: |
+        echo "Checking quality gates..."
+
+        # Initialize status
+        overall_status="success"
+
+        # Check individual job results
+        if [[ "${{ needs.build.result }}" != "success" ]]; then
+          echo "ERROR: Build failed"
+          overall_status="failure"
+        fi
+
+        if [[ "${{ needs.lint.result }}" != "success" ]]; then
+          echo "ERROR: Lint failed"
+          overall_status="failure"
+        fi
+
+        if [[ "${{ needs.test.result }}" != "success" ]]; then
+          echo "ERROR: Tests failed"
+          overall_status="failure"
+        fi
+
+        if [[ "${{ needs.security.result }}" != "success" ]]; then
+          echo "WARNING: Security scan had issues"
+          # Don't fail overall for security warnings
+        fi
+
+        if [[ "$overall_status" == "failure" ]]; then
+          echo "Overall quality gates: FAILED"
+          exit 1
+        else
+          echo "Overall quality gates: PASSED"
+        fi

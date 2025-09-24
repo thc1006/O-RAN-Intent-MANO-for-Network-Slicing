@@ -8,10 +8,10 @@ import (
 
 // PorchPackage represents a Kpt package for Porch
 type PorchPackage struct {
-	Name         string
-	Namespace    string
-	Resources    []Resource
-	Kptfile      *Kptfile
+	Name          string
+	Namespace     string
+	Resources     []Resource
+	Kptfile       *Kptfile
 	Kustomization *Kustomization
 }
 
@@ -29,14 +29,14 @@ type Kptfile struct {
 	Kind       string                 `json:"kind"`
 	Metadata   map[string]interface{} `json:"metadata"`
 	Info       map[string]interface{} `json:"info"`
-	Pipeline   []Function            `json:"pipeline,omitempty"`
+	Pipeline   []Function             `json:"pipeline,omitempty"`
 }
 
 // Function represents a Kpt function in the pipeline
 type Function struct {
-	Image string                 `json:"image"`
-	ConfigPath string          `json:"configPath,omitempty"`
-	Config map[string]interface{} `json:"config,omitempty"`
+	Image      string                 `json:"image"`
+	ConfigPath string                 `json:"configPath,omitempty"`
+	Config     map[string]interface{} `json:"config,omitempty"`
 }
 
 // Kustomization for GitOps
@@ -141,10 +141,10 @@ func (t *PorchTranslator) generateRANResources(vnf *manov1alpha1.VNF) []Resource
 				"spec": map[string]interface{}{
 					"containers": []map[string]interface{}{
 						{
-							"name":  "ran",
-							"image": fmt.Sprintf("%s:%s", vnf.Spec.Image.Repository, vnf.Spec.Image.Tag),
+							"name":      "ran",
+							"image":     fmt.Sprintf("%s:%s", vnf.Spec.Image.Repository, vnf.Spec.Image.Tag),
 							"resources": t.generateResourceRequirements(vnf),
-							"env": t.generateEnvVars(vnf),
+							"env":       t.generateEnvVars(vnf),
 						},
 					},
 					"nodeSelector": t.generateNodeSelector(vnf),
@@ -219,10 +219,10 @@ func (t *PorchTranslator) generateCNResources(vnf *manov1alpha1.VNF) []Resource 
 				"spec": map[string]interface{}{
 					"containers": []map[string]interface{}{
 						{
-							"name":  "upf",
-							"image": fmt.Sprintf("%s:%s", vnf.Spec.Image.Repository, vnf.Spec.Image.Tag),
+							"name":      "upf",
+							"image":     fmt.Sprintf("%s:%s", vnf.Spec.Image.Repository, vnf.Spec.Image.Tag),
 							"resources": t.generateResourceRequirements(vnf),
-							"env": t.generateEnvVars(vnf),
+							"env":       t.generateEnvVars(vnf),
 						},
 					},
 					"nodeSelector": t.generateNodeSelector(vnf),
@@ -411,10 +411,10 @@ func (t *PorchTranslator) generateUPFResources(vnf *manov1alpha1.VNF) []Resource
 				"spec": map[string]interface{}{
 					"containers": []map[string]interface{}{
 						{
-							"name":  "upf",
-							"image": fmt.Sprintf("%s:%s", vnf.Spec.Image.Repository, vnf.Spec.Image.Tag),
+							"name":      "upf",
+							"image":     fmt.Sprintf("%s:%s", vnf.Spec.Image.Repository, vnf.Spec.Image.Tag),
 							"resources": t.generateResourceRequirements(vnf),
-							"env": t.generateEnvVars(vnf),
+							"env":       t.generateEnvVars(vnf),
 							"ports": []map[string]interface{}{
 								{
 									"name":          "n4",
@@ -426,7 +426,7 @@ func (t *PorchTranslator) generateUPFResources(vnf *manov1alpha1.VNF) []Resource
 									"containerPort": 2152,
 									"protocol":      "UDP",
 								},
-								},
+							},
 						},
 					},
 					"nodeSelector": t.generateNodeSelector(vnf),
@@ -505,10 +505,10 @@ func (t *PorchTranslator) generateAMFResources(vnf *manov1alpha1.VNF) []Resource
 				"spec": map[string]interface{}{
 					"containers": []map[string]interface{}{
 						{
-							"name":  "amf",
-							"image": fmt.Sprintf("%s:%s", vnf.Spec.Image.Repository, vnf.Spec.Image.Tag),
+							"name":      "amf",
+							"image":     fmt.Sprintf("%s:%s", vnf.Spec.Image.Repository, vnf.Spec.Image.Tag),
 							"resources": t.generateResourceRequirements(vnf),
-							"env": t.generateEnvVars(vnf),
+							"env":       t.generateEnvVars(vnf),
 							"ports": []map[string]interface{}{
 								{
 									"name":          "n1-n2",
@@ -520,7 +520,7 @@ func (t *PorchTranslator) generateAMFResources(vnf *manov1alpha1.VNF) []Resource
 									"containerPort": 8080,
 									"protocol":      "TCP",
 								},
-								},
+							},
 						},
 					},
 					"nodeSelector": t.generateNodeSelector(vnf),
@@ -668,11 +668,11 @@ func (t *PorchTranslator) generateGenericNFResources(vnf *manov1alpha1.VNF, nfTy
 				"spec": map[string]interface{}{
 					"containers": []map[string]interface{}{
 						{
-							"name":  nfType,
-							"image": fmt.Sprintf("%s:%s", vnf.Spec.Image.Repository, vnf.Spec.Image.Tag),
+							"name":      nfType,
+							"image":     fmt.Sprintf("%s:%s", vnf.Spec.Image.Repository, vnf.Spec.Image.Tag),
 							"resources": t.generateResourceRequirements(vnf),
-							"env": t.generateEnvVars(vnf),
-							"ports": t.generateContainerPorts(ports),
+							"env":       t.generateEnvVars(vnf),
+							"ports":     t.generateContainerPorts(ports),
 						},
 					},
 					"nodeSelector": t.generateNodeSelector(vnf),

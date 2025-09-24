@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
+	"github.com/onsi/ginkgo/v2"
+	"github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
@@ -22,6 +22,13 @@ import (
 
 	manov1alpha1 "github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/adapters/vnf-operator/api/v1alpha1"
 	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security"
+)
+
+// Constants to avoid goconst linter issues
+const (
+	edgeCluster01     = "edge-cluster-01"
+	regionalCluster01 = "regional-cluster-01"
+	centralCluster01  = "central-cluster-01"
 )
 
 // E2EWorkflowSuite represents the complete test environment
@@ -154,50 +161,50 @@ var intentTestScenarios = []struct {
 	},
 }
 
-var _ = Describe("E2E Workflow Integration Tests", func() {
+var _ = ginkgo.Describe("E2E Workflow Integration Tests", func() {
 	var suite *E2EWorkflowSuite
 
-	BeforeEach(func() {
+	ginkgo.BeforeEach(func() {
 		suite = setupE2ETestSuite()
 	})
 
-	AfterEach(func() {
+	ginkgo.AfterEach(func() {
 		teardownE2ETestSuite(suite)
 		suite.saveTestResults()
 	})
 
-	Context("Intent-to-QoS-to-VNF Workflow", func() {
+	ginkgo.Context("Intent-to-QoS-to-VNF Workflow", func() {
 		for _, scenario := range intentTestScenarios {
-			It(fmt.Sprintf("should complete workflow for %s", scenario.name), func() {
+			ginkgo.It(fmt.Sprintf("should complete workflow for %s", scenario.name), func() {
 				suite.testResults.StartTime = time.Now()
 
-				By("Phase 1: Intent Processing and QoS Translation")
+				ginkgo.By("Phase 1: Intent Processing and QoS Translation")
 				phaseStart := time.Now()
 				qosSpec := suite.processIntentToQoS(scenario.intent, scenario.expectedQoS)
 				suite.testResults.Phases["intent_to_qos"] = time.Since(phaseStart)
 
-				By("Phase 2: VNF Selection and Placement")
+				ginkgo.By("Phase 2: VNF Selection and Placement")
 				phaseStart = time.Now()
 				placementDecisions := suite.performVNFPlacement(qosSpec, scenario.expectedVNFTypes)
 				suite.testResults.Phases["vnf_placement"] = time.Since(phaseStart)
 
-				By("Phase 3: Porch Package Generation")
+				ginkgo.By("Phase 3: Porch Package Generation")
 				phaseStart = time.Now()
 				packages := suite.generatePorchPackages(placementDecisions)
 				suite.testResults.Phases["porch_generation"] = time.Since(phaseStart)
 
-				By("Phase 4: Multi-cluster VNF Deployment")
+				ginkgo.By("Phase 4: Multi-cluster VNF Deployment")
 				phaseStart = time.Now()
 				vnfStatuses := suite.deployVNFsToMultipleClusters(packages, scenario.maxDeploymentMins)
 				suite.testResults.Phases["vnf_deployment"] = time.Since(phaseStart)
 				suite.testResults.VNFStatus = append(suite.testResults.VNFStatus, vnfStatuses...)
 
-				By("Phase 5: Network Slice Configuration")
+				ginkgo.By("Phase 5: Network Slice Configuration")
 				phaseStart = time.Now()
 				suite.configureNetworkSlice(qosSpec, vnfStatuses)
 				suite.testResults.Phases["slice_configuration"] = time.Since(phaseStart)
 
-				By("Phase 6: E2E Performance Validation")
+				ginkgo.By("Phase 6: E2E Performance Validation")
 				phaseStart = time.Now()
 				suite.validateE2EPerformance(scenario.targetLatencyMs, scenario.targetBandwidthMbps)
 				suite.testResults.Phases["performance_validation"] = time.Since(phaseStart)
@@ -206,7 +213,7 @@ var _ = Describe("E2E Workflow Integration Tests", func() {
 				suite.testResults.TotalDuration = suite.testResults.EndTime.Sub(suite.testResults.StartTime)
 
 				// Validate deployment time under 10 minutes
-				Expect(suite.testResults.TotalDuration).To(BeNumerically("<=", 10*time.Minute),
+				gomega.Expect(suite.testResults.TotalDuration).To(gomega.BeNumerically("<=", 10*time.Minute),
 					"Total deployment time should be under 10 minutes")
 
 				suite.testResults.Success = true
@@ -214,33 +221,33 @@ var _ = Describe("E2E Workflow Integration Tests", func() {
 		}
 	})
 
-	Context("Multi-cluster Deployment Validation", func() {
-		It("should deploy VNFs across edge, regional, and central clusters", func() {
-			clusters := []string{"edge-cluster-01", "regional-cluster-01", "central-cluster-01"}
+	ginkgo.Context("Multi-cluster Deployment Validation", func() {
+		ginkgo.It("should deploy VNFs across edge, regional, and central clusters", func() {
+			clusters := []string{edgeCluster01, regionalCluster01, centralCluster01}
 
 			for _, cluster := range clusters {
-				By(fmt.Sprintf("Validating deployment to %s", cluster))
+				ginkgo.By(fmt.Sprintf("Validating deployment to %s", cluster))
 				suite.validateClusterDeployment(cluster)
 			}
 		})
 
-		It("should handle cluster failures gracefully", func() {
-			By("Simulating cluster failure")
-			suite.simulateClusterFailure("edge-cluster-01")
+		ginkgo.It("should handle cluster failures gracefully", func() {
+			ginkgo.By("Simulating cluster failure")
+			suite.simulateClusterFailure(edgeCluster01)
 
-			By("Verifying failover to alternative cluster")
+			ginkgo.By("Verifying failover to alternative cluster")
 			suite.verifyFailoverBehavior()
 		})
 	})
 
-	Context("QoS Parameter Verification", func() {
-		It("should validate QoS requirements are properly enforced", func() {
+	ginkgo.Context("QoS Parameter Verification", func() {
+		ginkgo.It("should validate QoS requirements are properly enforced", func() {
 			for _, scenario := range intentTestScenarios {
-				By(fmt.Sprintf("Testing QoS enforcement for %s", scenario.name))
+				ginkgo.By(fmt.Sprintf("Testing QoS enforcement for %s", scenario.name))
 				result := suite.validateQoSEnforcement(scenario.expectedQoS)
 				suite.testResults.QoSValidation = append(suite.testResults.QoSValidation, result)
 
-				Expect(result.ValidationPassed).To(BeTrue(),
+				gomega.Expect(result.ValidationPassed).To(gomega.BeTrue(),
 					"QoS validation should pass for scenario %s", scenario.name)
 			}
 		})
@@ -248,12 +255,12 @@ var _ = Describe("E2E Workflow Integration Tests", func() {
 })
 
 func TestE2EWorkflowIntegration(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "E2E Workflow Integration Suite")
+	gomega.RegisterFailHandler(ginkgo.Fail)
+	ginkgo.RunSpecs(t, "E2E Workflow Integration Suite")
 }
 
 func setupE2ETestSuite() *E2EWorkflowSuite {
-	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
+	logf.SetLogger(zap.New(zap.WriteTo(ginkgo.GinkgoWriter), zap.UseDevMode(true)))
 
 	suite := &E2EWorkflowSuite{
 		testResults: &TestResults{
@@ -279,18 +286,18 @@ func setupE2ETestSuite() *E2EWorkflowSuite {
 
 	var err error
 	suite.cfg, err = suite.testEnv.Start()
-	Expect(err).NotTo(HaveOccurred())
-	Expect(suite.cfg).NotTo(BeNil())
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
+	gomega.Expect(suite.cfg).NotTo(gomega.BeNil())
 
 	// Setup clients
 	suite.k8sClient, err = client.New(suite.cfg, client.Options{})
-	Expect(err).NotTo(HaveOccurred())
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 	suite.dynClient, err = dynamic.NewForConfig(suite.cfg)
-	Expect(err).NotTo(HaveOccurred())
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 	suite.clientset, err = kubernetes.NewForConfig(suite.cfg)
-	Expect(err).NotTo(HaveOccurred())
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 	return suite
 }
@@ -302,11 +309,11 @@ func teardownE2ETestSuite(suite *E2EWorkflowSuite) {
 
 	if suite.testEnv != nil {
 		err := suite.testEnv.Stop()
-		Expect(err).NotTo(HaveOccurred())
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	}
 }
 
-func (s *E2EWorkflowSuite) processIntentToQoS(intent string, expectedQoS manov1alpha1.QoSRequirements) manov1alpha1.QoSRequirements {
+func (s *E2EWorkflowSuite) processIntentToQoS(_ string, expectedQoS manov1alpha1.QoSRequirements) manov1alpha1.QoSRequirements {
 	// TODO: Implement NLP intent processing
 	// For now, return expected QoS as if processed from intent
 	return expectedQoS
@@ -381,7 +388,7 @@ func (s *E2EWorkflowSuite) deployVNFsToMultipleClusters(packages []PorchPackage,
 	return statuses
 }
 
-func (s *E2EWorkflowSuite) configureNetworkSlice(qos manov1alpha1.QoSRequirements, vnfStatuses []VNFDeploymentStatus) {
+func (s *E2EWorkflowSuite) configureNetworkSlice(_ manov1alpha1.QoSRequirements, _ []VNFDeploymentStatus) {
 	// TODO: Implement network slice configuration using TN manager
 	time.Sleep(5 * time.Second) // Simulate configuration time
 }
@@ -393,7 +400,7 @@ func (s *E2EWorkflowSuite) validateE2EPerformance(targetLatencyMs, targetBandwid
 
 	// Validate latency within tolerance
 	tolerance := 2.0 // 2ms tolerance
-	Expect(latencyResult.RTTMs).To(BeNumerically("~", targetLatencyMs, tolerance),
+	gomega.Expect(latencyResult.RTTMs).To(gomega.BeNumerically("~", targetLatencyMs, tolerance),
 		"Measured latency should be within tolerance of target")
 
 	// Perform throughput test
@@ -402,7 +409,7 @@ func (s *E2EWorkflowSuite) validateE2EPerformance(targetLatencyMs, targetBandwid
 
 	// Validate throughput within tolerance (10%)
 	bandwidthTolerance := targetBandwidthMbps * 0.10
-	Expect(throughputResult.BandwidthMbps).To(BeNumerically("~", targetBandwidthMbps, bandwidthTolerance),
+	gomega.Expect(throughputResult.BandwidthMbps).To(gomega.BeNumerically("~", targetBandwidthMbps, bandwidthTolerance),
 		"Measured throughput should be within tolerance of target")
 }
 
@@ -431,14 +438,14 @@ func (s *E2EWorkflowSuite) performThroughputTest() ThroughputMeasurement {
 	}
 }
 
-func (s *E2EWorkflowSuite) selectOptimalCluster(qos manov1alpha1.QoSRequirements, vnfType manov1alpha1.VNFType) string {
+func (s *E2EWorkflowSuite) selectOptimalCluster(qos manov1alpha1.QoSRequirements, _ manov1alpha1.VNFType) string {
 	// Select cluster based on QoS requirements and VNF type
 	if qos.Latency <= 10 {
-		return "edge-cluster-01"
+		return edgeCluster01
 	} else if qos.Bandwidth >= 1000 {
-		return "regional-cluster-01"
+		return regionalCluster01
 	}
-	return "central-cluster-01"
+	return centralCluster01
 }
 
 func (s *E2EWorkflowSuite) createVNFResource(pkg PorchPackage) *manov1alpha1.VNF {
@@ -466,17 +473,17 @@ func (s *E2EWorkflowSuite) createVNFResource(pkg PorchPackage) *manov1alpha1.VNF
 	}
 }
 
-func (s *E2EWorkflowSuite) waitForVNFReady(vnf *manov1alpha1.VNF, timeout time.Duration) error {
+func (s *E2EWorkflowSuite) waitForVNFReady(_ *manov1alpha1.VNF, _ time.Duration) error {
 	// TODO: Implement actual wait logic
 	time.Sleep(2 * time.Second) // Simulate deployment time
 	return nil
 }
 
-func (s *E2EWorkflowSuite) validateClusterDeployment(cluster string) {
+func (s *E2EWorkflowSuite) validateClusterDeployment(_ string) {
 	// TODO: Implement cluster-specific validation
 }
 
-func (s *E2EWorkflowSuite) simulateClusterFailure(cluster string) {
+func (s *E2EWorkflowSuite) simulateClusterFailure(_ string) {
 	// TODO: Implement cluster failure simulation
 }
 
@@ -499,7 +506,10 @@ func (s *E2EWorkflowSuite) validateQoSEnforcement(qos manov1alpha1.QoSRequiremen
 
 func (s *E2EWorkflowSuite) saveTestResults() {
 	resultsDir := "testdata/results"
-	os.MkdirAll(resultsDir, security.SecureDirMode)
+	if err := os.MkdirAll(resultsDir, security.SecureDirMode); err != nil {
+		fmt.Printf("Failed to create results directory: %v\n", err)
+		return
+	}
 
 	timestamp := time.Now().Format("20060102-150405")
 	filename := filepath.Join(resultsDir, fmt.Sprintf("e2e_results_%s.json", timestamp))

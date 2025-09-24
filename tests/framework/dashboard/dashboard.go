@@ -12,8 +12,8 @@ import (
 	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security"
 )
 
-// DashboardConfig holds dashboard configuration
-type DashboardConfig struct {
+// Config holds dashboard configuration
+type Config struct {
 	Title         string            `json:"title"`
 	RefreshRate   int               `json:"refresh_rate"`
 	ThresholdInfo map[string]string `json:"threshold_info"`
@@ -23,26 +23,26 @@ type DashboardConfig struct {
 
 // TestMetrics aggregates all test execution metrics
 type TestMetrics struct {
-	Timestamp         time.Time                    `json:"timestamp"`
-	TestSuiteResults  map[string]*TestSuiteResult `json:"test_suite_results"`
-	CoverageResults   *CoverageMetrics             `json:"coverage_results"`
-	PerformanceData   *PerformanceMetrics          `json:"performance_data"`
-	SecurityResults   *SecurityMetrics             `json:"security_results"`
-	QualityGates      *QualityGateResults          `json:"quality_gates"`
-	ThesisValidation  *ThesisMetrics               `json:"thesis_validation"`
-	BuildInformation  *BuildInfo                   `json:"build_information"`
+	Timestamp        time.Time                   `json:"timestamp"`
+	TestSuiteResults map[string]*TestSuiteResult `json:"test_suite_results"`
+	CoverageResults  *CoverageMetrics            `json:"coverage_results"`
+	PerformanceData  *PerformanceMetrics         `json:"performance_data"`
+	SecurityResults  *SecurityMetrics            `json:"security_results"`
+	QualityGates     *QualityGateResults         `json:"quality_gates"`
+	ThesisValidation *ThesisMetrics              `json:"thesis_validation"`
+	BuildInformation *BuildInfo                  `json:"build_information"`
 }
 
 // TestSuiteResult represents results for a test suite
 type TestSuiteResult struct {
-	Name          string        `json:"name"`
-	TotalTests    int           `json:"total_tests"`
-	PassedTests   int           `json:"passed_tests"`
-	FailedTests   int           `json:"failed_tests"`
-	SkippedTests  int           `json:"skipped_tests"`
-	Duration      time.Duration `json:"duration"`
-	CoveragePct   float64       `json:"coverage_pct"`
-	TestResults   []TestResult  `json:"test_results"`
+	Name         string        `json:"name"`
+	TotalTests   int           `json:"total_tests"`
+	PassedTests  int           `json:"passed_tests"`
+	FailedTests  int           `json:"failed_tests"`
+	SkippedTests int           `json:"skipped_tests"`
+	Duration     time.Duration `json:"duration"`
+	CoveragePct  float64       `json:"coverage_pct"`
+	TestResults  []TestResult  `json:"test_results"`
 }
 
 // TestResult represents individual test result
@@ -55,22 +55,22 @@ type TestResult struct {
 
 // CoverageMetrics holds code coverage information
 type CoverageMetrics struct {
-	OverallCoverage   float64                    `json:"overall_coverage"`
-	StatementCoverage float64                    `json:"statement_coverage"`
-	BranchCoverage    float64                    `json:"branch_coverage"`
-	FunctionCoverage  float64                    `json:"function_coverage"`
-	LineCoverage      float64                    `json:"line_coverage"`
+	OverallCoverage   float64                     `json:"overall_coverage"`
+	StatementCoverage float64                     `json:"statement_coverage"`
+	BranchCoverage    float64                     `json:"branch_coverage"`
+	FunctionCoverage  float64                     `json:"function_coverage"`
+	LineCoverage      float64                     `json:"line_coverage"`
 	PackageCoverage   map[string]*PackageCoverage `json:"package_coverage"`
-	Trend             []CoverageTrendPoint       `json:"trend"`
+	Trend             []CoverageTrendPoint        `json:"trend"`
 }
 
 // PackageCoverage holds coverage for individual packages
 type PackageCoverage struct {
-	Package     string  `json:"package"`
-	Coverage    float64 `json:"coverage"`
-	Statements  int     `json:"statements"`
-	Covered     int     `json:"covered"`
-	Uncovered   int     `json:"uncovered"`
+	Package    string  `json:"package"`
+	Coverage   float64 `json:"coverage"`
+	Statements int     `json:"statements"`
+	Covered    int     `json:"covered"`
+	Uncovered  int     `json:"uncovered"`
 }
 
 // CoverageTrendPoint represents coverage over time
@@ -91,71 +91,71 @@ type PerformanceMetrics struct {
 
 // ThroughputResult represents throughput test results
 type ThroughputResult struct {
-	SliceType   string  `json:"slice_type"`
-	Target      float64 `json:"target_mbps"`
-	Achieved    float64 `json:"achieved_mbps"`
-	Success     bool    `json:"success"`
-	TestTime    time.Time `json:"test_time"`
+	SliceType string    `json:"slice_type"`
+	Target    float64   `json:"target_mbps"`
+	Achieved  float64   `json:"achieved_mbps"`
+	Success   bool      `json:"success"`
+	TestTime  time.Time `json:"test_time"`
 }
 
 // LatencyResult represents latency test results
 type LatencyResult struct {
-	SliceType   string  `json:"slice_type"`
-	Target      float64 `json:"target_ms"`
-	Achieved    float64 `json:"achieved_ms"`
-	Success     bool    `json:"success"`
-	TestTime    time.Time `json:"test_time"`
+	SliceType string    `json:"slice_type"`
+	Target    float64   `json:"target_ms"`
+	Achieved  float64   `json:"achieved_ms"`
+	Success   bool      `json:"success"`
+	TestTime  time.Time `json:"test_time"`
 }
 
 // DeploymentMetrics holds deployment timing information
 type DeploymentMetrics struct {
-	TargetTime    time.Duration `json:"target_time"`
-	AverageTime   time.Duration `json:"average_time"`
-	BestTime      time.Duration `json:"best_time"`
-	WorstTime     time.Duration `json:"worst_time"`
-	RecentTests   []DeploymentTest `json:"recent_tests"`
+	TargetTime  time.Duration    `json:"target_time"`
+	AverageTime time.Duration    `json:"average_time"`
+	BestTime    time.Duration    `json:"best_time"`
+	WorstTime   time.Duration    `json:"worst_time"`
+	RecentTests []DeploymentTest `json:"recent_tests"`
 }
 
 // DeploymentTest represents individual deployment test
 type DeploymentTest struct {
-	SliceType    string        `json:"slice_type"`
-	Duration     time.Duration `json:"duration"`
-	Success      bool          `json:"success"`
-	Timestamp    time.Time     `json:"timestamp"`
+	SliceType string        `json:"slice_type"`
+	Duration  time.Duration `json:"duration"`
+	Success   bool          `json:"success"`
+	Timestamp time.Time     `json:"timestamp"`
 }
 
 // ResourceMetrics holds resource utilization data
 type ResourceMetrics struct {
-	CPUUsage       float64 `json:"cpu_usage"`
-	MemoryUsage    float64 `json:"memory_usage"`
-	NetworkUsage   float64 `json:"network_usage"`
-	StorageUsage   float64 `json:"storage_usage"`
+	CPUUsage     float64 `json:"cpu_usage"`
+	MemoryUsage  float64 `json:"memory_usage"`
+	NetworkUsage float64 `json:"network_usage"`
+	StorageUsage float64 `json:"storage_usage"`
 }
 
 // ScalabilityTest represents scalability test results
 type ScalabilityTest struct {
-	ConcurrentSlices int           `json:"concurrent_slices"`
-	SuccessRate      float64       `json:"success_rate"`
-	AverageTime      time.Duration `json:"average_time"`
+	ConcurrentSlices int             `json:"concurrent_slices"`
+	SuccessRate      float64         `json:"success_rate"`
+	AverageTime      time.Duration   `json:"average_time"`
 	ResourcePeak     ResourceMetrics `json:"resource_peak"`
 }
 
 // SecurityMetrics holds security scan results
 type SecurityMetrics struct {
-	VulnerabilityScan  VulnerabilityResults `json:"vulnerability_scan"`
-	StaticAnalysis     StaticAnalysisResults `json:"static_analysis"`
-	DependencyCheck    DependencyResults    `json:"dependency_check"`
-	LicenseCompliance  LicenseResults       `json:"license_compliance"`
-	LastScanTime       time.Time            `json:"last_scan_time"`
+	VulnerabilityScan VulnerabilityResults  `json:"vulnerability_scan"`
+	StaticAnalysis    StaticAnalysisResults `json:"static_analysis"`
+	DependencyCheck   DependencyResults     `json:"dependency_check"`
+	LicenseCompliance LicenseResults        `json:"license_compliance"`
+	LastScanTime      time.Time             `json:"last_scan_time"`
 }
 
 // VulnerabilityResults holds vulnerability scan results
 type VulnerabilityResults struct {
-	Critical int                    `json:"critical"`
-	High     int                    `json:"high"`
-	Medium   int                    `json:"medium"`
-	Low      int                    `json:"low"`
-	Details  []VulnerabilityDetail  `json:"details"`
+	Critical int                   `json:"critical"`
+	High     int                   `json:"high"`
+	Medium   int                   `json:"medium"`
+	Low      int                   `json:"low"`
+	Details  []VulnerabilityDetail `json:"details"`
 }
 
 // VulnerabilityDetail represents individual vulnerability
@@ -169,9 +169,9 @@ type VulnerabilityDetail struct {
 
 // StaticAnalysisResults holds static analysis results
 type StaticAnalysisResults struct {
-	IssueCount   int               `json:"issue_count"`
-	Complexity   int               `json:"complexity"`
-	Duplications float64           `json:"duplications"`
+	IssueCount   int                   `json:"issue_count"`
+	Complexity   int                   `json:"complexity"`
+	Duplications float64               `json:"duplications"`
 	Issues       []StaticAnalysisIssue `json:"issues"`
 }
 
@@ -186,10 +186,10 @@ type StaticAnalysisIssue struct {
 
 // DependencyResults holds dependency check results
 type DependencyResults struct {
-	TotalDependencies     int                     `json:"total_dependencies"`
-	VulnerableDependencies int                     `json:"vulnerable_dependencies"`
-	OutdatedDependencies  int                     `json:"outdated_dependencies"`
-	Dependencies          []DependencyInfo        `json:"dependencies"`
+	TotalDependencies      int              `json:"total_dependencies"`
+	VulnerableDependencies int              `json:"vulnerable_dependencies"`
+	OutdatedDependencies   int              `json:"outdated_dependencies"`
+	Dependencies           []DependencyInfo `json:"dependencies"`
 }
 
 // DependencyInfo represents dependency information
@@ -203,26 +203,26 @@ type DependencyInfo struct {
 
 // LicenseResults holds license compliance results
 type LicenseResults struct {
-	ApprovedLicenses   int                `json:"approved_licenses"`
-	UnapprovedLicenses int                `json:"unapproved_licenses"`
-	UnknownLicenses    int                `json:"unknown_licenses"`
-	LicenseDetails     []LicenseDetail    `json:"license_details"`
+	ApprovedLicenses   int             `json:"approved_licenses"`
+	UnapprovedLicenses int             `json:"unapproved_licenses"`
+	UnknownLicenses    int             `json:"unknown_licenses"`
+	LicenseDetails     []LicenseDetail `json:"license_details"`
 }
 
 // LicenseDetail represents license information
 type LicenseDetail struct {
-	Package  string `json:"package"`
-	License  string `json:"license"`
-	Status   string `json:"status"`
+	Package string `json:"package"`
+	License string `json:"license"`
+	Status  string `json:"status"`
 }
 
 // QualityGateResults holds quality gate results
 type QualityGateResults struct {
-	OverallStatus      string                    `json:"overall_status"`
-	PassedGates        int                       `json:"passed_gates"`
-	FailedGates        int                       `json:"failed_gates"`
-	GateResults        map[string]*QualityGate   `json:"gate_results"`
-	QualityScore       float64                   `json:"quality_score"`
+	OverallStatus string                  `json:"overall_status"`
+	PassedGates   int                     `json:"passed_gates"`
+	FailedGates   int                     `json:"failed_gates"`
+	GateResults   map[string]*QualityGate `json:"gate_results"`
+	QualityScore  float64                 `json:"quality_score"`
 }
 
 // QualityGate represents individual quality gate
@@ -237,41 +237,41 @@ type QualityGate struct {
 
 // ThesisMetrics holds thesis validation results
 type ThesisMetrics struct {
-	URllCValidation  SliceValidation `json:"urllc_validation"`
-	EMBBValidation   SliceValidation `json:"embb_validation"`
-	MMTCValidation   SliceValidation `json:"mmtc_validation"`
-	OverallSuccess   bool            `json:"overall_success"`
-	ValidationTime   time.Time       `json:"validation_time"`
+	URllCValidation SliceValidation `json:"urllc_validation"`
+	EMBBValidation  SliceValidation `json:"embb_validation"`
+	MMTCValidation  SliceValidation `json:"mmtc_validation"`
+	OverallSuccess  bool            `json:"overall_success"`
+	ValidationTime  time.Time       `json:"validation_time"`
 }
 
 // SliceValidation represents validation for network slice type
 type SliceValidation struct {
-	SliceType          string  `json:"slice_type"`
-	ThroughputTarget   float64 `json:"throughput_target"`
-	ThroughputAchieved float64 `json:"throughput_achieved"`
-	ThroughputSuccess  bool    `json:"throughput_success"`
-	LatencyTarget      float64 `json:"latency_target"`
-	LatencyAchieved    float64 `json:"latency_achieved"`
-	LatencySuccess     bool    `json:"latency_success"`
-	ReliabilityTarget  float64 `json:"reliability_target"`
+	SliceType           string  `json:"slice_type"`
+	ThroughputTarget    float64 `json:"throughput_target"`
+	ThroughputAchieved  float64 `json:"throughput_achieved"`
+	ThroughputSuccess   bool    `json:"throughput_success"`
+	LatencyTarget       float64 `json:"latency_target"`
+	LatencyAchieved     float64 `json:"latency_achieved"`
+	LatencySuccess      bool    `json:"latency_success"`
+	ReliabilityTarget   float64 `json:"reliability_target"`
 	ReliabilityAchieved float64 `json:"reliability_achieved"`
-	ReliabilitySuccess bool    `json:"reliability_success"`
-	OverallSuccess     bool    `json:"overall_success"`
+	ReliabilitySuccess  bool    `json:"reliability_success"`
+	OverallSuccess      bool    `json:"overall_success"`
 }
 
 // BuildInfo holds build information
 type BuildInfo struct {
-	BuildNumber   string    `json:"build_number"`
-	Commit        string    `json:"commit"`
-	Branch        string    `json:"branch"`
-	BuildTime     time.Time `json:"build_time"`
-	Environment   string    `json:"environment"`
-	Version       string    `json:"version"`
+	BuildNumber string    `json:"build_number"`
+	Commit      string    `json:"commit"`
+	Branch      string    `json:"branch"`
+	BuildTime   time.Time `json:"build_time"`
+	Environment string    `json:"environment"`
+	Version     string    `json:"version"`
 }
 
 // Dashboard represents the test dashboard
 type Dashboard struct {
-	config    *DashboardConfig
+	config    *Config
 	metrics   *TestMetrics
 	templates *template.Template
 }
@@ -295,9 +295,9 @@ func NewDashboard(configPath string) (*Dashboard, error) {
 }
 
 // loadConfig loads dashboard configuration
-func loadConfig(configPath string) (*DashboardConfig, error) {
+func loadConfig(configPath string) (*Config, error) {
 	// Default configuration
-	config := &DashboardConfig{
+	config := &Config{
 		Title:       "O-RAN Intent-MANO Test Dashboard",
 		RefreshRate: 30,
 		Port:        8080,
@@ -403,8 +403,8 @@ func (d *Dashboard) GenerateHTML(outputPath string) error {
 	}()
 
 	data := struct {
-		Config  *DashboardConfig
-		Metrics *TestMetrics
+		Config      *Config
+		Metrics     *TestMetrics
 		GeneratedAt time.Time
 	}{
 		Config:      d.config,
@@ -477,7 +477,7 @@ func (d *Dashboard) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := struct {
-		Config      *DashboardConfig
+		Config      *Config
 		Metrics     *TestMetrics
 		GeneratedAt time.Time
 	}{
@@ -544,9 +544,10 @@ func (d *Dashboard) logError(r *http.Request, err error, context string) {
 		sanitizedContext, sanitizedError, sanitizedMethod, sanitizedPath, sanitizedRemote, sanitizedUserAgent)
 }
 
-
 // Helper methods for loading different types of data
 
+// loadTestResults loads test results from various sources
+// TODO: Implement actual file parsing logic
 func (d *Dashboard) loadTestResults(metrics *TestMetrics) error {
 	// Load JUnit XML files, Go test outputs, Python test results
 	testResultsDir := filepath.Join(d.config.OutputDir, "test-results")
@@ -554,7 +555,12 @@ func (d *Dashboard) loadTestResults(metrics *TestMetrics) error {
 		return nil // No test results directory
 	}
 
-	// Simulate loading test results (in real implementation, parse actual files)
+	// In a real implementation, this would:
+	// 1. Walk through test result files
+	// 2. Parse JUnit XML, TAP, or other formats
+	// 3. Extract test statistics and results
+	// For now, simulate loading test results
+
 	metrics.TestSuiteResults = map[string]*TestSuiteResult{
 		"unit-tests": {
 			Name:         "Unit Tests",
@@ -588,8 +594,15 @@ func (d *Dashboard) loadTestResults(metrics *TestMetrics) error {
 	return nil
 }
 
+// loadCoverageData loads coverage data from coverage reports
+// TODO: Implement actual coverage file parsing
 func (d *Dashboard) loadCoverageData(metrics *TestMetrics) error {
-	// Load coverage data from coverage reports
+	// In a real implementation, this would:
+	// 1. Read coverage.out, coverage.xml, or coverage.json files
+	// 2. Parse the coverage data
+	// 3. Calculate package-level and overall coverage metrics
+	// For now, simulate coverage data
+
 	metrics.CoverageResults = &CoverageMetrics{
 		OverallCoverage:   92.3,
 		StatementCoverage: 93.1,
@@ -606,8 +619,15 @@ func (d *Dashboard) loadCoverageData(metrics *TestMetrics) error {
 	return nil
 }
 
+// loadPerformanceData loads performance test results
+// TODO: Implement actual performance data parsing
 func (d *Dashboard) loadPerformanceData(metrics *TestMetrics) error {
-	// Load performance test results
+	// In a real implementation, this would:
+	// 1. Read performance test result files
+	// 2. Parse timing, throughput, and latency data
+	// 3. Validate against thesis requirements
+	// For now, simulate performance data
+
 	metrics.PerformanceData = &PerformanceMetrics{
 		ThroughputResults: []ThroughputResult{
 			{SliceType: "URLLC", Target: 4.57, Achieved: 4.68, Success: true, TestTime: time.Now().Add(-time.Hour)},
@@ -630,8 +650,11 @@ func (d *Dashboard) loadPerformanceData(metrics *TestMetrics) error {
 	return nil
 }
 
+// loadSecurityResults loads security scan results
+// Returns error interface for consistency with other load methods, though always returns nil in current implementation
 func (d *Dashboard) loadSecurityResults(metrics *TestMetrics) error {
-	// Load security scan results
+	// TODO: Implement actual security scan result parsing
+	// Load security scan results from files like trivy.json, gosec.json, etc.
 	metrics.SecurityResults = &SecurityMetrics{
 		VulnerabilityScan: VulnerabilityResults{
 			Critical: 0,
@@ -657,7 +680,7 @@ func (d *Dashboard) loadSecurityResults(metrics *TestMetrics) error {
 		LastScanTime: time.Now().Add(-time.Hour * 2),
 	}
 
-	return nil
+	return nil // Interface required for consistency with other load methods
 }
 
 func (d *Dashboard) loadQualityGates(metrics *TestMetrics) error {

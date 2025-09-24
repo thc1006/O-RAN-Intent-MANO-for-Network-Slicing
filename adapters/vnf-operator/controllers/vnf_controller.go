@@ -27,10 +27,10 @@ const (
 // VNFReconciler reconciles a VNF object
 type VNFReconciler struct {
 	client.Client
-	Scheme           *runtime.Scheme
-	PorchTranslator  *translator.PorchTranslator
-	DMSClient        dms.Client
-	GitOpsClient     gitops.Client
+	Scheme          *runtime.Scheme
+	PorchTranslator *translator.PorchTranslator
+	DMSClient       dms.Client
+	GitOpsClient    gitops.Client
 }
 
 //+kubebuilder:rbac:groups=mano.oran.io,resources=vnfs,verbs=get;list;watch;create;update;patch;delete
@@ -55,7 +55,7 @@ func (r *VNFReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	}
 
 	// Check if the VNF instance is marked for deletion
-	if vnf.ObjectMeta.DeletionTimestamp != nil {
+	if vnf.DeletionTimestamp != nil {
 		if controllerutil.ContainsFinalizer(vnf, vnfFinalizer) {
 			// Run finalization logic
 			if err := r.finalizeVNF(ctx, vnf); err != nil {

@@ -98,7 +98,7 @@ type NetworkFunction struct {
 	// QoS requirements
 	QoSRequirements QoSRequirements `json:"qos_requirements"`
 	// Preferred placement hints
-	PlacementHints []PlacementHint `json:"placement_hints,omitempty"`
+	Hints []Hint `json:"placement_hints,omitempty"`
 }
 
 // ResourceRequirements defines resources needed by a network function
@@ -125,8 +125,8 @@ type QoSRequirements struct {
 	MaxJitterMs float64 `json:"max_jitter_ms"`
 }
 
-// PlacementHint provides hints for placement decisions
-type PlacementHint struct {
+// Hint provides hints for placement decisions
+type Hint struct {
 	// Type of hint
 	Type HintType `json:"type"`
 	// Value associated with the hint
@@ -149,8 +149,8 @@ const (
 	HintTypeCloudType HintType = "cloud-type"
 )
 
-// PlacementDecision represents the output of placement policy
-type PlacementDecision struct {
+// Decision represents the output of placement policy
+type Decision struct {
 	// Network function being placed
 	NetworkFunction *NetworkFunction `json:"network_function"`
 	// Selected site for placement
@@ -171,14 +171,14 @@ type SiteScore struct {
 	Score float64 `json:"score"`
 }
 
-// PlacementPolicy defines the interface for placement algorithms
-type PlacementPolicy interface {
+// Policy defines the interface for placement algorithms
+type Policy interface {
 	// Place determines optimal placement for a network function
-	Place(nf *NetworkFunction, sites []*Site) (*PlacementDecision, error)
+	Place(nf *NetworkFunction, sites []*Site) (*Decision, error)
 	// PlaceMultiple handles batch placement with dependencies
-	PlaceMultiple(nfs []*NetworkFunction, sites []*Site) ([]*PlacementDecision, error)
+	PlaceMultiple(nfs []*NetworkFunction, sites []*Site) ([]*Decision, error)
 	// Rebalance optimizes existing placements
-	Rebalance(decisions []*PlacementDecision, sites []*Site) ([]*PlacementDecision, error)
+	Rebalance(decisions []*Decision, sites []*Site) ([]*Decision, error)
 }
 
 // MetricsProvider defines interface for retrieving site metrics
@@ -191,21 +191,21 @@ type MetricsProvider interface {
 	Subscribe(siteID string, callback func(*SiteMetrics))
 }
 
-// PlacementError represents placement-specific errors
-type PlacementError struct {
+// Error represents placement-specific errors
+type Error struct {
 	Code    string
 	Message string
 	Details map[string]interface{}
 }
 
-func (e *PlacementError) Error() string {
+func (e *Error) Error() string {
 	return fmt.Sprintf("%s: %s", e.Code, e.Message)
 }
 
 // Common error codes
 const (
-	ErrNoSuitableSite     = "NO_SUITABLE_SITE"
+	ErrNoSuitableSite        = "NO_SUITABLE_SITE"
 	ErrInsufficientResources = "INSUFFICIENT_RESOURCES"
-	ErrQoSViolation      = "QOS_VIOLATION"
-	ErrSiteUnavailable   = "SITE_UNAVAILABLE"
+	ErrQoSViolation          = "QOS_VIOLATION"
+	ErrSiteUnavailable       = "SITE_UNAVAILABLE"
 )

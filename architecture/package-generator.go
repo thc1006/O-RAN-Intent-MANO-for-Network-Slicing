@@ -21,22 +21,22 @@ type DefaultPackageGenerator struct {
 
 // Package represents a complete Nephio package
 type Package struct {
-	Metadata     PackageMetadata                `json:"metadata"`
-	Resources    []unstructured.Unstructured    `json:"resources"`
-	Dependencies []PackageDependency            `json:"dependencies"`
-	Targets      []DeploymentTarget             `json:"targets"`
-	Kustomize    *Kustomization                 `json:"kustomize,omitempty"`
+	Metadata     PackageMetadata             `json:"metadata"`
+	Resources    []unstructured.Unstructured `json:"resources"`
+	Dependencies []PackageDependency         `json:"dependencies"`
+	Targets      []DeploymentTarget          `json:"targets"`
+	Kustomize    *Kustomization              `json:"kustomize,omitempty"`
 }
 
 // PackageMetadata contains package identification and versioning
 type PackageMetadata struct {
-	Name         string            `json:"name"`
-	Version      string            `json:"version"`
-	Description  string            `json:"description"`
-	Vendor       string            `json:"vendor"`
-	Category     string            `json:"category"`
-	Labels       map[string]string `json:"labels,omitempty"`
-	Annotations  map[string]string `json:"annotations,omitempty"`
+	Name        string            `json:"name"`
+	Version     string            `json:"version"`
+	Description string            `json:"description"`
+	Vendor      string            `json:"vendor"`
+	Category    string            `json:"category"`
+	Labels      map[string]string `json:"labels,omitempty"`
+	Annotations map[string]string `json:"annotations,omitempty"`
 }
 
 // PackageDependency represents a dependency on another package
@@ -65,11 +65,11 @@ type PackageCatalog interface {
 
 // PackageTemplate represents a reusable package template
 type PackageTemplate struct {
-	Metadata     PackageMetadata           `json:"metadata"`
-	ManifestPath string                   `json:"manifestPath"`
-	ConfigSchema map[string]interface{}   `json:"configSchema"`
-	Resources    []ResourceTemplate       `json:"resources"`
-	Dependencies []PackageDependency      `json:"dependencies"`
+	Metadata     PackageMetadata        `json:"metadata"`
+	ManifestPath string                 `json:"manifestPath"`
+	ConfigSchema map[string]interface{} `json:"configSchema"`
+	Resources    []ResourceTemplate     `json:"resources"`
+	Dependencies []PackageDependency    `json:"dependencies"`
 }
 
 // ResourceTemplate represents a template for Kubernetes resources
@@ -90,9 +90,9 @@ type TemplateRenderer interface {
 type TemplateConfig struct {
 	VNFSpec       manov1alpha1.VNFSpec `json:"vnfSpec"`
 	PlacementInfo PlacementInfo        `json:"placementInfo"`
-	QoSProfile    QoSProfile          `json:"qosProfile"`
-	ClusterInfo   ClusterInfo         `json:"clusterInfo"`
-	NetworkConfig NetworkConfig       `json:"networkConfig"`
+	QoSProfile    QoSProfile           `json:"qosProfile"`
+	ClusterInfo   ClusterInfo          `json:"clusterInfo"`
+	NetworkConfig NetworkConfig        `json:"networkConfig"`
 }
 
 // PlacementInfo contains placement decision information
@@ -124,19 +124,19 @@ type ClusterInfo struct {
 
 // NetworkConfig contains network-specific configuration
 type NetworkConfig struct {
-	Interfaces []NetworkInterface    `json:"interfaces"`
-	Routes     []Route              `json:"routes,omitempty"`
-	QoSPolicies []QoSPolicy         `json:"qosPolicies,omitempty"`
-	SecurityGroups []SecurityGroup  `json:"securityGroups,omitempty"`
+	Interfaces     []NetworkInterface `json:"interfaces"`
+	Routes         []Route            `json:"routes,omitempty"`
+	QoSPolicies    []QoSPolicy        `json:"qosPolicies,omitempty"`
+	SecurityGroups []SecurityGroup    `json:"securityGroups,omitempty"`
 }
 
 // NetworkInterface represents a network interface configuration
 type NetworkInterface struct {
-	Name     string `json:"name"`
-	Type     string `json:"type"` // "management", "data", "signaling"
-	CIDR     string `json:"cidr"`
-	VLAN     int    `json:"vlan,omitempty"`
-	MTU      int    `json:"mtu,omitempty"`
+	Name string `json:"name"`
+	Type string `json:"type"` // "management", "data", "signaling"
+	CIDR string `json:"cidr"`
+	VLAN int    `json:"vlan,omitempty"`
+	MTU  int    `json:"mtu,omitempty"`
 }
 
 // Route represents a network route
@@ -149,11 +149,11 @@ type Route struct {
 
 // QoSPolicy represents a Quality of Service policy
 type QoSPolicy struct {
-	Name        string  `json:"name"`
-	Class       string  `json:"class"`
-	Bandwidth   string  `json:"bandwidth"`
-	Priority    int     `json:"priority"`
-	MatchRules  []string `json:"matchRules"`
+	Name       string   `json:"name"`
+	Class      string   `json:"class"`
+	Bandwidth  string   `json:"bandwidth"`
+	Priority   int      `json:"priority"`
+	MatchRules []string `json:"matchRules"`
 }
 
 // SecurityGroup represents network security rules
@@ -184,7 +184,8 @@ func (g *DefaultPackageGenerator) GeneratePackages(ctx context.Context, intent *
 	packages := make([]*Package, 0)
 
 	// Generate individual VNF packages
-	for _, nfSpec := range intent.Spec.NetworkFunctions {
+	for i := range intent.Spec.NetworkFunctions {
+		nfSpec := &intent.Spec.NetworkFunctions[i]
 		pkg, err := g.generateVNFPackage(ctx, nfSpec, intent)
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate package for %s: %w", nfSpec.Type, err)
@@ -193,18 +194,12 @@ func (g *DefaultPackageGenerator) GeneratePackages(ctx context.Context, intent *
 	}
 
 	// Generate network slice orchestration package
-	slicePackage, err := g.generateSliceOrchestrationPackage(ctx, intent)
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate slice orchestration package: %w", err)
-	}
+	slicePackage := g.generateSliceOrchestrationPackage(ctx, intent)
 	packages = append(packages, slicePackage)
 
 	// Generate ConfigSync packages for each target cluster
 	for _, clusterName := range intent.Spec.TargetClusters {
-		configSyncPkg, err := g.generateConfigSyncPackage(ctx, intent, clusterName)
-		if err != nil {
-			return nil, fmt.Errorf("failed to generate ConfigSync package for %s: %w", clusterName, err)
-		}
+		configSyncPkg := g.generateConfigSyncPackage(ctx, intent, clusterName)
 		packages = append(packages, configSyncPkg)
 	}
 
@@ -212,7 +207,7 @@ func (g *DefaultPackageGenerator) GeneratePackages(ctx context.Context, intent *
 }
 
 // generateVNFPackage creates a package for a specific VNF
-func (g *DefaultPackageGenerator) generateVNFPackage(ctx context.Context, nfSpec NetworkFunctionSpec, intent *NetworkSliceIntent) (*Package, error) {
+func (g *DefaultPackageGenerator) generateVNFPackage(_ context.Context, nfSpec *NetworkFunctionSpec, intent *NetworkSliceIntent) (*Package, error) {
 	// Get template from catalog
 	template, err := g.PackageCatalog.GetTemplate(nfSpec.Type, "latest")
 	if err != nil {
@@ -225,9 +220,9 @@ func (g *DefaultPackageGenerator) generateVNFPackage(ctx context.Context, nfSpec
 			Name: fmt.Sprintf("%s-%s", strings.ToLower(nfSpec.Type), intent.Name),
 			Type: manov1alpha1.VNFType(nfSpec.Type),
 			QoS: manov1alpha1.QoSRequirements{
-				Bandwidth:   parseFloat64(intent.Spec.QoSProfile.Bandwidth),
-				Latency:     parseFloat64(intent.Spec.QoSProfile.Latency),
-				SliceType:   intent.Spec.QoSProfile.SliceType,
+				Bandwidth: parseFloat64(intent.Spec.QoSProfile.Bandwidth),
+				Latency:   parseFloat64(intent.Spec.QoSProfile.Latency),
+				SliceType: intent.Spec.QoSProfile.SliceType,
 			},
 			Placement: manov1alpha1.PlacementRequirements{
 				CloudType: nfSpec.Placement.CloudType,
@@ -244,12 +239,12 @@ func (g *DefaultPackageGenerator) generateVNFPackage(ctx context.Context, nfSpec
 		},
 		PlacementInfo: PlacementInfo{
 			SiteID:      nfSpec.Placement.SiteID,
-			ClusterName: g.getTargetCluster(nfSpec.Placement),
+			ClusterName: g.getTargetCluster(&nfSpec.Placement),
 			CloudType:   nfSpec.Placement.CloudType,
 			Region:      nfSpec.Placement.Region,
 			Zone:        nfSpec.Placement.Zone,
 		},
-		QoSProfile: intent.Spec.QoSProfile,
+		QoSProfile:    intent.Spec.QoSProfile,
 		NetworkConfig: g.generateNetworkConfig(nfSpec.Type, intent.Spec.QoSProfile),
 	}
 
@@ -273,10 +268,10 @@ func (g *DefaultPackageGenerator) generateVNFPackage(ctx context.Context, nfSpec
 			Vendor:      template.Metadata.Vendor,
 			Category:    template.Metadata.Category,
 			Labels: map[string]string{
-				"slice-intent":     intent.Name,
-				"vnf-type":         nfSpec.Type,
-				"cloud-type":       nfSpec.Placement.CloudType,
-				"generated-by":     "oran-mano-nephio-adapter",
+				"slice-intent": intent.Name,
+				"vnf-type":     nfSpec.Type,
+				"cloud-type":   nfSpec.Placement.CloudType,
+				"generated-by": "oran-mano-nephio-adapter",
 			},
 		},
 		Resources:    resources,
@@ -304,7 +299,7 @@ func (g *DefaultPackageGenerator) generateVNFPackage(ctx context.Context, nfSpec
 }
 
 // generateSliceOrchestrationPackage creates the top-level slice orchestration package
-func (g *DefaultPackageGenerator) generateSliceOrchestrationPackage(ctx context.Context, intent *NetworkSliceIntent) (*Package, error) {
+func (g *DefaultPackageGenerator) generateSliceOrchestrationPackage(_ context.Context, intent *NetworkSliceIntent) *Package {
 	// Create NetworkSliceIntent resource
 	sliceIntent := &unstructured.Unstructured{
 		Object: map[string]interface{}{
@@ -341,9 +336,9 @@ func (g *DefaultPackageGenerator) generateSliceOrchestrationPackage(ctx context.
 			Description: fmt.Sprintf("Orchestration package for network slice %s", intent.Name),
 			Category:    "slice-orchestration",
 			Labels: map[string]string{
-				"slice-intent":   intent.Name,
-				"slice-type":     intent.Spec.QoSProfile.SliceType,
-				"generated-by":   "oran-mano-nephio-adapter",
+				"slice-intent": intent.Name,
+				"slice-type":   intent.Spec.QoSProfile.SliceType,
+				"generated-by": "oran-mano-nephio-adapter",
 			},
 		},
 		Resources: resources,
@@ -357,11 +352,11 @@ func (g *DefaultPackageGenerator) generateSliceOrchestrationPackage(ctx context.
 		},
 	}
 
-	return pkg, nil
+	return pkg
 }
 
 // generateConfigSyncPackage creates ConfigSync packages for cluster-specific deployments
-func (g *DefaultPackageGenerator) generateConfigSyncPackage(ctx context.Context, intent *NetworkSliceIntent, clusterName string) (*Package, error) {
+func (g *DefaultPackageGenerator) generateConfigSyncPackage(_ context.Context, intent *NetworkSliceIntent, clusterName string) *Package {
 	// Create RootSync configuration
 	rootSync := &unstructured.Unstructured{
 		Object: map[string]interface{}{
@@ -435,7 +430,7 @@ func (g *DefaultPackageGenerator) generateConfigSyncPackage(ctx context.Context,
 		},
 	}
 
-	return pkg, nil
+	return pkg
 }
 
 // Helper methods
@@ -575,7 +570,7 @@ func (g *DefaultPackageGenerator) generateSliceNetworkPolicy(intent *NetworkSlic
 	}
 }
 
-func (g *DefaultPackageGenerator) generateClusterOverrides(clusterName string, intent *NetworkSliceIntent) map[string]interface{} {
+func (g *DefaultPackageGenerator) generateClusterOverrides(clusterName string, _ *NetworkSliceIntent) map[string]interface{} {
 	return map[string]interface{}{
 		"resources": []interface{}{
 			map[string]interface{}{
@@ -596,7 +591,7 @@ func (g *DefaultPackageGenerator) generateClusterOverrides(clusterName string, i
 	}
 }
 
-func (g *DefaultPackageGenerator) getTargetCluster(placement PlacementSpec) string {
+func (g *DefaultPackageGenerator) getTargetCluster(placement *PlacementSpec) string {
 	// Logic to determine target cluster based on placement constraints
 	if placement.SiteID != "" {
 		return fmt.Sprintf("cluster-%s", placement.SiteID)
@@ -635,8 +630,9 @@ func (g *DefaultPackageGenerator) getQoSPriority(sliceType string) int {
 func parseFloat64(s string) float64 {
 	// Parse bandwidth/latency strings like "4.5Mbps", "10ms"
 	// Simplified implementation - in production, use proper parsing
-	s = strings.Replace(s, "Mbps", "", -1)
-	s = strings.Replace(s, "ms", "", -1)
+	_ = strings.ReplaceAll(s, "Mbps", "")
+	_ = strings.ReplaceAll(s, "ms", "")
 	// Return default values for now
+	// TODO: Implement actual parsing logic
 	return 5.0
 }

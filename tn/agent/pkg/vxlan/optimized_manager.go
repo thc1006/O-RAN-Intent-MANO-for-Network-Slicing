@@ -21,20 +21,20 @@ type OptimizedManager struct {
 	// Performance optimizations
 	commandCache    map[string]*CachedCommand
 	cacheMutex      sync.RWMutex
-	commandPool     *sync.Pool
+	commandPool     *sync.Pool // TODO: Implement command pooling for performance
 	workerPool      chan struct{}
 
 	// Batch operations
 	pendingOps      []BatchOperation
 	batchMutex      sync.Mutex
-	batchTimer      *time.Timer
+	batchTimer      *time.Timer // TODO: Implement batch timer for optimized operations
 	batchInterval   time.Duration
 
 	// Performance metrics
 	metrics         *PerformanceMetrics
 
 	// System optimization
-	netlinkSocket   int
+	netlinkSocket   int // TODO: Implement netlink socket optimization
 	useNetlink     bool
 
 	// Command executor for dependency injection
@@ -163,7 +163,7 @@ func (m *OptimizedManager) CreateTunnelAsync(vxlanID int32, localIP string, remo
 	}
 
 	// Process immediately for critical operations
-	go m.createTunnelOptimized(vxlanID, localIP, remoteIPs, physInterface, callback)
+	go func() { _ = m.createTunnelOptimized(vxlanID, localIP, remoteIPs, physInterface, callback) }()
 }
 
 // CreateTunnelOptimized creates a VXLAN tunnel with performance optimizations

@@ -10,6 +10,26 @@ Reproduce the thesis system: map natural-language intents → QoS(JSON) → E2E 
 - **Determinism**: Prefer headless steps; pin versions; write idempotent scripts.
 - **Safety**: Never alter kube contexts outside `kind-*`/lab clusters; never `sudo` unless explicitly allowed.
 
+## Version Requirements for Nephio R3 + Go 1.22
+- **Go Version**: **Go 1.22.x** (Nephio R3 upgraded Porch/porchctl toolchain to Go 1.22)
+- **GitHub Actions Runner OS**: **ubuntu-24.04** (`runs-on: ubuntu-24.04`)
+- **GitHub Actions (Node runtime)**: **Node 20 baseline** (use latest action versions)
+- **actions/checkout**: **v4** (avoid Node 16 deprecation warnings)
+- **actions/setup-go**: **v5** (supports extracting Go version from `go.mod`/`go.work`; Node 20 runtime)
+- **golangci-lint**: **v2.2+** (latest 2.x recommended, supports Go 1.22)
+- **Kubernetes (cluster version)**: **v1.26+** (Nephio R3 requirement)
+- **kubectl**: **v1.26-1.28** (follow 1-minor version skew policy with cluster)
+- **kpt**: **≥v1.0.0-beta.43** (Porch/ConfigSync requirement)
+- **porchctl**: **latest from Nephio R3 release** (built with Go 1.22)
+- **Container Engine (local/runner)**: **Docker Engine** (Ubuntu 22.04/24.04 official support)
+- **Container Runtime (K8s nodes)**: **containerd ≥1.6.0** (K8s 1.26+ requires CRI 1.6+)
+- **MetalLB**: **v0.15.2** (latest stable for R3 multi/single VM examples)
+- **Git LFS**: **3.6.1+** (GitHub recommended version)
+- **GitHub CLI (`gh`)**: **2.x** (latest stable, currently 2.76.x)
+- **Helm**: **Helm 3** (latest v3.x) for chart management
+- **Security Tools**: gosec v2.21.4, cosign v2.4.1, trivy/grype latest versions
+- **Never downgrade** any tool versions without explicit approval - all versions aligned with Nephio R3
+
 ## Repository Layout (expected)
 - nlp/: prompt.md, schema.json, tests/
 - orchestrator/: pkg/placement/, cmd/, tests/

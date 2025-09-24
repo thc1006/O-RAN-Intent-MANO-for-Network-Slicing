@@ -1,0 +1,229 @@
+tests\performance\thesis_validation_test.go:14:2: dot-imports: should not use dot imports (revive)
+	. "github.com/onsi/ginkgo/v2"
+	^
+tests\performance\thesis_validation_test.go:15:2: dot-imports: should not use dot imports (revive)
+	. "github.com/onsi/gomega"
+	^
+tests\performance\thesis_validation_test.go:862:2: redefines-builtin-id: redefinition of the built-in function max (revive)
+	max := values[0]
+	^
+tests\performance\network_performance_test.go:11:2: dot-imports: should not use dot imports (revive)
+	. "github.com/onsi/ginkgo/v2"
+	^
+tests\performance\network_performance_test.go:12:2: dot-imports: should not use dot imports (revive)
+	. "github.com/onsi/gomega"
+	^
+tests\performance\thesis_validation_test.go:865:4: redefines-builtin-id: redefinition of the built-in function max (revive)
+			max = v
+			^
+tests\performance\qos_validation_test.go:10:2: dot-imports: should not use dot imports (revive)
+	. "github.com/onsi/ginkgo/v2"
+	^
+tests\performance\network_performance_test.go:569:67: unused-parameter: parameter 'sourcePod' seems to be unused, consider removing or renaming it as _ (revive)
+func (s *NetworkPerformanceSuite) performHighFrequencyLatencyTest(sourcePod, targetPod *corev1.Pod, packetCount int) PingResult {
+                                                                  ^
+tests\performance\qos_validation_test.go:11:2: dot-imports: should not use dot imports (revive)
+	. "github.com/onsi/gomega"
+	^
+tests\performance\thesis_validation_test.go:703:56: unused-parameter: parameter 'sliceID' seems to be unused, consider removing or renaming it as _ (revive)
+func (s *PerformanceTestSuite) configureTrafficControl(sliceID string, qosClass QoSClass) {
+                                                       ^
+tests\performance\network_performance_test.go:594:102: unused-parameter: parameter 'targetMbps' seems to be unused, consider removing or renaming it as _ (revive)
+func (s *NetworkPerformanceSuite) performConstrainedThroughputTest(sourcePod, targetPod *corev1.Pod, targetMbps, maxLatencyMs float64) PerformanceMeasurement {
+                                                                                                     ^
+tests\performance\qos_validation_test.go:679:1: redefines-builtin-id: redefinition of the built-in function max (revive)
+func max(a, b float64) float64 {
+	if a > b {
+		return a
+	}
+	return b
+}
+tests\performance\network_performance_test.go:602:100: unused-parameter: parameter 'targetMbps' seems to be unused, consider removing or renaming it as _ (revive)
+func (s *NetworkPerformanceSuite) performSustainedThroughputTest(sourcePod, targetPod *corev1.Pod, targetMbps float64, duration time.Duration) PerformanceMeasurement {
+                                                                                                   ^
+tests\performance\thesis_validation_test.go:771:67: unused-parameter: parameter 'duration' seems to be unused, consider removing or renaming it as _ (revive)
+func (s *PerformanceTestSuite) measureReliability(sliceID string, duration time.Duration) float64 {
+                                                                  ^
+tests\performance\network_performance_test.go:654:52: unused-parameter: parameter 'pods' seems to be unused, consider removing or renaming it as _ (revive)
+func (s *NetworkPerformanceSuite) waitForPodsReady(pods []*corev1.Pod, timeout time.Duration) {
+                                                   ^
+tests\performance\thesis_validation_test.go:786:66: unused-parameter: parameter 'duration' seems to be unused, consider removing or renaming it as _ (revive)
+func (s *PerformanceTestSuite) measurePacketLoss(sliceID string, duration time.Duration) float64 {
+                                                                 ^
+tests\performance\thesis_validation_test.go:799:49: unused-parameter: parameter 'sliceID' seems to be unused, consider removing or renaming it as _ (revive)
+func (s *PerformanceTestSuite) cleanupTestSlice(sliceID string) {
+                                                ^
+tests\performance\network_performance_test.go:659:51: unused-parameter: parameter 'sourcePod' seems to be unused, consider removing or renaming it as _ (revive)
+func (s *NetworkPerformanceSuite) performPingTest(sourcePod, targetPod *corev1.Pod, durationSec int) PingResult {
+                                                  ^
+tests\performance\thesis_validation_test.go:814:56: unused-parameter: parameter 'sliceID' seems to be unused, consider removing or renaming it as _ (revive)
+func (s *PerformanceTestSuite) startResourceMonitoring(sliceID string) *ResourceMetrics {
+                                                       ^
+tests\performance\thesis_validation_test.go:818:55: unused-parameter: parameter 'metrics' seems to be unused, consider removing or renaming it as _ (revive)
+func (s *PerformanceTestSuite) stopResourceMonitoring(metrics *ResourceMetrics) *ResourceMetrics {
+                                                      ^
+tests\performance\network_performance_test.go:672:53: unused-parameter: parameter 'sourcePod' seems to be unused, consider removing or renaming it as _ (revive)
+func (s *NetworkPerformanceSuite) performIperf3Test(sourcePod, targetPod *corev1.Pod, durationSec int) IPerf3Result {
+                                                    ^
+tests\performance\network_performance_test.go:714:55: unused-parameter: parameter 'sourcePod' seems to be unused, consider removing or renaming it as _ (revive)
+func (s *NetworkPerformanceSuite) calculateP95Latency(sourcePod, targetPod *corev1.Pod) float64 {
+                                                      ^
+tests\performance\network_performance_test.go:719:60: unused-parameter: parameter 'result' seems to be unused, consider removing or renaming it as _ (revive)
+func (s *NetworkPerformanceSuite) calculateLatencyVariance(result PerformanceMeasurement) float64 {
+                                                           ^
+tests\performance\network_performance_test.go:724:66: unused-parameter: parameter 'result' seems to be unused, consider removing or renaming it as _ (revive)
+func (s *NetworkPerformanceSuite) calculateThroughputConsistency(result PerformanceMeasurement) float64 {
+                                                                 ^
+tests\performance\network_performance_test.go:729:61: unused-parameter: parameter 'sourcePod' seems to be unused, consider removing or renaming it as _ (revive)
+func (s *NetworkPerformanceSuite) generateBackgroundTraffic(sourcePod, targetPod *corev1.Pod, duration time.Duration) {
+                                                            ^
+tests\performance\network_performance_test.go:743:53: unused-parameter: parameter 'job' seems to be unused, consider removing or renaming it as _ (revive)
+func (s *NetworkPerformanceSuite) stopNetworkStress(job NetworkStressJob) {
+                                                    ^
+tests\performance\network_performance_test.go:747:58: unused-parameter: parameter 'scenario' seems to be unused, consider removing or renaming it as _ (revive)
+func (s *NetworkPerformanceSuite) savePerformanceResults(scenario string, latencyResult, throughputResult PerformanceMeasurement) {
+                                                         ^
+tests\performance\qos_validation_test.go:563:48: unused-parameter: parameter 'job' seems to be unused, consider removing or renaming it as _ (revive)
+func (s *QoSValidationSuite) stopNetworkStress(job QoSNetworkStressJob) {
+                                               ^
+tests\performance\qos_validation_test.go:670:48: unused-parameter: parameter 'results' seems to be unused, consider removing or renaming it as _ (revive)
+func (s *QoSValidationSuite) generateSLAReport(results map[string]SLAValidationResult) {
+                                               ^
+tests\security\fuzzing_security_test.go:329:1: cyclomatic complexity 21 of func `TestFuzzingCommandValidation` is high (> 15) (gocyclo)
+func TestFuzzingCommandValidation(t *testing.T) {
+^
+tests\security\fuzzing_security_test.go:501:1: cyclomatic complexity 16 of func `TestFuzzingHTTPSecurity` is high (> 15) (gocyclo)
+func TestFuzzingHTTPSecurity(t *testing.T) {
+^
+tests\security\fuzzing_security_test.go:46:31: redefines-builtin-id: redefinition of the built-in function min (revive)
+func (r *FuzzingRNG) IntRange(min, max int) int {
+                              ^
+tests\security\coverage_security_test.go:942:54: unused-parameter: parameter 'requirements' seems to be unused, consider removing or renaming it as _ (revive)
+func simulateDocumentationCheck(functionName string, requirements []string) bool {
+                                                     ^
+tests\security\command_injection_test.go:461:12: unused-parameter: parameter 'id' seems to be unused, consider removing or renaming it as _ (revive)
+			go func(id int) {
+			        ^
+tests\security\fuzzing_security_test.go:50:2: var-naming: don't use underscores in Go names; var range_ should be range (revive)
+	range_ := max - min
+	^
+tests\security\integration_security_test.go:769:71: unused-parameter: parameter 't' seems to be unused, consider removing or renaming it as _ (revive)
+func (suite *IntegrationSecurityTestSuite) measureBaselinePerformance(t *testing.T) time.Duration {
+                                                                      ^
+tests\security\integration_security_test.go:781:63: unused-parameter: parameter 't' seems to be unused, consider removing or renaming it as _ (revive)
+func (suite *IntegrationSecurityTestSuite) simulateAttackLoad(t *testing.T) time.Duration {
+                                                              ^
+tests\security\http_security_test.go:218:64: unused-parameter: parameter 'r' seems to be unused, consider removing or renaming it as _ (revive)
+func (s *SecureHTTPServer) handleHealth(w http.ResponseWriter, r *http.Request) {
+                                                               ^
+tests\security\http_security_test.go:228:64: unused-parameter: parameter 'r' seems to be unused, consider removing or renaming it as _ (revive)
+func (s *SecureHTTPServer) handleStatus(w http.ResponseWriter, r *http.Request) {
+                                                               ^
+tests\security\http_security_test.go:250:67: unused-parameter: parameter 'r' seems to be unused, consider removing or renaming it as _ (revive)
+func (s *SecureHTTPServer) handleGetConfig(w http.ResponseWriter, r *http.Request) {
+                                                                  ^
+tests\security\benchmark_security_test.go:328:92: unused-parameter: parameter 'r' seems to be unused, consider removing or renaming it as _ (revive)
+			suite.httpServer.securityHeadersMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			                                                                                        ^
+tests\security\benchmark_security_test.go:587:59: unused-parameter: parameter 'r' seems to be unused, consider removing or renaming it as _ (revive)
+		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		                                                        ^
+tests\security\http_security_test.go:862:26: (*net/http.Client).Get must not be called (noctx)
+		resp, err := client.Get(baseURL + "/health")
+		                       ^
+tests\security\http_security_test.go:880:26: (*net/http.Client).Get must not be called (noctx)
+		resp, err := client.Get(baseURL + "/health")
+		                       ^
+tests\security\integration_security_test.go:296:31: should rewrite http.NewRequestWithContext or add (*Request).WithContext (noctx)
+			req, err := http.NewRequest(tc.method, baseURL+tc.path, strings.NewReader(tc.body))
+			                           ^
+tests\framework\dashboard\cmd\dashboard\main.go:248:37: unused-parameter: parameter 'r' seems to be unused, consider removing or renaming it as _ (revive)
+	return func(w http.ResponseWriter, r *http.Request) {
+	                                   ^
+tests\framework\dashboard\cmd\dashboard\main.go:265:37: unused-parameter: parameter 'r' seems to be unused, consider removing or renaming it as _ (revive)
+	return func(w http.ResponseWriter, r *http.Request) {
+	                                   ^
+tests\framework\dashboard\cmd\dashboard\main.go:383:20: unused-parameter: parameter 'r' seems to be unused, consider removing or renaming it as _ (revive)
+	CheckOrigin: func(r *http.Request) bool {
+	                  ^
+tests\framework\dashboard\cmd\dashboard\main.go:441:37: unused-parameter: parameter 'r' seems to be unused, consider removing or renaming it as _ (revive)
+	return func(w http.ResponseWriter, r *http.Request) {
+	                                   ^
+tests\framework\dashboard\cmd\dashboard\main.go:460:37: unused-parameter: parameter 'r' seems to be unused, consider removing or renaming it as _ (revive)
+	return func(w http.ResponseWriter, r *http.Request) {
+	                                   ^
+tests\framework\dashboard\dashboard.go:551:59: (*Dashboard).loadTestResults - result 0 (error) is always nil (unparam)
+func (d *Dashboard) loadTestResults(metrics *TestMetrics) error {
+                                                          ^
+tests\framework\dashboard\dashboard.go:599:60: (*Dashboard).loadCoverageData - result 0 (error) is always nil (unparam)
+func (d *Dashboard) loadCoverageData(metrics *TestMetrics) error {
+                                                           ^
+tests\framework\dashboard\dashboard.go:624:63: (*Dashboard).loadPerformanceData - result 0 (error) is always nil (unparam)
+func (d *Dashboard) loadPerformanceData(metrics *TestMetrics) error {
+                                                              ^
+tests\framework\dashboard\dashboard.go:655:63: (*Dashboard).loadSecurityResults - result 0 (error) is always nil (unparam)
+func (d *Dashboard) loadSecurityResults(metrics *TestMetrics) error {
+                                                              ^
+tests\framework\dashboard\dashboard.go:686:60: (*Dashboard).loadQualityGates - result 0 (error) is always nil (unparam)
+func (d *Dashboard) loadQualityGates(metrics *TestMetrics) error {
+                                                           ^
+tests\framework\dashboard\dashboard.go:741:64: (*Dashboard).loadThesisValidation - result 0 (error) is always nil (unparam)
+func (d *Dashboard) loadThesisValidation(metrics *TestMetrics) error {
+                                                               ^
+tests\framework\dashboard\dashboard.go:790:57: (*Dashboard).loadBuildInfo - result 0 (error) is always nil (unparam)
+func (d *Dashboard) loadBuildInfo(metrics *TestMetrics) error {
+                                                        ^
+tests\framework\dashboard\metrics_aggregator.go:235:49: (*MetricsAggregator).aggregateMetrics - result 0 (error) is always nil (unparam)
+func (ma *MetricsAggregator) aggregateMetrics() error {
+                                                ^
+tests\framework\dashboard\metrics_aggregator.go:453:68: (*MetricsAggregator).checkThresholds - result 0 (error) is always nil (unparam)
+func (ma *MetricsAggregator) checkThresholds(metrics *TestMetrics) error {
+                                                                   ^
+tests\e2e\intent_to_slice_workflow_test.go:11:2: dot-imports: should not use dot imports (revive)
+	. "github.com/onsi/ginkgo/v2"
+	^
+tests\e2e\intent_to_slice_workflow_test.go:12:2: dot-imports: should not use dot imports (revive)
+	. "github.com/onsi/gomega"
+	^
+tests\e2e\deployment_timing_test.go:14:2: dot-imports: should not use dot imports (revive)
+	. "github.com/onsi/ginkgo/v2"
+	^
+tests\e2e\deployment_timing_test.go:15:2: dot-imports: should not use dot imports (revive)
+	. "github.com/onsi/gomega"
+	^
+tests\e2e\deployment_timing_test.go:933:2: redefines-builtin-id: redefinition of the built-in function min (revive)
+	min := timings[0]
+	^
+tests\e2e\deployment_timing_test.go:1066:2: field `description` is unused (unused)
+	description        string
+	^
+tests\e2e\deployment_timing_test.go:1070:2: field `deploymentStrategy` is unused (unused)
+	deploymentStrategy string
+	^
+tests\e2e\deployment_timing_test.go:1071:2: field `maxAllowedTime` is unused (unused)
+	maxAllowedTime     time.Duration
+	^
+tests\e2e\deployment_timing_test.go:1072:2: field `parallelDeployment` is unused (unused)
+	parallelDeployment bool
+	^
+tests\e2e\intent_to_slice_workflow_test.go:23:2: field `config` is unused (unused)
+	config           *testutils.TestConfig
+	^
+tests\e2e\intent_to_slice_workflow_test.go:24:2: field `kubeClient` is unused (unused)
+	kubeClient       client.Client
+	^
+tests\e2e\intent_to_slice_workflow_test.go:25:2: field `kubernetesClient` is unused (unused)
+	kubernetesClient kubernetes.Interface
+	^
+tests\e2e\intent_to_slice_workflow_test.go:26:2: field `restConfig` is unused (unused)
+	restConfig       *rest.Config
+	^
+tests\integration\nephio_integration_test.go:853:2: var `porchPackageGVR` is unused (unused)
+	porchPackageGVR = schema.GroupVersionResource{
+	^
+tests\integration\nephio_integration_test.go:859:2: var `configSyncGVR` is unused (unused)
+	configSyncGVR = schema.GroupVersionResource{
+	^
+tests\integration\e2e_workflow_test.go:476:82: (*E2EWorkflowSuite).waitForVNFReady - result 0 (error) is always nil (unparam)
+func (s *E2EWorkflowSuite) waitForVNFReady(_ *manov1alpha1.VNF, _ time.Duration) error {
+                                                            

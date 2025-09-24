@@ -13,12 +13,12 @@ Exit codes:
 - 2: Invalid input or system error
 """
 
-import json
-import sys
 import argparse
+import json
 import logging
+import sys
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Any, Dict
 
 
 def setup_logging(verbose: bool = False) -> None:
@@ -26,8 +26,8 @@ def setup_logging(verbose: bool = False) -> None:
     level = logging.DEBUG if verbose else logging.INFO
     logging.basicConfig(
         level=level,
-        format='%(asctime)s - %(levelname)s - %(message)s',
-        datefmt='%H:%M:%S'
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        datefmt="%H:%M:%S",
     )
 
 
@@ -37,7 +37,7 @@ def load_report(report_file: Path) -> Dict[str, Any]:
         raise FileNotFoundError(f"Report file not found: {report_file}")
 
     try:
-        with open(report_file, 'r') as f:
+        with open(report_file, "r") as f:
             return json.load(f)
     except json.JSONDecodeError as e:
         raise ValueError(f"Invalid JSON in report file: {e}")
@@ -55,7 +55,9 @@ def assert_overall_status(report: Dict[str, Any]) -> bool:
         return False
 
 
-def assert_deployment_time(report: Dict[str, Any], max_time_minutes: int = 10) -> bool:
+def assert_deployment_time(
+    report: Dict[str, Any], max_time_minutes: int = 10
+) -> bool:
     """Assert that all deployment times are under the specified limit."""
     max_time_seconds = max_time_minutes * 60
     all_passed = True
@@ -75,16 +77,25 @@ def assert_deployment_time(report: Dict[str, Any], max_time_minutes: int = 10) -
         within_limit = deploy_time.get("within_limit", False)
 
         if within_limit and actual_time <= max_time_seconds:
-            logging.info(f"✅ {profile_name}: Deployment time {actual_time}s < {max_time_seconds}s")
+            logging.info(
+                f"✅ {profile_name}: Deployment time {actual_time}s < "
+                f"{max_time_seconds}s"
+            )
         else:
-            logging.error(f"❌ {profile_name}: Deployment time {actual_time}s >= {max_time_seconds}s")
+            logging.error(
+                f"❌ {profile_name}: Deployment time {actual_time}s >= "
+                f"{max_time_seconds}s"
+            )
             all_passed = False
 
     return all_passed
 
 
-def assert_bandwidth_targets(report: Dict[str, Any], tolerance_percent: float = 10.0) -> bool:
-    """Assert that all bandwidth measurements are within tolerance of targets."""
+def assert_bandwidth_targets(
+    report: Dict[str, Any], tolerance_percent: float = 10.0
+) -> bool:
+    """Assert that all bandwidth measurements are within tolerance of
+    targets."""
     all_passed = True
 
     profiles = report.get("profiles", {})
@@ -104,17 +115,25 @@ def assert_bandwidth_targets(report: Dict[str, Any], tolerance_percent: float = 
         deviation_percent = bandwidth.get("deviation_percent", 0)
 
         if within_tolerance:
-            logging.info(f"✅ {profile_name}: Bandwidth {actual_mbps:.2f}Mbps "
-                        f"(expected: {expected_mbps:.2f}Mbps, deviation: {deviation_percent:.1f}%)")
+            logging.info(
+                f"✅ {profile_name}: Bandwidth {actual_mbps:.2f}Mbps "
+                f"(expected: {expected_mbps:.2f}Mbps, "
+                f"deviation: {deviation_percent:.1f}%)"
+            )
         else:
-            logging.error(f"❌ {profile_name}: Bandwidth {actual_mbps:.2f}Mbps "
-                         f"(expected: {expected_mbps:.2f}Mbps, deviation: {deviation_percent:.1f}%)")
+            logging.error(
+                f"❌ {profile_name}: Bandwidth {actual_mbps:.2f}Mbps "
+                f"(expected: {expected_mbps:.2f}Mbps, "
+                f"deviation: {deviation_percent:.1f}%)"
+            )
             all_passed = False
 
     return all_passed
 
 
-def assert_latency_targets(report: Dict[str, Any], tolerance_percent: float = 10.0) -> bool:
+def assert_latency_targets(
+    report: Dict[str, Any], tolerance_percent: float = 10.0
+) -> bool:
     """Assert that all latency measurements are within tolerance of targets."""
     all_passed = True
 
@@ -135,17 +154,25 @@ def assert_latency_targets(report: Dict[str, Any], tolerance_percent: float = 10
         deviation_percent = latency.get("deviation_percent", 0)
 
         if within_tolerance:
-            logging.info(f"✅ {profile_name}: Latency {actual_ms:.1f}ms "
-                        f"(expected: {expected_ms:.1f}ms, deviation: {deviation_percent:.1f}%)")
+            logging.info(
+                f"✅ {profile_name}: Latency {actual_ms:.1f}ms "
+                f"(expected: {expected_ms:.1f}ms, "
+                f"deviation: {deviation_percent:.1f}%)"
+            )
         else:
-            logging.error(f"❌ {profile_name}: Latency {actual_ms:.1f}ms "
-                         f"(expected: {expected_ms:.1f}ms, deviation: {deviation_percent:.1f}%)")
+            logging.error(
+                f"❌ {profile_name}: Latency {actual_ms:.1f}ms "
+                f"(expected: {expected_ms:.1f}ms, "
+                f"deviation: {deviation_percent:.1f}%)"
+            )
             all_passed = False
 
     return all_passed
 
 
-def assert_success_rate(report: Dict[str, Any], min_success_rate: float = 100.0) -> bool:
+def assert_success_rate(
+    report: Dict[str, Any], min_success_rate: float = 100.0
+) -> bool:
     """Assert that success rate meets minimum threshold."""
     summary = report.get("summary", {})
     success_rate = summary.get("success_rate_percent", 0.0)
@@ -173,17 +200,31 @@ def assert_no_critical_issues(report: Dict[str, Any]) -> bool:
         return False
 
 
-def run_all_assertions(report: Dict[str, Any], args: argparse.Namespace) -> bool:
+def run_all_assertions(
+    report: Dict[str, Any], args: argparse.Namespace
+) -> bool:
     """Run all assertions and return overall result."""
     logging.info("Running performance threshold assertions...")
 
     assertions = [
         ("Overall Status", lambda: assert_overall_status(report)),
-        ("Deployment Time", lambda: assert_deployment_time(report, args.max_deploy_minutes)),
-        ("Bandwidth Targets", lambda: assert_bandwidth_targets(report, args.tolerance)),
-        ("Latency Targets", lambda: assert_latency_targets(report, args.tolerance)),
-        ("Success Rate", lambda: assert_success_rate(report, args.min_success_rate)),
-        ("Critical Issues", lambda: assert_no_critical_issues(report))
+        (
+            "Deployment Time",
+            lambda: assert_deployment_time(report, args.max_deploy_minutes),
+        ),
+        (
+            "Bandwidth Targets",
+            lambda: assert_bandwidth_targets(report, args.tolerance),
+        ),
+        (
+            "Latency Targets",
+            lambda: assert_latency_targets(report, args.tolerance),
+        ),
+        (
+            "Success Rate",
+            lambda: assert_success_rate(report, args.min_success_rate),
+        ),
+        ("Critical Issues", lambda: assert_no_critical_issues(report)),
     ]
 
     results = []
@@ -213,9 +254,13 @@ def run_all_assertions(report: Dict[str, Any], args: argparse.Namespace) -> bool
     logging.info(f"ASSERTION SUMMARY: {passed_count}/{total_count} passed")
 
     if all_passed:
-        logging.info("🎉 All assertions PASSED! System meets performance targets.")
+        logging.info(
+            "🎉 All assertions PASSED! System meets performance targets."
+        )
     else:
-        logging.error("💥 One or more assertions FAILED! System does not meet targets.")
+        logging.error(
+            "💥 One or more assertions FAILED! System does not meet targets."
+        )
 
     logging.info(f"{'='*50}")
 
@@ -228,32 +273,28 @@ def main():
         description="Assert O-RAN Intent MANO performance thresholds"
     )
     parser.add_argument(
-        "report_file",
-        type=Path,
-        help="Path to JSON metrics report file"
+        "report_file", type=Path, help="Path to JSON metrics report file"
     )
     parser.add_argument(
         "--tolerance",
         type=float,
         default=10.0,
-        help="Tolerance percentage for bandwidth/latency (default: 10.0)"
+        help="Tolerance percentage for bandwidth/latency (default: 10.0)",
     )
     parser.add_argument(
         "--max-deploy-minutes",
         type=int,
         default=10,
-        help="Maximum deployment time in minutes (default: 10)"
+        help="Maximum deployment time in minutes (default: 10)",
     )
     parser.add_argument(
         "--min-success-rate",
         type=float,
         default=100.0,
-        help="Minimum success rate percentage (default: 100.0)"
+        help="Minimum success rate percentage (default: 100.0)",
     )
     parser.add_argument(
-        "--verbose", "-v",
-        action="store_true",
-        help="Enable verbose logging"
+        "--verbose", "-v", action="store_true", help="Enable verbose logging"
     )
 
     args = parser.parse_args()

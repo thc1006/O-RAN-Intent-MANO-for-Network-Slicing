@@ -39,16 +39,16 @@ type DriftDetector struct {
 
 // DriftResult represents the result of drift detection
 type DriftResult struct {
-	Resource      ResourceIdentifier    `json:"resource"`
-	HasDrift      bool                  `json:"hasDrift"`
-	DriftType     DriftType            `json:"driftType"`
-	Changes       []FieldChange        `json:"changes"`
-	Severity      DriftSeverity        `json:"severity"`
-	DetectedAt    time.Time            `json:"detectedAt"`
-	LastChecked   time.Time            `json:"lastChecked"`
-	DesiredState  map[string]interface{} `json:"desiredState,omitempty"`
-	ActualState   map[string]interface{} `json:"actualState,omitempty"`
-	Checksum      string               `json:"checksum"`
+	Resource     ResourceIdentifier     `json:"resource"`
+	HasDrift     bool                   `json:"hasDrift"`
+	DriftType    DriftType              `json:"driftType"`
+	Changes      []FieldChange          `json:"changes"`
+	Severity     DriftSeverity          `json:"severity"`
+	DetectedAt   time.Time              `json:"detectedAt"`
+	LastChecked  time.Time              `json:"lastChecked"`
+	DesiredState map[string]interface{} `json:"desiredState,omitempty"`
+	ActualState  map[string]interface{} `json:"actualState,omitempty"`
+	Checksum     string                 `json:"checksum"`
 }
 
 // ResourceIdentifier uniquely identifies a Kubernetes resource
@@ -90,13 +90,13 @@ type FieldChange struct {
 
 // DriftScanResult represents the result of a complete drift scan
 type DriftScanResult struct {
-	ScanID       string        `json:"scanId"`
-	Timestamp    time.Time     `json:"timestamp"`
-	Duration     time.Duration `json:"duration"`
-	TotalResources int         `json:"totalResources"`
-	DriftedResources int       `json:"driftedResources"`
-	Results      []DriftResult `json:"results"`
-	Summary      DriftSummary  `json:"summary"`
+	ScanID           string        `json:"scanId"`
+	Timestamp        time.Time     `json:"timestamp"`
+	Duration         time.Duration `json:"duration"`
+	TotalResources   int           `json:"totalResources"`
+	DriftedResources int           `json:"driftedResources"`
+	Results          []DriftResult `json:"results"`
+	Summary          DriftSummary  `json:"summary"`
 }
 
 // DriftSummary provides a summary of drift detection results
@@ -190,7 +190,7 @@ func (dd *DriftDetector) ScanForDrift(ctx context.Context) (*DriftScanResult, er
 }
 
 // getDesiredState retrieves the desired state from Git repository
-func (dd *DriftDetector) getDesiredState(ctx context.Context) (map[string]*unstructured.Unstructured, error) {
+func (dd *DriftDetector) getDesiredState(_ context.Context) (map[string]*unstructured.Unstructured, error) {
 	desiredResources := make(map[string]*unstructured.Unstructured)
 
 	// Walk through Git repository and find Kubernetes resource files
@@ -616,8 +616,8 @@ func (dd *DriftDetector) filterSystemAnnotations(annotations interface{}) interf
 		for key, value := range annotMap {
 			// Keep only user-managed annotations
 			if !strings.HasPrefix(key, "kubectl.kubernetes.io/") &&
-			   !strings.HasPrefix(key, "deployment.kubernetes.io/") &&
-			   !strings.HasPrefix(key, "pv.kubernetes.io/") {
+				!strings.HasPrefix(key, "deployment.kubernetes.io/") &&
+				!strings.HasPrefix(key, "pv.kubernetes.io/") {
 				filtered[key] = value
 			}
 		}
@@ -693,9 +693,9 @@ func (dd *DriftDetector) isCriticalResource(resource ResourceIdentifier) bool {
 
 	// Check if it's an O-RAN component
 	if strings.Contains(resource.Name, "ran-") ||
-	   strings.Contains(resource.Name, "cn-") ||
-	   strings.Contains(resource.Name, "tn-") ||
-	   strings.Contains(resource.Name, "orchestrator") {
+		strings.Contains(resource.Name, "cn-") ||
+		strings.Contains(resource.Name, "tn-") ||
+		strings.Contains(resource.Name, "orchestrator") {
 		return true
 	}
 
@@ -756,14 +756,21 @@ func (dd *DriftDetector) remediateDrift(ctx context.Context, driftResults []Drif
 func (dd *DriftDetector) correctDrift(ctx context.Context, driftResults []DriftResult) error {
 	log.Printf("Correcting drift for %d resources", len(driftResults))
 
+	var correctionErrors []string
 	for _, drift := range driftResults {
 		if !drift.HasDrift {
 			continue
 		}
 
 		if err := dd.correctResourceDrift(ctx, drift); err != nil {
-			log.Printf("Failed to correct drift for %s/%s: %v", drift.Resource.Kind, drift.Resource.Name, err)
+			errorMsg := fmt.Sprintf("Failed to correct drift for %s/%s: %v", drift.Resource.Kind, drift.Resource.Name, err)
+			log.Printf("%s", errorMsg)
+			correctionErrors = append(correctionErrors, errorMsg)
 		}
+	}
+
+	if len(correctionErrors) > 0 {
+		return fmt.Errorf("drift correction failed for some resources: %s", strings.Join(correctionErrors, "; "))
 	}
 
 	return nil

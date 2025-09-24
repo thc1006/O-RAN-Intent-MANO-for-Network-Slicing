@@ -175,14 +175,14 @@ func (h *SecureErrorHandler) HandleError(err error, context map[string]interface
 func (h *SecureErrorHandler) sanitizeErrorMessage(msg string) string {
 	// Remove potentially sensitive information
 	sensitivePatterns := map[string]string{
-		`password=\S+`:           "password=***",
-		`token=\S+`:              "token=***",
-		`key=\S+`:                "key=***",
-		`secret=\S+`:             "secret=***",
-		`/home/\w+`:              "/home/***",
-		`/Users/\w+`:             "/Users/***",
-		`[a-zA-Z0-9+/]{20,}={0,2}`: "***", // Base64-like strings
-		`\b\d{4}-\d{2}-\d{2}\b`:  "****-**-**", // Dates
+		`password=\S+`:                           "password=***",
+		`token=\S+`:                              "token=***",
+		`key=\S+`:                                "key=***",
+		`secret=\S+`:                             "secret=***",
+		`/home/\w+`:                              "/home/***",
+		`/Users/\w+`:                             "/Users/***",
+		`[a-zA-Z0-9+/]{20,}={0,2}`:               "***",             // Base64-like strings
+		`\b\d{4}-\d{2}-\d{2}\b`:                  "****-**-**",      // Dates
 		`\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b`: "***.***.***.***", // IP addresses
 	}
 
@@ -220,13 +220,13 @@ func (h *SecureErrorHandler) hashError(errorMsg string) string {
 func (h *SecureErrorHandler) createSafeErrorMessage(originalMsg string) string {
 	// Create user-friendly error messages that don't reveal internal details
 	safeMessages := map[string]string{
-		"sql":           "Database operation failed",
-		"connection":    "Service temporarily unavailable",
-		"timeout":       "Request timeout",
-		"unauthorized":  "Access denied",
-		"invalid":       "Invalid request",
-		"permission":    "Insufficient permissions",
-		"not found":     "Resource not found",
+		"sql":          "Database operation failed",
+		"connection":   "Service temporarily unavailable",
+		"timeout":      "Request timeout",
+		"unauthorized": "Access denied",
+		"invalid":      "Invalid request",
+		"permission":   "Insufficient permissions",
+		"not found":    "Resource not found",
 	}
 
 	msgLower := strings.ToLower(originalMsg)
@@ -309,7 +309,7 @@ func TestSecureErrorHandling(t *testing.T) {
 		// Generate many identical errors
 		err := errors.New("repeated error")
 		for i := 0; i < 15; i++ {
-			handler.HandleError(err, nil)
+			_ = handler.HandleError(err, nil)
 		}
 
 		// Should have rate limited some errors
@@ -603,7 +603,7 @@ func BenchmarkErrorHandling(b *testing.B) {
 
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			handler.HandleError(err, context)
+			_ = handler.HandleError(err, context)
 		}
 	})
 
@@ -616,7 +616,7 @@ func BenchmarkErrorHandling(b *testing.B) {
 
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			handler.HandleError(err, context)
+			_ = handler.HandleError(err, context)
 		}
 	})
 
@@ -626,7 +626,7 @@ func BenchmarkErrorHandling(b *testing.B) {
 
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			handler.HandleError(longError, context)
+			_ = handler.HandleError(longError, context)
 		}
 	})
 }
@@ -684,19 +684,19 @@ func TestErrorMetrics(t *testing.T) {
 			"authentication failed",
 			"validation error",
 			"database connection failed", // Repeat
-			"authentication failed",     // Repeat
+			"authentication failed",      // Repeat
 		}
 
 		for _, errMsg := range errorMessages {
 			err := fmt.Errorf("%s", errMsg)
-			handler.HandleError(err, nil)
+			_ = handler.HandleError(err, nil)
 		}
 
 		// Check that error counting is working
 		// This is internal to the handler, so we verify through rate limiting behavior
 		for i := 0; i < 12; i++ {
 			err := errors.New("database connection failed")
-			handler.HandleError(err, nil)
+			_ = handler.HandleError(err, nil)
 		}
 
 		// Should see rate limiting warnings

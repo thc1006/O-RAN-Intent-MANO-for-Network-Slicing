@@ -1,0 +1,51 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: manager-role
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  - secrets
+  verbs:
+  - create
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+- apiGroups:
+  - mano.oran.io
+  resources:
+  - vnfs
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - mano.oran.io
+  resources:
+  - vnfs/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - mano.oran.io
+  resources:
+  - vnfs/status
+  verbs:
+  - get
+  - patch
+  - update

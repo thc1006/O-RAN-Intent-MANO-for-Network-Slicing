@@ -14,15 +14,28 @@ import (
 
 // TestPolicyPlacementScenarios tests various placement scenarios from the thesis
 func TestPolicyPlacementScenarios(t *testing.T) {
-	// Test cases reproducing thesis examples
-	testCases := []struct {
-		name           string
-		nf             *NetworkFunction
-		sites          []*Site
+	testCases := getPolicyPlacementTestCases()
+	runPolicyPlacementTests(t, testCases)
+}
+
+// getPolicyPlacementTestCases returns test cases reproducing thesis examples
+func getPolicyPlacementTestCases() []struct {
+	name             string
+	nf               *NetworkFunction
+	sites            []*Site
+	metricsScenarios map[string]MetricsScenario
+	expectedSiteType CloudType
+	expectedReason   string
+	wantErr          bool
+} {
+	return []struct {
+		name             string
+		nf               *NetworkFunction
+		sites            []*Site
 		metricsScenarios map[string]MetricsScenario
 		expectedSiteType CloudType
 		expectedReason   string
-		wantErr        bool
+		wantErr          bool
 	}{
 		{
 			name: "UPF_Regional_HighBandwidth_TolerantLatency",
@@ -45,7 +58,7 @@ func TestPolicyPlacementScenarios(t *testing.T) {
 			sites: []*Site{
 				createEdgeSite("edge-01", 100),
 				createRegionalSite("regional-01", 5000),
-				createCentralSite("central-01", 10000),
+				createCentralSite("central-01"),
 			},
 			metricsScenarios: map[string]MetricsScenario{
 				"edge-01": {
@@ -69,7 +82,7 @@ func TestPolicyPlacementScenarios(t *testing.T) {
 			},
 			expectedSiteType: CloudTypeRegional,
 			expectedReason:   "high bandwidth",
-			wantErr:         false,
+			wantErr:          false,
 		},
 		{
 			name: "UPF_Edge_LowLatency",
@@ -83,7 +96,7 @@ func TestPolicyPlacementScenarios(t *testing.T) {
 					MinBandwidthMbps: 100,
 				},
 				QoSRequirements: QoSRequirements{
-					MaxLatencyMs:      6.3, // Ultra-low latency (from thesis)
+					MaxLatencyMs:      6.3,  // Ultra-low latency (from thesis)
 					MinThroughputMbps: 0.93, // Lower bandwidth requirement
 					MaxPacketLossRate: 0.001,
 					MaxJitterMs:       2,
@@ -116,7 +129,7 @@ func TestPolicyPlacementScenarios(t *testing.T) {
 			},
 			expectedSiteType: CloudTypeEdge,
 			expectedReason:   "ultra-low latency",
-			wantErr:         false,
+			wantErr:          false,
 		},
 		{
 			name: "AMF_Central_ControlPlane",
@@ -139,7 +152,7 @@ func TestPolicyPlacementScenarios(t *testing.T) {
 			sites: []*Site{
 				createEdgeSite("edge-01", 100),
 				createRegionalSite("regional-01", 1000),
-				createCentralSite("central-01", 10000),
+				createCentralSite("central-01"),
 			},
 			metricsScenarios: map[string]MetricsScenario{
 				"edge-01": {
@@ -163,7 +176,7 @@ func TestPolicyPlacementScenarios(t *testing.T) {
 			},
 			expectedSiteType: CloudTypeCentral,
 			expectedReason:   "score",
-			wantErr:         false,
+			wantErr:          false,
 		},
 		{
 			name: "RAN_Edge_Required",
@@ -203,7 +216,7 @@ func TestPolicyPlacementScenarios(t *testing.T) {
 			},
 			expectedSiteType: CloudTypeEdge,
 			expectedReason:   "score",
-			wantErr:         false,
+			wantErr:          false,
 		},
 		{
 			name: "NoSuitableSite_InsufficientResources",
@@ -228,7 +241,7 @@ func TestPolicyPlacementScenarios(t *testing.T) {
 				createRegionalSite("regional-01", 1000),
 			},
 			expectedSiteType: "",
-			wantErr:         true,
+			wantErr:          true,
 		},
 		{
 			name: "LoadBalancing_MultipleEdgeSites",
@@ -275,74 +288,108 @@ func TestPolicyPlacementScenarios(t *testing.T) {
 			},
 			expectedSiteType: CloudTypeEdge,
 			expectedReason:   "score",
-			wantErr:         false,
+			wantErr:          false,
 		},
 	}
+}
 
+// runPolicyPlacementTests executes the test cases
+func runPolicyPlacementTests(t *testing.T, testCases []struct {
+	name             string
+	nf               *NetworkFunction
+	sites            []*Site
+	metricsScenarios map[string]MetricsScenario
+	expectedSiteType CloudType
+	expectedReason   string
+	wantErr          bool
+}) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			// Create mock metrics provider with scenarios
-			metricsProvider := NewMockMetricsProviderWithScenarios(tc.metricsScenarios)
-
-			// Create placement policy
-			policy := NewLatencyAwarePlacementPolicy(metricsProvider)
-
-			// Execute placement
-			decision, err := policy.Place(tc.nf, tc.sites)
-
-			// Check error expectation
-			if tc.wantErr {
-				if err == nil {
-					t.Errorf("Expected error but got none")
-				}
-				return
-			}
-
-			if err != nil {
-				t.Errorf("Unexpected error: %v", err)
-				return
-			}
-
-			// Verify placement decision
-			if decision == nil || decision.Site == nil {
-				t.Errorf("Expected placement decision but got nil")
-				return
-			}
-
-			// Check site type
-			if tc.expectedSiteType != "" && decision.Site.Type != tc.expectedSiteType {
-				t.Errorf("Expected site type %s, got %s", tc.expectedSiteType, decision.Site.Type)
-			}
-
-			// Check reason contains expected keywords (more flexible matching)
-			if tc.expectedReason != "" {
-				if tc.expectedReason == "score" && !contains(decision.Reason, "score") && !contains(decision.Reason, "with score") {
-					t.Errorf("Expected reason to contain 'score', got: %s", decision.Reason)
-				} else if tc.expectedReason != "score" && !contains(decision.Reason, tc.expectedReason) {
-					t.Errorf("Expected reason to contain '%s', got: %s", tc.expectedReason, decision.Reason)
-				}
-			}
-
-			// Log decision details
-			t.Logf("Placement Decision:")
-			t.Logf("  NF: %s (Type: %s)", decision.NetworkFunction.ID, decision.NetworkFunction.Type)
-			t.Logf("  Site: %s (Type: %s)", decision.Site.Name, decision.Site.Type)
-			t.Logf("  Score: %.2f", decision.Score)
-			t.Logf("  Reason: %s", decision.Reason)
-			if len(decision.Alternatives) > 0 {
-				t.Logf("  Alternatives:")
-				for _, alt := range decision.Alternatives {
-					t.Logf("    - %s (Score: %.2f)", alt.Site.Name, alt.Score)
-				}
-			}
+			runSinglePolicyTest(t, tc)
 		})
+	}
+}
+
+// runSinglePolicyTest executes a single test case
+func runSinglePolicyTest(t *testing.T, tc struct {
+	name             string
+	nf               *NetworkFunction
+	sites            []*Site
+	metricsScenarios map[string]MetricsScenario
+	expectedSiteType CloudType
+	expectedReason   string
+	wantErr          bool
+}) {
+	// Create mock metrics provider with scenarios
+	metricsProvider := NewMockMetricsProviderWithScenarios(tc.metricsScenarios)
+
+	// Create placement policy
+	policy := NewLatencyAwarePolicy(metricsProvider)
+
+	// Execute placement
+	decision, err := policy.Place(tc.nf, tc.sites)
+
+	// Check error expectation
+	if tc.wantErr {
+		if err == nil {
+			t.Errorf("Expected error but got none")
+		}
+		return
+	}
+
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+		return
+	}
+
+	// Verify placement decision
+	validatePlacementDecision(t, decision, tc.expectedSiteType, tc.expectedReason)
+
+	// Log decision details
+	t.Logf("Placement Decision:")
+	t.Logf("  NF: %s (Type: %s)", decision.NetworkFunction.ID, decision.NetworkFunction.Type)
+	t.Logf("  Site: %s (Type: %s)", decision.Site.Name, decision.Site.Type)
+	t.Logf("  Score: %.2f", decision.Score)
+	t.Logf("  Reason: %s", decision.Reason)
+	if len(decision.Alternatives) > 0 {
+		t.Logf("  Alternatives:")
+		for _, alt := range decision.Alternatives {
+			t.Logf("    - %s (Score: %.2f)", alt.Site.Name, alt.Score)
+		}
+	}
+}
+
+// validatePlacementDecision validates the placement decision
+func validatePlacementDecision(t *testing.T, decision *Decision, expectedSiteType CloudType, expectedReason string) {
+	if decision == nil || decision.Site == nil {
+		t.Errorf("Expected placement decision but got nil")
+		return
+	}
+
+	// Check site type
+	if expectedSiteType != "" && decision.Site.Type != expectedSiteType {
+		t.Errorf("Expected site type %s, got %s", expectedSiteType, decision.Site.Type)
+	}
+
+	// Check reason contains expected keywords (more flexible matching)
+	if expectedReason != "" {
+		if expectedReason == "score" && !contains(decision.Reason, "score") && !contains(decision.Reason, "with score") {
+			t.Errorf("Expected reason to contain 'score', got: %s", decision.Reason)
+		} else if expectedReason != "score" && !contains(decision.Reason, expectedReason) {
+			t.Errorf("Expected reason to contain '%s', got: %s", expectedReason, decision.Reason)
+		}
+	}
+
+	// Check score is reasonable
+	if decision.Score < 0 || decision.Score > 100 {
+		t.Errorf("Score out of range [0, 100]: %.2f", decision.Score)
 	}
 }
 
 // TestPlacementWithHints tests placement with user hints
 func TestPlacementWithHints(t *testing.T) {
 	metricsProvider := NewMockMetricsProvider()
-	policy := NewLatencyAwarePlacementPolicy(metricsProvider)
+	policy := NewLatencyAwarePolicy(metricsProvider)
 
 	sites := []*Site{
 		createEdgeSite("edge-west", 100),
@@ -370,7 +417,7 @@ func TestPlacementWithHints(t *testing.T) {
 			MaxPacketLossRate: 0.001,
 			MaxJitterMs:       5,
 		},
-		PlacementHints: []PlacementHint{
+		Hints: []Hint{
 			{
 				Type:   HintTypeLocation,
 				Value:  "west",
@@ -393,12 +440,12 @@ func TestPlacementWithHints(t *testing.T) {
 // TestBatchPlacement tests placing multiple NFs
 func TestBatchPlacement(t *testing.T) {
 	metricsProvider := NewMockMetricsProvider()
-	policy := NewLatencyAwarePlacementPolicy(metricsProvider)
+	policy := NewLatencyAwarePolicy(metricsProvider)
 
 	sites := []*Site{
 		createEdgeSite("edge-01", 500),
 		createRegionalSite("regional-01", 5000),
-		createCentralSite("central-01", 10000),
+		createCentralSite("central-01"),
 	}
 
 	nfs := []*NetworkFunction{
@@ -483,12 +530,14 @@ func TestSnapshotPlacement(t *testing.T) {
 
 	// Create snapshots directory if it doesn't exist
 	snapshotDir := "testdata/snapshots"
-	os.MkdirAll(snapshotDir, security.SecureDirMode)
+	if err := os.MkdirAll(snapshotDir, security.SecureDirMode); err != nil {
+		t.Fatalf("Failed to create snapshots directory: %v", err)
+	}
 
 	for _, scenario := range scenarios {
 		t.Run(scenario.Name, func(t *testing.T) {
 			metricsProvider := NewMockMetricsProviderWithScenarios(scenario.Metrics)
-			policy := NewLatencyAwarePlacementPolicy(metricsProvider)
+			policy := NewLatencyAwarePolicy(metricsProvider)
 
 			decision, err := policy.Place(scenario.NF, scenario.Sites)
 			if err != nil && !scenario.ExpectError {
@@ -506,10 +555,10 @@ func TestSnapshotPlacement(t *testing.T) {
 			// Create snapshot
 			snapshot := PlacementSnapshot{
 				ScenarioName: scenario.Name,
-				Timestamp:   time.Now(),
-				NF:          scenario.NF,
-				Decision:    decision,
-				SiteMetrics: make(map[string]*SiteMetrics),
+				Timestamp:    time.Now(),
+				NF:           scenario.NF,
+				Decision:     decision,
+				SiteMetrics:  make(map[string]*SiteMetrics),
 			}
 
 			// Add metrics to snapshot
@@ -589,7 +638,8 @@ func createRegionalSite(name string, bandwidth float64) *Site {
 	}
 }
 
-func createCentralSite(name string, bandwidth float64) *Site {
+func createCentralSite(name string) *Site {
+	const bandwidth = 10000.0
 	return &Site{
 		ID:        name,
 		Name:      name,
@@ -616,11 +666,11 @@ func createCentralSite(name string, bandwidth float64) *Site {
 
 // PlacementSnapshot represents a placement decision snapshot for testing
 type PlacementSnapshot struct {
-	ScenarioName string                    `json:"scenario_name"`
-	Timestamp    time.Time                 `json:"timestamp"`
-	NF           *NetworkFunction          `json:"network_function"`
-	Decision     *PlacementDecision        `json:"decision"`
-	SiteMetrics  map[string]*SiteMetrics   `json:"site_metrics"`
+	ScenarioName string                  `json:"scenario_name"`
+	Timestamp    time.Time               `json:"timestamp"`
+	NF           *NetworkFunction        `json:"network_function"`
+	Decision     *Decision               `json:"decision"`
+	SiteMetrics  map[string]*SiteMetrics `json:"site_metrics"`
 }
 
 // TestScenario represents a complete test scenario
@@ -646,8 +696,8 @@ func createThesisScenarios() []TestScenario {
 					MinBandwidthMbps: 1000,
 				},
 				QoSRequirements: QoSRequirements{
-					MaxLatencyMs:      16.1,  // From thesis
-					MinThroughputMbps: 4.57,  // From thesis
+					MaxLatencyMs:      16.1, // From thesis
+					MinThroughputMbps: 4.57, // From thesis
 					MaxPacketLossRate: 0.001,
 					MaxJitterMs:       5,
 				},
@@ -655,7 +705,7 @@ func createThesisScenarios() []TestScenario {
 			Sites: []*Site{
 				createEdgeSite("edge-thesis-1", 100),
 				createRegionalSite("regional-thesis-1", 5000),
-				createCentralSite("central-thesis-1", 10000),
+				createCentralSite("central-thesis-1"),
 			},
 			Metrics: map[string]MetricsScenario{
 				"edge-thesis-1": {
@@ -691,8 +741,8 @@ func createThesisScenarios() []TestScenario {
 					MinBandwidthMbps: 100,
 				},
 				QoSRequirements: QoSRequirements{
-					MaxLatencyMs:      6.3,   // From thesis
-					MinThroughputMbps: 0.93,  // From thesis
+					MaxLatencyMs:      6.3,  // From thesis
+					MinThroughputMbps: 0.93, // From thesis
 					MaxPacketLossRate: 0.001,
 					MaxJitterMs:       2,
 				},

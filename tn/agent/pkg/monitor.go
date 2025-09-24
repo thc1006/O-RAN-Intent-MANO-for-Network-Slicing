@@ -355,7 +355,7 @@ func (mc *MetricCollector) getQueueStats(metrics *InterfaceMetrics) {
 					}
 				}
 				if strings.Contains(part, "dropped") {
-					dropStr := strings.Trim(part, "dropped(),")
+					dropStr := strings.Trim(part, "drope(),")
 					if dropped, err := strconv.ParseInt(dropStr, 10, 64); err == nil {
 						metrics.QueueLengths["queue_dropped"] = dropped
 					}

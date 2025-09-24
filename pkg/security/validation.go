@@ -29,9 +29,9 @@ func NewInputValidator() *InputValidator {
 		// Allow valid IPv4 and IPv6 addresses
 		allowedIPPattern: regexp.MustCompile(`^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$|^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$`),
 		// Allow safe file paths (no .. traversal, no special chars)
-		allowedPathPattern: regexp.MustCompile(`^[a-zA-Z0-9\-_\./]+$`),
+		allowedPathPattern: regexp.MustCompile(`^[a-zA-Z0-9\-_./]+$`),
 		// Allow safe command parameters
-		allowedCommandPattern: regexp.MustCompile(`^[a-zA-Z0-9\-_\./=:]+$`),
+		allowedCommandPattern: regexp.MustCompile(`^[a-zA-Z0-9\-_./=:]+$`),
 	}
 }
 
@@ -197,7 +197,7 @@ func (iv *InputValidator) ValidateBandwidth(bandwidth string) error {
 	}
 
 	// Parse bandwidth (e.g., "10M", "1G", "500K")
-	re := regexp.MustCompile(`^(\d+(?:\.\d+)?)(K|M|G)?$`)
+	re := regexp.MustCompile(`^(\d+(?:\.\d+)?)([KMG])?$`)
 	matches := re.FindStringSubmatch(bandwidth)
 	if len(matches) < 2 {
 		return fmt.Errorf("invalid bandwidth format: %s", bandwidth)
@@ -246,7 +246,7 @@ func (iv *InputValidator) ValidateGitRef(ref string) error {
 
 	// Check for valid Git reference format
 	// Allow commit hashes (7-40 hex chars), branch names, and tag names
-	validRefPattern := regexp.MustCompile(`^[a-zA-Z0-9\-_\./]+$`)
+	validRefPattern := regexp.MustCompile(`^[a-zA-Z0-9\-_./]+$`)
 	if !validRefPattern.MatchString(ref) {
 		return fmt.Errorf("invalid Git reference format: %s", ref)
 	}
@@ -454,8 +454,8 @@ func CreateSafeProcessPattern(command, flag, value string) string {
 	// Only allow specific whitelisted commands and flags
 	allowedPatterns := map[string]map[string]string{
 		"iperf3": {
-			"p":       "iperf3.*-p %s",        // for pkill
-			"p_pgrep": "iperf3.*-p.*%s",       // for pgrep (different regex format)
+			"p":       "iperf3.*-p %s",  // for pkill
+			"p_pgrep": "iperf3.*-p.*%s", // for pgrep (different regex format)
 		},
 		"tc": {
 			"dev": "tc.*dev %s",
@@ -511,9 +511,9 @@ func ValidatePkillPattern(pattern string) error {
 
 	// Whitelist allowed pattern formats
 	allowedPatterns := []string{
-		`^iperf3\.\*-p \d{1,5}$`,              // iperf3 with port
-		`^tc\.\*dev [a-zA-Z0-9\-_\.]+$`,       // tc with device
-		`^[a-zA-Z0-9\-_\.\s\*]+$`,             // General safe pattern
+		`^iperf3\.\*-p \d{1,5}$`,        // iperf3 with port
+		`^tc\.\*dev [a-zA-Z0-9\-_\.]+$`, // tc with device
+		`^[a-zA-Z0-9\-_\.\s\*]+$`,       // General safe pattern
 	}
 
 	for _, allowedPattern := range allowedPatterns {
@@ -547,9 +547,9 @@ func ValidatePgrepPattern(pattern string) error {
 
 	// Whitelist allowed pattern formats for pgrep
 	allowedPatterns := []string{
-		`^iperf3\.\*-p\.\*\d{1,5}$`,           // iperf3 with port (pgrep format)
-		`^tc\.\*dev [a-zA-Z0-9\-_\.]+$`,       // tc with device
-		`^[a-zA-Z0-9\-_\.\s\*]+$`,             // General safe pattern
+		`^iperf3\.\*-p\.\*\d{1,5}$`,     // iperf3 with port (pgrep format)
+		`^tc\.\*dev [a-zA-Z0-9\-_\.]+$`, // tc with device
+		`^[a-zA-Z0-9\-_\.\s\*]+$`,       // General safe pattern
 	}
 
 	for _, allowedPattern := range allowedPatterns {

@@ -31,16 +31,16 @@ type RollbackManager struct {
 
 // RollbackState represents the state of a rollback operation
 type RollbackState struct {
-	ID               string                  `json:"id"`
-	Timestamp        time.Time               `json:"timestamp"`
-	Reason           string                  `json:"reason"`
-	SourceCommit     string                  `json:"sourceCommit"`
-	TargetCommit     string                  `json:"targetCommit"`
-	Status           RollbackStatus          `json:"status"`
-	Resources        []RollbackResource      `json:"resources"`
-	ValidationResult *ValidationResult       `json:"validationResult,omitempty"`
-	Duration         time.Duration           `json:"duration"`
-	Errors           []string                `json:"errors,omitempty"`
+	ID               string             `json:"id"`
+	Timestamp        time.Time          `json:"timestamp"`
+	Reason           string             `json:"reason"`
+	SourceCommit     string             `json:"sourceCommit"`
+	TargetCommit     string             `json:"targetCommit"`
+	Status           RollbackStatus     `json:"status"`
+	Resources        []RollbackResource `json:"resources"`
+	ValidationResult *ValidationResult  `json:"validationResult,omitempty"`
+	Duration         time.Duration      `json:"duration"`
+	Errors           []string           `json:"errors,omitempty"`
 }
 
 // RollbackStatus represents rollback operation status
@@ -51,31 +51,31 @@ const (
 	RollbackStatusInProgress RollbackStatus = "in_progress"
 	RollbackStatusCompleted  RollbackStatus = "completed"
 	RollbackStatusFailed     RollbackStatus = "failed"
-	RollbackStatusCancelled  RollbackStatus = "cancelled"
+	RollbackStatusCanceled   RollbackStatus = "canceled"
 )
 
 // RollbackResource represents a resource involved in rollback
 type RollbackResource struct {
-	APIVersion    string            `json:"apiVersion"`
-	Kind          string            `json:"kind"`
-	Name          string            `json:"name"`
-	Namespace     string            `json:"namespace"`
-	Action        RollbackAction    `json:"action"`
-	Status        string            `json:"status"`
+	APIVersion    string                 `json:"apiVersion"`
+	Kind          string                 `json:"kind"`
+	Name          string                 `json:"name"`
+	Namespace     string                 `json:"namespace"`
+	Action        RollbackAction         `json:"action"`
+	Status        string                 `json:"status"`
 	PreviousState map[string]interface{} `json:"previousState,omitempty"`
 	CurrentState  map[string]interface{} `json:"currentState,omitempty"`
-	Error         string            `json:"error,omitempty"`
+	Error         string                 `json:"error,omitempty"`
 }
 
 // RollbackAction represents the action taken on a resource during rollback
 type RollbackAction string
 
 const (
-	RollbackActionRevert  RollbackAction = "revert"
-	RollbackActionDelete  RollbackAction = "delete"
-	RollbackActionCreate  RollbackAction = "create"
-	RollbackActionUpdate  RollbackAction = "update"
-	RollbackActionSkip    RollbackAction = "skip"
+	RollbackActionRevert RollbackAction = "revert"
+	RollbackActionDelete RollbackAction = "delete"
+	RollbackActionCreate RollbackAction = "create"
+	RollbackActionUpdate RollbackAction = "update"
+	RollbackActionSkip   RollbackAction = "skip"
 )
 
 // RollbackHistory maintains history of rollback operations
@@ -86,10 +86,10 @@ type RollbackHistory struct {
 
 // RollbackTrigger represents conditions that trigger a rollback
 type RollbackTrigger struct {
-	Type        string                 `json:"type"`
-	Condition   string                 `json:"condition"`
-	Threshold   map[string]interface{} `json:"threshold"`
-	Enabled     bool                   `json:"enabled"`
+	Type      string                 `json:"type"`
+	Condition string                 `json:"condition"`
+	Threshold map[string]interface{} `json:"threshold"`
+	Enabled   bool                   `json:"enabled"`
 }
 
 // NewRollbackManager creates a new rollback manager
@@ -190,7 +190,7 @@ func (rm *RollbackManager) executeRollbackSteps(ctx context.Context, rollbackSta
 }
 
 // validateTargetCommit validates that the target commit exists
-func (rm *RollbackManager) validateTargetCommit(ctx context.Context, targetCommit string) error {
+func (rm *RollbackManager) validateTargetCommit(_ context.Context, targetCommit string) error {
 	// Check if commit exists in repository
 	commits, err := rm.GitRepo.GetCommitHistory(100) // Check last 100 commits
 	if err != nil {
@@ -207,7 +207,7 @@ func (rm *RollbackManager) validateTargetCommit(ctx context.Context, targetCommi
 }
 
 // getChangedResources gets resources changed between two commits
-func (rm *RollbackManager) getChangedResources(ctx context.Context, fromCommit, toCommit string) ([]string, error) {
+func (rm *RollbackManager) getChangedResources(_ context.Context, fromCommit, toCommit string) ([]string, error) {
 	changedFiles, err := rm.GitRepo.GetChangedFiles(fromCommit, toCommit)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get changed files: %w", err)
@@ -227,7 +227,7 @@ func (rm *RollbackManager) getChangedResources(ctx context.Context, fromCommit, 
 // isKubernetesResourceFile checks if a file is a Kubernetes resource file
 func (rm *RollbackManager) isKubernetesResourceFile(filename string) bool {
 	// Check file extension
-	if !(strings.HasSuffix(filename, ".yaml") || strings.HasSuffix(filename, ".yml")) {
+	if !strings.HasSuffix(filename, ".yaml") && !strings.HasSuffix(filename, ".yml") {
 		return false
 	}
 
@@ -271,11 +271,11 @@ func (rm *RollbackManager) planRollbackActions(ctx context.Context, resourceFile
 		// Plan actions for each resource
 		for _, currentRes := range currentResources {
 			rollbackRes := RollbackResource{
-				APIVersion:    currentRes.GetAPIVersion(),
-				Kind:          currentRes.GetKind(),
-				Name:          currentRes.GetName(),
-				Namespace:     currentRes.GetNamespace(),
-				CurrentState:  currentRes.Object,
+				APIVersion:   currentRes.GetAPIVersion(),
+				Kind:         currentRes.GetKind(),
+				Name:         currentRes.GetName(),
+				Namespace:    currentRes.GetNamespace(),
+				CurrentState: currentRes.Object,
 			}
 
 			// Find corresponding resource in target
@@ -327,7 +327,7 @@ func (rm *RollbackManager) planRollbackActions(ctx context.Context, resourceFile
 }
 
 // parseResourceFile parses Kubernetes resources from a file
-func (rm *RollbackManager) parseResourceFile(ctx context.Context, filename, commit string) ([]*unstructured.Unstructured, error) {
+func (rm *RollbackManager) parseResourceFile(_ context.Context, filename, commit string) ([]*unstructured.Unstructured, error) {
 	// Get file content at specific commit
 	var content string
 	var err error
@@ -409,7 +409,7 @@ func (rm *RollbackManager) resourcesMatch(res1, res2 *unstructured.Unstructured)
 }
 
 // executeGitRollback executes the Git rollback
-func (rm *RollbackManager) executeGitRollback(ctx context.Context, targetCommit string) error {
+func (rm *RollbackManager) executeGitRollback(_ context.Context, targetCommit string) error {
 	// Validate target commit for security
 	if err := security.ValidateGitRef(targetCommit); err != nil {
 		return fmt.Errorf("invalid target commit: %w", err)
@@ -438,7 +438,7 @@ func (rm *RollbackManager) executeResourceRollback(ctx context.Context, rollback
 	// Sort resources by priority (deletions first, then updates, then creates)
 	sort.Slice(rollbackState.Resources, func(i, j int) bool {
 		return rm.getActionPriority(rollbackState.Resources[i].Action) <
-			   rm.getActionPriority(rollbackState.Resources[j].Action)
+			rm.getActionPriority(rollbackState.Resources[j].Action)
 	})
 
 	for i := range rollbackState.Resources {
@@ -539,7 +539,7 @@ func (rm *RollbackManager) getGVR(apiVersion, kind string) schema.GroupVersionRe
 	// Simple resource name derivation
 	resource := strings.ToLower(kind)
 	if !strings.HasSuffix(resource, "s") {
-		resource = resource + "s"
+		resource += "s"
 	}
 
 	return schema.GroupVersionResource{
@@ -653,7 +653,7 @@ func (rm *RollbackManager) shouldTriggerRollback(validationResult *ValidationRes
 }
 
 // getPreviousStableCommit gets the previous stable commit
-func (rm *RollbackManager) getPreviousStableCommit(ctx context.Context) (string, error) {
+func (rm *RollbackManager) getPreviousStableCommit(_ context.Context) (string, error) {
 	commits, err := rm.GitRepo.GetCommitHistory(10)
 	if err != nil {
 		return "", err

@@ -308,7 +308,44 @@ services:
     depends_on:
       - prometheus
 
-  # Testing: Performance Test Suite
+  # Test Framework Service
+  test-framework:
+    build:
+      context: ../../
+      dockerfile: deploy/docker/test-framework/Dockerfile
+    container_name: oran-test-framework
+    restart: unless-stopped
+    networks:
+      - mano-net
+      - oran-edge
+      - oran-core
+    ports:
+      - "8090:8080"
+    environment:
+      - LOG_LEVEL=debug
+      - TEST_MODE=e2e
+      - ORCHESTRATOR_ENDPOINT=http://orchestrator:8080
+      - VNF_OPERATOR_ENDPOINT=http://vnf-operator:8080
+    volumes:
+      - ./test:/test:ro
+      - ./results:/results
+      - ./configs/test-framework:/config:ro
+    working_dir: /tests
+    healthcheck:
+      test: ["CMD", "test", "-f", "/usr/local/bin/test-runner"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    profiles:
+      - testing
+    depends_on:
+      - orchestrator
+      - vnf-operator
+      - ran-dms
+      - cn-dms
+
+  # Testing: Performance Test Suite (Alternative)
   test-runner:
     image: alpine:3.18
     container_name: oran-test-runner

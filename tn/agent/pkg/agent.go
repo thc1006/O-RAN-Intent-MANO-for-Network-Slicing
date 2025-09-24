@@ -252,15 +252,21 @@ func (agent *TNAgent) RunPerformanceTest(config *PerformanceTestConfig) (*Perfor
 	}
 
 	// Calculate overhead metrics
-	metrics.VXLANOverhead = agent.vxlanManager.CalculateVXLANOverhead(agent.config.VXLANConfig.MTU)
-	metrics.TCOverhead = agent.tcManager.CalculateTCOverhead()
+	if agent.vxlanManager != nil {
+		metrics.VXLANOverhead = agent.vxlanManager.CalculateVXLANOverhead(agent.config.VXLANConfig.MTU)
+	}
+	if agent.tcManager != nil {
+		metrics.TCOverhead = agent.tcManager.CalculateTCOverhead()
+	}
 
 	// Get bandwidth utilization
-	if usage, err := agent.tcManager.GetBandwidthUsage(); err == nil {
-		totalBytes := usage["rx_bytes"] + usage["tx_bytes"]
-		maxBytes := float64(agent.config.BWPolicy.DownlinkMbps) * 1024 * 1024 / 8 * metrics.Duration.Seconds()
-		if maxBytes > 0 {
-			metrics.BandwidthUtilization = (totalBytes / maxBytes) * 100
+	if agent.tcManager != nil {
+		if usage, err := agent.tcManager.GetBandwidthUsage(); err == nil {
+			totalBytes := usage["rx_bytes"] + usage["tx_bytes"]
+			maxBytes := float64(agent.config.BWPolicy.DownlinkMbps) * 1024 * 1024 / 8 * metrics.Duration.Seconds()
+			if maxBytes > 0 {
+				metrics.BandwidthUtilization = (totalBytes / maxBytes) * 100
+			}
 		}
 	}
 

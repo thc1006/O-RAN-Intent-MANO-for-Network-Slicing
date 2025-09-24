@@ -37,6 +37,7 @@ permissions:
   id-token: write
 
 env:
+  GO_VERSION: '1.24.7'
   REGISTRY: ghcr.io
   NAMESPACE: o-ran-mano
   TIMEOUT: 600
@@ -52,11 +53,11 @@ jobs:
   # Security and code quality checks
   security-scan:
     name: Security Scanning
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
@@ -105,7 +106,7 @@ jobs:
   # Build and test phase
   build-and-test:
     name: Build and Test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [security-scan]
     strategy:
       matrix:
@@ -119,10 +120,10 @@ jobs:
           - tn-agent
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version: '1.24.7'
           cache: true
@@ -132,10 +133,10 @@ jobs:
             deploy/docker/*/go.sum
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v5
 
       - name: Log in to Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v5
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -205,7 +206,7 @@ jobs:
           fi
 
       - name: Upload coverage reports
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v6
         if: env.COMPONENT_PATH != ''
         with:
           file: ${{ env.COMPONENT_PATH }}/coverage.out
@@ -213,13 +214,19 @@ jobs:
           name: ${{ matrix.component }}-coverage
 
       - name: Build and push container image
-        uses: docker/build-push-action@v5
+        id: build
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: |
             ${{
               matrix.component == 'tn-agent' && 'deploy/docker/tn-agent/Dockerfile' ||
               matrix.component == 'tn-manager' && 'deploy/docker/tn-manager/Dockerfile' ||
+              matrix.component == 'orchestrator' && 'deploy/docker/orchestrator/Dockerfile' ||
+              matrix.component == 'o2-client' && 'deploy/docker/o2-client/Dockerfile' ||
+              matrix.component == 'vnf-operator' && 'deploy/docker/vnf-operator/Dockerfile' ||
+              matrix.component == 'ran-dms' && 'deploy/docker/ran-dms/Dockerfile' ||
+              matrix.component == 'cn-dms' && 'deploy/docker/cn-dms/Dockerfile' ||
               format('{0}/Dockerfile', env.COMPONENT_PATH)
             }}
           push: true
@@ -228,24 +235,44 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64,linux/arm64
+          outputs: type=image,name=target,annotation-index.org.opencontainers.image.description=Multi-platform build
 
-      - name: Sign container image
+      - name: Install cosign
         uses: sigstore/cosign-installer@v3
+        with:
+          cosign-release: 'v2.4.1'
       - name: Sign the published Docker image
+        if: steps.build.outcome == 'success'
         env:
           COSIGN_EXPERIMENTAL: 1
         run: |
-          echo "${{ steps.meta.outputs.tags }}" | xargs -I {} cosign sign --yes {}@${{ steps.build.outputs.digest }}
+          # Verify digest exists
+          if [ -z "${{ steps.build.outputs.digest }}" ]; then
+            echo "Error: Build digest is empty. Cannot sign image."
+            echo "Build outputs: ${{ toJson(steps.build.outputs) }}"
+            exit 1
+          fi
+
+          echo "Signing images with digest: ${{ steps.build.outputs.digest }}"
+          echo "Tags to sign: ${{ steps.meta.outputs.tags }}"
+
+          # Sign each tag with the digest
+          echo "${{ steps.meta.outputs.tags }}" | tr ',' '\n' | while read -r tag; do
+            if [ -n "$tag" ]; then
+              echo "Signing: ${tag}@${{ steps.build.outputs.digest }}"
+              cosign sign --yes "${tag}@${{ steps.build.outputs.digest }}"
+            fi
+          done
 
   # Integration tests
   integration-tests:
     name: Integration Tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [build-and-test]
     if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Kind cluster
         uses: helm/kind-action@v1.10.0
@@ -309,7 +336,7 @@ jobs:
   # Staging deployment
   deploy-staging:
     name: Deploy to Staging
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [integration-tests]
     if: github.ref == 'refs/heads/main' || github.event.inputs.environment == 'staging'
     environment:
@@ -317,7 +344,7 @@ jobs:
       url: https://o-ran-mano-staging.example.com
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Configure kubectl
         uses: azure/k8s-set-context@v3
@@ -364,7 +391,7 @@ jobs:
   # Production deployment
   deploy-production:
     name: Deploy to Production
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [deploy-staging]
     if: startsWith(github.ref, 'refs/tags/v') || github.event.inputs.environment == 'production'
     environment:
@@ -372,7 +399,7 @@ jobs:
       url: https://o-ran-mano.example.com
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Extract version
         id: version
@@ -446,13 +473,13 @@ jobs:
   # Rollback job (manual trigger)
   rollback-production:
     name: Rollback Production
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.rollback == 'true'
     environment:
       name: production
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Configure kubectl
         uses: azure/k8s-set-context@v3
@@ -473,7 +500,7 @@ jobs:
   # Cleanup job
   cleanup:
     name: Cleanup Resources
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [deploy-production]
     if: always() && !cancelled()
     steps:

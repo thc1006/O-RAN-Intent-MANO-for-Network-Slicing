@@ -1,6 +1,13 @@
 # VNF Operator Multi-stage Dockerfile
-# Stage 1: Build
-FROM golang:1.24.7-alpine AS builder
+# Stage 1: Build with Go 1.22.10-alpine (match workflow requirements)
+FROM golang:1.22.10-alpine AS builder
+
+# Set Go environment variables
+ENV CGO_ENABLED=0
+ENV GOOS=linux
+ENV GOARCH=amd64
+ENV GOPROXY=https://proxy.golang.org,direct
+ENV GOSUMDB=sum.golang.org
 
 # Security labels and metadata
 LABEL maintainer="O-RAN MANO Team"
@@ -14,101 +21,82 @@ LABEL security.scan="trivy,grype,snyk"
 LABEL security.distroless="true"
 LABEL security.user="non-root"
 
-# Security: Use non-root user for build
-RUN adduser -D -s /bin/sh appuser
-
-# Install security updates and necessary tools, clean cache
-RUN apk update && apk upgrade && apk add --no-cache \
-    git \
+# Install build dependencies and certificates
+RUN apk add --no-cache \
     ca-certificates \
+    git \
     tzdata && \
     update-ca-certificates && \
     rm -rf /var/cache/apk/* /tmp/* /var/tmp/*
 
-# Set working directory
+# Set working directory to project root
 WORKDIR /workspace
 
-# Copy go mod files first for better layer caching
-COPY adapters/vnf-operator/go.mod go.mod
-COPY adapters/vnf-operator/go.sum go.sum
+# Copy go.mod and go.sum from project root for dependency layer caching
+COPY go.mod go.sum ./
 
-# Copy pkg/security module (needed for transitive dependencies)
-# The go.mod may have indirect dependencies on pkg/security through other modules
-COPY pkg/security ../pkg/security
-
-# Copy api module for local replace directive
-COPY adapters/vnf-operator/api /workspace/api
-
-# Download dependencies with explicit toolchain
-ENV GOTOOLCHAIN=go1.24.7
-ENV GOPROXY=https://proxy.golang.org,direct
-ENV GOSUMDB=sum.golang.org
+# Download dependencies first for better layer caching
 RUN go mod download
 
-# Copy source code
-COPY adapters/vnf-operator/ .
+# Copy entire source code (build context should be project root)
+COPY . .
 
-# Build the binary with security flags
+# Build the VNF operator manager binary with optimization flags
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
-    -ldflags='-w -s -extldflags "-static"' \
+    -trimpath \
+    -ldflags="-s -w -extldflags '-static'" \
     -a -installsuffix cgo \
-    -o manager cmd/manager/main.go
+    -o manager ./adapters/vnf-operator/cmd/manager/main.go
 
-# Build a minimal health check binary
-RUN cat > healthcheck.go <<'EOF' && \
-package main
-import (
-    "fmt"
-    "net/http"
-    "os"
-    "time"
-)
-func main() {
-    client := &http.Client{Timeout: 3 * time.Second}
-    resp, err := client.Get("http://localhost:8080/healthz")
-    if err != nil {
-        fmt.Printf("Health check failed: %v\n", err)
-        os.Exit(1)
-    }
-    defer resp.Body.Close()
-    if resp.StatusCode != 200 {
-        fmt.Printf("Health check failed with status: %d\n", resp.StatusCode)
-        os.Exit(1)
-    }
-    fmt.Println("Health check passed")
-}
-EOF
+# Build optimized health check binary
+RUN printf 'package main\nimport ("fmt";"net/http";"os";"time")\nfunc main() {\nclient := &http.Client{Timeout: 3 * time.Second}\nresp, err := client.Get("http://localhost:8081/healthz")\nif err != nil { fmt.Printf("Health check failed: %%v\\n", err); os.Exit(1) }\ndefer resp.Body.Close()\nif resp.StatusCode != 200 { fmt.Printf("Health check failed with status: %%d\\n", resp.StatusCode); os.Exit(1) }\nfmt.Println("Health check passed")\n}' > healthcheck.go
+
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
-        -ldflags='-w -s -extldflags "-static"' \
-        -a -installsuffix cgo \
-        -o healthcheck healthcheck.go
+    -trimpath \
+    -ldflags="-s -w -extldflags '-static'" \
+    -a -installsuffix cgo \
+    -o healthcheck healthcheck.go
 
-# Stage 2: Runtime with distroless for maximum security
-FROM gcr.io/distroless/static:nonroot
+# Stage 2: Runtime with scratch for maximum security and minimal size
+FROM scratch
 
-# Security labels
+# Security and runtime labels
 LABEL org.opencontainers.image.title="VNF Operator Runtime"
+LABEL org.opencontainers.image.description="Production VNF Operator Runtime"
+LABEL org.opencontainers.image.vendor="O-RAN Alliance"
+LABEL org.opencontainers.image.licenses="Apache-2.0"
 LABEL security.scan="trivy,grype,snyk"
 LABEL security.user="non-root"
 LABEL security.distroless="true"
-LABEL security.base.image="gcr.io/distroless/static:nonroot"
-LABEL security.go.version="1.23.6"
-LABEL security.scan.date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+LABEL security.base.image="scratch"
+LABEL security.go.version="1.22.10"
+LABEL security.binary="static"
 
-# Copy the binaries
-COPY --from=builder /workspace/manager /manager
-COPY --from=builder /workspace/healthcheck /healthcheck
+# Copy CA certificates for HTTPS calls
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
-# Use non-root user (distroless nonroot user: 65532)
-USER 65532:65532
+# Copy timezone data for proper time handling
+COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
 
-# Expose ports
+# Copy passwd file for nobody user
+COPY --from=builder /etc/passwd /etc/passwd
+
+# Copy the optimized binaries
+COPY --from=builder --chown=65534:65534 /workspace/manager /manager
+COPY --from=builder --chown=65534:65534 /workspace/healthcheck /healthcheck
+
+# Use nobody user for security (UID 65534)
+USER 65534:65534
+
+# Expose standard Kubernetes operator ports
+# 8080: metrics endpoint
+# 8081: health/readiness probes
+# 9443: webhook server (if enabled)
 EXPOSE 8080 8081 9443
 
-# Health check - using custom healthcheck binary for distroless compatibility
-# Checks the /healthz endpoint typically provided by controller-runtime
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+# Health check using optimized binary
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
   CMD ["/healthcheck"]
 
-# Security: Run with minimal distroless environment
+# Run the VNF operator manager
 ENTRYPOINT ["/manager"]

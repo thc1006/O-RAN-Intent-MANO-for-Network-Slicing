@@ -5,9 +5,11 @@ Validates QoS JSON against O-RAN schema specifications
 """
 
 import json
-import jsonschema
-from typing import Dict, Any, List, Optional
 from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+import jsonschema
+
 
 class SchemaValidator:
     """Validates QoS specifications against O-RAN schema"""
@@ -21,9 +23,9 @@ class SchemaValidator:
         """
         if schema_path is None:
             # Use default schema in the same directory
-            schema_path = Path(__file__).parent / "schema.json"
-
-        self.schema_path = Path(schema_path)
+            self.schema_path = Path(__file__).parent / "schema.json"
+        else:
+            self.schema_path = Path(schema_path)
         self.schema = self._load_schema()
 
     def _load_schema(self) -> Dict[str, Any]:
@@ -40,7 +42,7 @@ class SchemaValidator:
         if not self.schema_path.exists():
             raise FileNotFoundError(f"Schema file not found: {self.schema_path}")
 
-        with open(self.schema_path, 'r', encoding='utf-8') as f:
+        with open(self.schema_path, "r", encoding="utf-8") as f:
             return json.load(f)
 
     def validate(self, data: Dict[str, Any]) -> bool:
@@ -74,7 +76,7 @@ class SchemaValidator:
             return True, None
         except jsonschema.ValidationError as e:
             return False, str(e)
-        except Exception as e:
+        except (TypeError, ValueError) as e:
             return False, f"Unexpected error: {str(e)}"
 
     def get_schema_summary(self) -> Dict[str, Any]:
@@ -89,7 +91,7 @@ class SchemaValidator:
             "properties": list(self.schema.get("properties", {}).keys()),
             "required": self.schema.get("required", []),
             "title": self.schema.get("title", "O-RAN QoS Schema"),
-            "description": self.schema.get("description", "")
+            "description": self.schema.get("description", ""),
         }
 
     def validate_slice_type(self, slice_type: str) -> bool:

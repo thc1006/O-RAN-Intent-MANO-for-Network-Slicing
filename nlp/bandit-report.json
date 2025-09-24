@@ -1,0 +1,1926 @@
+{
+  "errors": [],
+  "generated_at": "2025-09-24T10:10:31Z",
+  "metrics": {
+    ".\\__init__.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 0,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    ".\\intent_cache.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 353,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    ".\\intent_parser.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 448,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    ".\\intent_processor.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 369,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    ".\\run_intents.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 278,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    ".\\schema_validator.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 137,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    ".\\tests\\__init__.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 0,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    ".\\tests\\test_qos_schema.py": {
+      "CONFIDENCE.HIGH": 28,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 28,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 241,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    ".\\tests\\unit\\intent_parser_test.py": {
+      "CONFIDENCE.HIGH": 61,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 61,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 364,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "_totals": {
+      "CONFIDENCE.HIGH": 89,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 89,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 2190,
+      "nosec": 0,
+      "skipped_tests": 0
+    }
+  },
+  "results": [
+    {
+      "code": "51             # Verify expected values\n52             assert intent[\"qos\"][\"bandwidth\"] == intent[\"expected\"][0]\n53             assert intent[\"qos\"][\"latency\"] == intent[\"expected\"][1]\n",
+      "col_offset": 12,
+      "end_col_offset": 70,
+      "filename": ".\\tests\\test_qos_schema.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 52,
+      "line_range": [
+        52
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "52             assert intent[\"qos\"][\"bandwidth\"] == intent[\"expected\"][0]\n53             assert intent[\"qos\"][\"latency\"] == intent[\"expected\"][1]\n54 \n",
+      "col_offset": 12,
+      "end_col_offset": 68,
+      "filename": ".\\tests\\test_qos_schema.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 53,
+      "line_range": [
+        53
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "58         validate(instance=embb_qos, schema=QOS_SCHEMA)\n59         assert embb_qos[\"bandwidth\"] == 5\n60         assert embb_qos[\"latency\"] == 9\n",
+      "col_offset": 8,
+      "end_col_offset": 41,
+      "filename": ".\\tests\\test_qos_schema.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 59,
+      "line_range": [
+        59
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "59         assert embb_qos[\"bandwidth\"] == 5\n60         assert embb_qos[\"latency\"] == 9\n61 \n",
+      "col_offset": 8,
+      "end_col_offset": 39,
+      "filename": ".\\tests\\test_qos_schema.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 60,
+      "line_range": [
+        60
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "70         validate(instance=urllc_qos, schema=QOS_SCHEMA)\n71         assert urllc_qos[\"bandwidth\"] == 1\n72         assert urllc_qos[\"latency\"] == 1\n",
+      "col_offset": 8,
+      "end_col_offset": 42,
+      "filename": ".\\tests\\test_qos_schema.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 71,
+      "line_range": [
+        71
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "71         assert urllc_qos[\"bandwidth\"] == 1\n72         assert urllc_qos[\"latency\"] == 1\n73 \n",
+      "col_offset": 8,
+      "end_col_offset": 40,
+      "filename": ".\\tests\\test_qos_schema.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 72,
+      "line_range": [
+        72
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "77         validate(instance=balanced_qos, schema=QOS_SCHEMA)\n78         assert balanced_qos[\"bandwidth\"] == 3\n79         assert balanced_qos[\"latency\"] == 9\n",
+      "col_offset": 8,
+      "end_col_offset": 45,
+      "filename": ".\\tests\\test_qos_schema.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 78,
+      "line_range": [
+        78
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "78         assert balanced_qos[\"bandwidth\"] == 3\n79         assert balanced_qos[\"latency\"] == 9\n80 \n",
+      "col_offset": 8,
+      "end_col_offset": 43,
+      "filename": ".\\tests\\test_qos_schema.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 79,
+      "line_range": [
+        79
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "88         validate(instance=qos, schema=QOS_SCHEMA)\n89         assert qos[\"bandwidth\"] == 1\n90 \n",
+      "col_offset": 8,
+      "end_col_offset": 36,
+      "filename": ".\\tests\\test_qos_schema.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 89,
+      "line_range": [
+        89
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "94         validate(instance=qos, schema=QOS_SCHEMA)\n95         assert qos[\"bandwidth\"] == 5\n96 \n",
+      "col_offset": 8,
+      "end_col_offset": 36,
+      "filename": ".\\tests\\test_qos_schema.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 95,
+      "line_range": [
+        95
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "100         validate(instance=qos, schema=QOS_SCHEMA)\n101         assert qos[\"latency\"] == 1\n102 \n",
+      "col_offset": 8,
+      "end_col_offset": 34,
+      "filename": ".\\tests\\test_qos_schema.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 101,
+      "line_range": [
+        101
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "106         validate(instance=qos, schema=QOS_SCHEMA)\n107         assert qos[\"latency\"] == 10\n108 \n",
+      "col_offset": 8,
+      "end_col_offset": 35,
+      "filename": ".\\tests\\test_qos_schema.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 107,
+      "line_range": [
+        107
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "146                 validate(instance=qos, schema=QOS_SCHEMA)\n147             assert \"minimum\" in str(exc_info.value).lower()\n148 \n",
+      "col_offset": 12,
+      "end_col_offset": 59,
+      "filename": ".\\tests\\test_qos_schema.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 147,
+      "line_range": [
+        147
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "159                 validate(instance=qos, schema=QOS_SCHEMA)\n160             assert \"maximum\" in str(exc_info.value).lower()\n161 \n",
+      "col_offset": 12,
+      "end_col_offset": 59,
+      "filename": ".\\tests\\test_qos_schema.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 160,
+      "line_range": [
+        160
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "172                 validate(instance=qos, schema=QOS_SCHEMA)\n173             assert \"minimum\" in str(exc_info.value).lower()\n174 \n",
+      "col_offset": 12,
+      "end_col_offset": 59,
+      "filename": ".\\tests\\test_qos_schema.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 173,
+      "line_range": [
+        173
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "185                 validate(instance=qos, schema=QOS_SCHEMA)\n186             assert \"maximum\" in str(exc_info.value).lower()\n187 \n",
+      "col_offset": 12,
+      "end_col_offset": 59,
+      "filename": ".\\tests\\test_qos_schema.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 186,
+      "line_range": [
+        186
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "202                 validate(instance=qos, schema=QOS_SCHEMA)\n203             assert \"type\" in str(exc_info.value).lower()\n204 \n",
+      "col_offset": 12,
+      "end_col_offset": 56,
+      "filename": ".\\tests\\test_qos_schema.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 203,
+      "line_range": [
+        203
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "236             validate(instance=qos, schema=QOS_SCHEMA)\n237         assert \"bandwidth\" in str(exc_info.value)\n238 \n",
+      "col_offset": 8,
+      "end_col_offset": 49,
+      "filename": ".\\tests\\test_qos_schema.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 237,
+      "line_range": [
+        237
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "243             validate(instance=qos, schema=QOS_SCHEMA)\n244         assert \"latency\" in str(exc_info.value)\n245 \n",
+      "col_offset": 8,
+      "end_col_offset": 47,
+      "filename": ".\\tests\\test_qos_schema.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 244,
+      "line_range": [
+        244
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "252         error_msg = str(exc_info.value)\n253         assert \"bandwidth\" in error_msg or \"required\" in error_msg.lower()\n254 \n",
+      "col_offset": 8,
+      "end_col_offset": 74,
+      "filename": ".\\tests\\test_qos_schema.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 253,
+      "line_range": [
+        253
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "275             validate(instance=qos, schema=QOS_SCHEMA)\n276         assert \"enum\" in str(exc_info.value).lower()\n277 \n",
+      "col_offset": 8,
+      "end_col_offset": 52,
+      "filename": ".\\tests\\test_qos_schema.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 276,
+      "line_range": [
+        276
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "282             validate(instance=qos, schema=QOS_SCHEMA)\n283         assert \"additional\" in str(exc_info.value).lower()\n284 \n",
+      "col_offset": 8,
+      "end_col_offset": 58,
+      "filename": ".\\tests\\test_qos_schema.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 283,
+      "line_range": [
+        283
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "295         \"\"\"Test that schema defines all expected properties.\"\"\"\n296         assert \"properties\" in QOS_SCHEMA\n297         assert \"bandwidth\" in QOS_SCHEMA[\"properties\"]\n",
+      "col_offset": 8,
+      "end_col_offset": 41,
+      "filename": ".\\tests\\test_qos_schema.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 296,
+      "line_range": [
+        296
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "296         assert \"properties\" in QOS_SCHEMA\n297         assert \"bandwidth\" in QOS_SCHEMA[\"properties\"]\n298         assert \"latency\" in QOS_SCHEMA[\"properties\"]\n",
+      "col_offset": 8,
+      "end_col_offset": 54,
+      "filename": ".\\tests\\test_qos_schema.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 297,
+      "line_range": [
+        297
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "297         assert \"bandwidth\" in QOS_SCHEMA[\"properties\"]\n298         assert \"latency\" in QOS_SCHEMA[\"properties\"]\n299         assert \"required\" in QOS_SCHEMA\n",
+      "col_offset": 8,
+      "end_col_offset": 52,
+      "filename": ".\\tests\\test_qos_schema.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 298,
+      "line_range": [
+        298
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "298         assert \"latency\" in QOS_SCHEMA[\"properties\"]\n299         assert \"required\" in QOS_SCHEMA\n300         assert \"bandwidth\" in QOS_SCHEMA[\"required\"]\n",
+      "col_offset": 8,
+      "end_col_offset": 39,
+      "filename": ".\\tests\\test_qos_schema.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 299,
+      "line_range": [
+        299
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "299         assert \"required\" in QOS_SCHEMA\n300         assert \"bandwidth\" in QOS_SCHEMA[\"required\"]\n301         assert \"latency\" in QOS_SCHEMA[\"required\"]\n",
+      "col_offset": 8,
+      "end_col_offset": 52,
+      "filename": ".\\tests\\test_qos_schema.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 300,
+      "line_range": [
+        300
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "300         assert \"bandwidth\" in QOS_SCHEMA[\"required\"]\n301         assert \"latency\" in QOS_SCHEMA[\"required\"]\n",
+      "col_offset": 8,
+      "end_col_offset": 50,
+      "filename": ".\\tests\\test_qos_schema.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 301,
+      "line_range": [
+        301
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "79         \"\"\"Test that parser initializes correctly.\"\"\"\n80         assert parser is not None\n81         assert hasattr(parser, \"parse_intent\")\n",
+      "col_offset": 8,
+      "end_col_offset": 33,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 80,
+      "line_range": [
+        80
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "80         assert parser is not None\n81         assert hasattr(parser, \"parse_intent\")\n82         assert hasattr(parser, \"map_to_qos\")\n",
+      "col_offset": 8,
+      "end_col_offset": 46,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 81,
+      "line_range": [
+        81
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "81         assert hasattr(parser, \"parse_intent\")\n82         assert hasattr(parser, \"map_to_qos\")\n83         assert hasattr(parser, \"validate_intent\")\n",
+      "col_offset": 8,
+      "end_col_offset": 44,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 82,
+      "line_range": [
+        82
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "82         assert hasattr(parser, \"map_to_qos\")\n83         assert hasattr(parser, \"validate_intent\")\n84 \n",
+      "col_offset": 8,
+      "end_col_offset": 49,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 83,
+      "line_range": [
+        83
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "89 \n90         assert result is not None\n91         assert \"intent_type\" in result\n",
+      "col_offset": 8,
+      "end_col_offset": 33,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 90,
+      "line_range": [
+        90
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "90         assert result is not None\n91         assert \"intent_type\" in result\n92         assert \"keywords\" in result\n",
+      "col_offset": 8,
+      "end_col_offset": 38,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 91,
+      "line_range": [
+        91
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "91         assert \"intent_type\" in result\n92         assert \"keywords\" in result\n93         assert \"confidence\" in result\n",
+      "col_offset": 8,
+      "end_col_offset": 35,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 92,
+      "line_range": [
+        92
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "92         assert \"keywords\" in result\n93         assert \"confidence\" in result\n94         assert result[\"confidence\"] > 0.5\n",
+      "col_offset": 8,
+      "end_col_offset": 37,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 93,
+      "line_range": [
+        93
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "93         assert \"confidence\" in result\n94         assert result[\"confidence\"] > 0.5\n95 \n",
+      "col_offset": 8,
+      "end_col_offset": 41,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 94,
+      "line_range": [
+        94
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "104         expected = expected_qos_mappings[\"high_priority\"]\n105         assert qos[\"priority\"] == expected[\"priority\"]\n106         assert qos[\"latency_ms\"] <= expected[\"latency_ms\"]\n",
+      "col_offset": 8,
+      "end_col_offset": 54,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 105,
+      "line_range": [
+        105
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "105         assert qos[\"priority\"] == expected[\"priority\"]\n106         assert qos[\"latency_ms\"] <= expected[\"latency_ms\"]\n107         assert qos[\"throughput_mbps\"] >= expected[\"throughput_mbps\"]\n",
+      "col_offset": 8,
+      "end_col_offset": 58,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 106,
+      "line_range": [
+        106
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "106         assert qos[\"latency_ms\"] <= expected[\"latency_ms\"]\n107         assert qos[\"throughput_mbps\"] >= expected[\"throughput_mbps\"]\n108         assert qos[\"reliability\"] >= expected[\"reliability\"]\n",
+      "col_offset": 8,
+      "end_col_offset": 68,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 107,
+      "line_range": [
+        107
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "107         assert qos[\"throughput_mbps\"] >= expected[\"throughput_mbps\"]\n108         assert qos[\"reliability\"] >= expected[\"reliability\"]\n109 \n",
+      "col_offset": 8,
+      "end_col_offset": 60,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 108,
+      "line_range": [
+        108
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "118         expected = expected_qos_mappings[\"video_streaming\"]\n119         assert qos[\"slice_type\"] == expected[\"slice_type\"]\n120         assert qos[\"throughput_mbps\"] >= expected[\"throughput_mbps\"]\n",
+      "col_offset": 8,
+      "end_col_offset": 58,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 119,
+      "line_range": [
+        119
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "119         assert qos[\"slice_type\"] == expected[\"slice_type\"]\n120         assert qos[\"throughput_mbps\"] >= expected[\"throughput_mbps\"]\n121 \n",
+      "col_offset": 8,
+      "end_col_offset": 68,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 120,
+      "line_range": [
+        120
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "128         expected = expected_qos_mappings[\"iot_basic\"]\n129         assert qos[\"slice_type\"] == expected[\"slice_type\"]\n130         assert qos[\"priority\"] == expected[\"priority\"]\n",
+      "col_offset": 8,
+      "end_col_offset": 58,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 129,
+      "line_range": [
+        129
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "129         assert qos[\"slice_type\"] == expected[\"slice_type\"]\n130         assert qos[\"priority\"] == expected[\"priority\"]\n131 \n",
+      "col_offset": 8,
+      "end_col_offset": 54,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 130,
+      "line_range": [
+        130
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "151 \n152         assert qos[\"slice_type\"] == expected_slice_type\n153 \n",
+      "col_offset": 8,
+      "end_col_offset": 55,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 152,
+      "line_range": [
+        152
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "158 \n159         assert parser.validate_intent(parsed) is True\n160 \n",
+      "col_offset": 8,
+      "end_col_offset": 53,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 159,
+      "line_range": [
+        159
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "203         ]\n204         assert len(found_keywords) >= 2\n205 \n",
+      "col_offset": 8,
+      "end_col_offset": 39,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 204,
+      "line_range": [
+        204
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "210         parsed_high = parser.parse_intent(high_confidence_intent)\n211         assert parsed_high[\"confidence\"] > 0.8\n212 \n",
+      "col_offset": 8,
+      "end_col_offset": 46,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 211,
+      "line_range": [
+        211
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "215         parsed_low = parser.parse_intent(ambiguous_intent)\n216         assert parsed_low[\"confidence\"] < 0.7\n217 \n",
+      "col_offset": 8,
+      "end_col_offset": 45,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 216,
+      "line_range": [
+        216
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "223         qos = parser.map_to_qos(parsed)\n224         assert qos[\"latency_ms\"] <= 5\n225 \n",
+      "col_offset": 8,
+      "end_col_offset": 37,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 224,
+      "line_range": [
+        224
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "229         qos = parser.map_to_qos(parsed)\n230         assert qos[\"throughput_mbps\"] >= 100\n231 \n",
+      "col_offset": 8,
+      "end_col_offset": 44,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 230,
+      "line_range": [
+        230
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "246         for field in required_fields:\n247             assert field in qos\n248 \n",
+      "col_offset": 12,
+      "end_col_offset": 31,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 247,
+      "line_range": [
+        247
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "249         # Type validation\n250         assert isinstance(qos[\"priority\"], str)\n251         assert isinstance(qos[\"latency_ms\"], (int, float))\n",
+      "col_offset": 8,
+      "end_col_offset": 47,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 250,
+      "line_range": [
+        250
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "250         assert isinstance(qos[\"priority\"], str)\n251         assert isinstance(qos[\"latency_ms\"], (int, float))\n252         assert isinstance(qos[\"throughput_mbps\"], (int, float))\n",
+      "col_offset": 8,
+      "end_col_offset": 58,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 251,
+      "line_range": [
+        251
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "251         assert isinstance(qos[\"latency_ms\"], (int, float))\n252         assert isinstance(qos[\"throughput_mbps\"], (int, float))\n253         assert isinstance(qos[\"reliability\"], (int, float))\n",
+      "col_offset": 8,
+      "end_col_offset": 63,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 252,
+      "line_range": [
+        252
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "252         assert isinstance(qos[\"throughput_mbps\"], (int, float))\n253         assert isinstance(qos[\"reliability\"], (int, float))\n254         assert isinstance(qos[\"slice_type\"], str)\n",
+      "col_offset": 8,
+      "end_col_offset": 59,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 253,
+      "line_range": [
+        253
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "253         assert isinstance(qos[\"reliability\"], (int, float))\n254         assert isinstance(qos[\"slice_type\"], str)\n255 \n",
+      "col_offset": 8,
+      "end_col_offset": 49,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 254,
+      "line_range": [
+        254
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "256         # Value range validation\n257         assert qos[\"priority\"] in [\"low\", \"medium\", \"high\"]\n258         assert 0.1 <= qos[\"latency_ms\"] <= 1000\n",
+      "col_offset": 8,
+      "end_col_offset": 59,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 257,
+      "line_range": [
+        257
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "257         assert qos[\"priority\"] in [\"low\", \"medium\", \"high\"]\n258         assert 0.1 <= qos[\"latency_ms\"] <= 1000\n259         assert 0.1 <= qos[\"throughput_mbps\"] <= 1000\n",
+      "col_offset": 8,
+      "end_col_offset": 47,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 258,
+      "line_range": [
+        258
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "258         assert 0.1 <= qos[\"latency_ms\"] <= 1000\n259         assert 0.1 <= qos[\"throughput_mbps\"] <= 1000\n260         assert 90.0 <= qos[\"reliability\"] <= 99.999\n",
+      "col_offset": 8,
+      "end_col_offset": 52,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 259,
+      "line_range": [
+        259
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "259         assert 0.1 <= qos[\"throughput_mbps\"] <= 1000\n260         assert 90.0 <= qos[\"reliability\"] <= 99.999\n261         assert qos[\"slice_type\"] in [\"urllc\", \"embb\", \"mmtc\"]\n",
+      "col_offset": 8,
+      "end_col_offset": 51,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 260,
+      "line_range": [
+        260
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "260         assert 90.0 <= qos[\"reliability\"] <= 99.999\n261         assert qos[\"slice_type\"] in [\"urllc\", \"embb\", \"mmtc\"]\n262 \n",
+      "col_offset": 8,
+      "end_col_offset": 61,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 261,
+      "line_range": [
+        261
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "266         result = parser.parse_intent(\"emergency high-priority slice\")\n267         assert result[\"confidence\"] >= 0.8\n268         assert \"emergency\" in result.get(\"keywords\", []) or \"critical\" in result.get(\n",
+      "col_offset": 8,
+      "end_col_offset": 42,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 267,
+      "line_range": [
+        267
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "267         assert result[\"confidence\"] >= 0.8\n268         assert \"emergency\" in result.get(\"keywords\", []) or \"critical\" in result.get(\n269             \"keywords\", []\n270         )\n271         assert result[\"slice_type\"] == \"urllc\"\n",
+      "col_offset": 8,
+      "end_col_offset": 9,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 268,
+      "line_range": [
+        268,
+        269,
+        270
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "270         )\n271         assert result[\"slice_type\"] == \"urllc\"\n272 \n",
+      "col_offset": 8,
+      "end_col_offset": 46,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 271,
+      "line_range": [
+        271
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "294 \n295         assert len(errors) == 0, f\"Concurrent parsing failed with errors: {errors}\"\n296         assert len(results) == len(sample_intents)\n",
+      "col_offset": 8,
+      "end_col_offset": 83,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 295,
+      "line_range": [
+        295
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "295         assert len(errors) == 0, f\"Concurrent parsing failed with errors: {errors}\"\n296         assert len(results) == len(sample_intents)\n297 \n",
+      "col_offset": 8,
+      "end_col_offset": 50,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 296,
+      "line_range": [
+        296
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "313         # Performance requirement: each intent should be processed in <100ms\n314         assert (\n315             avg_time_per_intent < 0.1\n316         ), f\"Average processing time {avg_time_per_intent}s exceeds 100ms threshold\"\n317 \n",
+      "col_offset": 8,
+      "end_col_offset": 84,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 314,
+      "line_range": [
+        314,
+        315,
+        316
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "336         # Memory increase should be reasonable (<50MB for 1000 operations)\n337         assert memory_increase < 50, f\"Memory increase {memory_increase}MB is too high\"\n338 \n",
+      "col_offset": 8,
+      "end_col_offset": 87,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 337,
+      "line_range": [
+        337
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "347                 # Should still return a result with default values\n348                 assert result is not None\n349                 assert \"confidence\" in result\n",
+      "col_offset": 16,
+      "end_col_offset": 41,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 348,
+      "line_range": [
+        348
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "348                 assert result is not None\n349                 assert \"confidence\" in result\n350                 assert result[\"confidence\"] <= 0.5  # Lower confidence due to error\n",
+      "col_offset": 16,
+      "end_col_offset": 45,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 349,
+      "line_range": [
+        349
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "349                 assert \"confidence\" in result\n350                 assert result[\"confidence\"] <= 0.5  # Lower confidence due to error\n351             except Exception:\n",
+      "col_offset": 16,
+      "end_col_offset": 50,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 350,
+      "line_range": [
+        350
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "363         # Results should be identical (showing consistent behavior)\n364         assert result1 == result2 == result3\n365 \n",
+      "col_offset": 8,
+      "end_col_offset": 44,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 364,
+      "line_range": [
+        364
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "366         # Test that parser maintains consistent state\n367         assert result1[\"confidence\"] == result2[\"confidence\"]\n368         assert result1[\"slice_type\"] == result2[\"slice_type\"]\n",
+      "col_offset": 8,
+      "end_col_offset": 61,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 367,
+      "line_range": [
+        367
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "367         assert result1[\"confidence\"] == result2[\"confidence\"]\n368         assert result1[\"slice_type\"] == result2[\"slice_type\"]\n369 \n",
+      "col_offset": 8,
+      "end_col_offset": 61,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 368,
+      "line_range": [
+        368
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "381                 result = parser.parse_intent(intent)\n382                 assert result is not None\n383                 assert \"confidence\" in result\n",
+      "col_offset": 16,
+      "end_col_offset": 41,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 382,
+      "line_range": [
+        382
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "382                 assert result is not None\n383                 assert \"confidence\" in result\n384             except Exception as e:\n",
+      "col_offset": 16,
+      "end_col_offset": 45,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 383,
+      "line_range": [
+        383
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "403 \n404             assert (\n405                 qos[\"throughput_mbps\"] >= targets[\"min_throughput\"]\n406             ), f\"Throughput {qos['throughput_mbps']} < target {targets['min_throughput']} for {intent_key}\"\n407             assert (\n",
+      "col_offset": 12,
+      "end_col_offset": 107,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 404,
+      "line_range": [
+        404,
+        405,
+        406
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "406             ), f\"Throughput {qos['throughput_mbps']} < target {targets['min_throughput']} for {intent_key}\"\n407             assert (\n408                 qos[\"latency_ms\"] <= targets[\"max_latency\"]\n409             ), f\"Latency {qos['latency_ms']} > target {targets['max_latency']} for {intent_key}\"\n410 \n",
+      "col_offset": 12,
+      "end_col_offset": 96,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 407,
+      "line_range": [
+        407,
+        408,
+        409
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "421         \"\"\"Test QoS mapper initialization.\"\"\"\n422         assert parser is not None\n423         assert hasattr(parser, \"map_to_qos\")\n",
+      "col_offset": 8,
+      "end_col_offset": 33,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 422,
+      "line_range": [
+        422
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "422         assert parser is not None\n423         assert hasattr(parser, \"map_to_qos\")\n424 \n",
+      "col_offset": 8,
+      "end_col_offset": 44,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 423,
+      "line_range": [
+        423
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "430 \n431         assert qos[\"slice_type\"] == \"urllc\"\n432         assert qos[\"latency_ms\"] <= 5\n",
+      "col_offset": 8,
+      "end_col_offset": 43,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 431,
+      "line_range": [
+        431
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "431         assert qos[\"slice_type\"] == \"urllc\"\n432         assert qos[\"latency_ms\"] <= 5\n433         assert qos[\"reliability\"] >= 99.99\n",
+      "col_offset": 8,
+      "end_col_offset": 37,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 432,
+      "line_range": [
+        432
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "432         assert qos[\"latency_ms\"] <= 5\n433         assert qos[\"reliability\"] >= 99.99\n434 \n",
+      "col_offset": 8,
+      "end_col_offset": 42,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 433,
+      "line_range": [
+        433
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "440 \n441         assert qos[\"slice_type\"] == \"embb\"\n442         assert qos[\"throughput_mbps\"] >= 50\n",
+      "col_offset": 8,
+      "end_col_offset": 42,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 441,
+      "line_range": [
+        441
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "441         assert qos[\"slice_type\"] == \"embb\"\n442         assert qos[\"throughput_mbps\"] >= 50\n443 \n",
+      "col_offset": 8,
+      "end_col_offset": 43,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 442,
+      "line_range": [
+        442
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "449 \n450         assert qos[\"slice_type\"] == \"mmtc\"\n451         assert qos[\"throughput_mbps\"] <= 10\n",
+      "col_offset": 8,
+      "end_col_offset": 42,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 450,
+      "line_range": [
+        450
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "450         assert qos[\"slice_type\"] == \"mmtc\"\n451         assert qos[\"throughput_mbps\"] <= 10\n452 \n",
+      "col_offset": 8,
+      "end_col_offset": 43,
+      "filename": ".\\tests\\unit\\intent_parser_test.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 451,
+      "line_range": [
+        451
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.8/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    }
+  ]
+}

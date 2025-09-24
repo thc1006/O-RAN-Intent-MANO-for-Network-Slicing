@@ -1,0 +1,114 @@
+# Test Configuration for O-RAN Intent-MANO Testing Framework
+test_suite: "all"
+parallel: true
+verbose: true
+timeout: "30m"
+coverage: true
+environment:
+  THESIS_VALIDATION: "true"
+  INTEGRATION_TESTS: "true"
+  PERFORMANCE_TESTS: "true"
+  GO_VERSION: "1.24.7"
+  CGO_ENABLED: "0"
+  KUBERNETES_VERSION: "v1.31.0"
+
+kube_config: ""
+
+exclude_patterns:
+  - "vendor/"
+  - ".git/"
+  - "*.backup"
+
+# Test suite configurations
+suites:
+  unit:
+    timeout: "5m"
+    parallel: true
+    coverage: true
+    short: true
+
+  integration:
+    timeout: "15m"
+    parallel: true
+    coverage: true
+    requires_k8s: true
+
+  e2e:
+    timeout: "30m"
+    parallel: false
+    coverage: false
+    requires_k8s: true
+    requires_external_services: true
+
+  performance:
+    timeout: "45m"
+    parallel: false
+    coverage: false
+    requires_k8s: true
+    thesis_validation: true
+
+  security:
+    timeout: "10m"
+    parallel: true
+    coverage: false
+
+  healthcheck:
+    timeout: "5m"
+    parallel: true
+    coverage: false
+    requires_k8s: true
+
+# Thesis validation thresholds
+thesis_requirements:
+  deployment_time_max: "10m"
+  throughput_targets:
+    embb: 4.57  # Mbps
+    urllc: 2.77 # Mbps
+    mmtc: 0.93  # Mbps
+  latency_targets:
+    embb: 16.1  # ms
+    urllc: 15.7 # ms
+    mmtc: 6.3   # ms
+  tolerance: 0.1  # 10% tolerance
+
+# Performance benchmarks
+benchmarks:
+  intent_processing_max: "100ms"
+  slice_deployment_max: "5s"
+  resource_allocation_max: "50ms"
+  qos_configuration_max: "200ms"
+
+# Resource limits for tests
+resource_limits:
+  cpu_threshold: 80.0      # percent
+  memory_threshold: 85.0   # percent
+  storage_threshold: 90.0  # percent
+
+# Mock services configuration
+mock_services:
+  o2_interface:
+    enabled: true
+    port: 9090
+  nephio_interface:
+    enabled: true
+    port: 9091
+  prometheus:
+    enabled: true
+    port: 9092
+
+# Reporting configuration
+reporting:
+  formats:
+    - "json"
+    - "junit"
+    - "html"
+  output_dir: "./test-reports"
+  include_coverage: true
+  include_metrics: true
+
+# CI/CD integration
+ci:
+  fail_fast: false
+  retry_count: 3
+  artifact_retention: "7d"
+  parallel_jobs: 4

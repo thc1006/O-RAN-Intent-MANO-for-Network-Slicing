@@ -805,13 +805,13 @@ func TestFuzzingUnicodeEdgeCases(t *testing.T) {
 	t.Run("unicode_normalization_attacks", func(t *testing.T) {
 		// Test Unicode normalization vulnerabilities
 		unicodeAttacks := []string{
-			"test\u0041\u030A", // A with ring above (Å)
-			"test\u00C5",       // Precomposed Å
-			"test\u2044",       // Fraction slash
-			"test\uFEFF",       // Zero-width no-break space
-			"test\u200B",       // Zero-width space
-			"test\u200C",       // Zero-width non-joiner
-			"test\u200D",       // Zero-width joiner
+			"test\u0041\u030A",  // A with ring above (Å)
+			"test\u00C5",        // Precomposed Å
+			"test\u2044",        // Fraction slash
+			"test\uFEFF",        // Zero-width no-break space
+			"test\u200B",        // Zero-width space
+			"test\u200C",        // Zero-width non-joiner
+			"test\u200D",        // Zero-width joiner
 			"admin\u0041\u030A", // Unicode spoofing attempt
 		}
 
@@ -851,9 +851,9 @@ func TestFuzzingUnicodeEdgeCases(t *testing.T) {
 		// Test bidirectional text override attacks
 		bidiAttacks := []string{
 			"test\u202E" + "gnirts" + "\u202D", // Right-to-left override
-			"test\u061C" + "attack",           // Arabic letter mark
-			"admin\u200F" + "user",            // Right-to-left mark
-			"test\u200E" + "evil",             // Left-to-right mark
+			"test\u061C" + "attack",            // Arabic letter mark
+			"admin\u200F" + "user",             // Right-to-left mark
+			"test\u200E" + "evil",              // Left-to-right mark
 		}
 
 		for _, attack := range bidiAttacks {
@@ -914,9 +914,9 @@ func TestFuzzingRegexComplexity(t *testing.T) {
 			start := time.Now()
 
 			// Test with different validators that might use regex
-			suite.validator.ValidateCommandArgument(attack)
-			suite.validator.ValidateFilePath(attack)
-			suite.validator.ValidateNetworkInterface(attack)
+			_ = suite.validator.ValidateCommandArgument(attack)
+			_ = suite.validator.ValidateFilePath(attack)
+			_ = suite.validator.ValidateNetworkInterface(attack)
 
 			totalDuration := time.Since(start)
 
@@ -1035,7 +1035,7 @@ func testSecurityInvariants(t *testing.T, suite *FuzzingSecuritySuite, input str
 
 	// Invariant 3: Validation should complete in reasonable time
 	start := time.Now()
-	suite.validator.ValidateCommandArgument(input)
+	_ = suite.validator.ValidateCommandArgument(input)
 	duration := time.Since(start)
 
 	if duration > 10*time.Millisecond {
@@ -1050,10 +1050,10 @@ func testSecurityInvariants(t *testing.T, suite *FuzzingSecuritySuite, input str
 			}
 		}()
 
-		suite.validator.ValidateCommandArgument(input)
-		suite.validator.ValidateIPAddress(input)
-		suite.validator.ValidateFilePath(input)
-		suite.validator.ValidateNetworkInterface(input)
+		_ = suite.validator.ValidateCommandArgument(input)
+		_ = suite.validator.ValidateIPAddress(input)
+		_ = suite.validator.ValidateFilePath(input)
+		_ = suite.validator.ValidateNetworkInterface(input)
 	}()
 }
 
@@ -1079,7 +1079,7 @@ func BenchmarkFuzzingPerformance(b *testing.B) {
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			input := inputs[i%len(inputs)]
-			suite.validator.ValidateCommandArgument(input)
+			_ = suite.validator.ValidateCommandArgument(input)
 		}
 	})
 

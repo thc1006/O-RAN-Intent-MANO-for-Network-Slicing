@@ -11,19 +11,15 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/ghttp"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	// "k8s.io/client-go/kubernetes" // Unused for now
+	// "k8s.io/client-go/rest" // Unused for now
+	// "sigs.k8s.io/controller-runtime/pkg/client" // Unused for now
 
 	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tests/framework/testutils"
 )
 
 // IntentToSliceWorkflow represents the complete E2E workflow test suite
 type IntentToSliceWorkflow struct {
-	config           *testutils.TestConfig
-	kubeClient       client.Client
-	kubernetesClient kubernetes.Interface
-	restConfig       *rest.Config
 	mockO2Server     *ghttp.Server
 	mockNephioServer *ghttp.Server
 	testFramework    *testutils.TestFramework
@@ -40,15 +36,15 @@ type IntentRequest struct {
 
 // QoSMapping represents the mapped QoS parameters from intent
 type QoSMapping struct {
-	SliceType            string  `json:"slice_type"`
-	Priority             string  `json:"priority"`
-	MaxLatencyMs         float64 `json:"max_latency_ms"`
-	MinThroughputMbps    float64 `json:"min_throughput_mbps"`
-	ReliabilityPercent   float64 `json:"reliability_percent"`
-	PacketLossRateMax    float64 `json:"packet_loss_rate_max"`
-	JitterMs             float64 `json:"jitter_ms"`
-	BandwidthGuarantee   bool    `json:"bandwidth_guarantee"`
-	IsolationLevel       string  `json:"isolation_level"`
+	SliceType          string  `json:"slice_type"`
+	Priority           string  `json:"priority"`
+	MaxLatencyMs       float64 `json:"max_latency_ms"`
+	MinThroughputMbps  float64 `json:"min_throughput_mbps"`
+	ReliabilityPercent float64 `json:"reliability_percent"`
+	PacketLossRateMax  float64 `json:"packet_loss_rate_max"`
+	JitterMs           float64 `json:"jitter_ms"`
+	BandwidthGuarantee bool    `json:"bandwidth_guarantee"`
+	IsolationLevel     string  `json:"isolation_level"`
 }
 
 // SliceDeploymentRequest represents the deployment request sent to orchestrator
@@ -62,12 +58,12 @@ type SliceDeploymentRequest struct {
 
 // NetworkFunctionSpec defines a network function in the slice
 type NetworkFunctionSpec struct {
-	Type        string                 `json:"type"`
-	Version     string                 `json:"version"`
-	Image       string                 `json:"image"`
-	Replicas    int                   `json:"replicas"`
-	Resources   ResourceRequirements   `json:"resources"`
-	Config      map[string]interface{} `json:"config,omitempty"`
+	Type      string                 `json:"type"`
+	Version   string                 `json:"version"`
+	Image     string                 `json:"image"`
+	Replicas  int                    `json:"replicas"`
+	Resources ResourceRequirements   `json:"resources"`
+	Config    map[string]interface{} `json:"config,omitempty"`
 }
 
 // ResourceRequirements defines resource requirements for NFs
@@ -86,23 +82,23 @@ type PlacementPolicySpec struct {
 
 // SliceDeploymentStatus represents the status of slice deployment
 type SliceDeploymentStatus struct {
-	SliceID          string            `json:"slice_id"`
-	Phase            string            `json:"phase"`
-	Message          string            `json:"message"`
-	DeploymentTime   time.Duration     `json:"deployment_time"`
-	NetworkFunctions []NFStatus        `json:"network_functions"`
-	QoSMetrics       QoSMetrics        `json:"qos_metrics"`
-	PlacementResult  PlacementResult   `json:"placement_result"`
+	SliceID          string          `json:"slice_id"`
+	Phase            string          `json:"phase"`
+	Message          string          `json:"message"`
+	DeploymentTime   time.Duration   `json:"deployment_time"`
+	NetworkFunctions []NFStatus      `json:"network_functions"`
+	QoSMetrics       QoSMetrics      `json:"qos_metrics"`
+	PlacementResult  PlacementResult `json:"placement_result"`
 }
 
 // NFStatus represents the status of a deployed network function
 type NFStatus struct {
-	Name      string            `json:"name"`
-	Type      string            `json:"type"`
-	Status    string            `json:"status"`
-	Site      string            `json:"site"`
-	Endpoint  string            `json:"endpoint"`
-	Metrics   map[string]float64 `json:"metrics"`
+	Name     string             `json:"name"`
+	Type     string             `json:"type"`
+	Status   string             `json:"status"`
+	Site     string             `json:"site"`
+	Endpoint string             `json:"endpoint"`
+	Metrics  map[string]float64 `json:"metrics"`
 }
 
 // QoSMetrics represents actual measured QoS metrics
@@ -257,7 +253,7 @@ var _ = Describe("Intent-to-Slice Complete Workflow", func() {
 			Eventually(func() QoSMetrics {
 				return workflow.measureQoSPerformance(deploymentStatus.SliceID)
 			}, 5*time.Minute, 30*time.Second).Should(SatisfyAll(
-				HaveField("ActualLatencyMs", BeNumerically("<=", 6.3)), // Thesis target
+				HaveField("ActualLatencyMs", BeNumerically("<=", 6.3)),       // Thesis target
 				HaveField("ActualThroughputMbps", BeNumerically(">=", 4.57)), // Thesis target
 				HaveField("ActualReliability", BeNumerically(">=", 99.999)),
 				HaveField("PacketLossRate", BeNumerically("<=", 0.001)),
@@ -271,11 +267,11 @@ var _ = Describe("Intent-to-Slice Complete Workflow", func() {
 
 			// Record performance metrics for thesis validation
 			workflow.testFramework.Reporter.UpdatePerformanceMetrics(&testutils.PerformanceMetrics{
-				DeploymentTime:    deploymentStatus.DeploymentTime,
-				ThroughputMbps:    deploymentStatus.QoSMetrics.ActualThroughputMbps,
-				LatencyMs:         deploymentStatus.QoSMetrics.ActualLatencyMs,
-				ErrorRate:         deploymentStatus.QoSMetrics.PacketLossRate,
-				ResponseTime99p:   totalTime,
+				DeploymentTime:  deploymentStatus.DeploymentTime,
+				ThroughputMbps:  deploymentStatus.QoSMetrics.ActualThroughputMbps,
+				LatencyMs:       deploymentStatus.QoSMetrics.ActualLatencyMs,
+				ErrorRate:       deploymentStatus.QoSMetrics.PacketLossRate,
+				ResponseTime99p: totalTime,
 			})
 
 			By(fmt.Sprintf("Emergency slice deployed successfully in %v (E2E: %v)",
@@ -355,7 +351,7 @@ var _ = Describe("Intent-to-Slice Complete Workflow", func() {
 			Eventually(func() QoSMetrics {
 				return workflow.measureQoSPerformance(deploymentStatus.SliceID)
 			}, 5*time.Minute, 30*time.Second).Should(SatisfyAll(
-				HaveField("ActualLatencyMs", BeNumerically("<=", 15.7)), // Thesis target
+				HaveField("ActualLatencyMs", BeNumerically("<=", 15.7)),      // Thesis target
 				HaveField("ActualThroughputMbps", BeNumerically(">=", 2.77)), // Thesis target
 				HaveField("ActualReliability", BeNumerically(">=", 99.9)),
 			))
@@ -429,7 +425,7 @@ var _ = Describe("Intent-to-Slice Complete Workflow", func() {
 			Eventually(func() QoSMetrics {
 				return workflow.measureQoSPerformance(deploymentStatus.SliceID)
 			}, 3*time.Minute, 30*time.Second).Should(SatisfyAll(
-				HaveField("ActualLatencyMs", BeNumerically("<=", 16.1)), // Thesis target
+				HaveField("ActualLatencyMs", BeNumerically("<=", 16.1)),      // Thesis target
 				HaveField("ActualThroughputMbps", BeNumerically(">=", 0.93)), // Thesis target
 				HaveField("ActualReliability", BeNumerically(">=", 99.0)),
 			))
@@ -575,7 +571,7 @@ func (w *IntentToSliceWorkflow) setupMockServers() {
 			ghttp.VerifyRequest("POST", "/o2dms/v1/deploymentManagers"),
 			ghttp.RespondWithJSONEncoded(http.StatusCreated, map[string]interface{}{
 				"deploymentManagerId": "dm-001",
-				"status": "Created",
+				"status":              "Created",
 			}),
 		),
 	)
@@ -587,7 +583,7 @@ func (w *IntentToSliceWorkflow) setupMockServers() {
 			ghttp.VerifyRequest("POST", "/api/v1/packages"),
 			ghttp.RespondWithJSONEncoded(http.StatusCreated, map[string]interface{}{
 				"packageId": "pkg-001",
-				"status": "Generated",
+				"status":    "Generated",
 			}),
 		),
 	)
@@ -606,45 +602,45 @@ func (w *IntentToSliceWorkflow) processIntent(intent, userID, priority string) Q
 	var qosMapping QoSMapping
 
 	if strings.Contains(strings.ToLower(intent), "emergency") ||
-	   strings.Contains(strings.ToLower(intent), "ultra-low") {
+		strings.Contains(strings.ToLower(intent), "ultra-low") {
 		qosMapping = QoSMapping{
-			SliceType:            "urllc",
-			Priority:             "critical",
-			MaxLatencyMs:         1.0,
-			MinThroughputMbps:    100,
-			ReliabilityPercent:   99.999,
-			PacketLossRateMax:    0.001,
-			JitterMs:             0.5,
-			BandwidthGuarantee:   true,
-			IsolationLevel:       "strict",
+			SliceType:          "urllc",
+			Priority:           "critical",
+			MaxLatencyMs:       1.0,
+			MinThroughputMbps:  100,
+			ReliabilityPercent: 99.999,
+			PacketLossRateMax:  0.001,
+			JitterMs:           0.5,
+			BandwidthGuarantee: true,
+			IsolationLevel:     "strict",
 		}
 	} else if strings.Contains(strings.ToLower(intent), "video") ||
-	          strings.Contains(strings.ToLower(intent), "streaming") ||
-	          strings.Contains(strings.ToLower(intent), "bandwidth") {
+		strings.Contains(strings.ToLower(intent), "streaming") ||
+		strings.Contains(strings.ToLower(intent), "bandwidth") {
 		qosMapping = QoSMapping{
-			SliceType:            "embb",
-			Priority:             "high",
-			MaxLatencyMs:         15.7,
-			MinThroughputMbps:    2.77,
-			ReliabilityPercent:   99.9,
-			PacketLossRateMax:    0.001,
-			JitterMs:             2.0,
-			BandwidthGuarantee:   true,
-			IsolationLevel:       "moderate",
+			SliceType:          "embb",
+			Priority:           "high",
+			MaxLatencyMs:       15.7,
+			MinThroughputMbps:  2.77,
+			ReliabilityPercent: 99.9,
+			PacketLossRateMax:  0.001,
+			JitterMs:           2.0,
+			BandwidthGuarantee: true,
+			IsolationLevel:     "moderate",
 		}
 	} else if strings.Contains(strings.ToLower(intent), "iot") ||
-	          strings.Contains(strings.ToLower(intent), "sensor") ||
-	          strings.Contains(strings.ToLower(intent), "massive") {
+		strings.Contains(strings.ToLower(intent), "sensor") ||
+		strings.Contains(strings.ToLower(intent), "massive") {
 		qosMapping = QoSMapping{
-			SliceType:            "mmtc",
-			Priority:             "low",
-			MaxLatencyMs:         16.1,
-			MinThroughputMbps:    0.93,
-			ReliabilityPercent:   99.0,
-			PacketLossRateMax:    0.01,
-			JitterMs:             5.0,
-			BandwidthGuarantee:   false,
-			IsolationLevel:       "shared",
+			SliceType:          "mmtc",
+			Priority:           "low",
+			MaxLatencyMs:       16.1,
+			MinThroughputMbps:  0.93,
+			ReliabilityPercent: 99.0,
+			PacketLossRateMax:  0.01,
+			JitterMs:           5.0,
+			BandwidthGuarantee: false,
+			IsolationLevel:     "shared",
 		}
 	}
 
@@ -689,13 +685,13 @@ func (w *IntentToSliceWorkflow) deploySlice(request SliceDeploymentRequest) Slic
 	}
 
 	return SliceDeploymentStatus{
-		SliceID:        request.SliceID,
-		Phase:          "Running",
-		Message:        "Slice deployed successfully",
-		DeploymentTime: time.Since(startTime),
+		SliceID:          request.SliceID,
+		Phase:            "Running",
+		Message:          "Slice deployed successfully",
+		DeploymentTime:   time.Since(startTime),
 		NetworkFunctions: nfStatuses,
 		QoSMetrics: QoSMetrics{
-			ActualLatencyMs:      request.QoSRequirements.MaxLatencyMs * 0.8, // Better than required
+			ActualLatencyMs:      request.QoSRequirements.MaxLatencyMs * 0.8,      // Better than required
 			ActualThroughputMbps: request.QoSRequirements.MinThroughputMbps * 1.2, // Better than required
 			ActualReliability:    request.QoSRequirements.ReliabilityPercent,
 			PacketLossRate:       request.QoSRequirements.PacketLossRateMax * 0.5,
@@ -709,12 +705,12 @@ func (w *IntentToSliceWorkflow) deploySlice(request SliceDeploymentRequest) Slic
 	}
 }
 
-func (w *IntentToSliceWorkflow) measureQoSPerformance(sliceID string) QoSMetrics {
+func (w *IntentToSliceWorkflow) measureQoSPerformance(_ string) QoSMetrics {
 	// Simulate QoS measurements - in reality this would query monitoring systems
 	// Return metrics that meet thesis targets
 	return QoSMetrics{
-		ActualLatencyMs:      5.2,  // Within thesis bounds
-		ActualThroughputMbps: 5.1,  // Above thesis minimum
+		ActualLatencyMs:      5.2, // Within thesis bounds
+		ActualThroughputMbps: 5.1, // Above thesis minimum
 		ActualReliability:    99.95,
 		PacketLossRate:       0.0005,
 		Jitter:               1.2,
@@ -731,12 +727,12 @@ func (w *IntentToSliceWorkflow) validateNetworkConnectivity(status SliceDeployme
 	}
 }
 
-func (w *IntentToSliceWorkflow) simulateVideoStreamingTraffic(sliceID string) {
+func (w *IntentToSliceWorkflow) simulateVideoStreamingTraffic(_ string) {
 	// Simulate video streaming traffic patterns
 	time.Sleep(1 * time.Second)
 }
 
-func (w *IntentToSliceWorkflow) simulateIoTConnections(sliceID string, numConnections int) {
+func (w *IntentToSliceWorkflow) simulateIoTConnections(_ string, numConnections int) {
 	// Simulate massive IoT device connections
 	time.Sleep(1 * time.Second)
 	Expect(numConnections).To(BeNumerically(">", 1000))
@@ -756,7 +752,7 @@ func (w *IntentToSliceWorkflow) validateResourceSharing(statuses []SliceDeployme
 	}
 }
 
-func (w *IntentToSliceWorkflow) scaleSlice(sliceID string, replicas map[string]int) SliceDeploymentStatus {
+func (w *IntentToSliceWorkflow) scaleSlice(sliceID string, _ map[string]int) SliceDeploymentStatus {
 	// Simulate slice scaling
 	return SliceDeploymentStatus{
 		SliceID: sliceID,
@@ -778,7 +774,7 @@ func (w *IntentToSliceWorkflow) updateSlice(sliceID string, qos QoSMapping) Slic
 	}
 }
 
-func (w *IntentToSliceWorkflow) monitorSlicePerformance(sliceID string, duration time.Duration) QoSMetrics {
+func (w *IntentToSliceWorkflow) monitorSlicePerformance(_ string, duration time.Duration) QoSMetrics {
 	// Simulate performance monitoring
 	time.Sleep(duration)
 	return QoSMetrics{
@@ -788,13 +784,13 @@ func (w *IntentToSliceWorkflow) monitorSlicePerformance(sliceID string, duration
 	}
 }
 
-func (w *IntentToSliceWorkflow) deleteSlice(sliceID string) string {
+func (w *IntentToSliceWorkflow) deleteSlice(_ string) string {
 	// Simulate slice deletion
 	time.Sleep(1 * time.Second)
 	return "Deleted"
 }
 
-func (w *IntentToSliceWorkflow) verifySliceCleanup(sliceID string) bool {
+func (w *IntentToSliceWorkflow) verifySliceCleanup(_ string) bool {
 	// Simulate cleanup verification
 	return true
 }

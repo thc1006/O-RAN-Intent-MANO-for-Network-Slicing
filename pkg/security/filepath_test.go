@@ -143,12 +143,12 @@ func TestSecureJoinPath(t *testing.T) {
 
 func TestValidateAndCleanPath(t *testing.T) {
 	tests := []struct {
-		name               string
-		path               string
-		allowedExtensions  []string
-		expectError        bool
-		expectedCleanPath  string
-		description        string
+		name              string
+		path              string
+		allowedExtensions []string
+		expectError       bool
+		expectedCleanPath string
+		description       string
 	}{
 		{
 			name:              "valid path with extension check",
@@ -341,13 +341,13 @@ func TestValidatorCreationFunctions(t *testing.T) {
 func BenchmarkValidateFilePathSecurity(b *testing.B) {
 	testPath := "config/test.yaml"
 	for i := 0; i < b.N; i++ {
-		ValidateFilePath(testPath)
+		_ = ValidateFilePath(testPath)
 	}
 }
 
 func BenchmarkValidateFilePathWithTraversalAttack(b *testing.B) {
 	testPath := "../../../etc/passwd"
 	for i := 0; i < b.N; i++ {
-		ValidateFilePath(testPath)
+		_ = ValidateFilePath(testPath)
 	}
 }

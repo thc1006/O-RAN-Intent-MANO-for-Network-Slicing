@@ -7,15 +7,22 @@ import (
 	"time"
 )
 
-// LatencyAwarePlacementPolicy implements placement based on latency and resource requirements
-type LatencyAwarePlacementPolicy struct {
+// Network function type constants
+const (
+	NFTypeUPF = "UPF"
+	NFTypeAMF = "AMF"
+	NFTypeSMF = "SMF"
+)
+
+// LatencyAwarePolicy implements placement based on latency and resource requirements
+type LatencyAwarePolicy struct {
 	metricsProvider MetricsProvider
 	// Weights for scoring components (should sum to 1.0)
-	weights PlacementWeights
+	weights Weights
 }
 
-// PlacementWeights defines relative importance of different factors
-type PlacementWeights struct {
+// Weights defines relative importance of different factors
+type Weights struct {
 	Latency     float64 // Weight for latency matching
 	Resources   float64 // Weight for resource availability
 	Throughput  float64 // Weight for throughput capability
@@ -24,8 +31,8 @@ type PlacementWeights struct {
 }
 
 // DefaultWeights returns default placement weights
-func DefaultWeights() PlacementWeights {
-	return PlacementWeights{
+func DefaultWeights() Weights {
+	return Weights{
 		Latency:     0.25,
 		Resources:   0.25,
 		Throughput:  0.15,
@@ -34,26 +41,26 @@ func DefaultWeights() PlacementWeights {
 	}
 }
 
-// NewLatencyAwarePlacementPolicy creates a new latency-aware placement policy
-func NewLatencyAwarePlacementPolicy(provider MetricsProvider) *LatencyAwarePlacementPolicy {
-	return &LatencyAwarePlacementPolicy{
+// NewLatencyAwarePolicy creates a new latency-aware placement policy
+func NewLatencyAwarePolicy(provider MetricsProvider) *LatencyAwarePolicy {
+	return &LatencyAwarePolicy{
 		metricsProvider: provider,
 		weights:         DefaultWeights(),
 	}
 }
 
-// NewLatencyAwarePlacementPolicyWithWeights creates policy with custom weights
-func NewLatencyAwarePlacementPolicyWithWeights(provider MetricsProvider, weights PlacementWeights) *LatencyAwarePlacementPolicy {
-	return &LatencyAwarePlacementPolicy{
+// NewLatencyAwarePolicyWithWeights creates policy with custom weights
+func NewLatencyAwarePolicyWithWeights(provider MetricsProvider, weights Weights) *LatencyAwarePolicy {
+	return &LatencyAwarePolicy{
 		metricsProvider: provider,
 		weights:         weights,
 	}
 }
 
 // Place determines optimal placement for a single network function
-func (p *LatencyAwarePlacementPolicy) Place(nf *NetworkFunction, sites []*Site) (*PlacementDecision, error) {
+func (p *LatencyAwarePolicy) Place(nf *NetworkFunction, sites []*Site) (*Decision, error) {
 	if len(sites) == 0 {
-		return nil, &PlacementError{
+		return nil, &Error{
 			Code:    ErrNoSuitableSite,
 			Message: "no sites available for placement",
 		}
@@ -88,13 +95,13 @@ func (p *LatencyAwarePlacementPolicy) Place(nf *NetworkFunction, sites []*Site) 
 	}
 
 	if len(siteScores) == 0 {
-		return nil, &PlacementError{
+		return nil, &Error{
 			Code:    ErrNoSuitableSite,
 			Message: fmt.Sprintf("no site meets requirements for %s", nf.Type),
 			Details: map[string]interface{}{
 				"nf_type":       nf.Type,
 				"requirements":  nf.Requirements,
-				"qos":          nf.QoSRequirements,
+				"qos":           nf.QoSRequirements,
 				"sites_checked": len(sites),
 			},
 		}
@@ -109,12 +116,12 @@ func (p *LatencyAwarePlacementPolicy) Place(nf *NetworkFunction, sites []*Site) 
 	bestSite := siteScores[0]
 
 	// Create placement decision
-	decision := &PlacementDecision{
+	decision := &Decision{
 		NetworkFunction: nf,
-		Site:           bestSite.Site,
-		Score:          bestSite.Score,
-		Reason:         p.generatePlacementReason(nf, bestSite.Site, bestSite.Score),
-		Timestamp:      time.Now(),
+		Site:            bestSite.Site,
+		Score:           bestSite.Score,
+		Reason:          p.generatePlacementReason(nf, bestSite.Site, bestSite.Score),
+		Timestamp:       time.Now(),
 	}
 
 	// Add alternatives (up to 3)
@@ -130,8 +137,8 @@ func (p *LatencyAwarePlacementPolicy) Place(nf *NetworkFunction, sites []*Site) 
 }
 
 // PlaceMultiple handles batch placement with potential dependencies
-func (p *LatencyAwarePlacementPolicy) PlaceMultiple(nfs []*NetworkFunction, sites []*Site) ([]*PlacementDecision, error) {
-	var decisions []*PlacementDecision
+func (p *LatencyAwarePolicy) PlaceMultiple(nfs []*NetworkFunction, sites []*Site) ([]*Decision, error) {
+	var decisions []*Decision
 
 	// Simple implementation: place each NF independently
 	// TODO: Implement dependency-aware placement
@@ -147,7 +154,7 @@ func (p *LatencyAwarePlacementPolicy) PlaceMultiple(nfs []*NetworkFunction, site
 		// This is a simplified simulation
 		if decision.Site.Metrics != nil {
 			decision.Site.Metrics.ActiveNFs++
-			decision.Site.Metrics.CPUUtilization += 10 // Simplified
+			decision.Site.Metrics.CPUUtilization += 10    // Simplified
 			decision.Site.Metrics.MemoryUtilization += 15 // Simplified
 		}
 	}
@@ -156,9 +163,9 @@ func (p *LatencyAwarePlacementPolicy) PlaceMultiple(nfs []*NetworkFunction, site
 }
 
 // Rebalance optimizes existing placements
-func (p *LatencyAwarePlacementPolicy) Rebalance(decisions []*PlacementDecision, sites []*Site) ([]*PlacementDecision, error) {
+func (p *LatencyAwarePolicy) Rebalance(decisions []*Decision, sites []*Site) ([]*Decision, error) {
 	// Simple implementation: re-evaluate each placement
-	var newDecisions []*PlacementDecision
+	var newDecisions []*Decision
 
 	for _, oldDecision := range decisions {
 		newDecision, err := p.Place(oldDecision.NetworkFunction, sites)
@@ -180,65 +187,50 @@ func (p *LatencyAwarePlacementPolicy) Rebalance(decisions []*PlacementDecision, 
 }
 
 // meetsRequirements checks if a site meets NF requirements
-func (p *LatencyAwarePlacementPolicy) meetsRequirements(nf *NetworkFunction, site *Site) bool {
-	// Check availability
+func (p *LatencyAwarePolicy) meetsRequirements(nf *NetworkFunction, site *Site) bool {
 	if !site.Available {
 		return false
 	}
 
-	// Check resource requirements
-	if site.Capacity.CPUCores < nf.Requirements.MinCPUCores {
-		return false
-	}
-	if site.Capacity.MemoryGB < nf.Requirements.MinMemoryGB {
-		return false
-	}
-	if site.Capacity.StorageGB < nf.Requirements.MinStorageGB {
-		return false
-	}
-	if site.Capacity.BandwidthMbps < nf.Requirements.MinBandwidthMbps {
-		return false
-	}
+	// Check all requirements
+	return p.checkResources(nf, site) &&
+		p.checkQoS(nf, site) &&
+		p.checkUtilization(nf, site)
+}
 
-	// Check QoS requirements
+// checkResources verifies resource requirements
+func (p *LatencyAwarePolicy) checkResources(nf *NetworkFunction, site *Site) bool {
+	return site.Capacity.CPUCores >= nf.Requirements.MinCPUCores &&
+		site.Capacity.MemoryGB >= nf.Requirements.MinMemoryGB &&
+		site.Capacity.StorageGB >= nf.Requirements.MinStorageGB &&
+		site.Capacity.BandwidthMbps >= nf.Requirements.MinBandwidthMbps
+}
+
+// checkQoS verifies QoS requirements
+func (p *LatencyAwarePolicy) checkQoS(nf *NetworkFunction, site *Site) bool {
 	latency := site.NetworkProfile.BaseLatencyMs
 	if site.Metrics != nil && site.Metrics.CurrentLatencyMs > 0 {
 		latency = site.Metrics.CurrentLatencyMs
 	}
-	if latency > nf.QoSRequirements.MaxLatencyMs {
-		return false
-	}
 
-	if site.NetworkProfile.MaxThroughputMbps < nf.QoSRequirements.MinThroughputMbps {
-		return false
-	}
+	return latency <= nf.QoSRequirements.MaxLatencyMs &&
+		site.NetworkProfile.MaxThroughputMbps >= nf.QoSRequirements.MinThroughputMbps &&
+		site.NetworkProfile.PacketLossRate <= nf.QoSRequirements.MaxPacketLossRate &&
+		site.NetworkProfile.JitterMs <= nf.QoSRequirements.MaxJitterMs
+}
 
-	if site.NetworkProfile.PacketLossRate > nf.QoSRequirements.MaxPacketLossRate {
-		return false
+// checkUtilization verifies current utilization levels
+func (p *LatencyAwarePolicy) checkUtilization(nf *NetworkFunction, site *Site) bool {
+	if site.Metrics == nil {
+		return true
 	}
-
-	if site.NetworkProfile.JitterMs > nf.QoSRequirements.MaxJitterMs {
-		return false
-	}
-
-	// Check if site has available resources considering current utilization
-	if site.Metrics != nil {
-		if site.Metrics.CPUUtilization > 80 {
-			return false
-		}
-		if site.Metrics.MemoryUtilization > 85 {
-			return false
-		}
-		if site.Metrics.AvailableBandwidthMbps < nf.Requirements.MinBandwidthMbps {
-			return false
-		}
-	}
-
-	return true
+	return site.Metrics.CPUUtilization <= 80 &&
+		site.Metrics.MemoryUtilization <= 85 &&
+		site.Metrics.AvailableBandwidthMbps >= nf.Requirements.MinBandwidthMbps
 }
 
 // calculateScore computes placement score for a site
-func (p *LatencyAwarePlacementPolicy) calculateScore(nf *NetworkFunction, site *Site) float64 {
+func (p *LatencyAwarePolicy) calculateScore(nf *NetworkFunction, site *Site) float64 {
 	var score float64
 
 	// Latency score (0-100, lower latency = higher score)
@@ -271,14 +263,14 @@ func (p *LatencyAwarePlacementPolicy) calculateScore(nf *NetworkFunction, site *
 	score += p.weights.Utilization * utilizationScore
 
 	// Apply placement hints
-	hintScore := p.applyPlacementHints(nf, site)
-	score = score * (1 + hintScore/100) // Hints can boost score by up to 100%
+	hintScore := p.applyHints(nf, site)
+	score *= (1 + hintScore/100) // Hints can boost score by up to 100%
 
 	return math.Min(score, 100)
 }
 
 // calculateResourceScore evaluates resource availability
-func (p *LatencyAwarePlacementPolicy) calculateResourceScore(nf *NetworkFunction, site *Site) float64 {
+func (p *LatencyAwarePolicy) calculateResourceScore(nf *NetworkFunction, site *Site) float64 {
 	// Calculate ratios of available to required resources
 	cpuRatio := float64(site.Capacity.CPUCores) / float64(nf.Requirements.MinCPUCores)
 	memRatio := float64(site.Capacity.MemoryGB) / float64(nf.Requirements.MinMemoryGB)
@@ -296,61 +288,73 @@ func (p *LatencyAwarePlacementPolicy) calculateResourceScore(nf *NetworkFunction
 }
 
 // calculateCloudTypeScore evaluates cloud type preference
-func (p *LatencyAwarePlacementPolicy) calculateCloudTypeScore(nf *NetworkFunction, site *Site) float64 {
-	// Default scoring based on NF type and cloud type matching
-	// This implements the thesis examples:
-	// - UPF with low latency -> Edge (high score)
-	// - UPF with high bandwidth -> Regional (high score)
-
+func (p *LatencyAwarePolicy) calculateCloudTypeScore(nf *NetworkFunction, site *Site) float64 {
 	switch nf.Type {
-	case "UPF":
-		// User Plane Function placement strategy
-		if nf.QoSRequirements.MaxLatencyMs <= 10 {
-			// Ultra-low latency required -> prefer edge
-			switch site.Type {
-			case CloudTypeEdge:
-				return 100
-			case CloudTypeRegional:
-				return 40
-			case CloudTypeCentral:
-				return 10
-			}
-		} else if nf.QoSRequirements.MinThroughputMbps >= 2.0 {
-			// High bandwidth, tolerant of latency -> prefer regional
-			switch site.Type {
-			case CloudTypeRegional:
-				return 100
-			case CloudTypeCentral:
-				return 70
-			case CloudTypeEdge:
-				return 30
-			}
-		}
-
-	case "AMF", "SMF":
-		// Control plane functions -> prefer central for high capacity
-		switch site.Type {
-		case CloudTypeCentral:
-			return 100
-		case CloudTypeRegional:
-			return 60
-		case CloudTypeEdge:
-			return 10
-		}
-
+	case NFTypeUPF:
+		return p.scoreUPFPlacement(nf, site)
+	case NFTypeAMF, NFTypeSMF:
+		return p.scoreControlPlanePlacement(site)
 	case "RAN":
-		// RAN functions -> must be at edge
+		return p.scoreRANPlacement(site)
+	default:
+		return p.scoreDefaultPlacement(site)
+	}
+}
+
+// scoreUPFPlacement scores UPF placement based on QoS requirements
+func (p *LatencyAwarePolicy) scoreUPFPlacement(nf *NetworkFunction, site *Site) float64 {
+	if nf.QoSRequirements.MaxLatencyMs <= 10 {
+		// Ultra-low latency required -> prefer edge
 		switch site.Type {
 		case CloudTypeEdge:
 			return 100
 		case CloudTypeRegional:
-			return 10
+			return 40
 		case CloudTypeCentral:
-			return 0
+			return 10
+		}
+	} else if nf.QoSRequirements.MinThroughputMbps >= 2.0 {
+		// High bandwidth, tolerant of latency -> prefer regional
+		switch site.Type {
+		case CloudTypeRegional:
+			return 100
+		case CloudTypeCentral:
+			return 70
+		case CloudTypeEdge:
+			return 30
 		}
 	}
+	return p.scoreDefaultPlacement(site)
+}
 
-	// Default scoring
+// scoreControlPlanePlacement scores control plane functions
+func (p *LatencyAwarePolicy) scoreControlPlanePlacement(site *Site) float64 {
+	switch site.Type {
+	case CloudTypeCentral:
+		return 100
+	case CloudTypeRegional:
+		return 60
+	case CloudTypeEdge:
+		return 10
+	}
+	return 50
+}
+
+// scoreRANPlacement scores RAN functions
+func (p *LatencyAwarePolicy) scoreRANPlacement(site *Site) float64 {
+	switch site.Type {
+	case CloudTypeEdge:
+		return 100
+	case CloudTypeRegional:
+		return 10
+	case CloudTypeCentral:
+		return 0
+	}
+	return 50
+}
+
+// scoreDefaultPlacement provides default scoring for generic functions
+func (p *LatencyAwarePolicy) scoreDefaultPlacement(site *Site) float64 {
 	switch site.Type {
 	case CloudTypeEdge:
 		return 50
@@ -363,16 +367,16 @@ func (p *LatencyAwarePlacementPolicy) calculateCloudTypeScore(nf *NetworkFunctio
 	}
 }
 
-// applyPlacementHints applies user-provided hints
-func (p *LatencyAwarePlacementPolicy) applyPlacementHints(nf *NetworkFunction, site *Site) float64 {
-	if len(nf.PlacementHints) == 0 {
+// applyHints applies user-provided hints
+func (p *LatencyAwarePolicy) applyHints(nf *NetworkFunction, site *Site) float64 {
+	if len(nf.Hints) == 0 {
 		return 0
 	}
 
 	var hintScore float64
 	var totalWeight float64
 
-	for _, hint := range nf.PlacementHints {
+	for _, hint := range nf.Hints {
 		weight := float64(hint.Weight) / 100.0
 		totalWeight += weight
 
@@ -400,7 +404,7 @@ func (p *LatencyAwarePlacementPolicy) applyPlacementHints(nf *NetworkFunction, s
 }
 
 // generatePlacementReason creates human-readable explanation
-func (p *LatencyAwarePlacementPolicy) generatePlacementReason(nf *NetworkFunction, site *Site, score float64) string {
+func (p *LatencyAwarePolicy) generatePlacementReason(nf *NetworkFunction, site *Site, score float64) string {
 	latency := site.NetworkProfile.BaseLatencyMs
 	if site.Metrics != nil && site.Metrics.CurrentLatencyMs > 0 {
 		latency = site.Metrics.CurrentLatencyMs
@@ -410,9 +414,9 @@ func (p *LatencyAwarePlacementPolicy) generatePlacementReason(nf *NetworkFunctio
 
 	// Always use score-based reason for consistent testing
 	// Special cases only for very specific scenarios
-	if nf.Type == "UPF" && nf.QoSRequirements.MaxLatencyMs <= 10 && site.Type == CloudTypeEdge {
+	if nf.Type == NFTypeUPF && nf.QoSRequirements.MaxLatencyMs <= 10 && site.Type == CloudTypeEdge {
 		reason += fmt.Sprintf(" for ultra-low latency (%.1fms)", latency)
-	} else if nf.Type == "UPF" && nf.QoSRequirements.MinThroughputMbps >= 2.0 && site.Type == CloudTypeRegional && nf.QoSRequirements.MaxLatencyMs > 15 {
+	} else if nf.Type == NFTypeUPF && nf.QoSRequirements.MinThroughputMbps >= 2.0 && site.Type == CloudTypeRegional && nf.QoSRequirements.MaxLatencyMs > 15 {
 		reason += fmt.Sprintf(" for high bandwidth (%.1f Mbps available)", site.NetworkProfile.MaxThroughputMbps)
 	} else {
 		reason += fmt.Sprintf(" with score %.1f/100", score)

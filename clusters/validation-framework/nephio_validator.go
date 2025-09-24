@@ -23,6 +23,12 @@ import (
 	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security"
 )
 
+// Constants for commonly used strings
+const (
+	// File constants
+	KptfileString = "Kptfile"
+)
+
 // NephioValidator provides validation for Nephio/Porch packages
 type NephioValidator struct {
 	Config      NephioConfig
@@ -40,11 +46,11 @@ type PorchClient struct {
 
 // PackageRevision represents a Porch package revision
 type PackageRevision struct {
-	APIVersion string                 `json:"apiVersion"`
-	Kind       string                 `json:"kind"`
-	Metadata   PackageRevisionMeta    `json:"metadata"`
-	Spec       PackageRevisionSpec    `json:"spec"`
-	Status     PackageRevisionStatus  `json:"status"`
+	APIVersion string                `json:"apiVersion"`
+	Kind       string                `json:"kind"`
+	Metadata   PackageRevisionMeta   `json:"metadata"`
+	Spec       PackageRevisionSpec   `json:"spec"`
+	Status     PackageRevisionStatus `json:"status"`
 }
 
 // PackageRevisionMeta contains package revision metadata
@@ -56,22 +62,22 @@ type PackageRevisionMeta struct {
 
 // PackageRevisionSpec contains package revision specification
 type PackageRevisionSpec struct {
-	PackageName    string                 `json:"packageName"`
-	Repository     string                 `json:"repository"`
-	Revision       string                 `json:"revision"`
-	Lifecycle      string                 `json:"lifecycle"`
-	WorkspaceName  string                 `json:"workspaceName,omitempty"`
-	Tasks          []Task                 `json:"tasks,omitempty"`
-	ReadinessGates []ReadinessGate        `json:"readinessGates,omitempty"`
+	PackageName    string          `json:"packageName"`
+	Repository     string          `json:"repository"`
+	Revision       string          `json:"revision"`
+	Lifecycle      string          `json:"lifecycle"`
+	WorkspaceName  string          `json:"workspaceName,omitempty"`
+	Tasks          []Task          `json:"tasks,omitempty"`
+	ReadinessGates []ReadinessGate `json:"readinessGates,omitempty"`
 }
 
 // PackageRevisionStatus contains package revision status
 type PackageRevisionStatus struct {
-	Conditions       []Condition       `json:"conditions,omitempty"`
-	UpstreamLock     *UpstreamLock     `json:"upstreamLock,omitempty"`
-	PublishedBy      string            `json:"publishedBy,omitempty"`
-	PublishedAt      *time.Time        `json:"publishedAt,omitempty"`
-	Deployment       bool              `json:"deployment,omitempty"`
+	Conditions   []Condition   `json:"conditions,omitempty"`
+	UpstreamLock *UpstreamLock `json:"upstreamLock,omitempty"`
+	PublishedBy  string        `json:"publishedBy,omitempty"`
+	PublishedAt  *time.Time    `json:"publishedAt,omitempty"`
+	Deployment   bool          `json:"deployment,omitempty"`
 }
 
 // Task represents a package task
@@ -104,26 +110,26 @@ type UpstreamLock struct {
 
 // PackageValidationResult represents validation result for a package
 type PackageValidationResult struct {
-	PackageName     string           `json:"packageName"`
-	Repository      string           `json:"repository"`
-	Revision        string           `json:"revision"`
-	Valid           bool             `json:"valid"`
-	RenderSuccess   bool             `json:"renderSuccess"`
-	DeploymentReady bool             `json:"deploymentReady"`
-	Errors          []string         `json:"errors,omitempty"`
-	Warnings        []string         `json:"warnings,omitempty"`
+	PackageName     string             `json:"packageName"`
+	Repository      string             `json:"repository"`
+	Revision        string             `json:"revision"`
+	Valid           bool               `json:"valid"`
+	RenderSuccess   bool               `json:"renderSuccess"`
+	DeploymentReady bool               `json:"deploymentReady"`
+	Errors          []string           `json:"errors,omitempty"`
+	Warnings        []string           `json:"warnings,omitempty"`
 	Resources       []RenderedResource `json:"resources,omitempty"`
-	RenderTime      time.Duration    `json:"renderTime"`
+	RenderTime      time.Duration      `json:"renderTime"`
 }
 
 // RenderedResource represents a rendered Kubernetes resource
 type RenderedResource struct {
-	APIVersion string            `json:"apiVersion"`
-	Kind       string            `json:"kind"`
-	Name       string            `json:"name"`
-	Namespace  string            `json:"namespace"`
-	Valid      bool              `json:"valid"`
-	Issues     []string          `json:"issues,omitempty"`
+	APIVersion string   `json:"apiVersion"`
+	Kind       string   `json:"kind"`
+	Name       string   `json:"name"`
+	Namespace  string   `json:"namespace"`
+	Valid      bool     `json:"valid"`
+	Issues     []string `json:"issues,omitempty"`
 }
 
 // NewNephioValidator creates a new Nephio validator
@@ -184,7 +190,7 @@ func (nv *NephioValidator) ValidatePackageDetailed(ctx context.Context, packageP
 	// Check if package directory exists
 	if _, err := os.Stat(packagePath); os.IsNotExist(err) {
 		result.Valid = false
-		result.Errors = append(result.Errors, fmt.Sprintf("package directory does not exist: %s", packagePath))
+		result.Errors = append(result.Errors, fmt.Sprintf("package directory does not exist: %q", packagePath))
 		return result, nil
 	}
 
@@ -236,7 +242,7 @@ func (nv *NephioValidator) ValidatePackageDetailed(ctx context.Context, packageP
 // validatePackageStructure validates the package directory structure
 func (nv *NephioValidator) validatePackageStructure(packagePath string) error {
 	// Check for required files
-	requiredFiles := []string{"Kptfile", "package-context.yaml"}
+	requiredFiles := []string{KptfileString, "package-context.yaml"}
 
 	for _, file := range requiredFiles {
 		filePath := filepath.Join(packagePath, file)
@@ -254,7 +260,7 @@ func (nv *NephioValidator) validatePackageStructure(packagePath string) error {
 	hasResourceFiles := false
 	for _, entry := range entries {
 		if !entry.IsDir() && (strings.HasSuffix(entry.Name(), ".yaml") || strings.HasSuffix(entry.Name(), ".yml")) {
-			if entry.Name() != "Kptfile" && entry.Name() != "package-context.yaml" {
+			if entry.Name() != KptfileString && entry.Name() != "package-context.yaml" {
 				hasResourceFiles = true
 				break
 			}
@@ -270,7 +276,7 @@ func (nv *NephioValidator) validatePackageStructure(packagePath string) error {
 
 // validateKptfile validates the Kptfile
 func (nv *NephioValidator) validateKptfile(packagePath string) error {
-	kptfilePath := filepath.Join(packagePath, "Kptfile")
+	kptfilePath := filepath.Join(packagePath, KptfileString)
 
 	// Validate file path for security
 	if err := nv.validator.ValidateFilePath(kptfilePath); err != nil {
@@ -296,7 +302,7 @@ func (nv *NephioValidator) validateKptfile(packagePath string) error {
 	}
 
 	// Validate kind
-	if kind, ok := kptfile["kind"].(string); !ok || kind != "Kptfile" {
+	if kind, ok := kptfile["kind"].(string); !ok || kind != KptfileString {
 		return fmt.Errorf("invalid kind in Kptfile, expected 'Kptfile'")
 	}
 
@@ -315,7 +321,7 @@ func (nv *NephioValidator) renderPackage(ctx context.Context, packagePath string
 	if err != nil {
 		return nil, fmt.Errorf("failed to create temp directory: %w", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	// Copy package to temp directory
 	if err := nv.copyDirectory(packagePath, tempDir); err != nil {
@@ -372,7 +378,7 @@ func (nv *NephioValidator) parseRenderedResources(packagePath string) ([]Rendere
 
 		// Skip special files
 		basename := filepath.Base(path)
-		if basename == "Kptfile" || basename == "package-context.yaml" {
+		if basename == KptfileString || basename == "package-context.yaml" {
 			return nil
 		}
 
@@ -465,12 +471,31 @@ func (nv *NephioValidator) validateDeployment(resource *unstructured.Unstructure
 		return fmt.Errorf("deployment spec is required")
 	}
 
-	// Check replicas
+	if err := nv.validateDeploymentReplicas(spec); err != nil {
+		return err
+	}
+
+	if err := nv.validateDeploymentSelector(spec); err != nil {
+		return err
+	}
+
+	if err := nv.validateDeploymentTemplate(spec); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// validateDeploymentReplicas validates deployment replicas
+func (nv *NephioValidator) validateDeploymentReplicas(spec map[string]interface{}) error {
 	if replicas, found, _ := unstructured.NestedInt64(spec, "replicas"); found && replicas < 0 {
 		return fmt.Errorf("deployment replicas cannot be negative")
 	}
+	return nil
+}
 
-	// Check selector
+// validateDeploymentSelector validates deployment selector
+func (nv *NephioValidator) validateDeploymentSelector(spec map[string]interface{}) error {
 	selector, found, err := unstructured.NestedMap(spec, "selector")
 	if !found || err != nil {
 		return fmt.Errorf("deployment selector is required")
@@ -480,7 +505,11 @@ func (nv *NephioValidator) validateDeployment(resource *unstructured.Unstructure
 		return fmt.Errorf("deployment selector.matchLabels is required")
 	}
 
-	// Check template
+	return nil
+}
+
+// validateDeploymentTemplate validates deployment template
+func (nv *NephioValidator) validateDeploymentTemplate(spec map[string]interface{}) error {
 	template, found, err := unstructured.NestedMap(spec, "template")
 	if !found || err != nil {
 		return fmt.Errorf("deployment template is required")

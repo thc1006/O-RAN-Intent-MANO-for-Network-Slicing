@@ -7,12 +7,11 @@ Validates deployment automation and metrics collection
 import argparse
 import json
 import logging
-import os
 import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Optional
 
 import yaml
 
@@ -20,7 +19,9 @@ import yaml
 class TestHarness:
     """Main test harness for E2E deployment validation"""
 
-    def __init__(self, config_dir: str = "config", results_dir: str = "results"):
+    def __init__(
+        self, config_dir: str = "config", results_dir: str = "results"
+    ):
         self.config_dir = Path(config_dir)
         self.results_dir = Path(results_dir)
         self.logger = self._setup_logging()
@@ -30,7 +31,7 @@ class TestHarness:
         """Setup logging configuration"""
         logging.basicConfig(
             level=logging.INFO,
-            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         )
         return logging.getLogger(__name__)
 
@@ -38,7 +39,9 @@ class TestHarness:
         """Load validation thresholds"""
         thresholds_file = self.config_dir / "thresholds.yaml"
         if not thresholds_file.exists():
-            self.logger.warning(f"Thresholds file not found: {thresholds_file}")
+            self.logger.warning(
+                f"Thresholds file not found: {thresholds_file}"
+            )
             return {}
 
         with open(thresholds_file) as f:
@@ -52,7 +55,10 @@ class TestHarness:
             ("kubectl cluster-info", "Kubernetes cluster connectivity"),
             ("which yq", "yq command availability"),
             ("which bc", "bc command availability"),
-            ("python3 -c 'import json, subprocess, time'", "Python dependencies"),
+            (
+                "python3 -c 'import json, subprocess, time'",
+                "Python dependencies",
+            ),
         ]
 
         for cmd, description in checks:
@@ -60,8 +66,12 @@ class TestHarness:
                 return False
 
         # Check if metrics server is available
-        if not self._run_command("kubectl top nodes", "Metrics server availability", fail_ok=True):
-            self.logger.warning("Metrics server not available - some metrics may be missing")
+        if not self._run_command(
+            "kubectl top nodes", "Metrics server availability", fail_ok=True
+        ):
+            self.logger.warning(
+                "Metrics server not available - some metrics may be missing"
+            )
 
         return True
 
@@ -74,7 +84,7 @@ class TestHarness:
             "series": series,
             "scenarios": {},
             "validation": {"passed": True, "details": {}},
-            "start_time": time.time()
+            "start_time": time.time(),
         }
 
         for scenario in scenarios:
@@ -85,13 +95,15 @@ class TestHarness:
             # Validate timing
             target = self._get_target_time(scenario, series)
             tolerance = self._get_tolerance(scenario, series)
-            passed = self._validate_timing(scenario_result["duration"], target, tolerance)
+            passed = self._validate_timing(
+                scenario_result["duration"], target, tolerance
+            )
 
             results["validation"]["details"][scenario] = {
                 "actual": scenario_result["duration"],
                 "target": target,
                 "tolerance": tolerance,
-                "passed": passed
+                "passed": passed,
             }
 
             if not passed:
@@ -122,20 +134,19 @@ class TestHarness:
             "duration": duration,
             "success": success,
             "metrics": metrics,
-            "timestamp": time.time()
+            "timestamp": time.time(),
         }
 
     def _collect_scenario_metrics(self, scenario: str) -> Dict:
         """Collect metrics for a scenario"""
-        metrics = {
-            "resource_usage": {},
-            "bottlenecks": {},
-            "performance": {}
-        }
+        metrics = {"resource_usage": {}, "bottlenecks": {}, "performance": {}}
 
         try:
             # Collect resource metrics
-            cmd = f"python3 collect_metrics.py collect_system --scenario {scenario} --output -"
+            cmd = (
+                f"python3 collect_metrics.py collect_system "
+                f"--scenario {scenario} --output -"
+            )
             result = subprocess.run(
                 cmd, shell=True, capture_output=True, text=True, timeout=30
             )
@@ -151,19 +162,23 @@ class TestHarness:
     def _get_target_time(self, scenario: str, series: str) -> float:
         """Get target deployment time for scenario"""
         try:
-            return self.thresholds["deployment_times"][f"{series}_series"][scenario]["target"]
+            return self.thresholds["deployment_times"][f"{series}_series"][scenario][
+                "target"
+            ]
         except KeyError:
             # Default targets
             defaults = {
                 "fast": {"embb": 407, "urllc": 353, "miot": 257},
-                "slow": {"embb": 532, "urllc": 292, "miot": 220}
+                "slow": {"embb": 532, "urllc": 292, "miot": 220},
             }
             return defaults[series][scenario]
 
     def _get_tolerance(self, scenario: str, series: str) -> float:
         """Get tolerance for scenario timing"""
         try:
-            return self.thresholds["deployment_times"][f"{series}_series"][scenario]["tolerance"]
+            return self.thresholds["deployment_times"][f"{series}_series"][scenario][
+                "tolerance"
+            ]
         except KeyError:
             return 20  # Default 20 second tolerance
 
@@ -179,13 +194,15 @@ class TestHarness:
             "throughput_tests": {},
             "latency_tests": {},
             "resource_validation": {},
-            "passed": True
+            "passed": True,
         }
 
         # Validate throughput with iPerf3
         for scenario in ["embb", "urllc", "miot"]:
             if scenario in results["scenarios"]:
-                validation["throughput_tests"][scenario] = self._validate_throughput(scenario)
+                validation["throughput_tests"][scenario] = self._validate_throughput(
+                    scenario
+                )
                 validation["latency_tests"][scenario] = self._validate_latency(scenario)
 
         # Validate resource usage
@@ -198,18 +215,16 @@ class TestHarness:
                     if isinstance(result, dict) and not result.get("passed", True):
                         validation["passed"] = False
                         break
-            elif isinstance(validation[test_type], dict) and not validation[test_type].get("passed", True):
+            elif isinstance(validation[test_type], dict) and not validation[
+                test_type
+            ].get("passed", True):
                 validation["passed"] = False
 
         return validation
 
     def _validate_throughput(self, scenario: str) -> Dict:
         """Validate throughput for scenario"""
-        target_bandwidth = {
-            "embb": 4.57,
-            "urllc": 0.93,
-            "miot": 2.77
-        }
+        target_bandwidth = {"embb": 4.57, "urllc": 0.93, "miot": 2.77}
 
         try:
             # Run iPerf3 test
@@ -229,25 +244,17 @@ class TestHarness:
                     "actual_mbps": actual_mbps,
                     "target_mbps": target,
                     "tolerance": tolerance,
-                    "passed": abs(actual_mbps - target) <= tolerance
+                    "passed": abs(actual_mbps - target) <= tolerance,
                 }
 
         except Exception as e:
             self.logger.warning(f"Throughput test failed for {scenario}: {e}")
 
-        return {
-            "scenario": scenario,
-            "passed": False,
-            "error": "Test execution failed"
-        }
+        return {"scenario": scenario, "passed": False, "error": "Test execution failed"}
 
     def _validate_latency(self, scenario: str) -> Dict:
         """Validate latency for scenario"""
-        target_latency = {
-            "embb": 16.1,
-            "urllc": 6.3,
-            "miot": 15.7
-        }
+        target_latency = {"embb": 16.1, "urllc": 6.3, "miot": 15.7}
 
         try:
             # Run ping test
@@ -258,10 +265,10 @@ class TestHarness:
 
             if result.returncode == 0:
                 # Parse ping output for average latency
-                lines = result.stdout.split('\n')
+                lines = result.stdout.split("\n")
                 for line in lines:
                     if "avg" in line and "ms" in line:
-                        parts = line.split('/')
+                        parts = line.split("/")
                         if len(parts) >= 5:
                             avg_latency = float(parts[4])
                             target = target_latency[scenario]
@@ -272,17 +279,13 @@ class TestHarness:
                                 "actual_ms": avg_latency,
                                 "target_ms": target,
                                 "tolerance": tolerance,
-                                "passed": abs(avg_latency - target) <= tolerance
+                                "passed": abs(avg_latency - target) <= tolerance,
                             }
 
         except Exception as e:
             self.logger.warning(f"Latency test failed for {scenario}: {e}")
 
-        return {
-            "scenario": scenario,
-            "passed": False,
-            "error": "Test execution failed"
-        }
+        return {"scenario": scenario, "passed": False, "error": "Test execution failed"}
 
     def _validate_resource_usage(self, results: Dict) -> Dict:
         """Validate resource usage against thresholds"""
@@ -295,23 +298,31 @@ class TestHarness:
 
             # Validate SMO CPU usage
             smo_cpu = resource_usage.get("smo_cpu_peak", 0)
-            cpu_limit = self.thresholds.get("resource_limits", {}).get("smo", {}).get("cpu_max_cores", 2.0)
+            cpu_limit = (
+                self.thresholds.get("resource_limits", {})
+                .get("smo", {})
+                .get("cpu_max_cores", 2.0)
+            )
 
             # Validate SMO memory usage
             smo_memory = resource_usage.get("smo_memory_peak", 0)
-            memory_limit = self.thresholds.get("resource_limits", {}).get("smo", {}).get("memory_max_mb", 4096)
+            memory_limit = (
+                self.thresholds.get("resource_limits", {})
+                .get("smo", {})
+                .get("memory_max_mb", 4096)
+            )
 
             validation["details"][scenario] = {
                 "cpu": {
                     "actual": smo_cpu,
                     "limit": cpu_limit,
-                    "passed": smo_cpu <= cpu_limit
+                    "passed": smo_cpu <= cpu_limit,
                 },
                 "memory": {
                     "actual": smo_memory,
                     "limit": memory_limit,
-                    "passed": smo_memory <= memory_limit
-                }
+                    "passed": smo_memory <= memory_limit,
+                },
             }
 
             # Check if any validation failed
@@ -329,12 +340,13 @@ class TestHarness:
                 "scenarios_tested": len(results["scenarios"]),
                 "deployment_passed": results["validation"]["passed"],
                 "performance_passed": performance["passed"],
-                "overall_passed": results["validation"]["passed"] and performance["passed"]
+                "overall_passed": results["validation"]["passed"]
+                and performance["passed"],
             },
             "deployment_results": results,
             "performance_validation": performance,
             "timestamp": time.time(),
-            "test_harness_version": "1.0.0"
+            "test_harness_version": "1.0.0",
         }
 
         return report
@@ -343,12 +355,14 @@ class TestHarness:
         """Save test report to file"""
         if not filename:
             timestamp = int(time.time())
-            filename = f"test_report_{report['test_summary']['series']}_{timestamp}.json"
+            filename = (
+                f"test_report_{report['test_summary']['series']}_{timestamp}.json"
+            )
 
         self.results_dir.mkdir(exist_ok=True)
         report_path = self.results_dir / filename
 
-        with open(report_path, 'w') as f:
+        with open(report_path, "w") as f:
             json.dump(report, f, indent=2)
 
         self.logger.info(f"Test report saved to: {report_path}")
@@ -383,19 +397,26 @@ class TestHarness:
 def main():
     """Main entry point"""
     parser = argparse.ArgumentParser(description="E2E Test Harness for O-RAN MANO")
-    parser.add_argument("--series", choices=["fast", "slow"], default="fast",
-                       help="Deployment series to test")
-    parser.add_argument("--config-dir", default="config",
-                       help="Configuration directory")
-    parser.add_argument("--results-dir", default="results",
-                       help="Results output directory")
-    parser.add_argument("--skip-prereqs", action="store_true",
-                       help="Skip prerequisite checks")
-    parser.add_argument("--skip-performance", action="store_true",
-                       help="Skip performance validation")
+    parser.add_argument(
+        "--series",
+        choices=["fast", "slow"],
+        default="fast",
+        help="Deployment series to test",
+    )
+    parser.add_argument(
+        "--config-dir", default="config", help="Configuration directory"
+    )
+    parser.add_argument(
+        "--results-dir", default="results", help="Results output directory"
+    )
+    parser.add_argument(
+        "--skip-prereqs", action="store_true", help="Skip prerequisite checks"
+    )
+    parser.add_argument(
+        "--skip-performance", action="store_true", help="Skip performance validation"
+    )
     parser.add_argument("--output", help="Output report filename")
-    parser.add_argument("--verbose", "-v", action="store_true",
-                       help="Verbose logging")
+    parser.add_argument("--verbose", "-v", action="store_true", help="Verbose logging")
 
     args = parser.parse_args()
 
@@ -429,13 +450,15 @@ def main():
 
         # Print summary
         summary = report["test_summary"]
-        print(f"\n=== Test Summary ===")
+        print("\n=== Test Summary ===")
         print(f"Series: {summary['series']}")
         print(f"Total Duration: {summary['total_duration']:.1f}s")
         print(f"Scenarios Tested: {summary['scenarios_tested']}")
         print(f"Deployment Passed: {'✓' if summary['deployment_passed'] else '✗'}")
         print(f"Performance Passed: {'✓' if summary['performance_passed'] else '✗'}")
-        print(f"Overall Result: {'✓ PASSED' if summary['overall_passed'] else '✗ FAILED'}")
+        print(
+            f"Overall Result: {'✓ PASSED' if summary['overall_passed'] else '✗ FAILED'}"
+        )
         print(f"Report: {report_path}")
 
         return 0 if summary["overall_passed"] else 1

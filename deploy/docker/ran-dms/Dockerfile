@@ -1,8 +1,8 @@
-# RAN DMS Multi-stage Dockerfile
+# RAN DMS Multi-stage Dockerfile (2025 Best Practices)
 # Stage 1: Build
-FROM golang:1.24.7-alpine AS builder
+FROM golang:1.22.10-alpine AS builder
 
-# Security labels and metadata
+# Security and metadata labels
 LABEL maintainer="O-RAN MANO Team"
 LABEL org.opencontainers.image.title="RAN DMS"
 LABEL org.opencontainers.image.description="Radio Access Network Domain Management Service"
@@ -11,83 +11,75 @@ LABEL org.opencontainers.image.vendor="O-RAN Alliance"
 LABEL org.opencontainers.image.licenses="Apache-2.0"
 LABEL org.opencontainers.image.url="https://o-ran.org"
 LABEL security.scan="trivy,grype,snyk"
-LABEL security.distroless="false"
+LABEL security.distroless="true"
 LABEL security.user="non-root"
 
-# Security: Use non-root user for build
-RUN adduser -D -s /bin/sh appuser
-
-# Install security updates and necessary tools, clean cache
-RUN apk update && apk upgrade && apk add --no-cache \
+# Install build dependencies with cache mount
+RUN --mount=type=cache,target=/var/cache/apk \
+    apk add --no-cache \
     git \
     ca-certificates \
     tzdata && \
-    update-ca-certificates && \
-    rm -rf /var/cache/apk/* /tmp/* /var/tmp/*
+    update-ca-certificates
 
 # Set working directory
 WORKDIR /workspace
 
-# Copy go mod files first for better layer caching
-COPY ran-dms/go.mod go.mod
-COPY ran-dms/go.sum go.sum
+# Copy go mod files from project root for layer caching
+COPY go.mod go.sum ./
 
-# Download dependencies with explicit toolchain
-ENV GOTOOLCHAIN=go1.24.7
-ENV GOPROXY=https://proxy.golang.org,direct
-ENV GOSUMDB=sum.golang.org
-RUN go mod download
+# Copy required source code for ran-dms
+COPY pkg/ pkg/
+COPY ran-dms/ ran-dms/
 
-# Copy source code
-COPY ran-dms/ .
+# Set Go environment for reproducible builds
+ENV GO111MODULE=on \
+    GOPROXY=https://proxy.golang.org,direct \
+    GOSUMDB=sum.golang.org \
+    GOWORK=off
 
-# Build the binary with security flags
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
-    -ldflags='-w -s -extldflags "-static"' \
+# Download dependencies with cache mount
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    go mod download
+
+# Build static binary with optimizations and trimpath
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+    -trimpath \
+    -ldflags="-s -w -extldflags '-static'" \
     -a -installsuffix cgo \
-    -o ran-dms cmd/main.go
+    -o /workspace/ran-dms ./ran-dms/cmd/dms/main.go
 
-# Stage 2: Runtime
-FROM alpine:3.22.1
+# Stage 2: Minimal runtime (scratch-based)
+FROM scratch AS runtime
 
-# Security labels
+# Security and runtime labels
 LABEL org.opencontainers.image.title="RAN DMS Runtime"
 LABEL security.scan="trivy,grype,snyk"
 LABEL security.user="non-root"
-LABEL security.base.image="alpine:3.22.1"
-LABEL security.go.version="1.24.7"
-LABEL security.scan.date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+LABEL security.base.image="scratch"
+LABEL security.go.version="1.22.10"
 
-# Install runtime dependencies with pinned versions, clean cache
-RUN apk update && apk upgrade && apk add --no-cache \
-    ca-certificates \
-    curl \
-    jq \
-    dumb-init && \
-    update-ca-certificates && \
-    adduser -D -s /bin/sh -u 10004 appuser && \
-    rm -rf /var/cache/apk/* /tmp/* /var/tmp/*
+# Copy CA certificates from builder
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
-# Copy the binary
+# Copy timezone data
+COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
+
+# Copy passwd for nobody user
+COPY --from=builder /etc/passwd /etc/passwd
+
+# Copy the static binary
 COPY --from=builder /workspace/ran-dms /usr/local/bin/ran-dms
 
-# Create necessary directories
-RUN mkdir -p /var/lib/ran-dms && \
-    chown appuser:appuser /var/lib/ran-dms
+# Use nobody user for security
+USER nobody:nobody
 
-# Use non-root user
-USER appuser
-
-# Create volume for config and data
-VOLUME ["/config", "/var/lib/ran-dms"]
-
-# Expose ports
+# Expose application ports
 EXPOSE 8080 8443
 
-# Health check with improved security
-HEALTHCHECK --interval=30s --timeout=10s --start-period=45s --retries=3 \
-    CMD curl -f --max-time 5 --retry 2 --retry-delay 1 http://localhost:8080/health || exit 1
-
-# Security: Run as non-root with dumb-init
-ENTRYPOINT ["/usr/bin/dumb-init", "--"]
-CMD ["/usr/local/bin/ran-dms", "--config=/config/ran-dms.yaml"]
+# Run the application
+ENTRYPOINT ["/usr/local/bin/ran-dms"]
+CMD ["--config=/config/ran-dms.yaml"]

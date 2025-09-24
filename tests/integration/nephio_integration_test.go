@@ -7,17 +7,22 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/client-go/dynamic"
+	"github.com/onsi/ginkgo/v2"
+	"github.com/onsi/gomega"
+	// "k8s.io/client-go/dynamic" // Unused for now
 
 	manov1alpha1 "github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/adapters/vnf-operator/api/v1alpha1"
 )
 
+// Constants to avoid goconst linter issues
+const (
+	nephioEdgeCluster01     = "edge-cluster-01"
+	nephioRegionalCluster01 = "regional-cluster-01"
+	nephioCentralCluster01  = "central-cluster-01"
+)
+
 // NephioIntegrationSuite manages Nephio package generation and deployment testing
 type NephioIntegrationSuite struct {
-	dynClient         dynamic.Interface // nolint:unused // TODO: integrate with Porch/Config Sync dynamic client
 	testContext       context.Context
 	testCancel        context.CancelFunc
 	packageResults    []NephioPackageResult
@@ -233,21 +238,21 @@ var nephioVNFScenarios = []struct {
 	},
 }
 
-var _ = Describe("Nephio Package Generation and Deployment Tests", func() {
+var _ = ginkgo.Describe("Nephio Package Generation and Deployment Tests", func() {
 	var suite *NephioIntegrationSuite
 
-	BeforeEach(func() {
+	ginkgo.BeforeEach(func() {
 		suite = setupNephioIntegrationSuite()
 	})
 
-	AfterEach(func() {
+	ginkgo.AfterEach(func() {
 		teardownNephioIntegrationSuite(suite)
 	})
 
-	Context("Porch Package Generation Tests", func() {
+	ginkgo.Context("Porch Package Generation Tests", func() {
 		for _, scenario := range nephioVNFScenarios {
-			It(fmt.Sprintf("should generate valid Porch package for %s", scenario.name), func() {
-				By(fmt.Sprintf("Generating Porch package for %s VNF", scenario.vnfSpec.Type))
+			ginkgo.It(fmt.Sprintf("should generate valid Porch package for %s", scenario.name), func() {
+				ginkgo.By(fmt.Sprintf("Generating Porch package for %s VNF", scenario.vnfSpec.Type))
 
 				generationStart := time.Now()
 				packageResult := suite.generatePorchPackage(scenario.vnfSpec, scenario.targetSites[0])
@@ -256,12 +261,12 @@ var _ = Describe("Nephio Package Generation and Deployment Tests", func() {
 				suite.packageResults = append(suite.packageResults, packageResult)
 				suite.testResults.PackageGeneration = append(suite.testResults.PackageGeneration, packageResult)
 
-				Expect(packageResult.Success).To(BeTrue(), "Package generation should succeed")
-				Expect(packageResult.PackageName).NotTo(BeEmpty(), "Package should have a name")
-				Expect(packageResult.PorchRevision).NotTo(BeEmpty(), "Package should have a Porch revision")
+				gomega.Expect(packageResult.Success).To(gomega.BeTrue(), "Package generation should succeed")
+				gomega.Expect(packageResult.PackageName).NotTo(gomega.BeEmpty(), "Package should have a name")
+				gomega.Expect(packageResult.PorchRevision).NotTo(gomega.BeEmpty(), "Package should have a Porch revision")
 
-				By("Validating generated package structure")
-				Expect(packageResult.ResourcesGenerated).To(BeNumerically(">=", len(scenario.expectedResources)),
+				ginkgo.By("Validating generated package structure")
+				gomega.Expect(packageResult.ResourcesGenerated).To(gomega.BeNumerically(">=", len(scenario.expectedResources)),
 					"Should generate expected number of resources")
 
 				for _, expectedResource := range scenario.expectedResources {
@@ -272,25 +277,25 @@ var _ = Describe("Nephio Package Generation and Deployment Tests", func() {
 							break
 						}
 					}
-					Expect(found).To(BeTrue(), "Should generate %s resource", expectedResource)
+					gomega.Expect(found).To(gomega.BeTrue(), "Should generate %s resource", expectedResource)
 				}
 
-				By("Validating package content")
+				ginkgo.By("Validating package content")
 				contentValidation := suite.validatePackageContent(packageResult.PackageName, scenario.vnfSpec)
-				Expect(contentValidation.Success).To(BeTrue(), "Package content should be valid")
+				gomega.Expect(contentValidation.Success).To(gomega.BeTrue(), "Package content should be valid")
 
-				By("Checking package size and complexity")
-				Expect(packageResult.PackageSize).To(BeNumerically(">", 0), "Package should have content")
-				Expect(packageResult.GenerationTime).To(BeNumerically("<=", 30*time.Second),
+				ginkgo.By("Checking package size and complexity")
+				gomega.Expect(packageResult.PackageSize).To(gomega.BeNumerically(">", 0), "Package should have content")
+				gomega.Expect(packageResult.GenerationTime).To(gomega.BeNumerically("<=", 30*time.Second),
 					"Package generation should complete within 30 seconds")
 
-				By(fmt.Sprintf("✓ Package generation completed: %s (revision: %s)",
+				ginkgo.By(fmt.Sprintf("✓ Package generation completed: %s (revision: %s)",
 					packageResult.PackageName, packageResult.PorchRevision))
 			})
 		}
 
-		It("should handle package generation for multi-site deployments", func() {
-			By("Generating packages for multi-site UPF deployment")
+		ginkgo.It("should handle package generation for multi-site deployments", func() {
+			ginkgo.By("Generating packages for multi-site UPF deployment")
 
 			multiSiteVNF := manov1alpha1.VNFSpec{
 				Name:           "multi-site-upf",
@@ -308,33 +313,33 @@ var _ = Describe("Nephio Package Generation and Deployment Tests", func() {
 				packageResult := suite.generatePorchPackage(multiSiteVNF, cluster)
 				packages = append(packages, packageResult)
 
-				Expect(packageResult.Success).To(BeTrue(), "Multi-site package generation should succeed")
+				gomega.Expect(packageResult.Success).To(gomega.BeTrue(), "Multi-site package generation should succeed")
 			}
 
-			By("Validating package consistency across sites")
+			ginkgo.By("Validating package consistency across sites")
 			consistency := suite.validateMultiSitePackageConsistency(packages)
-			Expect(consistency).To(BeTrue(), "Packages should be consistent across sites")
+			gomega.Expect(consistency).To(gomega.BeTrue(), "Packages should be consistent across sites")
 		})
 
-		It("should handle package versioning and updates", func() {
+		ginkgo.It("should handle package versioning and updates", func() {
 			vnfSpec := nephioVNFScenarios[0].vnfSpec
 
-			By("Generating initial package version")
+			ginkgo.By("Generating initial package version")
 			v1Package := suite.generatePorchPackage(vnfSpec, "edge-cluster-01")
-			Expect(v1Package.Success).To(BeTrue())
+			gomega.Expect(v1Package.Success).To(gomega.BeTrue())
 
-			By("Updating VNF specification")
+			ginkgo.By("Updating VNF specification")
 			updatedVNF := vnfSpec
 			updatedVNF.Resources.CPUCores = 6 // Increase CPU
 			updatedVNF.Image.Tag = "v1.1.0"   // Update image
 
-			By("Generating updated package version")
+			ginkgo.By("Generating updated package version")
 			v2Package := suite.generatePorchPackage(updatedVNF, "edge-cluster-01")
-			Expect(v2Package.Success).To(BeTrue())
+			gomega.Expect(v2Package.Success).To(gomega.BeTrue())
 
-			By("Validating version differences")
+			ginkgo.By("Validating version differences")
 			differences := suite.comparePackageVersions(v1Package, v2Package)
-			Expect(len(differences)).To(BeNumerically(">", 0), "Should detect differences between versions")
+			gomega.Expect(len(differences)).To(gomega.BeNumerically(">", 0), "Should detect differences between versions")
 
 			hasResourceDifference := false
 			hasImageDifference := false
@@ -347,21 +352,21 @@ var _ = Describe("Nephio Package Generation and Deployment Tests", func() {
 				}
 			}
 
-			Expect(hasResourceDifference).To(BeTrue(), "Should detect resource changes")
-			Expect(hasImageDifference).To(BeTrue(), "Should detect image changes")
+			gomega.Expect(hasResourceDifference).To(gomega.BeTrue(), "Should detect resource changes")
+			gomega.Expect(hasImageDifference).To(gomega.BeTrue(), "Should detect image changes")
 		})
 	})
 
-	Context("Package Deployment and GitOps Tests", func() {
-		It("should deploy packages via GitOps workflow", func() {
+	ginkgo.Context("Package Deployment and GitOps Tests", func() {
+		ginkgo.It("should deploy packages via GitOps workflow", func() {
 			vnfSpec := nephioVNFScenarios[0].vnfSpec
-			targetCluster := "edge-cluster-01"
+			targetCluster := nephioEdgeCluster01
 
-			By("Generating package for deployment")
+			ginkgo.By("Generating package for deployment")
 			packageResult := suite.generatePorchPackage(vnfSpec, targetCluster)
-			Expect(packageResult.Success).To(BeTrue())
+			gomega.Expect(packageResult.Success).To(gomega.BeTrue())
 
-			By("Initiating GitOps deployment")
+			ginkgo.By("Initiating GitOps deployment")
 			deploymentStart := time.Now()
 			deploymentResult := suite.deployPackageViaGitOps(packageResult, targetCluster)
 			deploymentResult.DeploymentTime = time.Since(deploymentStart)
@@ -369,46 +374,46 @@ var _ = Describe("Nephio Package Generation and Deployment Tests", func() {
 			suite.deploymentResults = append(suite.deploymentResults, deploymentResult)
 			suite.testResults.PackageDeployment = append(suite.testResults.PackageDeployment, deploymentResult)
 
-			Expect(deploymentResult.Success).To(BeTrue(), "GitOps deployment should succeed")
-			Expect(deploymentResult.ConfigSyncStatus).To(Equal("synced"), "Config should be synced")
-			Expect(deploymentResult.ActuationStatus).To(Equal("actuated"), "Resources should be actuated")
+			gomega.Expect(deploymentResult.Success).To(gomega.BeTrue(), "GitOps deployment should succeed")
+			gomega.Expect(deploymentResult.ConfigSyncStatus).To(gomega.Equal("synced"), "Config should be synced")
+			gomega.Expect(deploymentResult.ActuationStatus).To(gomega.Equal("actuated"), "Resources should be actuated")
 
-			By("Validating deployed resources")
-			Expect(len(deploymentResult.ResourcesDeployed)).To(BeNumerically(">", 0),
+			ginkgo.By("Validating deployed resources")
+			gomega.Expect(len(deploymentResult.ResourcesDeployed)).To(gomega.BeNumerically(">", 0),
 				"Should deploy resources")
 
 			for _, resource := range deploymentResult.ResourcesDeployed {
-				Expect(resource.Ready).To(BeTrue(), "Resource %s should be ready", resource.Name)
+				gomega.Expect(resource.Ready).To(gomega.BeTrue(), "Resource %s should be ready", resource.Name)
 			}
 
-			By("Checking deployment timing")
-			Expect(deploymentResult.DeploymentTime).To(BeNumerically("<=", 5*time.Minute),
+			ginkgo.By("Checking deployment timing")
+			gomega.Expect(deploymentResult.DeploymentTime).To(gomega.BeNumerically("<=", 5*time.Minute),
 				"Deployment should complete within 5 minutes")
-			Expect(deploymentResult.ReadinessTime).To(BeNumerically("<=", 3*time.Minute),
+			gomega.Expect(deploymentResult.ReadinessTime).To(gomega.BeNumerically("<=", 3*time.Minute),
 				"Resources should be ready within 3 minutes")
 
-			By(fmt.Sprintf("✓ GitOps deployment completed in %v", deploymentResult.DeploymentTime))
+			ginkgo.By(fmt.Sprintf("✓ GitOps deployment completed in %v", deploymentResult.DeploymentTime))
 		})
 
-		It("should handle Config Sync across multiple clusters", func() {
+		ginkgo.It("should handle Config Sync across multiple clusters", func() {
 			vnfSpec := nephioVNFScenarios[1].vnfSpec
 			targetClusters := []string{"edge-cluster-01", "regional-cluster-01"}
 
-			By("Generating packages for multiple clusters")
+			ginkgo.By("Generating packages for multiple clusters")
 			packages := make([]NephioPackageResult, 0)
 			for _, cluster := range targetClusters {
 				packageResult := suite.generatePorchPackage(vnfSpec, cluster)
-				Expect(packageResult.Success).To(BeTrue())
+				gomega.Expect(packageResult.Success).To(gomega.BeTrue())
 				packages = append(packages, packageResult)
 			}
 
-			By("Deploying packages to multiple clusters concurrently")
+			ginkgo.By("Deploying packages to multiple clusters concurrently")
 			deploymentResults := make([]NephioDeploymentResult, 0)
 			done := make(chan NephioDeploymentResult, len(packages))
 
 			for i, pkg := range packages {
 				go func(p NephioPackageResult, cluster string) {
-					defer GinkgoRecover()
+					defer ginkgo.GinkgoRecover()
 					result := suite.deployPackageViaGitOps(p, cluster)
 					done <- result
 				}(pkg, targetClusters[i])
@@ -418,29 +423,29 @@ var _ = Describe("Nephio Package Generation and Deployment Tests", func() {
 			for range packages {
 				result := <-done
 				deploymentResults = append(deploymentResults, result)
-				Expect(result.Success).To(BeTrue(), "Multi-cluster deployment should succeed")
+				gomega.Expect(result.Success).To(gomega.BeTrue(), "Multi-cluster deployment should succeed")
 			}
 
-			By("Validating Config Sync status across clusters")
+			ginkgo.By("Validating Config Sync status across clusters")
 			for i := range deploymentResults {
 				syncResult := suite.validateConfigSync(targetClusters[i])
 				suite.testResults.ConfigSyncResults = append(suite.testResults.ConfigSyncResults, syncResult)
 
-				Expect(syncResult.Success).To(BeTrue(), "Config Sync should succeed for cluster %s", targetClusters[i])
-				Expect(syncResult.SyncStatus).To(Equal("synced"), "Cluster should be synced")
+				gomega.Expect(syncResult.Success).To(gomega.BeTrue(), "Config Sync should succeed for cluster %s", targetClusters[i])
+				gomega.Expect(syncResult.SyncStatus).To(gomega.Equal("synced"), "Cluster should be synced")
 			}
 		})
 
-		It("should handle package rollback scenarios", func() {
+		ginkgo.It("should handle package rollback scenarios", func() {
 			vnfSpec := nephioVNFScenarios[0].vnfSpec
-			targetCluster := "edge-cluster-01"
+			targetCluster := nephioEdgeCluster01
 
-			By("Deploying initial package version")
+			ginkgo.By("Deploying initial package version")
 			v1Package := suite.generatePorchPackage(vnfSpec, targetCluster)
 			v1Deployment := suite.deployPackageViaGitOps(v1Package, targetCluster)
-			Expect(v1Deployment.Success).To(BeTrue())
+			gomega.Expect(v1Deployment.Success).To(gomega.BeTrue())
 
-			By("Deploying problematic package version")
+			ginkgo.By("Deploying problematic package version")
 			problematicVNF := vnfSpec
 			problematicVNF.Image.Tag = "v1.0.0-broken"
 
@@ -448,27 +453,27 @@ var _ = Describe("Nephio Package Generation and Deployment Tests", func() {
 			_ = suite.deployPackageViaGitOps(v2Package, targetCluster)
 			// This deployment might fail or cause issues
 
-			By("Performing rollback to previous version")
+			ginkgo.By("Performing rollback to previous version")
 			rollbackStart := time.Now()
 			rollbackResult := suite.performPackageRollback(v1Package, targetCluster)
 			rollbackTime := time.Since(rollbackStart)
 
-			Expect(rollbackResult.Success).To(BeTrue(), "Rollback should succeed")
-			Expect(rollbackTime).To(BeNumerically("<=", 2*time.Minute),
+			gomega.Expect(rollbackResult.Success).To(gomega.BeTrue(), "Rollback should succeed")
+			gomega.Expect(rollbackTime).To(gomega.BeNumerically("<=", 2*time.Minute),
 				"Rollback should complete within 2 minutes")
 
-			By("Validating rollback completion")
+			ginkgo.By("Validating rollback completion")
 			postRollbackValidation := suite.validateDeploymentHealth(targetCluster)
-			Expect(postRollbackValidation).To(BeTrue(), "Deployment should be healthy after rollback")
+			gomega.Expect(postRollbackValidation).To(gomega.BeTrue(), "Deployment should be healthy after rollback")
 		})
 	})
 
-	Context("Advanced GitOps Scenarios", func() {
-		It("should handle GitOps repository conflicts and resolution", func() {
+	ginkgo.Context("Advanced GitOps Scenarios", func() {
+		ginkgo.It("should handle GitOps repository conflicts and resolution", func() {
 			vnfSpec := nephioVNFScenarios[0].vnfSpec
-			targetCluster := "edge-cluster-01"
+			targetCluster := nephioEdgeCluster01
 
-			By("Creating concurrent package updates")
+			ginkgo.By("Creating concurrent package updates")
 			// Simulate concurrent modifications to trigger conflicts
 			package1 := suite.generatePorchPackage(vnfSpec, targetCluster)
 
@@ -477,10 +482,10 @@ var _ = Describe("Nephio Package Generation and Deployment Tests", func() {
 
 			package2 := suite.generatePorchPackage(conflictingVNF, targetCluster)
 
-			By("Attempting concurrent GitOps commits")
+			ginkgo.By("Attempting concurrent GitOps commits")
 			conflictResult := suite.simulateGitOpsConflict(package1, package2, targetCluster)
 
-			Expect(conflictResult.ConflictHandling).To(Equal("resolved"), "Conflicts should be resolved")
+			gomega.Expect(conflictResult.ConflictHandling).To(gomega.Equal("resolved"), "Conflicts should be resolved")
 
 			gitOpsResult := GitOpsValidationResult{
 				TestName:         "conflict_resolution",
@@ -490,40 +495,40 @@ var _ = Describe("Nephio Package Generation and Deployment Tests", func() {
 			suite.testResults.GitOpsValidation = append(suite.testResults.GitOpsValidation, gitOpsResult)
 		})
 
-		It("should validate GitOps drift detection and correction", func() {
+		ginkgo.It("should validate GitOps drift detection and correction", func() {
 			vnfSpec := nephioVNFScenarios[0].vnfSpec
-			targetCluster := "edge-cluster-01"
+			targetCluster := nephioEdgeCluster01
 
-			By("Deploying package via GitOps")
+			ginkgo.By("Deploying package via GitOps")
 			packageResult := suite.generatePorchPackage(vnfSpec, targetCluster)
 			deploymentResult := suite.deployPackageViaGitOps(packageResult, targetCluster)
-			Expect(deploymentResult.Success).To(BeTrue())
+			gomega.Expect(deploymentResult.Success).To(gomega.BeTrue())
 
-			By("Simulating configuration drift")
+			ginkgo.By("Simulating configuration drift")
 			suite.simulateConfigurationDrift(targetCluster, "test-deployment")
 
-			By("Validating drift detection")
+			ginkgo.By("Validating drift detection")
 			driftDetected := suite.checkForConfigurationDrift(targetCluster)
-			Expect(driftDetected).To(BeTrue(), "Drift should be detected")
+			gomega.Expect(driftDetected).To(gomega.BeTrue(), "Drift should be detected")
 
-			By("Triggering drift correction")
+			ginkgo.By("Triggering drift correction")
 			correctionStart := time.Now()
 			correctionResult := suite.correctConfigurationDrift(targetCluster)
 			correctionTime := time.Since(correctionStart)
 
-			Expect(correctionResult).To(BeTrue(), "Drift correction should succeed")
-			Expect(correctionTime).To(BeNumerically("<=", 1*time.Minute),
+			gomega.Expect(correctionResult).To(gomega.BeTrue(), "Drift correction should succeed")
+			gomega.Expect(correctionTime).To(gomega.BeNumerically("<=", 1*time.Minute),
 				"Drift correction should complete quickly")
 
-			By("Validating post-correction state")
+			ginkgo.By("Validating post-correction state")
 			postCorrectionDrift := suite.checkForConfigurationDrift(targetCluster)
-			Expect(postCorrectionDrift).To(BeFalse(), "No drift should remain after correction")
+			gomega.Expect(postCorrectionDrift).To(gomega.BeFalse(), "No drift should remain after correction")
 		})
 	})
 
-	Context("Performance and Scale Testing", func() {
-		It("should handle large-scale package generation", func() {
-			By("Generating multiple packages concurrently")
+	ginkgo.Context("Performance and Scale Testing", func() {
+		ginkgo.It("should handle large-scale package generation", func() {
+			ginkgo.By("Generating multiple packages concurrently")
 
 			packageCount := 20
 			done := make(chan NephioPackageResult, packageCount)
@@ -532,7 +537,7 @@ var _ = Describe("Nephio Package Generation and Deployment Tests", func() {
 
 			for i := 0; i < packageCount; i++ {
 				go func(index int) {
-					defer GinkgoRecover()
+					defer ginkgo.GinkgoRecover()
 					vnfSpec := nephioVNFScenarios[index%len(nephioVNFScenarios)].vnfSpec
 					vnfSpec.Name = fmt.Sprintf("scale-test-vnf-%d", index)
 
@@ -552,20 +557,20 @@ var _ = Describe("Nephio Package Generation and Deployment Tests", func() {
 
 			totalGenerationTime := time.Since(generationStart)
 
-			Expect(successCount).To(BeNumerically(">=", int(float64(packageCount)*0.95)),
+			gomega.Expect(successCount).To(gomega.BeNumerically(">=", int(float64(packageCount)*0.95)),
 				"At least 95% of packages should generate successfully")
 
-			Expect(totalGenerationTime).To(BeNumerically("<=", 5*time.Minute),
+			gomega.Expect(totalGenerationTime).To(gomega.BeNumerically("<=", 5*time.Minute),
 				"Large-scale generation should complete within 5 minutes")
 
 			throughput := float64(successCount) / totalGenerationTime.Minutes()
 			suite.testResults.PerformanceMetrics.GitOpsThroughput = throughput
 
-			Expect(throughput).To(BeNumerically(">=", 10.0),
+			gomega.Expect(throughput).To(gomega.BeNumerically(">=", 10.0),
 				"Should achieve at least 10 packages per minute throughput")
 		})
 
-		It("should measure end-to-end GitOps performance", func() {
+		ginkgo.It("should measure end-to-end GitOps performance", func() {
 			vnfSpec := nephioVNFScenarios[0].vnfSpec
 			iterations := 10
 
@@ -581,7 +586,7 @@ var _ = Describe("Nephio Package Generation and Deployment Tests", func() {
 				generationTime := time.Since(generationStart)
 				generationTimes = append(generationTimes, generationTime)
 
-				Expect(packageResult.Success).To(BeTrue())
+				gomega.Expect(packageResult.Success).To(gomega.BeTrue())
 
 				// Measure deployment time
 				deploymentStart := time.Now()
@@ -589,7 +594,7 @@ var _ = Describe("Nephio Package Generation and Deployment Tests", func() {
 				deploymentTime := time.Since(deploymentStart)
 				deploymentTimes = append(deploymentTimes, deploymentTime)
 
-				Expect(deploymentResult.Success).To(BeTrue())
+				gomega.Expect(deploymentResult.Success).To(gomega.BeTrue())
 
 				// Cleanup for next iteration
 				suite.cleanupDeployment(deploymentResult.PackageName, "edge-cluster-01")
@@ -602,21 +607,21 @@ var _ = Describe("Nephio Package Generation and Deployment Tests", func() {
 			suite.testResults.PerformanceMetrics.AveragePackageGenerationMs = float64(avgGenerationTime.Milliseconds())
 			suite.testResults.PerformanceMetrics.AverageDeploymentTimeMs = float64(avgDeploymentTime.Milliseconds())
 
-			Expect(avgGenerationTime).To(BeNumerically("<=", 15*time.Second),
+			gomega.Expect(avgGenerationTime).To(gomega.BeNumerically("<=", 15*time.Second),
 				"Average package generation should be under 15 seconds")
 
-			Expect(avgDeploymentTime).To(BeNumerically("<=", 2*time.Minute),
+			gomega.Expect(avgDeploymentTime).To(gomega.BeNumerically("<=", 2*time.Minute),
 				"Average deployment should be under 2 minutes")
 
-			By(fmt.Sprintf("✓ Performance metrics: Generation=%.1fs, Deployment=%.1fs",
+			ginkgo.By(fmt.Sprintf("✓ Performance metrics: Generation=%.1fs, Deployment=%.1fs",
 				avgGenerationTime.Seconds(), avgDeploymentTime.Seconds()))
 		})
 	})
 })
 
 func TestNephioIntegration(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "Nephio Package Generation and Deployment Integration Suite")
+	gomega.RegisterFailHandler(ginkgo.Fail)
+	ginkgo.RunSpecs(t, "Nephio Package Generation and Deployment Integration Suite")
 }
 
 // NephioIntegrationSuite implementation
@@ -693,7 +698,7 @@ func (s *NephioIntegrationSuite) generatePorchPackage(vnfSpec manov1alpha1.VNFSp
 	return result
 }
 
-func (s *NephioIntegrationSuite) validatePackageContent(packageName string, vnfSpec manov1alpha1.VNFSpec) struct{ Success bool } {
+func (s *NephioIntegrationSuite) validatePackageContent(_ string, vnfSpec manov1alpha1.VNFSpec) struct{ Success bool } {
 	// TODO: Implement actual package content validation
 	return struct{ Success bool }{Success: true}
 }
@@ -786,7 +791,7 @@ func (s *NephioIntegrationSuite) validateConfigSync(clusterName string) ConfigSy
 	return result
 }
 
-func (s *NephioIntegrationSuite) performPackageRollback(targetPackage NephioPackageResult, targetCluster string) struct{ Success bool } {
+func (s *NephioIntegrationSuite) performPackageRollback(_ NephioPackageResult, targetCluster string) struct{ Success bool } {
 	// TODO: Implement actual package rollback via GitOps
 	time.Sleep(30 * time.Second) // Simulate rollback time
 	return struct{ Success bool }{Success: true}
@@ -841,17 +846,4 @@ func (s *NephioIntegrationSuite) generateNephioTestReport() {
 	// TODO: Generate comprehensive Nephio test report
 }
 
-// Porch and Config Sync resource schemas (GVRs)
-var (
-	porchPackageGVR = schema.GroupVersionResource{
-		Group:    "porch.kpt.dev",
-		Version:  "v1alpha1",
-		Resource: "packagerevisions",
-	}
-
-	configSyncGVR = schema.GroupVersionResource{
-		Group:    "configsync.gke.io",
-		Version:  "v1beta1",
-		Resource: "rootsyncs",
-	}
-)
+// Porch and Config Sync resource schemas would be defined here if needed

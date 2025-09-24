@@ -53,7 +53,7 @@ func NewIntegrationSecurityTestSuite(t *testing.T) *IntegrationSecurityTestSuite
 
 	// Setup cleanup
 	suite.cleanup = append(suite.cleanup, func() {
-		os.RemoveAll(tempDir)
+		_ = os.RemoveAll(tempDir)
 	})
 
 	// Start HTTP server for integration tests
@@ -63,11 +63,11 @@ func NewIntegrationSecurityTestSuite(t *testing.T) *IntegrationSecurityTestSuite
 	suite.serverAddr = listener.Addr().String()
 
 	go func() {
-		suite.httpServer.server.Serve(listener)
+		_ = suite.httpServer.server.Serve(listener)
 	}()
 
 	suite.cleanup = append(suite.cleanup, func() {
-		listener.Close()
+		_ = listener.Close()
 	})
 
 	return suite
@@ -308,7 +308,7 @@ func (suite *IntegrationSecurityTestSuite) testHTTPRequestValidationWorkflow(t *
 				t.Logf("Network error (expected for some security tests): %v", err)
 				return
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			// Verify response status
 			assert.Equal(t, tc.expectedStatus, resp.StatusCode,
@@ -336,11 +336,11 @@ func (suite *IntegrationSecurityTestSuite) testHTTPRequestValidationWorkflow(t *
 func (suite *IntegrationSecurityTestSuite) testFileOperationSecurityWorkflow(t *testing.T) {
 	// Test secure file operations workflow
 	testCases := []struct {
-		name         string
-		operation    string
-		filePath     string
-		shouldPass   bool
-		description  string
+		name        string
+		operation   string
+		filePath    string
+		shouldPass  bool
+		description string
 	}{
 		{
 			name:        "legitimate_temp_file",
@@ -388,7 +388,7 @@ func (suite *IntegrationSecurityTestSuite) testFileOperationSecurityWorkflow(t *
 					if err != nil {
 						operationErr = err
 					} else {
-						file.Close()
+						_ = file.Close()
 					}
 				case "read":
 					_, err := os.ReadFile(tc.filePath)
@@ -771,9 +771,9 @@ func (suite *IntegrationSecurityTestSuite) measureBaselinePerformance(t *testing
 
 	start := time.Now()
 	for i := 0; i < numOps; i++ {
-		suite.validator.ValidateCommandArgument(fmt.Sprintf("legitimate_arg_%d", i))
-		suite.validator.ValidateIPAddress(fmt.Sprintf("192.168.1.%d", (i%254)+1))
-		suite.validator.ValidateFilePath(fmt.Sprintf("/tmp/file_%d.txt", i))
+		_ = suite.validator.ValidateCommandArgument(fmt.Sprintf("legitimate_arg_%d", i))
+		_ = suite.validator.ValidateIPAddress(fmt.Sprintf("192.168.1.%d", (i%254)+1))
+		_ = suite.validator.ValidateFilePath(fmt.Sprintf("/tmp/file_%d.txt", i))
 	}
 	return time.Since(start)
 }
@@ -791,9 +791,9 @@ func (suite *IntegrationSecurityTestSuite) simulateAttackLoad(t *testing.T) time
 	for i := 0; i < numOps; i++ {
 		maliciousInput := maliciousInputs[i%len(maliciousInputs)]
 
-		suite.validator.ValidateCommandArgument(maliciousInput)
-		suite.validator.ValidateIPAddress(maliciousInput)
-		suite.validator.ValidateFilePath(maliciousInput)
+		_ = suite.validator.ValidateCommandArgument(maliciousInput)
+		_ = suite.validator.ValidateIPAddress(maliciousInput)
+		_ = suite.validator.ValidateFilePath(maliciousInput)
 	}
 	return time.Since(start)
 }
@@ -836,7 +836,7 @@ func (suite *IntegrationSecurityTestSuite) testOWASPTop10Compliance(t *testing.T
 			testFunc: func() bool {
 				// Test security logging
 				suite.logger.Clear()
-				suite.validator.ValidateCommandArgument("malicious; attack")
+				_ = suite.validator.ValidateCommandArgument("malicious; attack")
 
 				entries := suite.logger.GetEntriesByLevel(ERROR)
 				return len(entries) > 0
@@ -917,18 +917,18 @@ func BenchmarkIntegrationSecurity(b *testing.B) {
 	b.Run("end_to_end_validation", func(b *testing.B) {
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			suite.validator.ValidateCommandArgument("test_arg")
-			suite.validator.ValidateIPAddress("192.168.1.1")
-			suite.validator.ValidateFilePath("/tmp/test.txt")
+			_ = suite.validator.ValidateCommandArgument("test_arg")
+			_ = suite.validator.ValidateIPAddress("192.168.1.1")
+			_ = suite.validator.ValidateFilePath("/tmp/test.txt")
 		}
 	})
 
 	b.Run("security_violation_handling", func(b *testing.B) {
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			suite.validator.ValidateCommandArgument("malicious; rm -rf /")
-			suite.validator.ValidateIPAddress("192.168.1.1; cat /etc/passwd")
-			suite.validator.ValidateFilePath("../../../etc/passwd")
+			_ = suite.validator.ValidateCommandArgument("malicious; rm -rf /")
+			_ = suite.validator.ValidateIPAddress("192.168.1.1; cat /etc/passwd")
+			_ = suite.validator.ValidateFilePath("../../../etc/passwd")
 		}
 	})
 
@@ -941,7 +941,7 @@ func BenchmarkIntegrationSecurity(b *testing.B) {
 
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			suite.errorHandler.HandleError(testErr, context)
+			_ = suite.errorHandler.HandleError(testErr, context)
 		}
 	})
 }

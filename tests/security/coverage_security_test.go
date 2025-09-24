@@ -64,15 +64,15 @@ type TestResult struct {
 }
 
 type CoverageReport struct {
-	OverallCoverage       float64
-	SecurityCoverage      float64
-	CriticalCoverage      float64
-	UntestedFunctions     []string
-	SecurityGaps          []SecurityGap
-	Recommendations       []string
-	TestQualityScore      float64
-	ComplianceScore       float64
-	RiskAssessment        RiskAssessment
+	OverallCoverage   float64
+	SecurityCoverage  float64
+	CriticalCoverage  float64
+	UntestedFunctions []string
+	SecurityGaps      []SecurityGap
+	Recommendations   []string
+	TestQualityScore  float64
+	ComplianceScore   float64
+	RiskAssessment    RiskAssessment
 }
 
 type SecurityGap struct {
@@ -84,11 +84,11 @@ type SecurityGap struct {
 }
 
 type RiskAssessment struct {
-	OverallRisk      string
-	CriticalRisks    []string
-	MediumRisks      []string
-	LowRisks         []string
-	Recommendations  []string
+	OverallRisk     string
+	CriticalRisks   []string
+	MediumRisks     []string
+	LowRisks        []string
+	Recommendations []string
 }
 
 func NewSecurityCoverageAnalyzer() *SecurityCoverageAnalyzer {
@@ -479,8 +479,8 @@ func (a *SecurityCoverageAnalyzer) checkErrorHandlingCoverage(t *testing.T) {
 				for _, scenario := range errorScenarios {
 					for _, testCase := range coverage.TestCases {
 						if strings.Contains(testCase, scenario) ||
-						   strings.Contains(testCase, "error") ||
-						   strings.Contains(testCase, "fail") {
+							strings.Contains(testCase, "error") ||
+							strings.Contains(testCase, "fail") {
 							errorTestCount++
 							break
 						}
@@ -531,9 +531,9 @@ func (a *SecurityCoverageAnalyzer) validateSecurityBoundaryTests(t *testing.T) {
 				for range boundaries {
 					for _, testCase := range coverage.TestCases {
 						if strings.Contains(testCase, "boundary") ||
-						   strings.Contains(testCase, "limit") ||
-						   strings.Contains(testCase, "maximum") ||
-						   strings.Contains(testCase, "minimum") {
+							strings.Contains(testCase, "limit") ||
+							strings.Contains(testCase, "maximum") ||
+							strings.Contains(testCase, "minimum") {
 							boundaryTestCount++
 							break
 						}
@@ -648,15 +648,15 @@ func (a *SecurityCoverageAnalyzer) calculateCoverageMetrics() CoverageReport {
 	riskAssessment := a.generateRiskAssessment(securityGaps, untestedFunctions)
 
 	return CoverageReport{
-		OverallCoverage:     overallCoverage,
-		SecurityCoverage:    avgSecurityCoverage,
-		CriticalCoverage:    avgCriticalCoverage,
-		UntestedFunctions:   untestedFunctions,
-		SecurityGaps:        securityGaps,
-		TestQualityScore:    testQualityScore,
-		ComplianceScore:     complianceScore,
-		RiskAssessment:      riskAssessment,
-		Recommendations:     a.generateRecommendations(securityGaps, untestedFunctions),
+		OverallCoverage:   overallCoverage,
+		SecurityCoverage:  avgSecurityCoverage,
+		CriticalCoverage:  avgCriticalCoverage,
+		UntestedFunctions: untestedFunctions,
+		SecurityGaps:      securityGaps,
+		TestQualityScore:  testQualityScore,
+		ComplianceScore:   complianceScore,
+		RiskAssessment:    riskAssessment,
+		Recommendations:   a.generateRecommendations(securityGaps, untestedFunctions),
 	}
 }
 
@@ -1050,9 +1050,9 @@ func BenchmarkSecurityTestPerformance(b *testing.B) {
 
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			validator.ValidateCommandArgument("test_argument")
-			validator.ValidateIPAddress("192.168.1.1")
-			validator.ValidateFilePath("/tmp/test.txt")
+			_ = validator.ValidateCommandArgument("test_argument")
+			_ = validator.ValidateIPAddress("192.168.1.1")
+			_ = validator.ValidateFilePath("/tmp/test.txt")
 		}
 	})
 

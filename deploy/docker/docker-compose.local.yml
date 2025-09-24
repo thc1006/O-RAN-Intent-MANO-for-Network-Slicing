@@ -1,0 +1,609 @@
+# O-RAN Intent-MANO Enhanced Local Deployment Configuration
+# Comprehensive setup for local development and testing
+version: '3.8'
+
+networks:
+  mano-net:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.20.0.0/16
+          gateway: 172.20.0.1
+    driver_opts:
+      com.docker.network.bridge.name: mano-br0
+      com.docker.network.bridge.enable_icc: "true"
+      com.docker.network.bridge.enable_ip_masquerade: "true"
+
+  oran-edge:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.21.0.0/16
+          gateway: 172.21.0.1
+    driver_opts:
+      com.docker.network.bridge.name: edge-br0
+
+  oran-core:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.22.0.0/16
+          gateway: 172.22.0.1
+    driver_opts:
+      com.docker.network.bridge.name: core-br0
+
+  monitoring:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.23.0.0/16
+          gateway: 172.23.0.1
+
+volumes:
+  orchestrator-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/orchestrator
+  vnf-operator-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/vnf-operator
+  o2-client-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/o2-client
+  tn-manager-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/tn-manager
+  tn-agent-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/tn-agent
+  ran-dms-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/ran-dms
+  cn-dms-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/cn-dms
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+  test-results:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./test-results
+
+services:
+  # Core Orchestrator Service
+  orchestrator:
+    build:
+      context: ../../
+      dockerfile: deploy/docker/orchestrator/Dockerfile
+      args:
+        - GO_VERSION=1.24.7
+        - BUILD_TIME=${BUILD_TIME:-unknown}
+        - VERSION=${VERSION:-v1.0.0-local}
+        - COMMIT=${COMMIT:-unknown}
+    image: oran-orchestrator:local
+    container_name: oran-orchestrator
+    hostname: orchestrator
+    restart: unless-stopped
+    networks:
+      - mano-net
+    ports:
+      - "8080:8080"   # Main API
+      - "9090:9090"   # Metrics
+      - "8180:8180"   # Debug/profiling
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL:-debug}
+      - METRICS_ENABLED=true
+      - PROFILING_ENABLED=true
+      - DMS_ENDPOINT=http://ran-dms:8080
+      - PORCH_ENDPOINT=http://localhost:7007
+      - ORCHESTRATOR_NAMESPACE=default
+      - MAX_INTENTS=1000
+      - INTENT_TIMEOUT=300s
+      - PLACEMENT_ALGORITHM=optimal-fit
+    volumes:
+      - orchestrator-data:/data
+      - ./configs/orchestrator:/config:ro
+      - ./certs:/certs:ro
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    depends_on:
+      ran-dms:
+        condition: service_healthy
+      cn-dms:
+        condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.orchestrator.rule=Host(`orchestrator.local`)"
+      - "traefik.http.services.orchestrator.loadbalancer.server.port=8080"
+
+  # VNF Operator
+  vnf-operator:
+    build:
+      context: ../../
+      dockerfile: deploy/docker/vnf-operator/Dockerfile.go1.24.7
+      args:
+        - GO_VERSION=1.24.7
+        - BUILD_TIME=${BUILD_TIME:-unknown}
+        - VERSION=${VERSION:-v1.0.0-local}
+    image: oran-vnf-operator:local
+    container_name: oran-vnf-operator
+    hostname: vnf-operator
+    restart: unless-stopped
+    networks:
+      - mano-net
+    ports:
+      - "8081:8080"   # Metrics
+      - "8082:8081"   # Health probe
+      - "9443:9443"   # Webhook
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL:-debug}
+      - DMS_ENDPOINT=http://ran-dms:8080
+      - PORCH_REPO=http://localhost:7007/api/porch/v1alpha1
+      - LEADER_ELECT=false
+      - WEBHOOK_PORT=9443
+      - WEBHOOK_CERT_PATH=/webhook-certs
+      - VNF_OPERATOR_NAMESPACE=default
+    volumes:
+      - vnf-operator-data:/data
+      - ./configs/vnf-operator:/config:ro
+      - ./certs/webhook:/webhook-certs:ro
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8081/healthz"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    depends_on:
+      ran-dms:
+        condition: service_healthy
+
+  # O2 Client
+  o2-client:
+    build:
+      context: ../../
+      dockerfile: deploy/docker/o2-client/Dockerfile
+      args:
+        - GO_VERSION=1.24.7
+        - BUILD_TIME=${BUILD_TIME:-unknown}
+        - VERSION=${VERSION:-v1.0.0-local}
+    image: oran-o2-client:local
+    container_name: oran-o2-client
+    hostname: o2-client
+    restart: unless-stopped
+    networks:
+      - mano-net
+    ports:
+      - "8083:8080"   # Main API
+      - "9093:9090"   # Metrics
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL:-debug}
+      - O2IMS_ENDPOINT=${O2IMS_ENDPOINT:-http://localhost:5005}
+      - O2DMS_ENDPOINT=http://ran-dms:8080
+      - CLIENT_TIMEOUT=30s
+      - RETRY_ATTEMPTS=3
+      - SYNC_INTERVAL=60s
+    volumes:
+      - o2-client-data:/data
+      - ./configs/o2-client:/config:ro
+      - ./certs:/certs:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    depends_on:
+      ran-dms:
+        condition: service_healthy
+      cn-dms:
+        condition: service_healthy
+
+  # TN Manager
+  tn-manager:
+    build:
+      context: ../../
+      dockerfile: deploy/docker/tn-manager/Dockerfile
+      args:
+        - GO_VERSION=1.24.7
+        - BUILD_TIME=${BUILD_TIME:-unknown}
+        - VERSION=${VERSION:-v1.0.0-local}
+    image: oran-tn-manager:local
+    container_name: oran-tn-manager
+    hostname: tn-manager
+    restart: unless-stopped
+    networks:
+      - mano-net
+      - oran-edge
+    ports:
+      - "8084:8080"   # Main API
+      - "9091:9090"   # Metrics
+      - "8184:8180"   # Debug
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL:-debug}
+      - ORCHESTRATOR_ENDPOINT=http://orchestrator:8080
+      - NODE_DISCOVERY=auto
+      - BANDWIDTH_CONTROL=tc
+      - VXLAN_PORT=4789
+      - MTU_SIZE=1450
+    volumes:
+      - tn-manager-data:/data
+      - ./configs/tn-manager:/config:ro
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    privileged: false
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    depends_on:
+      orchestrator:
+        condition: service_healthy
+
+  # TN Agent (Edge 01)
+  tn-agent-edge01:
+    build:
+      context: ../../
+      dockerfile: deploy/docker/tn-agent/Dockerfile
+      args:
+        - GO_VERSION=1.24.7
+        - BUILD_TIME=${BUILD_TIME:-unknown}
+        - VERSION=${VERSION:-v1.0.0-local}
+    image: oran-tn-agent:local
+    container_name: oran-tn-agent-edge01
+    hostname: tn-agent-edge01
+    restart: unless-stopped
+    networks:
+      oran-edge:
+        ipv4_address: 172.21.0.10
+    ports:
+      - "8085:8080"   # Main API
+      - "5201:5201"   # iPerf3 server
+      - "8185:8180"   # Debug
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL:-debug}
+      - NODE_ID=edge01
+      - SITE_ID=site01
+      - TN_MANAGER_ENDPOINT=http://tn-manager:8080
+      - SITE_LOCATION=edge
+      - REGION=west
+      - IPERF_SERVER=true
+      - TC_ENABLED=true
+      - VXLAN_ENABLED=true
+    volumes:
+      - tn-agent-data:/data
+      - ./configs/tn-agent:/config:ro
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    privileged: false
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    depends_on:
+      tn-manager:
+        condition: service_healthy
+
+  # TN Agent (Edge 02)
+  tn-agent-edge02:
+    build:
+      context: ../../
+      dockerfile: deploy/docker/tn-agent/Dockerfile
+      args:
+        - GO_VERSION=1.24.7
+        - BUILD_TIME=${BUILD_TIME:-unknown}
+        - VERSION=${VERSION:-v1.0.0-local}
+    image: oran-tn-agent:local
+    container_name: oran-tn-agent-edge02
+    hostname: tn-agent-edge02
+    restart: unless-stopped
+    networks:
+      oran-edge:
+        ipv4_address: 172.21.0.11
+    ports:
+      - "8086:8080"   # Main API
+      - "5202:5201"   # iPerf3 server
+      - "8186:8180"   # Debug
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL:-debug}
+      - NODE_ID=edge02
+      - SITE_ID=site02
+      - TN_MANAGER_ENDPOINT=http://tn-manager:8080
+      - SITE_LOCATION=edge
+      - REGION=east
+      - IPERF_SERVER=true
+      - TC_ENABLED=true
+      - VXLAN_ENABLED=true
+    volumes:
+      - tn-agent-data:/data
+      - ./configs/tn-agent:/config:ro
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    privileged: false
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    depends_on:
+      tn-manager:
+        condition: service_healthy
+
+  # RAN DMS
+  ran-dms:
+    build:
+      context: ../../
+      dockerfile: deploy/docker/ran-dms/Dockerfile
+      args:
+        - GO_VERSION=1.24.7
+        - BUILD_TIME=${BUILD_TIME:-unknown}
+        - VERSION=${VERSION:-v1.0.0-local}
+    image: oran-ran-dms:local
+    container_name: oran-ran-dms
+    hostname: ran-dms
+    restart: unless-stopped
+    networks:
+      - mano-net
+      - oran-edge
+    ports:
+      - "8087:8080"   # HTTP API
+      - "8443:8443"   # HTTPS API
+      - "9087:9090"   # Metrics
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL:-debug}
+      - METRICS_ENABLED=true
+      - TLS_ENABLED=true
+      - CERT_PATH=/certs/server.crt
+      - KEY_PATH=/certs/server.key
+      - DB_PATH=/var/lib/ran-dms/data.db
+    volumes:
+      - ran-dms-data:/var/lib/ran-dms
+      - ./configs/ran-dms:/config:ro
+      - ./certs:/certs:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.ran-dms.rule=Host(`ran-dms.local`)"
+
+  # CN DMS
+  cn-dms:
+    build:
+      context: ../../
+      dockerfile: deploy/docker/cn-dms/Dockerfile
+      args:
+        - GO_VERSION=1.24.7
+        - BUILD_TIME=${BUILD_TIME:-unknown}
+        - VERSION=${VERSION:-v1.0.0-local}
+    image: oran-cn-dms:local
+    container_name: oran-cn-dms
+    hostname: cn-dms
+    restart: unless-stopped
+    networks:
+      - mano-net
+      - oran-core
+    ports:
+      - "8088:8080"   # HTTP API
+      - "8444:8443"   # HTTPS API
+      - "9088:9090"   # Metrics
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL:-debug}
+      - METRICS_ENABLED=true
+      - TLS_ENABLED=true
+      - CERT_PATH=/certs/server.crt
+      - KEY_PATH=/certs/server.key
+      - DB_PATH=/var/lib/cn-dms/data.db
+    volumes:
+      - cn-dms-data:/var/lib/cn-dms
+      - ./configs/cn-dms:/config:ro
+      - ./certs:/certs:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.cn-dms.rule=Host(`cn-dms.local`)"
+
+  # Monitoring: Prometheus
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: oran-prometheus
+    hostname: prometheus
+    restart: unless-stopped
+    networks:
+      - mano-net
+      - monitoring
+    ports:
+      - "9090:9090"
+    volumes:
+      - prometheus-data:/prometheus
+      - ./configs/prometheus:/etc/prometheus:ro
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=7d'
+      - '--storage.tsdb.retention.size=10GB'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+      - '--log.level=info'
+    user: "65534:65534"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Monitoring: Grafana
+  grafana:
+    image: grafana/grafana:10.2.2
+    container_name: oran-grafana
+    hostname: grafana
+    restart: unless-stopped
+    networks:
+      - monitoring
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin123}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SECURITY_DISABLE_GRAVATAR=true
+      - GF_ANALYTICS_REPORTING_ENABLED=false
+      - GF_ANALYTICS_CHECK_FOR_UPDATES=false
+      - GF_LOG_LEVEL=info
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel,grafana-worldmap-panel
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./configs/grafana:/etc/grafana/provisioning:ro
+    user: "472:0"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    depends_on:
+      prometheus:
+        condition: service_healthy
+
+  # Load Balancer: Traefik (Optional)
+  traefik:
+    image: traefik:v3.0.4
+    container_name: oran-traefik
+    hostname: traefik
+    restart: unless-stopped
+    networks:
+      - mano-net
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"  # Dashboard (conflicts with orchestrator, use different port)
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./configs/traefik:/etc/traefik:ro
+    command:
+      - --api.dashboard=true
+      - --api.insecure=true
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      - --log.level=INFO
+    profiles:
+      - load-balancer
+
+  # Testing: Health Monitor
+  health-monitor:
+    image: alpine:3.19
+    container_name: oran-health-monitor
+    networks:
+      - mano-net
+      - oran-edge
+      - oran-core
+      - monitoring
+    volumes:
+      - ./scripts/health-monitor.sh:/usr/local/bin/health-monitor.sh:ro
+      - test-results:/results
+    command: ['sh', '/usr/local/bin/health-monitor.sh']
+    restart: unless-stopped
+    profiles:
+      - monitoring
+
+  # Testing: Performance Tester
+  performance-tester:
+    build:
+      context: ../../
+      dockerfile: deploy/docker/test-framework/Dockerfile
+    container_name: oran-performance-tester
+    networks:
+      - mano-net
+      - oran-edge
+      - oran-core
+    volumes:
+      - test-results:/results
+      - ../../tests:/tests:ro
+      - ../../experiments:/experiments:ro
+    environment:
+      - TEST_MODE=performance
+      - TARGET_THROUGHPUT_EMBB=4.57
+      - TARGET_THROUGHPUT_URLLC=2.77
+      - TARGET_THROUGHPUT_MMTC=0.93
+      - TARGET_RTT_EMBB=16.1
+      - TARGET_RTT_URLLC=15.7
+      - TARGET_RTT_MMTC=6.3
+      - MAX_DEPLOYMENT_TIME=600
+      - IPERF_DURATION=60
+      - PING_COUNT=100
+    command: ['sleep', 'infinity']
+    profiles:
+      - testing
+
+  # Development: Code Server (Optional)
+  code-server:
+    image: codercom/code-server:4.19.1
+    container_name: oran-code-server
+    networks:
+      - mano-net
+    ports:
+      - "8443:8080"
+    environment:
+      - PASSWORD=${CODE_SERVER_PASSWORD:-oran-dev}
+    volumes:
+      - ../../:/home/coder/project
+      - ./configs/code-server:/home/coder/.config/code-server:ro
+    profiles:
+      - development

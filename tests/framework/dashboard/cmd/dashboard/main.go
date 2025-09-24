@@ -233,7 +233,7 @@ func handleDashboard(dashboardInstance *dashboard.Dashboard) http.HandlerFunc {
 }
 
 // handleHealth handles health check requests
-func handleHealth(w http.ResponseWriter, r *http.Request) {
+func handleHealth(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, `{
@@ -245,7 +245,7 @@ func handleHealth(w http.ResponseWriter, r *http.Request) {
 
 // handleMetrics handles metrics endpoint
 func handleMetrics(aggregator *dashboard.MetricsAggregator) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, _ *http.Request) {
 		metrics := aggregator.GetCurrentMetrics()
 		if metrics == nil {
 			http.Error(w, "No metrics available", http.StatusNotFound)
@@ -262,7 +262,7 @@ func handleMetrics(aggregator *dashboard.MetricsAggregator) http.HandlerFunc {
 
 // handleAlerts handles alerts endpoint
 func handleAlerts(aggregator *dashboard.MetricsAggregator) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, _ *http.Request) {
 		alerts := aggregator.GetActiveAlerts()
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(alerts); err != nil {
@@ -329,7 +329,7 @@ func handleAPIHistory(aggregator *dashboard.MetricsAggregator) http.HandlerFunc 
 }
 
 // handleAPIRefresh handles API refresh endpoint
-func handleAPIRefresh(dashboardInstance *dashboard.Dashboard, aggregator *dashboard.MetricsAggregator) http.HandlerFunc {
+func handleAPIRefresh(dashboardInstance *dashboard.Dashboard, _ *dashboard.MetricsAggregator) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -363,11 +363,11 @@ func handleAPIConfig(w http.ResponseWriter, r *http.Request) {
 		"build_time": BuildTime,
 		"git_commit": GitCommit,
 		"features": map[string]bool{
-			"real_time":    true,
-			"export":       true,
-			"alerts":       true,
-			"history":      true,
-			"aggregation":  true,
+			"real_time":   true,
+			"export":      true,
+			"alerts":      true,
+			"history":     true,
+			"aggregation": true,
 		},
 	}
 
@@ -380,7 +380,7 @@ func handleAPIConfig(w http.ResponseWriter, r *http.Request) {
 
 // WebSocket upgrader
 var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool {
+	CheckOrigin: func(_ *http.Request) bool {
 		return true // Allow all origins in development
 	},
 }
@@ -438,7 +438,7 @@ func handleWebSocket(aggregator *dashboard.MetricsAggregator) http.HandlerFunc {
 
 // Export handlers
 func handleExportJSON(aggregator *dashboard.MetricsAggregator) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, _ *http.Request) {
 		metrics := aggregator.GetCurrentMetrics()
 		if metrics == nil {
 			http.Error(w, "No metrics available", http.StatusNotFound)
@@ -457,7 +457,7 @@ func handleExportJSON(aggregator *dashboard.MetricsAggregator) http.HandlerFunc 
 }
 
 func handleExportCSV(aggregator *dashboard.MetricsAggregator) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, _ *http.Request) {
 		metrics := aggregator.GetCurrentMetrics()
 		if metrics == nil {
 			http.Error(w, "No metrics available", http.StatusNotFound)
@@ -482,6 +482,8 @@ func handleExportCSV(aggregator *dashboard.MetricsAggregator) http.HandlerFunc {
 func handleExportPDF(aggregator *dashboard.MetricsAggregator) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// PDF export would require additional dependencies
+		_ = aggregator // TODO: implement PDF export functionality
+		_ = r          // TODO: process request parameters for PDF generation
 		http.Error(w, "PDF export not implemented", http.StatusNotImplemented)
 	}
 }
@@ -517,7 +519,7 @@ func generateStaticDashboard() {
 }
 
 // secureFileHandler wraps a file handler with path validation to prevent directory traversal
-func secureFileHandler(handler http.Handler, baseDir string) http.Handler {
+func secureFileHandler(handler http.Handler, _ string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Get the requested path
 		requestPath := r.URL.Path

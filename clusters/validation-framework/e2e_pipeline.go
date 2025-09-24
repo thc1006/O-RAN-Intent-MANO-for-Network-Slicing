@@ -13,46 +13,46 @@ import (
 
 // E2EPipeline orchestrates end-to-end deployment validation
 type E2EPipeline struct {
-	Config            E2EConfig
+	Config              E2EConfig
 	ValidationFramework *ValidationFramework
-	MetricsCollector  *MetricsCollector
+	MetricsCollector    *MetricsCollector
 }
 
 // E2EConfig holds end-to-end pipeline configuration
 type E2EConfig struct {
-	Enabled           bool                    `yaml:"enabled"`
-	Stages            []E2EStage             `yaml:"stages"`
-	MaxDuration       time.Duration          `yaml:"maxDuration"`
-	FailureStrategy   FailureStrategy        `yaml:"failureStrategy"`
-	NotificationConfig NotificationConfig    `yaml:"notification"`
-	ReportConfig      ReportConfig           `yaml:"report"`
+	Enabled            bool               `yaml:"enabled"`
+	Stages             []E2EStage         `yaml:"stages"`
+	MaxDuration        time.Duration      `yaml:"maxDuration"`
+	FailureStrategy    FailureStrategy    `yaml:"failureStrategy"`
+	NotificationConfig NotificationConfig `yaml:"notification"`
+	ReportConfig       ReportConfig       `yaml:"report"`
 }
 
 // E2EStage represents a stage in the E2E pipeline
 type E2EStage struct {
-	Name         string        `yaml:"name"`
-	Type         StageType     `yaml:"type"`
-	Timeout      time.Duration `yaml:"timeout"`
-	RetryCount   int           `yaml:"retryCount"`
-	Dependencies []string      `yaml:"dependencies"`
-	Parallel     bool          `yaml:"parallel"`
-	ContinueOnFailure bool     `yaml:"continueOnFailure"`
-	Config       map[string]interface{} `yaml:"config"`
+	Name              string                 `yaml:"name"`
+	Type              StageType              `yaml:"type"`
+	Timeout           time.Duration          `yaml:"timeout"`
+	RetryCount        int                    `yaml:"retryCount"`
+	Dependencies      []string               `yaml:"dependencies"`
+	Parallel          bool                   `yaml:"parallel"`
+	ContinueOnFailure bool                   `yaml:"continueOnFailure"`
+	Config            map[string]interface{} `yaml:"config"`
 }
 
 // StageType represents the type of pipeline stage
 type StageType string
 
 const (
-	StageTypeGitSync        StageType = "git-sync"
+	StageTypeGitSync           StageType = "git-sync"
 	StageTypePackageValidation StageType = "package-validation"
-	StageTypePackageSync    StageType = "package-sync"
-	StageTypeDeployment     StageType = "deployment"
-	StageTypeHealthCheck    StageType = "health-check"
-	StageTypePerformanceTest StageType = "performance-test"
-	StageTypeE2ETest        StageType = "e2e-test"
-	StageTypeDriftCheck     StageType = "drift-check"
-	StageTypeCleanup        StageType = "cleanup"
+	StageTypePackageSync       StageType = "package-sync"
+	StageTypeDeployment        StageType = "deployment"
+	StageTypeHealthCheck       StageType = "health-check"
+	StageTypePerformanceTest   StageType = "performance-test"
+	StageTypeE2ETest           StageType = "e2e-test"
+	StageTypeDriftCheck        StageType = "drift-check"
+	StageTypeCleanup           StageType = "cleanup"
 )
 
 // FailureStrategy defines how to handle pipeline failures
@@ -74,67 +74,67 @@ type NotificationConfig struct {
 
 // ReportConfig defines report generation settings
 type ReportConfig struct {
-	Enabled    bool   `yaml:"enabled"`
-	Format     string `yaml:"format"`    // json, yaml, html
-	OutputPath string `yaml:"outputPath"`
-	IncludeMetrics bool `yaml:"includeMetrics"`
+	Enabled        bool   `yaml:"enabled"`
+	Format         string `yaml:"format"` // json, yaml, html
+	OutputPath     string `yaml:"outputPath"`
+	IncludeMetrics bool   `yaml:"includeMetrics"`
 }
 
 // E2EResult represents the result of an E2E pipeline execution
 type E2EResult struct {
-	PipelineID     string                `json:"pipelineId"`
-	StartTime      time.Time             `json:"startTime"`
-	EndTime        time.Time             `json:"endTime"`
-	Duration       time.Duration         `json:"duration"`
-	Success        bool                  `json:"success"`
-	StageResults   []E2EStageResult      `json:"stageResults"`
-	Metrics        *E2EMetrics           `json:"metrics,omitempty"`
-	Errors         []string              `json:"errors,omitempty"`
-	Warnings       []string              `json:"warnings,omitempty"`
-	Summary        E2ESummary            `json:"summary"`
+	PipelineID   string           `json:"pipelineId"`
+	StartTime    time.Time        `json:"startTime"`
+	EndTime      time.Time        `json:"endTime"`
+	Duration     time.Duration    `json:"duration"`
+	Success      bool             `json:"success"`
+	StageResults []E2EStageResult `json:"stageResults"`
+	Metrics      *E2EMetrics      `json:"metrics,omitempty"`
+	Errors       []string         `json:"errors,omitempty"`
+	Warnings     []string         `json:"warnings,omitempty"`
+	Summary      E2ESummary       `json:"summary"`
 }
 
 // E2EStageResult represents the result of a pipeline stage
 type E2EStageResult struct {
-	Stage        string        `json:"stage"`
-	Type         StageType     `json:"type"`
-	StartTime    time.Time     `json:"startTime"`
-	EndTime      time.Time     `json:"endTime"`
-	Duration     time.Duration `json:"duration"`
-	Success      bool          `json:"success"`
-	Errors       []string      `json:"errors,omitempty"`
-	Warnings     []string      `json:"warnings,omitempty"`
-	RetryCount   int           `json:"retryCount"`
-	Output       interface{}   `json:"output,omitempty"`
+	Stage      string        `json:"stage"`
+	Type       StageType     `json:"type"`
+	StartTime  time.Time     `json:"startTime"`
+	EndTime    time.Time     `json:"endTime"`
+	Duration   time.Duration `json:"duration"`
+	Success    bool          `json:"success"`
+	Errors     []string      `json:"errors,omitempty"`
+	Warnings   []string      `json:"warnings,omitempty"`
+	RetryCount int           `json:"retryCount"`
+	Output     interface{}   `json:"output,omitempty"`
 }
 
 // E2EMetrics holds metrics collected during E2E execution
 type E2EMetrics struct {
-	DeploymentTime    time.Duration `json:"deploymentTime"`
-	ThroughputMbps    []float64     `json:"throughputMbps"`
-	PingRTTMs         []float64     `json:"pingRttMs"`
-	ResourceUsage     ResourceUsageMetrics `json:"resourceUsage"`
-	NetworkMetrics    NetworkMetrics `json:"networkMetrics"`
+	DeploymentTime     time.Duration        `json:"deploymentTime"`
+	ThroughputMbps     []float64            `json:"throughputMbps"`
+	PingRTTMs          []float64            `json:"pingRttMs"`
+	ResourceUsage      ResourceUsageMetrics `json:"resourceUsage"`
+	NetworkMetrics     NetworkMetrics       `json:"networkMetrics"`
 	ApplicationMetrics []ApplicationMetrics `json:"applicationMetrics"`
-	WithinThresholds  bool          `json:"withinThresholds"`
+	WithinThresholds   bool                 `json:"withinThresholds"`
 }
 
 // E2ESummary provides a summary of the E2E execution
 type E2ESummary struct {
-	TotalStages     int `json:"totalStages"`
-	SuccessfulStages int `json:"successfulStages"`
-	FailedStages    int `json:"failedStages"`
-	SkippedStages   int `json:"skippedStages"`
-	DoD_Compliance  DoD_ComplianceStatus `json:"dodCompliance"`
+	TotalStages      int                  `json:"totalStages"`
+	SuccessfulStages int                  `json:"successfulStages"`
+	FailedStages     int                  `json:"failedStages"`
+	SkippedStages    int                  `json:"skippedStages"`
+	DoD_Compliance   DoD_ComplianceStatus `json:"dodCompliance"`
 }
 
 // DoD_ComplianceStatus tracks Definition of Done compliance
 type DoD_ComplianceStatus struct {
-	AllTestsGreen         bool `json:"allTestsGreen"`
+	AllTestsGreen           bool `json:"allTestsGreen"`
 	MetricsWithinThresholds bool `json:"metricsWithinThresholds"`
-	GitOpsPackagesRendered bool `json:"gitopsPackagesRendered"`
-	KubectlResourcesReady bool `json:"kubectlResourcesReady"`
-	Overall               bool `json:"overall"`
+	GitOpsPackagesRendered  bool `json:"gitopsPackagesRendered"`
+	KubectlResourcesReady   bool `json:"kubectlResourcesReady"`
+	Overall                 bool `json:"overall"`
 }
 
 // NewE2EPipeline creates a new E2E pipeline
@@ -461,7 +461,7 @@ func (se *StageExecutor) executeStageType(ctx context.Context, stage E2EStage, r
 }
 
 // executeGitSync executes Git synchronization
-func (se *StageExecutor) executeGitSync(ctx context.Context, stage E2EStage, result *E2EStageResult) error {
+func (se *StageExecutor) executeGitSync(ctx context.Context, _ E2EStage, result *E2EStageResult) error {
 	if se.pipeline.ValidationFramework.GitRepo == nil {
 		return fmt.Errorf("git repository not initialized")
 	}
@@ -512,9 +512,13 @@ func (se *StageExecutor) executePackageValidation(ctx context.Context, stage E2E
 }
 
 // executePackageSync executes package synchronization
-func (se *StageExecutor) executePackageSync(ctx context.Context, stage E2EStage, result *E2EStageResult) error {
-	// TODO: Implement package synchronization
+// TODO: Implement actual package synchronization logic
+func (se *StageExecutor) executePackageSync(_ context.Context, stage E2EStage, result *E2EStageResult) error {
+	// This is a placeholder implementation
+	// Actual implementation would sync packages across clusters
 	log.Printf("Package synchronization stage executed for stage: %s", stage.Name)
+
+	// Set success status (placeholder)
 	result.Success = true
 	return nil
 }
@@ -560,7 +564,7 @@ func (se *StageExecutor) executeDeployment(ctx context.Context, stage E2EStage, 
 }
 
 // executeHealthCheck executes health checks
-func (se *StageExecutor) executeHealthCheck(ctx context.Context, stage E2EStage, result *E2EStageResult) error {
+func (se *StageExecutor) executeHealthCheck(_ context.Context, stage E2EStage, result *E2EStageResult) error {
 	// Placeholder for health check implementation
 	log.Printf("Executing health checks...")
 	time.Sleep(2 * time.Second) // Simulate health check
@@ -601,7 +605,7 @@ func (se *StageExecutor) executePerformanceTest(ctx context.Context, stage E2ESt
 }
 
 // executeE2ETest executes end-to-end tests
-func (se *StageExecutor) executeE2ETest(ctx context.Context, stage E2EStage, result *E2EStageResult) error {
+func (se *StageExecutor) executeE2ETest(_ context.Context, stage E2EStage, result *E2EStageResult) error {
 	// Placeholder for E2E test implementation
 	log.Printf("Executing E2E tests...")
 	time.Sleep(5 * time.Second) // Simulate E2E tests
@@ -609,9 +613,13 @@ func (se *StageExecutor) executeE2ETest(ctx context.Context, stage E2EStage, res
 }
 
 // executeDriftCheck executes drift detection
-func (se *StageExecutor) executeDriftCheck(ctx context.Context, stage E2EStage, result *E2EStageResult) error {
-	// TODO: Implement drift detection
+// TODO: Implement actual drift detection logic
+func (se *StageExecutor) executeDriftCheck(_ context.Context, stage E2EStage, result *E2EStageResult) error {
+	// This is a placeholder implementation
+	// Actual implementation would check for configuration drift
 	log.Printf("Drift check stage executed for stage: %s", stage.Name)
+
+	// Set success status (placeholder)
 	result.Success = true
 	return nil
 }
@@ -761,21 +769,21 @@ func (e2e *E2EPipeline) generateReport(result *E2EResult) error {
 }
 
 // generateJSONReport generates a JSON report
-func (e2e *E2EPipeline) generateJSONReport(result *E2EResult) error {
+func (e2e *E2EPipeline) generateJSONReport(_ *E2EResult) error {
 	// Placeholder for JSON report generation
 	log.Printf("JSON report would be generated at: %s", e2e.Config.ReportConfig.OutputPath)
 	return nil
 }
 
 // generateYAMLReport generates a YAML report
-func (e2e *E2EPipeline) generateYAMLReport(result *E2EResult) error {
+func (e2e *E2EPipeline) generateYAMLReport(_ *E2EResult) error {
 	// Placeholder for YAML report generation
 	log.Printf("YAML report would be generated at: %s", e2e.Config.ReportConfig.OutputPath)
 	return nil
 }
 
 // generateHTMLReport generates an HTML report
-func (e2e *E2EPipeline) generateHTMLReport(result *E2EResult) error {
+func (e2e *E2EPipeline) generateHTMLReport(_ *E2EResult) error {
 	// Placeholder for HTML report generation
 	log.Printf("HTML report would be generated at: %s", e2e.Config.ReportConfig.OutputPath)
 	return nil
