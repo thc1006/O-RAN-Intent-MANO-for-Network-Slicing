@@ -20,10 +20,6 @@ import (
 
 // IntentToSliceWorkflow represents the complete E2E workflow test suite
 type IntentToSliceWorkflow struct {
-	config           *testutils.TestConfig
-	kubeClient       client.Client
-	kubernetesClient kubernetes.Interface
-	restConfig       *rest.Config
 	mockO2Server     *ghttp.Server
 	mockNephioServer *ghttp.Server
 	testFramework    *testutils.TestFramework

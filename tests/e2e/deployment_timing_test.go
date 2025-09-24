@@ -19,7 +19,6 @@ import (
 
 // DeploymentTimingSuite manages end-to-end deployment timing validation
 type DeploymentTimingSuite struct {
-	k8sClient   client.Client // nolint:unused // TODO: integrate with actual k8s client
 	testContext context.Context
 	testCancel  context.CancelFunc
 	testResults *DeploymentTimingResults
@@ -145,19 +144,14 @@ type ScenarioResourceUsage struct {
 
 // Deployment scenarios targeting thesis requirements and real-world use cases
 var deploymentTimingScenarios = []struct {
-	name               string
-	description        string // nolint:unused // TODO: use in future scenario reporting
-	intent             string
-	expectedVNFs       []VNFDeploymentSpec
-	targetClusters     []string
-	deploymentStrategy string        // nolint:unused // TODO: implement deployment strategy logic
-	maxAllowedTime     time.Duration // nolint:unused // TODO: validate against scenario-specific limits
-	parallelDeployment bool          // nolint:unused // TODO: implement parallel deployment optimization
+	name           string
+	intent         string
+	expectedVNFs   []VNFDeploymentSpec
+	targetClusters []string
 }{
 	{
-		name:        "Single_UPF_Edge_Deployment",
-		description: "Single UPF deployment to edge cluster for ultra-low latency",
-		intent:      "Deploy ultra-low latency UPF for autonomous vehicle communication with 6.3ms latency requirement",
+		name:   "Single_UPF_Edge_Deployment",
+		intent: "Deploy ultra-low latency UPF for autonomous vehicle communication with 6.3ms latency requirement",
 		expectedVNFs: []VNFDeploymentSpec{
 			{
 				Name:    "edge-upf-001",
@@ -169,14 +163,10 @@ var deploymentTimingScenarios = []struct {
 				},
 			},
 		},
-		targetClusters:     []string{"edge-cluster-01"},
-		deploymentStrategy: "direct",
-		maxAllowedTime:     5 * time.Minute,
-		parallelDeployment: false,
+		targetClusters: []string{"edge-cluster-01"},
 	},
 	{
 		name:        "Multi_VNF_Core_Network",
-		description: "Complete 5G core network deployment across regional clusters",
 		intent:      "Deploy complete 5G core network with AMF, SMF, UPF for balanced IoT services with 15.7ms latency",
 		expectedVNFs: []VNFDeploymentSpec{
 			{
@@ -196,13 +186,9 @@ var deploymentTimingScenarios = []struct {
 			},
 		},
 		targetClusters:     []string{"regional-cluster-01"},
-		deploymentStrategy: "sequential",
-		maxAllowedTime:     8 * time.Minute,
-		parallelDeployment: true,
 	},
 	{
 		name:        "Cross_Cluster_Distributed_Deployment",
-		description: "Distributed VNF deployment across edge, regional, and central clusters",
 		intent:      "Deploy distributed network slice with edge processing, regional coordination, and central management",
 		expectedVNFs: []VNFDeploymentSpec{
 			{
@@ -222,13 +208,9 @@ var deploymentTimingScenarios = []struct {
 			},
 		},
 		targetClusters:     []string{"edge-cluster-01", "regional-cluster-01", "central-cluster-01"},
-		deploymentStrategy: "distributed",
-		maxAllowedTime:     10 * time.Minute,
-		parallelDeployment: true,
 	},
 	{
 		name:        "High_Bandwidth_Video_Streaming",
-		description: "High-bandwidth VNF deployment for video streaming services",
 		intent:      "Deploy high-bandwidth network slice for 4K video streaming with 4.57 Mbps throughput and 16.1ms latency",
 		expectedVNFs: []VNFDeploymentSpec{
 			{
@@ -247,13 +229,9 @@ var deploymentTimingScenarios = []struct {
 			},
 		},
 		targetClusters:     []string{"central-cluster-01"},
-		deploymentStrategy: "optimized",
-		maxAllowedTime:     7 * time.Minute,
-		parallelDeployment: true,
 	},
 	{
 		name:        "Stress_Test_Multiple_Parallel",
-		description: "Stress test with multiple parallel deployments",
 		intent:      "Deploy multiple network slices simultaneously to test system capacity and timing under load",
 		expectedVNFs: []VNFDeploymentSpec{
 			{Name: "stress-upf-01", Type: "UPF", Cluster: "edge-cluster-01"},
@@ -263,9 +241,6 @@ var deploymentTimingScenarios = []struct {
 			{Name: "stress-upf-03", Type: "UPF", Cluster: "edge-cluster-01"},
 		},
 		targetClusters:     []string{"edge-cluster-01", "edge-cluster-02", "regional-cluster-01", "central-cluster-01"},
-		deploymentStrategy: "stress_parallel",
-		maxAllowedTime:     10 * time.Minute,
-		parallelDeployment: true,
 	},
 }
 
@@ -1062,14 +1037,10 @@ func (s *DeploymentTimingSuite) generateDeploymentTimingReport() {
 // Supporting types for deployment timing tests
 
 type DeploymentTimingScenario struct {
-	name               string
-	description        string
-	intent             string
-	expectedVNFs       []VNFDeploymentSpec
-	targetClusters     []string
-	deploymentStrategy string
-	maxAllowedTime     time.Duration
-	parallelDeployment bool
+	name           string
+	intent         string
+	expectedVNFs   []VNFDeploymentSpec
+	targetClusters []string
 }
 
 type VNFDeploymentSpec struct {
