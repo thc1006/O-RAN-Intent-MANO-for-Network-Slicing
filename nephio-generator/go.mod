@@ -1,8 +1,8 @@
 module github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/nephio-generator
 
-go 1.23.6
+go 1.24.7
 
-toolchain go1.23.6
+toolchain go1.24.7
 
 
 require (
