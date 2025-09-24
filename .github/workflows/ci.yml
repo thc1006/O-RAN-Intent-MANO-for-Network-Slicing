@@ -85,7 +85,11 @@ jobs:
     #     install-go: false
 
     - name: Install and run gosec security scan
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
+        # Configure git for Go modules to avoid authentication issues
+        git config --global url."https://${GITHUB_TOKEN}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
         go install github.com/securego/gosec/v2/cmd/gosec@latest
 
         # Always ensure a valid SARIF file is created
@@ -194,33 +198,34 @@ jobs:
     - name: Setup Kubebuilder
       run: |
         set -e
-        KUBEBUILDER_VERSION=3.10.0
+        KUBEBUILDER_VERSION=3.15.1
         os=$(go env GOOS)
         arch=$(go env GOARCH)
 
-        # Download with fail-on-error flag
+        # Download with fail-on-error flag - new format doesn't include version in filename
         echo "Downloading Kubebuilder ${KUBEBUILDER_VERSION} for ${os}_${arch}..."
-        curl -fL -o /tmp/kubebuilder.tar.gz https://github.com/kubernetes-sigs/kubebuilder/releases/download/v${KUBEBUILDER_VERSION}/kubebuilder_${KUBEBUILDER_VERSION}_${os}_${arch}.tar.gz
+        curl -fL -o /tmp/kubebuilder https://github.com/kubernetes-sigs/kubebuilder/releases/download/v${KUBEBUILDER_VERSION}/kubebuilder_${os}_${arch}
 
-        # Verify the downloaded file is valid
-        FILE_SIZE=$(stat -c%s /tmp/kubebuilder.tar.gz 2>/dev/null || stat -f%z /tmp/kubebuilder.tar.gz 2>/dev/null || echo "0")
+        # Verify the downloaded binary is valid
+        FILE_SIZE=$(stat -c%s /tmp/kubebuilder 2>/dev/null || stat -f%z /tmp/kubebuilder 2>/dev/null || echo "0")
         if [ "$FILE_SIZE" -lt 1000 ]; then
           echo "ERROR: Downloaded file is too small (${FILE_SIZE} bytes). Download may have failed."
           echo "File contents:"
-          head -n 20 /tmp/kubebuilder.tar.gz
+          head -n 20 /tmp/kubebuilder
           exit 1
         fi
 
-        # Check if it's a valid tar/gzip file
-        if ! file /tmp/kubebuilder.tar.gz | grep -q -E "gzip compressed|tar archive"; then
-          echo "ERROR: Downloaded file is not a valid tar or gzip archive"
-          echo "File type: $(file /tmp/kubebuilder.tar.gz)"
+        # Check if it's a valid binary
+        if ! file /tmp/kubebuilder | grep -q "executable"; then
+          echo "ERROR: Downloaded file is not a valid executable"
+          echo "File type: $(file /tmp/kubebuilder)"
           exit 1
         fi
 
-        # Extract the archive
-        tar -xz -C /tmp/ -f /tmp/kubebuilder.tar.gz
-        sudo mv /tmp/kubebuilder_${KUBEBUILDER_VERSION}_${os}_${arch} /usr/local/kubebuilder
+        # Install the binary
+        chmod +x /tmp/kubebuilder
+        sudo mkdir -p /usr/local/kubebuilder/bin
+        sudo mv /tmp/kubebuilder /usr/local/kubebuilder/bin/kubebuilder
         echo "/usr/local/kubebuilder/bin" >> $GITHUB_PATH
 
     - name: Validate component directory
