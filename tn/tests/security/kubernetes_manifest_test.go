@@ -2,7 +2,7 @@ package security
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -187,7 +187,7 @@ func TestKubernetesManifests_SecurityValidation(t *testing.T) {
 }
 
 func (v *KubernetesManifestValidator) ValidateManifestFile(filePath string) ([]SecurityViolation, error) {
-	content, err := ioutil.ReadFile(filePath)
+	content, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file %s: %w", filePath, err)
 	}
@@ -710,7 +710,7 @@ func TestKubernetesManifests_NetworkPolicies(t *testing.T) {
 
 	for _, file := range networkPolicyFiles {
 		t.Run(filepath.Base(file), func(t *testing.T) {
-			content, err := ioutil.ReadFile(file)
+			content, err := os.ReadFile(file)
 			require.NoError(t, err)
 
 			violations, err := validator.ValidateManifestContent(content)
@@ -739,7 +739,7 @@ func TestKubernetesManifests_RBAC(t *testing.T) {
 
 	for _, file := range rbacFiles {
 		t.Run(filepath.Base(file), func(t *testing.T) {
-			content, err := ioutil.ReadFile(file)
+			content, err := os.ReadFile(file)
 			require.NoError(t, err)
 
 			// RBAC resources have different validation requirements
@@ -807,7 +807,7 @@ func TestKubernetesManifests_PodSecurityPolicies(t *testing.T) {
 
 	for _, file := range securityFiles {
 		t.Run(filepath.Base(file), func(t *testing.T) {
-			content, err := ioutil.ReadFile(file)
+			content, err := os.ReadFile(file)
 			require.NoError(t, err)
 
 			violations, err := validator.ValidateManifestContent(content)

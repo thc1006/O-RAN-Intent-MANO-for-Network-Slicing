@@ -234,7 +234,7 @@ func (r *AdapterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	// Add finalizer for cleanup
-	if intent.ObjectMeta.DeletionTimestamp.IsZero() {
+	if intent.DeletionTimestamp.IsZero() {
 		if !controllerutil.ContainsFinalizer(intent, "nephio-adapter.mano.oran.io/finalizer") {
 			controllerutil.AddFinalizer(intent, "nephio-adapter.mano.oran.io/finalizer")
 			return ctrl.Result{}, r.Update(ctx, intent)

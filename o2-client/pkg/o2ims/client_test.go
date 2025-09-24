@@ -123,7 +123,7 @@ func TestGetOCloudInfo(t *testing.T) {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(mockOCloudInfo)
+		_ = json.NewEncoder(w).Encode(mockOCloudInfo)
 	}))
 	defer server.Close()
 
@@ -158,7 +158,7 @@ func TestGetOCloudInfoWithAuth(t *testing.T) {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(mockOCloudInfo)
+		_ = json.NewEncoder(w).Encode(mockOCloudInfo)
 	}))
 	defer server.Close()
 
@@ -209,7 +209,7 @@ func TestListResourcePools(t *testing.T) {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
+		_ = json.NewEncoder(w).Encode(response)
 	}))
 	defer server.Close()
 
@@ -246,7 +246,7 @@ func TestListResourcePoolsWithQuery(t *testing.T) {
 
 		response := models.ListResponse{Items: []interface{}{}}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
+		_ = json.NewEncoder(w).Encode(response)
 	}))
 	defer server.Close()
 
@@ -357,7 +357,7 @@ func TestHTTPErrorHandling(t *testing.T) {
 	t.Run("404 Not Found", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNotFound)
-			w.Write([]byte("Not Found"))
+			_ = w.Write([]byte("Not Found"))
 		}))
 		defer server.Close()
 
@@ -444,7 +444,7 @@ func TestFindResourcesByQoS(t *testing.T) {
 				},
 			}
 			response := models.ListResponse{Items: pools}
-			json.NewEncoder(w).Encode(response)
+			_ = json.NewEncoder(w).Encode(response)
 		} else if strings.Contains(r.URL.Path, "/resources") {
 			// Return resources for the pool
 			resources := []interface{}{
@@ -459,7 +459,7 @@ func TestFindResourcesByQoS(t *testing.T) {
 				},
 			}
 			response := models.ListResponse{Items: resources}
-			json.NewEncoder(w).Encode(response)
+			_ = json.NewEncoder(w).Encode(response)
 		}
 	}))
 	defer server.Close()

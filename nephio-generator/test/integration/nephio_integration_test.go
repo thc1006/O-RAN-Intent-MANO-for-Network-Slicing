@@ -115,7 +115,7 @@ func (suite *NephioIntegrationTestSuite) TearDownSuite() {
 
 	// Clean up test directory
 	if suite.testDir != "" {
-		os.RemoveAll(suite.testDir)
+		_ = os.RemoveAll(suite.testDir)
 	}
 }
 
@@ -285,7 +285,7 @@ func (suite *NephioIntegrationTestSuite) TestRepositoryManagement() {
 
 	// Add cleanup
 	suite.cleanup = append(suite.cleanup, func() {
-		suite.repositoryManager.DeleteRepository(ctx, repo.Name, repo.Namespace)
+		_ = suite.repositoryManager.DeleteRepository(ctx, repo.Name, repo.Namespace)
 	})
 
 	// Get repository
@@ -421,7 +421,7 @@ func (suite *NephioIntegrationTestSuite) TestConfigSyncIntegration() {
 
 	// Add cleanup
 	suite.cleanup = append(suite.cleanup, func() {
-		suite.configSyncManager.DeleteRootSync(ctx, rootSync.Name, rootSync.Namespace)
+		_ = suite.configSyncManager.DeleteRootSync(ctx, rootSync.Name, rootSync.Namespace)
 	})
 
 	// Get RootSync
@@ -494,7 +494,7 @@ func (suite *NephioIntegrationTestSuite) TestDeploymentValidation() {
 
 	// Add cleanup
 	suite.cleanup = append(suite.cleanup, func() {
-		suite.client.Delete(ctx, deployment)
+		_ = suite.client.Delete(ctx, deployment)
 	})
 
 	// Wait for deployment to be ready
@@ -535,7 +535,7 @@ func (suite *NephioIntegrationTestSuite) TestDeploymentValidation() {
 
 	// Add cleanup
 	suite.cleanup = append(suite.cleanup, func() {
-		suite.client.Delete(ctx, service)
+		_ = suite.client.Delete(ctx, service)
 	})
 
 	// Validate deployment
@@ -626,7 +626,7 @@ func (suite *NephioIntegrationTestSuite) TestEndToEndWorkflow() {
 
 	// Add cleanup
 	suite.cleanup = append(suite.cleanup, func() {
-		suite.client.Delete(ctx, deployment)
+		_ = suite.client.Delete(ctx, deployment)
 	})
 
 	suite.T().Log("✓ Mock deployment created")
