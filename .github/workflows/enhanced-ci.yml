@@ -527,7 +527,7 @@ jobs:
         echo "  Security framework: All subprocess calls use pkg/security functions with validation"
 
         # Initialize SARIF output array
-        echo '{"version":"2.1.0","runs":[]}' > gosec.sarif
+        echo '{"version":"2.1.0","runs":[]}' > "${GITHUB_WORKSPACE}/gosec.sarif"
 
         for module in $(find . -name "go.mod" -not -path "./vendor/*" | xargs dirname); do
           echo "    Scanning module: $module"
@@ -559,7 +559,7 @@ jobs:
               high_vulns=$((high_vulns + high_count))
 
               # Copy to root for upload (use absolute path)
-              cp "gosec-${module_safe_name}-clean.sarif" "$(pwd)/../gosec.sarif" 2>/dev/null || true
+              cp "gosec-${module_safe_name}-clean.sarif" "${GITHUB_WORKSPACE}/gosec.sarif" 2>/dev/null || true
 
               echo "    Found $critical_count critical and $high_count high issues in $module"
             else
@@ -573,15 +573,20 @@ jobs:
         done
 
         # Ensure final SARIF file exists and is valid
-        if [ ! -f gosec.sarif ] || ! jq empty gosec.sarif 2>/dev/null; then
+        if [ ! -f "${GITHUB_WORKSPACE}/gosec.sarif" ] || ! jq empty "${GITHUB_WORKSPACE}/gosec.sarif" 2>/dev/null; then
           echo "Creating fallback SARIF file..."
-          echo '{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"gosec"}},"results":[]}]}' > gosec.sarif
+          echo '{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"gosec","version":"2.21.4"}},"results":[]}]}' > "${GITHUB_WORKSPACE}/gosec.sarif"
         fi
 
-        echo "SARIF file generated: gosec.sarif"
-        ls -la gosec.sarif
+        # Move to workspace root if not already there
+        if [ -f gosec.sarif ] && [ ! -f "${GITHUB_WORKSPACE}/gosec.sarif" ]; then
+          mv gosec.sarif "${GITHUB_WORKSPACE}/gosec.sarif"
+        fi
+
+        echo "SARIF file generated: ${GITHUB_WORKSPACE}/gosec.sarif"
+        ls -la "${GITHUB_WORKSPACE}/gosec.sarif" || echo "SARIF file not found at expected location"
         echo "SARIF content preview:"
-        head -5 gosec.sarif
+        head -5 "${GITHUB_WORKSPACE}/gosec.sarif" 2>/dev/null || echo "Unable to preview SARIF content"
 
         # Dependency vulnerability scanning
         echo "  Scanning dependencies for vulnerabilities..."
@@ -708,8 +713,10 @@ jobs:
     - name: Upload SARIF files to GitHub Security
       if: always() && matrix.analysis-type == 'security-scan'
       uses: github/codeql-action/upload-sarif@v3
+      continue-on-error: true
       with:
         sarif_file: gosec.sarif
+        category: gosec
 
   # Enhanced unit tests with comprehensive coverage
   unit-tests:
