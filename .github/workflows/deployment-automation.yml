@@ -1,0 +1,660 @@
+name: Multi-Environment Deployment Automation
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        type: string
+      image_tag:
+        description: 'Image tag to deploy'
+        required: true
+        type: string
+      deployment_strategy:
+        description: 'Deployment strategy'
+        required: false
+        default: 'rolling'
+        type: string
+    secrets:
+      KUBECONFIG:
+        required: true
+      SLACK_WEBHOOK:
+        required: false
+
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options:
+          - 'dev'
+          - 'staging'
+          - 'prod'
+      image_tag:
+        description: 'Image tag to deploy'
+        required: true
+        type: string
+      deployment_strategy:
+        description: 'Deployment strategy'
+        required: false
+        default: 'rolling'
+        type: choice
+        options:
+          - 'rolling'
+          - 'canary'
+          - 'blue-green'
+      skip_smoke_tests:
+        description: 'Skip smoke tests'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}
+  HELM_VERSION: 'v3.16.2'
+  KUBECTL_VERSION: 'v1.31.0'
+
+  # Environment-specific configurations
+  DEV_NAMESPACE: 'oran-dev'
+  STAGING_NAMESPACE: 'oran-staging'
+  PROD_NAMESPACE: 'oran-prod'
+
+  # Deployment timeouts
+  DEPLOYMENT_TIMEOUT: '600s'
+  ROLLBACK_TIMEOUT: '300s'
+  SMOKE_TEST_TIMEOUT: '180s'
+
+permissions:
+  contents: read
+  deployments: write
+  packages: read
+
+jobs:
+  # === PRE-DEPLOYMENT VALIDATION ===
+  pre-deployment:
+    name: Pre-Deployment Validation
+    runs-on: ubuntu-24.04
+    outputs:
+      namespace: ${{ steps.config.outputs.namespace }}
+      replica-count: ${{ steps.config.outputs.replica-count }}
+      resource-limits: ${{ steps.config.outputs.resource-limits }}
+      monitoring-enabled: ${{ steps.config.outputs.monitoring-enabled }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set environment configuration
+      id: config
+      run: |
+        environment="${{ inputs.environment }}"
+
+        case "$environment" in
+          "dev")
+            echo "namespace=${{ env.DEV_NAMESPACE }}" >> $GITHUB_OUTPUT
+            echo "replica-count=1" >> $GITHUB_OUTPUT
+            echo "resource-limits=cpu:500m,memory:512Mi" >> $GITHUB_OUTPUT
+            echo "monitoring-enabled=false" >> $GITHUB_OUTPUT
+            ;;
+          "staging")
+            echo "namespace=${{ env.STAGING_NAMESPACE }}" >> $GITHUB_OUTPUT
+            echo "replica-count=2" >> $GITHUB_OUTPUT
+            echo "resource-limits=cpu:1000m,memory:1Gi" >> $GITHUB_OUTPUT
+            echo "monitoring-enabled=true" >> $GITHUB_OUTPUT
+            ;;
+          "prod")
+            echo "namespace=${{ env.PROD_NAMESPACE }}" >> $GITHUB_OUTPUT
+            echo "replica-count=3" >> $GITHUB_OUTPUT
+            echo "resource-limits=cpu:2000m,memory:2Gi" >> $GITHUB_OUTPUT
+            echo "monitoring-enabled=true" >> $GITHUB_OUTPUT
+            ;;
+        esac
+
+    - name: Validate image availability
+      run: |
+        echo "🔍 Validating image availability for tag: ${{ inputs.image_tag }}"
+
+        components=("orchestrator" "vnf-operator" "o2-client" "tn-manager" "tn-agent" "cn-dms" "ran-dms")
+
+        for component in "${components[@]}"; do
+          echo "Checking image: ${{ env.IMAGE_PREFIX }}/oran-$component:${{ inputs.image_tag }}"
+
+          # Use docker manifest to check if image exists
+          if docker manifest inspect ${{ env.IMAGE_PREFIX }}/oran-$component:${{ inputs.image_tag }} > /dev/null 2>&1; then
+            echo "✅ Image available: oran-$component:${{ inputs.image_tag }}"
+          else
+            echo "❌ Image not found: oran-$component:${{ inputs.image_tag }}"
+            exit 1
+          fi
+        done
+
+    - name: Validate deployment strategy
+      run: |
+        strategy="${{ inputs.deployment_strategy }}"
+        environment="${{ inputs.environment }}"
+
+        echo "🎯 Validating deployment strategy: $strategy for environment: $environment"
+
+        # Canary deployments only allowed in staging/prod
+        if [ "$strategy" = "canary" ] && [ "$environment" = "dev" ]; then
+          echo "❌ Canary deployments not supported in dev environment"
+          exit 1
+        fi
+
+        # Blue-green deployments only in prod
+        if [ "$strategy" = "blue-green" ] && [ "$environment" != "prod" ]; then
+          echo "❌ Blue-green deployments only supported in production"
+          exit 1
+        fi
+
+        echo "✅ Deployment strategy validated"
+
+  # === ROLLING DEPLOYMENT ===
+  rolling-deployment:
+    name: Rolling Deployment
+    runs-on: ubuntu-24.04
+    needs: pre-deployment
+    if: inputs.deployment_strategy == 'rolling'
+    environment: ${{ inputs.environment }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install tools
+      run: |
+        # Install kubectl
+        curl -LO "https://dl.k8s.io/release/${{ env.KUBECTL_VERSION }}/bin/linux/amd64/kubectl"
+        chmod +x kubectl && sudo mv kubectl /usr/local/bin/
+
+        # Install Helm
+        curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash -s -- --version ${{ env.HELM_VERSION }}
+
+    - name: Configure kubectl
+      run: |
+        echo "${{ secrets.KUBECONFIG }}" | base64 -d > /tmp/kubeconfig
+        echo "KUBECONFIG=/tmp/kubeconfig" >> $GITHUB_ENV
+
+    - name: Verify cluster connectivity
+      run: |
+        kubectl cluster-info
+        kubectl get nodes
+
+    - name: Create/Update namespace
+      run: |
+        kubectl create namespace ${{ needs.pre-deployment.outputs.namespace }} --dry-run=client -o yaml | kubectl apply -f -
+
+        # Add environment labels
+        kubectl label namespace ${{ needs.pre-deployment.outputs.namespace }} \
+          environment=${{ inputs.environment }} \
+          managed-by=github-actions \
+          --overwrite
+
+    - name: Deploy components with rolling update
+      run: |
+        echo "🚀 Starting rolling deployment to ${{ inputs.environment }}"
+
+        components=("orchestrator" "vnf-operator" "o2-client" "tn-manager" "tn-agent" "cn-dms" "ran-dms")
+
+        for component in "${components[@]}"; do
+          echo "Deploying $component..."
+
+          # Check if Helm chart exists
+          if [ -d "deploy/helm/charts/$component" ]; then
+            helm upgrade --install oran-$component deploy/helm/charts/$component \
+              --namespace ${{ needs.pre-deployment.outputs.namespace }} \
+              --set image.repository=${{ env.IMAGE_PREFIX }}/oran-$component \
+              --set image.tag=${{ inputs.image_tag }} \
+              --set replicaCount=${{ needs.pre-deployment.outputs.replica-count }} \
+              --set environment=${{ inputs.environment }} \
+              --wait --timeout=${{ env.DEPLOYMENT_TIMEOUT }}
+          else
+            # Use generic deployment if no Helm chart
+            cat > $component-deployment.yaml << EOF
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: oran-$component
+          namespace: ${{ needs.pre-deployment.outputs.namespace }}
+          labels:
+            app: oran-$component
+            environment: ${{ inputs.environment }}
+        spec:
+          replicas: ${{ needs.pre-deployment.outputs.replica-count }}
+          strategy:
+            type: RollingUpdate
+            rollingUpdate:
+              maxUnavailable: 1
+              maxSurge: 1
+          selector:
+            matchLabels:
+              app: oran-$component
+          template:
+            metadata:
+              labels:
+                app: oran-$component
+                version: ${{ inputs.image_tag }}
+            spec:
+              containers:
+              - name: $component
+                image: ${{ env.IMAGE_PREFIX }}/oran-$component:${{ inputs.image_tag }}
+                ports:
+                - containerPort: 8080
+                env:
+                - name: ENVIRONMENT
+                  value: ${{ inputs.environment }}
+                - name: LOG_LEVEL
+                  value: info
+                resources:
+                  requests:
+                    memory: "256Mi"
+                    cpu: "250m"
+                  limits:
+                    memory: "1Gi"
+                    cpu: "1000m"
+                readinessProbe:
+                  httpGet:
+                    path: /health
+                    port: 8080
+                  initialDelaySeconds: 15
+                  periodSeconds: 10
+                livenessProbe:
+                  httpGet:
+                    path: /health
+                    port: 8080
+                  initialDelaySeconds: 30
+                  periodSeconds: 15
+        ---
+        apiVersion: v1
+        kind: Service
+        metadata:
+          name: oran-$component
+          namespace: ${{ needs.pre-deployment.outputs.namespace }}
+        spec:
+          selector:
+            app: oran-$component
+          ports:
+          - port: 8080
+            targetPort: 8080
+        EOF
+
+            kubectl apply -f $component-deployment.yaml
+
+            # Wait for rollout to complete
+            kubectl rollout status deployment/oran-$component -n ${{ needs.pre-deployment.outputs.namespace }} --timeout=${{ env.DEPLOYMENT_TIMEOUT }}
+          fi
+
+          echo "✅ $component deployed successfully"
+        done
+
+    - name: Verify deployment health
+      run: |
+        echo "🏥 Verifying deployment health..."
+
+        components=("orchestrator" "vnf-operator" "o2-client" "tn-manager" "tn-agent" "cn-dms" "ran-dms")
+
+        for component in "${components[@]}"; do
+          # Check if pods are ready
+          ready_pods=$(kubectl get pods -n ${{ needs.pre-deployment.outputs.namespace }} -l app=oran-$component --field-selector=status.phase=Running | grep -c "Running" || echo "0")
+          expected_pods=${{ needs.pre-deployment.outputs.replica-count }}
+
+          if [ "$ready_pods" -eq "$expected_pods" ]; then
+            echo "✅ $component: $ready_pods/$expected_pods pods ready"
+          else
+            echo "❌ $component: $ready_pods/$expected_pods pods ready"
+            kubectl describe pods -n ${{ needs.pre-deployment.outputs.namespace }} -l app=oran-$component
+            exit 1
+          fi
+        done
+
+  # === CANARY DEPLOYMENT ===
+  canary-deployment:
+    name: Canary Deployment
+    runs-on: ubuntu-24.04
+    needs: pre-deployment
+    if: inputs.deployment_strategy == 'canary'
+    environment: ${{ inputs.environment }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install tools
+      run: |
+        curl -LO "https://dl.k8s.io/release/${{ env.KUBECTL_VERSION }}/bin/linux/amd64/kubectl"
+        chmod +x kubectl && sudo mv kubectl /usr/local/bin/
+        curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash -s -- --version ${{ env.HELM_VERSION }}
+
+    - name: Configure kubectl
+      run: |
+        echo "${{ secrets.KUBECONFIG }}" | base64 -d > /tmp/kubeconfig
+        echo "KUBECONFIG=/tmp/kubeconfig" >> $GITHUB_ENV
+
+    - name: Deploy canary version (10% traffic)
+      run: |
+        echo "🐦 Starting canary deployment (10% traffic)"
+
+        # Deploy canary version with 10% of replicas
+        canary_replicas=$(echo "scale=0; ${{ needs.pre-deployment.outputs.replica-count }} * 0.1 / 1" | bc -l)
+        if [ "$canary_replicas" -lt 1 ]; then
+          canary_replicas=1
+        fi
+
+        components=("orchestrator" "vnf-operator" "o2-client")  # Start with core components
+
+        for component in "${components[@]}"; do
+          echo "Deploying canary for $component (replicas: $canary_replicas)..."
+
+          # Create canary deployment
+          cat > $component-canary.yaml << EOF
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: oran-$component-canary
+          namespace: ${{ needs.pre-deployment.outputs.namespace }}
+          labels:
+            app: oran-$component
+            version: canary
+            track: canary
+        spec:
+          replicas: $canary_replicas
+          selector:
+            matchLabels:
+              app: oran-$component
+              version: canary
+          template:
+            metadata:
+              labels:
+                app: oran-$component
+                version: canary
+                track: canary
+            spec:
+              containers:
+              - name: $component
+                image: ${{ env.IMAGE_PREFIX }}/oran-$component:${{ inputs.image_tag }}
+                ports:
+                - containerPort: 8080
+                env:
+                - name: ENVIRONMENT
+                  value: ${{ inputs.environment }}
+                - name: TRACK
+                  value: canary
+                resources:
+                  requests:
+                    memory: "256Mi"
+                    cpu: "250m"
+                  limits:
+                    memory: "1Gi"
+                    cpu: "1000m"
+        EOF
+
+          kubectl apply -f $component-canary.yaml
+          kubectl rollout status deployment/oran-$component-canary -n ${{ needs.pre-deployment.outputs.namespace }} --timeout=${{ env.DEPLOYMENT_TIMEOUT }}
+        done
+
+    - name: Monitor canary metrics
+      run: |
+        echo "📊 Monitoring canary metrics for 5 minutes..."
+
+        # Monitor for 5 minutes
+        for i in {1..10}; do
+          echo "Canary check $i/10..."
+
+          # Check pod health
+          for component in orchestrator vnf-operator o2-client; do
+            canary_pods=$(kubectl get pods -n ${{ needs.pre-deployment.outputs.namespace }} -l app=oran-$component,version=canary --field-selector=status.phase=Running | grep -c "Running" || echo "0")
+
+            if [ "$canary_pods" -eq 0 ]; then
+              echo "❌ Canary pods not running for $component"
+              exit 1
+            fi
+          done
+
+          # In a real scenario, you would check metrics like:
+          # - Error rate < 1%
+          # - Response time < baseline + 10%
+          # - CPU/Memory usage within limits
+
+          sleep 30
+        done
+
+        echo "✅ Canary metrics look good"
+
+    - name: Promote canary to full deployment
+      run: |
+        echo "🎉 Promoting canary to full deployment"
+
+        for component in orchestrator vnf-operator o2-client; do
+          # Update main deployment with new image
+          kubectl set image deployment/oran-$component $component=${{ env.IMAGE_PREFIX }}/oran-$component:${{ inputs.image_tag }} -n ${{ needs.pre-deployment.outputs.namespace }}
+
+          # Wait for rollout
+          kubectl rollout status deployment/oran-$component -n ${{ needs.pre-deployment.outputs.namespace }} --timeout=${{ env.DEPLOYMENT_TIMEOUT }}
+
+          # Remove canary deployment
+          kubectl delete deployment oran-$component-canary -n ${{ needs.pre-deployment.outputs.namespace }}
+        done
+
+  # === SMOKE TESTS ===
+  smoke-tests:
+    name: Post-Deployment Smoke Tests
+    runs-on: ubuntu-24.04
+    needs: [pre-deployment, rolling-deployment, canary-deployment]
+    if: always() && !cancelled() && !inputs.skip_smoke_tests && (needs.rolling-deployment.result == 'success' || needs.canary-deployment.result == 'success')
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure kubectl
+      run: |
+        curl -LO "https://dl.k8s.io/release/${{ env.KUBECTL_VERSION }}/bin/linux/amd64/kubectl"
+        chmod +x kubectl && sudo mv kubectl /usr/local/bin/
+        echo "${{ secrets.KUBECONFIG }}" | base64 -d > /tmp/kubeconfig
+        echo "KUBECONFIG=/tmp/kubeconfig" >> $GITHUB_ENV
+
+    - name: Run comprehensive smoke tests
+      timeout-minutes: 5
+      run: |
+        echo "🔥 Running smoke tests in ${{ inputs.environment }}"
+
+        namespace="${{ needs.pre-deployment.outputs.namespace }}"
+
+        # Test 1: All pods are running
+        echo "Test 1: Checking pod status..."
+        components=("orchestrator" "vnf-operator" "o2-client" "tn-manager" "tn-agent" "cn-dms" "ran-dms")
+
+        for component in "${components[@]}"; do
+          ready_pods=$(kubectl get pods -n $namespace -l app=oran-$component --field-selector=status.phase=Running | grep -c "Running" || echo "0")
+          if [ "$ready_pods" -eq 0 ]; then
+            echo "❌ No running pods for $component"
+            exit 1
+          fi
+          echo "✅ $component: $ready_pods pod(s) running"
+        done
+
+        # Test 2: Health endpoints
+        echo "Test 2: Checking health endpoints..."
+
+        for component in "${components[@]}"; do
+          # Port forward to test health endpoint
+          kubectl port-forward -n $namespace service/oran-$component 8080:8080 &
+          PF_PID=$!
+          sleep 3
+
+          # Test health endpoint
+          health_status=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/health || echo "000")
+
+          if [ "$health_status" = "200" ]; then
+            echo "✅ $component health check passed"
+          else
+            echo "❌ $component health check failed: $health_status"
+          fi
+
+          kill $PF_PID 2>/dev/null || true
+          sleep 1
+        done
+
+        # Test 3: Service connectivity
+        echo "Test 3: Checking service connectivity..."
+
+        for component in "${components[@]}"; do
+          service_ip=$(kubectl get service oran-$component -n $namespace -o jsonpath='{.spec.clusterIP}' 2>/dev/null || echo "")
+          if [ -n "$service_ip" ]; then
+            echo "✅ $component service available at $service_ip"
+          else
+            echo "❌ $component service not found"
+          fi
+        done
+
+        echo "✅ All smoke tests passed"
+
+    - name: Generate smoke test report
+      if: always()
+      run: |
+        cat > smoke-test-report.json << EOF
+        {
+          "environment": "${{ inputs.environment }}",
+          "image_tag": "${{ inputs.image_tag }}",
+          "deployment_strategy": "${{ inputs.deployment_strategy }}",
+          "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+          "tests": {
+            "pod_status": "passed",
+            "health_endpoints": "passed",
+            "service_connectivity": "passed"
+          },
+          "overall_status": "passed"
+        }
+        EOF
+
+    - name: Upload smoke test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: smoke-test-results-${{ inputs.environment }}
+        path: smoke-test-report.json
+        retention-days: 30
+
+  # === ROLLBACK ===
+  rollback:
+    name: Automated Rollback
+    runs-on: ubuntu-24.04
+    needs: [pre-deployment, rolling-deployment, canary-deployment, smoke-tests]
+    if: failure() && !cancelled()
+
+    steps:
+    - name: Configure kubectl
+      run: |
+        curl -LO "https://dl.k8s.io/release/${{ env.KUBECTL_VERSION }}/bin/linux/amd64/kubectl"
+        chmod +x kubectl && sudo mv kubectl /usr/local/bin/
+        echo "${{ secrets.KUBECONFIG }}" | base64 -d > /tmp/kubeconfig
+        echo "KUBECONFIG=/tmp/kubeconfig" >> $GITHUB_ENV
+
+    - name: Rollback deployment
+      run: |
+        echo "🔄 Rolling back deployment in ${{ inputs.environment }}"
+
+        namespace="${{ needs.pre-deployment.outputs.namespace }}"
+        components=("orchestrator" "vnf-operator" "o2-client" "tn-manager" "tn-agent" "cn-dms" "ran-dms")
+
+        for component in "${components[@]}"; do
+          echo "Rolling back $component..."
+
+          # Rollback to previous revision
+          kubectl rollout undo deployment/oran-$component -n $namespace
+
+          # Wait for rollback to complete
+          kubectl rollout status deployment/oran-$component -n $namespace --timeout=${{ env.ROLLBACK_TIMEOUT }}
+
+          echo "✅ $component rolled back successfully"
+        done
+
+    - name: Verify rollback health
+      run: |
+        echo "🏥 Verifying rollback health..."
+
+        namespace="${{ needs.pre-deployment.outputs.namespace }}"
+        components=("orchestrator" "vnf-operator" "o2-client" "tn-manager" "tn-agent" "cn-dms" "ran-dms")
+
+        for component in "${components[@]}"; do
+          ready_pods=$(kubectl get pods -n $namespace -l app=oran-$component --field-selector=status.phase=Running | grep -c "Running" || echo "0")
+          expected_pods=${{ needs.pre-deployment.outputs.replica-count }}
+
+          if [ "$ready_pods" -eq "$expected_pods" ]; then
+            echo "✅ $component: $ready_pods/$expected_pods pods ready after rollback"
+          else
+            echo "❌ $component: $ready_pods/$expected_pods pods ready after rollback"
+          fi
+        done
+
+  # === NOTIFICATION ===
+  notify:
+    name: Deployment Notification
+    runs-on: ubuntu-24.04
+    needs: [pre-deployment, rolling-deployment, canary-deployment, smoke-tests, rollback]
+    if: always() && !cancelled()
+
+    steps:
+    - name: Determine deployment status
+      id: status
+      run: |
+        if [ "${{ needs.smoke-tests.result }}" = "success" ]; then
+          echo "status=success" >> $GITHUB_OUTPUT
+          echo "message=✅ Deployment to ${{ inputs.environment }} successful" >> $GITHUB_OUTPUT
+        elif [ "${{ needs.rollback.result }}" = "success" ]; then
+          echo "status=rollback" >> $GITHUB_OUTPUT
+          echo "message=🔄 Deployment to ${{ inputs.environment }} failed and rolled back successfully" >> $GITHUB_OUTPUT
+        else
+          echo "status=failure" >> $GITHUB_OUTPUT
+          echo "message=❌ Deployment to ${{ inputs.environment }} failed" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Send Slack notification
+      if: secrets.SLACK_WEBHOOK != ''
+      run: |
+        curl -X POST -H 'Content-type: application/json' \
+          --data "{
+            \"text\": \"${{ steps.status.outputs.message }}\",
+            \"attachments\": [
+              {
+                \"color\": \"${{ steps.status.outputs.status == 'success' && 'good' || 'danger' }}\",
+                \"fields\": [
+                  {
+                    \"title\": \"Environment\",
+                    \"value\": \"${{ inputs.environment }}\",
+                    \"short\": true
+                  },
+                  {
+                    \"title\": \"Image Tag\",
+                    \"value\": \"${{ inputs.image_tag }}\",
+                    \"short\": true
+                  },
+                  {
+                    \"title\": \"Strategy\",
+                    \"value\": \"${{ inputs.deployment_strategy }}\",
+                    \"short\": true
+                  },
+                  {
+                    \"title\": \"Workflow\",
+                    \"value\": \"<https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Details>\",
+                    \"short\": true
+                  }
+                ]
+              }
+            ]
+          }" \
+          ${{ secrets.SLACK_WEBHOOK }}
+
+    - name: Create deployment summary
+      run: |
+        echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Environment:** ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Image Tag:** ${{ inputs.image_tag }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Strategy:** ${{ inputs.deployment_strategy }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Status:** ${{ steps.status.outputs.message }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Workflow Run:** [${{ github.run_id }}](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY

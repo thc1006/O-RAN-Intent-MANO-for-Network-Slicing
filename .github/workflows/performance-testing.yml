@@ -1,0 +1,1125 @@
+name: Comprehensive Performance Testing
+
+on:
+  workflow_call:
+    inputs:
+      test_duration:
+        description: 'Test duration in minutes'
+        required: false
+        default: '10'
+        type: string
+      load_profile:
+        description: 'Load testing profile'
+        required: false
+        default: 'moderate'
+        type: string
+
+  workflow_dispatch:
+    inputs:
+      test_duration:
+        description: 'Test duration in minutes'
+        required: false
+        default: '10'
+        type: string
+      load_profile:
+        description: 'Load testing profile'
+        required: false
+        default: 'moderate'
+        type: choice
+        options:
+          - 'light'
+          - 'moderate'
+          - 'heavy'
+          - 'stress'
+      test_scenarios:
+        description: 'Test scenarios to run'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - 'all'
+          - 'network-slicing'
+          - 'vnf-management'
+          - 'orchestration'
+          - 'scaling'
+      target_environment:
+        description: 'Target environment'
+        required: false
+        default: 'staging'
+        type: choice
+        options:
+          - 'staging'
+          - 'prod'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}
+
+  # Performance test tools
+  K6_VERSION: 'v0.53.0'
+  ARTILLERY_VERSION: '2.0.20'
+
+  # Kubernetes tools
+  KIND_VERSION: 'v0.23.0'
+  KUBECTL_VERSION: 'v1.31.0'
+  HELM_VERSION: 'v3.16.2'
+
+  # Performance targets (from thesis requirements)
+  URLLC_THROUGHPUT_TARGET: '4.57'    # Mbps
+  EMBB_THROUGHPUT_TARGET: '2.77'     # Mbps
+  MMTC_THROUGHPUT_TARGET: '0.93'     # Mbps
+  URLLC_LATENCY_TARGET: '6.3'        # ms
+  EMBB_LATENCY_TARGET: '15.7'        # ms
+  MMTC_LATENCY_TARGET: '16.1'        # ms
+  DEPLOYMENT_TIME_TARGET: '480'      # seconds (8 minutes)
+  SCALING_TIME_TARGET: '60'          # seconds
+
+  # Load profiles
+  LIGHT_LOAD_VUS: '10'
+  MODERATE_LOAD_VUS: '50'
+  HEAVY_LOAD_VUS: '100'
+  STRESS_LOAD_VUS: '200'
+
+permissions:
+  contents: read
+  packages: read
+  actions: read
+
+jobs:
+  # === PERFORMANCE TEST SETUP ===
+  setup-performance-environment:
+    name: Setup Performance Test Environment
+    runs-on: ubuntu-24.04
+    outputs:
+      cluster-ready: ${{ steps.cluster.outputs.ready }}
+      load-config: ${{ steps.load.outputs.config }}
+      test-plan: ${{ steps.plan.outputs.plan }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install test infrastructure
+      run: |
+        echo "🔧 Installing performance test infrastructure..."
+
+        # Install Kind for test cluster
+        curl -Lo ./kind https://kind.sigs.k8s.io/dl/${{ env.KIND_VERSION }}/kind-linux-amd64
+        chmod +x ./kind && sudo mv ./kind /usr/local/bin/kind
+
+        # Install kubectl
+        curl -LO "https://dl.k8s.io/release/${{ env.KUBECTL_VERSION }}/bin/linux/amd64/kubectl"
+        chmod +x kubectl && sudo mv kubectl /usr/local/bin/
+
+        # Install Helm
+        curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash -s -- --version ${{ env.HELM_VERSION }}
+
+        # Install performance testing tools
+        sudo apt-get update
+        sudo apt-get install -y iperf3 wrk apache2-utils bc jq
+
+        # Install K6
+        curl -L https://github.com/grafana/k6/releases/download/${{ env.K6_VERSION }}/k6-${{ env.K6_VERSION }}-linux-amd64.tar.gz | tar xvz
+        sudo mv k6-${{ env.K6_VERSION }}-linux-amd64/k6 /usr/local/bin/
+
+        # Install Node.js for Artillery
+        curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+        sudo apt-get install -y nodejs
+        npm install -g artillery@${{ env.ARTILLERY_VERSION }}
+
+    - name: Create performance test cluster
+      id: cluster
+      run: |
+        echo "🚀 Creating performance test cluster..."
+
+        # Create multi-node cluster for realistic performance testing
+        cat > kind-perf-config.yaml << EOF
+        kind: Cluster
+        apiVersion: kind.x-k8s.io/v1alpha4
+        nodes:
+        - role: control-plane
+          kubeadmConfigPatches:
+          - |
+            kind: InitConfiguration
+            nodeRegistration:
+              kubeletExtraArgs:
+                node-labels: "ingress-ready=true"
+          extraPortMappings:
+          - containerPort: 80
+            hostPort: 80
+            protocol: TCP
+          - containerPort: 443
+            hostPort: 443
+            protocol: TCP
+          - containerPort: 30080
+            hostPort: 30080
+            protocol: TCP
+        - role: worker
+          labels:
+            performance-node: "true"
+        - role: worker
+          labels:
+            performance-node: "true"
+        - role: worker
+          labels:
+            performance-node: "true"
+        EOF
+
+        # Create cluster with optimized settings
+        kind create cluster --name perf-test --config kind-perf-config.yaml --wait 300s
+
+        # Verify cluster
+        kubectl cluster-info --context kind-perf-test
+        kubectl get nodes
+
+        echo "ready=true" >> $GITHUB_OUTPUT
+
+    - name: Configure load testing parameters
+      id: load
+      run: |
+        echo "⚙️ Configuring load testing parameters..."
+
+        profile="${{ inputs.load_profile }}"
+
+        case "$profile" in
+          "light")
+            vus="${{ env.LIGHT_LOAD_VUS }}"
+            rps="50"
+            duration="5m"
+            ;;
+          "moderate")
+            vus="${{ env.MODERATE_LOAD_VUS }}"
+            rps="200"
+            duration="${{ inputs.test_duration }}m"
+            ;;
+          "heavy")
+            vus="${{ env.HEAVY_LOAD_VUS }}"
+            rps="500"
+            duration="${{ inputs.test_duration }}m"
+            ;;
+          "stress")
+            vus="${{ env.STRESS_LOAD_VUS }}"
+            rps="1000"
+            duration="${{ inputs.test_duration }}m"
+            ;;
+        esac
+
+        config=$(cat << EOF
+        {
+          "virtual_users": $vus,
+          "requests_per_second": $rps,
+          "duration": "$duration",
+          "ramp_up_time": "2m",
+          "profile": "$profile"
+        }
+        EOF
+        )
+
+        echo "config=$config" >> $GITHUB_OUTPUT
+        echo "Load configuration: $config"
+
+    - name: Generate performance test plan
+      id: plan
+      run: |
+        echo "📋 Generating performance test plan..."
+
+        scenarios="${{ inputs.test_scenarios }}"
+
+        test_plan=$(cat << EOF
+        {
+          "scenarios": {
+            "network_slicing": $([ "$scenarios" = "all" ] || [ "$scenarios" = "network-slicing" ] && echo "true" || echo "false"),
+            "vnf_management": $([ "$scenarios" = "all" ] || [ "$scenarios" = "vnf-management" ] && echo "true" || echo "false"),
+            "orchestration": $([ "$scenarios" = "all" ] || [ "$scenarios" = "orchestration" ] && echo "true" || echo "false"),
+            "scaling": $([ "$scenarios" = "all" ] || [ "$scenarios" = "scaling" ] && echo "true" || echo "false")
+          },
+          "duration_minutes": ${{ inputs.test_duration }},
+          "target_environment": "${{ inputs.target_environment }}"
+        }
+        EOF
+        )
+
+        echo "plan=$test_plan" >> $GITHUB_OUTPUT
+        echo "Test plan: $test_plan"
+
+  # === DEPLOY PERFORMANCE TEST WORKLOAD ===
+  deploy-test-workload:
+    name: Deploy Performance Test Workload
+    runs-on: ubuntu-24.04
+    needs: setup-performance-environment
+    if: needs.setup-performance-environment.outputs.cluster-ready == 'true'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup kubectl
+      run: |
+        curl -LO "https://dl.k8s.io/release/${{ env.KUBECTL_VERSION }}/bin/linux/amd64/kubectl"
+        chmod +x kubectl && sudo mv kubectl /usr/local/bin/
+
+        # Set context to performance test cluster
+        kubectl config use-context kind-perf-test
+
+    - name: Deploy O-RAN MANO components
+      run: |
+        echo "🚀 Deploying O-RAN MANO components for performance testing..."
+
+        # Create performance test namespace
+        kubectl create namespace oran-perf --dry-run=client -o yaml | kubectl apply -f -
+
+        # Label namespace for performance testing
+        kubectl label namespace oran-perf \
+          test-type=performance \
+          load-profile=${{ inputs.load_profile }} \
+          --overwrite
+
+        # Deploy components with performance-optimized configurations
+        components=("orchestrator" "vnf-operator" "o2-client" "tn-manager" "tn-agent")
+
+        for component in "${components[@]}"; do
+          echo "Deploying $component for performance testing..."
+
+          cat > $component-perf.yaml << EOF
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: oran-$component
+          namespace: oran-perf
+          labels:
+            app: oran-$component
+            test-type: performance
+        spec:
+          replicas: 3
+          selector:
+            matchLabels:
+              app: oran-$component
+          template:
+            metadata:
+              labels:
+                app: oran-$component
+            spec:
+              nodeSelector:
+                performance-node: "true"
+              containers:
+              - name: $component
+                image: ${{ env.IMAGE_PREFIX }}/oran-$component:latest
+                ports:
+                - containerPort: 8080
+                env:
+                - name: ENVIRONMENT
+                  value: performance
+                - name: LOG_LEVEL
+                  value: warn  # Reduce logging for performance
+                - name: METRICS_ENABLED
+                  value: "true"
+                - name: PROFILING_ENABLED
+                  value: "true"
+                resources:
+                  requests:
+                    memory: "512Mi"
+                    cpu: "500m"
+                  limits:
+                    memory: "2Gi"
+                    cpu: "2000m"
+                readinessProbe:
+                  httpGet:
+                    path: /health
+                    port: 8080
+                  initialDelaySeconds: 10
+                  periodSeconds: 5
+                livenessProbe:
+                  httpGet:
+                    path: /health
+                    port: 8080
+                  initialDelaySeconds: 30
+                  periodSeconds: 10
+        ---
+        apiVersion: v1
+        kind: Service
+        metadata:
+          name: oran-$component
+          namespace: oran-perf
+        spec:
+          selector:
+            app: oran-$component
+          ports:
+          - port: 8080
+            targetPort: 8080
+          type: ClusterIP
+        EOF
+
+          kubectl apply -f $component-perf.yaml
+        done
+
+        # Wait for all deployments to be ready
+        echo "Waiting for deployments to be ready..."
+        for component in "${components[@]}"; do
+          kubectl wait --for=condition=available deployment/oran-$component -n oran-perf --timeout=300s
+        done
+
+    - name: Deploy monitoring stack
+      run: |
+        echo "📊 Deploying monitoring stack for performance testing..."
+
+        # Deploy Prometheus for metrics collection
+        cat > prometheus-config.yaml << EOF
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: prometheus-config
+          namespace: oran-perf
+        data:
+          prometheus.yml: |
+            global:
+              scrape_interval: 5s
+            scrape_configs:
+            - job_name: 'oran-components'
+              kubernetes_sd_configs:
+              - role: endpoints
+                namespaces:
+                  names:
+                  - oran-perf
+              relabel_configs:
+              - source_labels: [__meta_kubernetes_service_name]
+                action: keep
+                regex: oran-.*
+        ---
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: prometheus
+          namespace: oran-perf
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              app: prometheus
+          template:
+            metadata:
+              labels:
+                app: prometheus
+            spec:
+              containers:
+              - name: prometheus
+                image: prom/prometheus:latest
+                ports:
+                - containerPort: 9090
+                volumeMounts:
+                - name: config
+                  mountPath: /etc/prometheus
+                args:
+                - --config.file=/etc/prometheus/prometheus.yml
+                - --storage.tsdb.path=/prometheus
+                - --web.console.libraries=/etc/prometheus/console_libraries
+                - --web.console.templates=/etc/prometheus/consoles
+              volumes:
+              - name: config
+                configMap:
+                  name: prometheus-config
+        ---
+        apiVersion: v1
+        kind: Service
+        metadata:
+          name: prometheus
+          namespace: oran-perf
+        spec:
+          selector:
+            app: prometheus
+          ports:
+          - port: 9090
+            targetPort: 9090
+        EOF
+
+        kubectl apply -f prometheus-config.yaml
+        kubectl wait --for=condition=available deployment/prometheus -n oran-perf --timeout=180s
+
+  # === NETWORK SLICING PERFORMANCE TESTS ===
+  network-slicing-performance:
+    name: Network Slicing Performance Tests
+    runs-on: ubuntu-24.04
+    needs: [setup-performance-environment, deploy-test-workload]
+    if: fromJson(needs.setup-performance-environment.outputs.test-plan).scenarios.network_slicing
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup test tools
+      run: |
+        curl -LO "https://dl.k8s.io/release/${{ env.KUBECTL_VERSION }}/bin/linux/amd64/kubectl"
+        chmod +x kubectl && sudo mv kubectl /usr/local/bin/
+        kubectl config use-context kind-perf-test
+
+        # Install K6
+        curl -L https://github.com/grafana/k6/releases/download/${{ env.K6_VERSION }}/k6-${{ env.K6_VERSION }}-linux-amd64.tar.gz | tar xvz
+        sudo mv k6-${{ env.K6_VERSION }}-linux-amd64/k6 /usr/local/bin/
+
+        sudo apt-get update && sudo apt-get install -y iperf3 bc jq
+
+    - name: Create network slicing test script
+      run: |
+        echo "📜 Creating network slicing performance test script..."
+
+        load_config='${{ needs.setup-performance-environment.outputs.load-config }}'
+        vus=$(echo "$load_config" | jq -r '.virtual_users')
+        duration=$(echo "$load_config" | jq -r '.duration')
+
+        cat > network-slicing-test.js << EOF
+        import http from 'k6/http';
+        import { check, sleep } from 'k6';
+        import { Rate, Trend } from 'k6/metrics';
+
+        // Custom metrics
+        const sliceCreationRate = new Rate('slice_creation_success');
+        const sliceCreationTime = new Trend('slice_creation_duration');
+        const sliceThroughput = new Trend('slice_throughput_mbps');
+        const sliceLatency = new Trend('slice_latency_ms');
+
+        export let options = {
+          vus: $vus,
+          duration: '$duration',
+          thresholds: {
+            'slice_creation_success': ['rate>0.95'],
+            'slice_creation_duration': ['p(95)<${{ env.DEPLOYMENT_TIME_TARGET }}000'],
+            'slice_throughput_mbps': ['p(50)>${{ env.URLLC_THROUGHPUT_TARGET }}'],
+            'slice_latency_ms': ['p(95)<${{ env.URLLC_LATENCY_TARGET }}'],
+          },
+        };
+
+        const BASE_URL = 'http://localhost:30080';
+
+        export default function() {
+          // Test URLLC slice creation
+          const urllcSlice = {
+            type: 'URLLC',
+            requirements: {
+              latency: '${{ env.URLLC_LATENCY_TARGET }}',
+              throughput: '${{ env.URLLC_THROUGHPUT_TARGET }}',
+              reliability: '99.999'
+            }
+          };
+
+          const startTime = Date.now();
+
+          const response = http.post(\`\${BASE_URL}/api/v1/slices\`, JSON.stringify(urllcSlice), {
+            headers: { 'Content-Type': 'application/json' },
+          });
+
+          const duration = Date.now() - startTime;
+          sliceCreationTime.add(duration);
+
+          const success = check(response, {
+            'slice creation status is 201': (r) => r.status === 201,
+            'response has slice ID': (r) => r.json('id') !== undefined,
+          });
+
+          sliceCreationRate.add(success);
+
+          if (success) {
+            const sliceId = response.json('id');
+
+            // Test slice performance
+            sleep(1); // Allow slice to initialize
+
+            const perfResponse = http.get(\`\${BASE_URL}/api/v1/slices/\${sliceId}/metrics\`);
+
+            if (perfResponse.status === 200) {
+              const metrics = perfResponse.json();
+              if (metrics.throughput) {
+                sliceThroughput.add(metrics.throughput);
+              }
+              if (metrics.latency) {
+                sliceLatency.add(metrics.latency);
+              }
+            }
+
+            // Cleanup - delete slice
+            http.del(\`\${BASE_URL}/api/v1/slices/\${sliceId}\`);
+          }
+
+          sleep(1);
+        }
+        EOF
+
+    - name: Run network slicing performance tests
+      run: |
+        echo "🚀 Running network slicing performance tests..."
+
+        # Setup port forwarding to orchestrator
+        kubectl port-forward -n oran-perf service/oran-orchestrator 30080:8080 &
+        PF_PID=$!
+        sleep 5
+
+        # Run K6 test
+        k6 run network-slicing-test.js --out json=network-slicing-results.json
+
+        # Stop port forwarding
+        kill $PF_PID 2>/dev/null || true
+
+    - name: Analyze network slicing results
+      run: |
+        echo "📊 Analyzing network slicing performance results..."
+
+        if [ -f "network-slicing-results.json" ]; then
+          # Extract key metrics
+          slice_creation_success=$(jq -r '.metrics.slice_creation_success.values.rate' network-slicing-results.json 2>/dev/null || echo "0")
+          avg_creation_time=$(jq -r '.metrics.slice_creation_duration.values.avg' network-slicing-results.json 2>/dev/null || echo "0")
+          p95_creation_time=$(jq -r '.metrics.slice_creation_duration.values["p(95)"]' network-slicing-results.json 2>/dev/null || echo "0")
+          avg_throughput=$(jq -r '.metrics.slice_throughput_mbps.values.avg' network-slicing-results.json 2>/dev/null || echo "0")
+          p95_latency=$(jq -r '.metrics.slice_latency_ms.values["p(95)"]' network-slicing-results.json 2>/dev/null || echo "0")
+
+          # Generate performance report
+          cat > network-slicing-performance-report.json << EOF
+        {
+          "test_type": "network_slicing",
+          "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+          "load_profile": "${{ inputs.load_profile }}",
+          "duration_minutes": ${{ inputs.test_duration }},
+          "metrics": {
+            "slice_creation_success_rate": ${slice_creation_success:-0},
+            "avg_creation_time_ms": ${avg_creation_time:-0},
+            "p95_creation_time_ms": ${p95_creation_time:-0},
+            "avg_throughput_mbps": ${avg_throughput:-0},
+            "p95_latency_ms": ${p95_latency:-0}
+          },
+          "targets": {
+            "creation_time_target_ms": ${{ env.DEPLOYMENT_TIME_TARGET }}000,
+            "throughput_target_mbps": ${{ env.URLLC_THROUGHPUT_TARGET }},
+            "latency_target_ms": ${{ env.URLLC_LATENCY_TARGET }}
+          },
+          "quality_gates": {
+            "creation_success_rate": $(echo "$slice_creation_success >= 0.95" | bc -l | sed 's/1/passed/;s/0/failed/'),
+            "creation_time_gate": $(echo "$p95_creation_time <= (${{ env.DEPLOYMENT_TIME_TARGET }} * 1000)" | bc -l | sed 's/1/passed/;s/0/failed/'),
+            "throughput_gate": $(echo "$avg_throughput >= ${{ env.URLLC_THROUGHPUT_TARGET }}" | bc -l | sed 's/1/passed/;s/0/failed/'),
+            "latency_gate": $(echo "$p95_latency <= ${{ env.URLLC_LATENCY_TARGET }}" | bc -l | sed 's/1/passed/;s/0/failed/')
+          }
+        }
+        EOF
+
+          echo "Network Slicing Performance Results:"
+          echo "  Success Rate: ${slice_creation_success:-0}%"
+          echo "  Avg Creation Time: ${avg_creation_time:-0}ms"
+          echo "  P95 Creation Time: ${p95_creation_time:-0}ms"
+          echo "  Avg Throughput: ${avg_throughput:-0} Mbps"
+          echo "  P95 Latency: ${p95_latency:-0}ms"
+        fi
+
+    - name: Upload network slicing results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: network-slicing-performance-results
+        path: |
+          network-slicing-results.json
+          network-slicing-performance-report.json
+        retention-days: 30
+
+  # === VNF MANAGEMENT PERFORMANCE TESTS ===
+  vnf-management-performance:
+    name: VNF Management Performance Tests
+    runs-on: ubuntu-24.04
+    needs: [setup-performance-environment, deploy-test-workload]
+    if: fromJson(needs.setup-performance-environment.outputs.test-plan).scenarios.vnf_management
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup test environment
+      run: |
+        curl -LO "https://dl.k8s.io/release/${{ env.KUBECTL_VERSION }}/bin/linux/amd64/kubectl"
+        chmod +x kubectl && sudo mv kubectl /usr/local/bin/
+        kubectl config use-context kind-perf-test
+
+        # Install Artillery for VNF management testing
+        curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+        sudo apt-get install -y nodejs
+        npm install -g artillery@${{ env.ARTILLERY_VERSION }}
+
+    - name: Create VNF management test script
+      run: |
+        echo "📜 Creating VNF management performance test script..."
+
+        load_config='${{ needs.setup-performance-environment.outputs.load-config }}'
+        vus=$(echo "$load_config" | jq -r '.virtual_users')
+        rps=$(echo "$load_config" | jq -r '.requests_per_second')
+        duration=$(echo "$load_config" | jq -r '.duration')
+
+        cat > vnf-management-test.yml << EOF
+        config:
+          target: 'http://localhost:30081'
+          phases:
+            - duration: 60
+              arrivalRate: 10
+              name: Warm up
+            - duration: $duration
+              arrivalRate: $rps
+              name: Load test
+          processor: './processors.js'
+
+        scenarios:
+          - name: VNF Lifecycle Management
+            weight: 60
+            flow:
+              - post:
+                  url: '/api/v1/vnfs'
+                  json:
+                    name: 'test-vnf-{{ \$randomNumber() }}'
+                    type: 'firewall'
+                    image: 'nginx:latest'
+                    resources:
+                      cpu: '500m'
+                      memory: '512Mi'
+                  capture:
+                    - json: '\$.id'
+                      as: 'vnfId'
+              - think: 2
+              - get:
+                  url: '/api/v1/vnfs/{{ vnfId }}'
+                  capture:
+                    - json: '\$.status'
+                      as: 'vnfStatus'
+              - think: 1
+              - put:
+                  url: '/api/v1/vnfs/{{ vnfId }}/scale'
+                  json:
+                    replicas: 2
+              - think: 5
+              - delete:
+                  url: '/api/v1/vnfs/{{ vnfId }}'
+
+          - name: VNF Status Monitoring
+            weight: 40
+            flow:
+              - loop:
+                - get:
+                    url: '/api/v1/vnfs'
+                - think: 1
+                count: 10
+        EOF
+
+        # Create processor for custom logic
+        cat > processors.js << EOF
+        module.exports = {
+          setRandomNumber: function(requestParams, context, ee, next) {
+            context.vars.randomNumber = Math.floor(Math.random() * 10000);
+            return next();
+          }
+        };
+        EOF
+
+    - name: Run VNF management performance tests
+      run: |
+        echo "🚀 Running VNF management performance tests..."
+
+        # Setup port forwarding to VNF operator
+        kubectl port-forward -n oran-perf service/oran-vnf-operator 30081:8080 &
+        PF_PID=$!
+        sleep 5
+
+        # Run Artillery test
+        artillery run vnf-management-test.yml --output vnf-management-results.json
+
+        # Stop port forwarding
+        kill $PF_PID 2>/dev/null || true
+
+    - name: Generate VNF management report
+      run: |
+        echo "📊 Generating VNF management performance report..."
+
+        # Generate Artillery HTML report
+        artillery report vnf-management-results.json --output vnf-management-report.html
+
+        # Create summary report
+        cat > vnf-management-performance-report.json << EOF
+        {
+          "test_type": "vnf_management",
+          "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+          "load_profile": "${{ inputs.load_profile }}",
+          "duration_minutes": ${{ inputs.test_duration }},
+          "summary": "VNF management performance test completed",
+          "results_available": true
+        }
+        EOF
+
+    - name: Upload VNF management results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: vnf-management-performance-results
+        path: |
+          vnf-management-results.json
+          vnf-management-report.html
+          vnf-management-performance-report.json
+        retention-days: 30
+
+  # === ORCHESTRATION PERFORMANCE TESTS ===
+  orchestration-performance:
+    name: Orchestration Performance Tests
+    runs-on: ubuntu-24.04
+    needs: [setup-performance-environment, deploy-test-workload]
+    if: fromJson(needs.setup-performance-environment.outputs.test-plan).scenarios.orchestration
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup test environment
+      run: |
+        curl -LO "https://dl.k8s.io/release/${{ env.KUBECTL_VERSION }}/bin/linux/amd64/kubectl"
+        chmod +x kubectl && sudo mv kubectl /usr/local/bin/
+        kubectl config use-context kind-perf-test
+        sudo apt-get update && sudo apt-get install -y apache2-utils wrk bc jq
+
+    - name: Run orchestration stress tests
+      run: |
+        echo "🚀 Running orchestration performance tests..."
+
+        # Setup port forwarding to orchestrator
+        kubectl port-forward -n oran-perf service/oran-orchestrator 30082:8080 &
+        PF_PID=$!
+        sleep 5
+
+        load_config='${{ needs.setup-performance-environment.outputs.load-config }}'
+        rps=$(echo "$load_config" | jq -r '.requests_per_second')
+        duration_seconds=$(($(echo "$load_config" | jq -r '.duration' | sed 's/m//') * 60))
+
+        # Test orchestrator API endpoints with wrk
+        echo "Testing orchestrator API performance..."
+
+        # Health endpoint stress test
+        wrk -t4 -c$rps -d${duration_seconds}s --latency http://localhost:30082/health > orchestrator-health-results.txt
+
+        # Intent API stress test
+        wrk -t4 -c$rps -d${duration_seconds}s --latency \
+          -s <(cat << 'EOF'
+        wrk.method = "POST"
+        wrk.body = '{"intent": "create_slice", "type": "URLLC", "requirements": {"latency": 5, "throughput": 5}}'
+        wrk.headers["Content-Type"] = "application/json"
+        EOF
+        ) http://localhost:30082/api/v1/intents > orchestrator-intent-results.txt
+
+        kill $PF_PID 2>/dev/null || true
+
+    - name: Analyze orchestration results
+      run: |
+        echo "📊 Analyzing orchestration performance results..."
+
+        # Extract metrics from wrk results
+        if [ -f "orchestrator-health-results.txt" ]; then
+          health_rps=$(grep "Requests/sec:" orchestrator-health-results.txt | awk '{print $2}' || echo "0")
+          health_avg_latency=$(grep "Latency" orchestrator-health-results.txt | awk '{print $2}' | head -1 || echo "0")
+          health_p99_latency=$(grep "99%" orchestrator-health-results.txt | awk '{print $2}' || echo "0")
+        fi
+
+        if [ -f "orchestrator-intent-results.txt" ]; then
+          intent_rps=$(grep "Requests/sec:" orchestrator-intent-results.txt | awk '{print $2}' || echo "0")
+          intent_avg_latency=$(grep "Latency" orchestrator-intent-results.txt | awk '{print $2}' | head -1 || echo "0")
+          intent_p99_latency=$(grep "99%" orchestrator-intent-results.txt | awk '{print $2}' || echo "0")
+        fi
+
+        # Generate performance report
+        cat > orchestration-performance-report.json << EOF
+        {
+          "test_type": "orchestration",
+          "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+          "load_profile": "${{ inputs.load_profile }}",
+          "duration_minutes": ${{ inputs.test_duration }},
+          "metrics": {
+            "health_endpoint": {
+              "requests_per_second": ${health_rps:-0},
+              "avg_latency_ms": "${health_avg_latency:-0}",
+              "p99_latency_ms": "${health_p99_latency:-0}"
+            },
+            "intent_api": {
+              "requests_per_second": ${intent_rps:-0},
+              "avg_latency_ms": "${intent_avg_latency:-0}",
+              "p99_latency_ms": "${intent_p99_latency:-0}"
+            }
+          },
+          "quality_gates": {
+            "health_rps_sufficient": $(echo "${health_rps:-0} >= 100" | bc -l | sed 's/1/passed/;s/0/failed/'),
+            "intent_rps_sufficient": $(echo "${intent_rps:-0} >= 50" | bc -l | sed 's/1/passed/;s/0/failed/')
+          }
+        }
+        EOF
+
+        echo "Orchestration Performance Results:"
+        echo "  Health API RPS: ${health_rps:-0}"
+        echo "  Intent API RPS: ${intent_rps:-0}"
+
+    - name: Upload orchestration results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: orchestration-performance-results
+        path: |
+          orchestrator-*-results.txt
+          orchestration-performance-report.json
+        retention-days: 30
+
+  # === SCALING PERFORMANCE TESTS ===
+  scaling-performance:
+    name: Scaling Performance Tests
+    runs-on: ubuntu-24.04
+    needs: [setup-performance-environment, deploy-test-workload]
+    if: fromJson(needs.setup-performance-environment.outputs.test-plan).scenarios.scaling
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup test environment
+      run: |
+        curl -LO "https://dl.k8s.io/release/${{ env.KUBECTL_VERSION }}/bin/linux/amd64/kubectl"
+        chmod +x kubectl && sudo mv kubectl /usr/local/bin/
+        kubectl config use-context kind-perf-test
+
+    - name: Run horizontal scaling tests
+      run: |
+        echo "📈 Running horizontal scaling performance tests..."
+
+        # Test horizontal scaling of orchestrator
+        component="orchestrator"
+        namespace="oran-perf"
+
+        scaling_results=()
+
+        for target_replicas in 1 3 5 3 1; do
+          echo "Scaling $component to $target_replicas replicas..."
+
+          start_time=$(date +%s)
+
+          # Scale deployment
+          kubectl scale deployment/oran-$component --replicas=$target_replicas -n $namespace
+
+          # Wait for scaling to complete
+          kubectl wait --for=condition=available deployment/oran-$component -n $namespace --timeout=${{ env.SCALING_TIME_TARGET }}s
+
+          end_time=$(date +%s)
+          scaling_duration=$((end_time - start_time))
+
+          # Verify scaling
+          actual_replicas=$(kubectl get deployment/oran-$component -n $namespace -o jsonpath='{.status.readyReplicas}')
+
+          if [ "$actual_replicas" = "$target_replicas" ]; then
+            scaling_status="success"
+          else
+            scaling_status="failed"
+          fi
+
+          scaling_results+=("{\"target_replicas\": $target_replicas, \"actual_replicas\": ${actual_replicas:-0}, \"duration_seconds\": $scaling_duration, \"status\": \"$scaling_status\"}")
+
+          echo "  Scaling to $target_replicas: ${scaling_duration}s ($scaling_status)"
+
+          # Wait between scaling operations
+          sleep 10
+        done
+
+    - name: Run vertical scaling tests
+      run: |
+        echo "📊 Running vertical scaling performance tests..."
+
+        # Test resource limit changes
+        component="orchestrator"
+        namespace="oran-perf"
+
+        echo "Testing CPU scaling..."
+
+        # Scale CPU limits
+        kubectl patch deployment/oran-$component -n $namespace -p '{"spec":{"template":{"spec":{"containers":[{"name":"'$component'","resources":{"limits":{"cpu":"3000m"}}}]}}}}'
+
+        # Wait for rollout
+        kubectl rollout status deployment/oran-$component -n $namespace --timeout=60s
+
+        echo "CPU scaling completed"
+
+    - name: Generate scaling performance report
+      run: |
+        echo "📊 Generating scaling performance report..."
+
+        # Convert scaling results array to JSON
+        scaling_results_json="[$(IFS=','; echo "${scaling_results[*]}")]"
+
+        cat > scaling-performance-report.json << EOF
+        {
+          "test_type": "scaling",
+          "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+          "load_profile": "${{ inputs.load_profile }}",
+          "horizontal_scaling": {
+            "component": "orchestrator",
+            "results": $scaling_results_json,
+            "target_time_seconds": ${{ env.SCALING_TIME_TARGET }}
+          },
+          "vertical_scaling": {
+            "cpu_scaling_completed": true
+          },
+          "quality_gates": {
+            "scaling_time_acceptable": "needs_analysis"
+          }
+        }
+        EOF
+
+    - name: Upload scaling results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: scaling-performance-results
+        path: scaling-performance-report.json
+        retention-days: 30
+
+  # === PERFORMANCE ANALYSIS AND REPORTING ===
+  performance-analysis:
+    name: Performance Analysis & Reporting
+    runs-on: ubuntu-24.04
+    needs: [setup-performance-environment, network-slicing-performance, vnf-management-performance, orchestration-performance, scaling-performance]
+    if: always() && !cancelled()
+
+    steps:
+    - name: Download all performance results
+      uses: actions/download-artifact@v4
+      with:
+        path: performance-results/
+
+    - name: Analyze overall performance
+      run: |
+        echo "📊 Analyzing overall performance results..."
+
+        # Create comprehensive performance report
+        cat > comprehensive-performance-report.json << EOF
+        {
+          "test_session": {
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "load_profile": "${{ inputs.load_profile }}",
+            "duration_minutes": ${{ inputs.test_duration }},
+            "scenarios_tested": $(echo '${{ needs.setup-performance-environment.outputs.test-plan }}' | jq '.scenarios')
+          },
+          "summary": {
+            "total_tests_run": 0,
+            "tests_passed": 0,
+            "tests_failed": 0,
+            "overall_status": "completed"
+          },
+          "detailed_results": {
+            "network_slicing": $([ -f "performance-results/network-slicing-performance-results/network-slicing-performance-report.json" ] && cat "performance-results/network-slicing-performance-results/network-slicing-performance-report.json" || echo "null"),
+            "vnf_management": $([ -f "performance-results/vnf-management-performance-results/vnf-management-performance-report.json" ] && cat "performance-results/vnf-management-performance-results/vnf-management-performance-report.json" || echo "null"),
+            "orchestration": $([ -f "performance-results/orchestration-performance-results/orchestration-performance-report.json" ] && cat "performance-results/orchestration-performance-results/orchestration-performance-report.json" || echo "null"),
+            "scaling": $([ -f "performance-results/scaling-performance-results/scaling-performance-report.json" ] && cat "performance-results/scaling-performance-results/scaling-performance-report.json" || echo "null")
+          },
+          "thesis_compliance": {
+            "urllc_requirements": {
+              "latency_target_ms": ${{ env.URLLC_LATENCY_TARGET }},
+              "throughput_target_mbps": ${{ env.URLLC_THROUGHPUT_TARGET }},
+              "compliance_status": "needs_verification"
+            },
+            "embb_requirements": {
+              "latency_target_ms": ${{ env.EMBB_LATENCY_TARGET }},
+              "throughput_target_mbps": ${{ env.EMBB_THROUGHPUT_TARGET }},
+              "compliance_status": "needs_verification"
+            },
+            "mmtc_requirements": {
+              "latency_target_ms": ${{ env.MMTC_LATENCY_TARGET }},
+              "throughput_target_mbps": ${{ env.MMTC_THROUGHPUT_TARGET }},
+              "compliance_status": "needs_verification"
+            }
+          }
+        }
+        EOF
+
+    - name: Generate performance dashboard
+      run: |
+        echo "📈 Generating performance dashboard..."
+
+        # Create simple HTML dashboard
+        cat > performance-dashboard.html << 'EOF'
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>O-RAN Intent-MANO Performance Dashboard</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 20px; }
+                .metric { background: #f0f0f0; padding: 10px; margin: 10px 0; border-radius: 5px; }
+                .passed { background: #d4edda; }
+                .failed { background: #f8d7da; }
+                .chart { width: 100%; height: 300px; background: #f8f9fa; margin: 10px 0; }
+            </style>
+        </head>
+        <body>
+            <h1>O-RAN Intent-MANO Performance Test Results</h1>
+            <div class="metric">
+                <h3>Test Configuration</h3>
+                <p><strong>Load Profile:</strong> ${{ inputs.load_profile }}</p>
+                <p><strong>Duration:</strong> ${{ inputs.test_duration }} minutes</p>
+                <p><strong>Test Date:</strong> $(date)</p>
+            </div>
+
+            <div class="metric">
+                <h3>Performance Targets (Thesis Requirements)</h3>
+                <ul>
+                    <li>URLLC Latency: ≤ ${{ env.URLLC_LATENCY_TARGET }}ms</li>
+                    <li>URLLC Throughput: ≥ ${{ env.URLLC_THROUGHPUT_TARGET }} Mbps</li>
+                    <li>eMBB Latency: ≤ ${{ env.EMBB_LATENCY_TARGET }}ms</li>
+                    <li>eMBB Throughput: ≥ ${{ env.EMBB_THROUGHPUT_TARGET }} Mbps</li>
+                    <li>Deployment Time: ≤ ${{ env.DEPLOYMENT_TIME_TARGET }}s</li>
+                    <li>Scaling Time: ≤ ${{ env.SCALING_TIME_TARGET }}s</li>
+                </ul>
+            </div>
+
+            <div class="metric">
+                <h3>Test Results Summary</h3>
+                <p>Detailed results available in artifacts</p>
+                <p><strong>Status:</strong> Performance testing completed</p>
+            </div>
+        </body>
+        </html>
+        EOF
+
+    - name: Upload comprehensive performance report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: comprehensive-performance-report
+        path: |
+          comprehensive-performance-report.json
+          performance-dashboard.html
+        retention-days: 90
+
+    - name: Create performance summary
+      run: |
+        echo "## 📊 Performance Test Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Load Profile:** ${{ inputs.load_profile }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Test Duration:** ${{ inputs.test_duration }} minutes" >> $GITHUB_STEP_SUMMARY
+        echo "**Test Scenarios:** ${{ inputs.test_scenarios }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Thesis Performance Targets" >> $GITHUB_STEP_SUMMARY
+        echo "- URLLC Latency Target: ≤ ${{ env.URLLC_LATENCY_TARGET }}ms" >> $GITHUB_STEP_SUMMARY
+        echo "- URLLC Throughput Target: ≥ ${{ env.URLLC_THROUGHPUT_TARGET }} Mbps" >> $GITHUB_STEP_SUMMARY
+        echo "- eMBB Latency Target: ≤ ${{ env.EMBB_LATENCY_TARGET }}ms" >> $GITHUB_STEP_SUMMARY
+        echo "- eMBB Throughput Target: ≥ ${{ env.EMBB_THROUGHPUT_TARGET }} Mbps" >> $GITHUB_STEP_SUMMARY
+        echo "- Deployment Time Target: ≤ ${{ env.DEPLOYMENT_TIME_TARGET }}s" >> $GITHUB_STEP_SUMMARY
+        echo "- Scaling Time Target: ≤ ${{ env.SCALING_TIME_TARGET }}s" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "📈 Detailed results available in workflow artifacts" >> $GITHUB_STEP_SUMMARY
+
+  # === CLEANUP ===
+  cleanup:
+    name: Cleanup Performance Environment
+    runs-on: ubuntu-24.04
+    needs: [setup-performance-environment, performance-analysis]
+    if: always() && needs.setup-performance-environment.outputs.cluster-ready == 'true'
+
+    steps:
+    - name: Cleanup test cluster
+      run: |
+        echo "🧹 Cleaning up performance test environment..."
+
+        # Install Kind
+        curl -Lo ./kind https://kind.sigs.k8s.io/dl/${{ env.KIND_VERSION }}/kind-linux-amd64
+        chmod +x ./kind && sudo mv ./kind /usr/local/bin/kind
+
+        # Delete performance test cluster
+        kind delete cluster --name perf-test || true
+
+        echo "✅ Performance test environment cleaned up"

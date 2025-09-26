@@ -5,9 +5,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"log"
+	"math"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/o2-client/pkg/models"
@@ -15,10 +20,15 @@ import (
 
 // Client provides O2IMS (O-RAN Infrastructure Management Service) operations
 type Client struct {
-	baseURL    string
-	httpClient *http.Client
-	authToken  string
-	timeout    time.Duration
+	baseURL      string
+	httpClient   *http.Client
+	authToken    string
+	timeout      time.Duration
+	retryConfig  RetryConfig
+	eventChan    chan Event
+	subscribers  map[string][]EventHandler
+	mutex        sync.RWMutex
+	metrics      *ClientMetrics
 }
 
 // ClientOption configures the O2IMS client
@@ -53,7 +63,11 @@ func NewClient(baseURL string, options ...ClientOption) *Client {
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
-		timeout: 30 * time.Second,
+		timeout:      30 * time.Second,
+		retryConfig:  DefaultRetryConfig(),
+		eventChan:    make(chan Event, 1000),
+		subscribers:  make(map[string][]EventHandler),
+		metrics:      NewClientMetrics(),
 	}
 
 	for _, option := range options {

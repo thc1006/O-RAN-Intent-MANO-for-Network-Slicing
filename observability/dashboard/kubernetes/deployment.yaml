@@ -1,0 +1,226 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oran-dashboard
+  namespace: oran-system
+  labels:
+    app: oran-dashboard
+    component: dashboard
+    part-of: oran-intent-mano
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: oran-dashboard
+  template:
+    metadata:
+      labels:
+        app: oran-dashboard
+        component: dashboard
+        part-of: oran-intent-mano
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "3000"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+      - name: dashboard
+        image: oran-dashboard:latest
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: 3000
+          protocol: TCP
+        env:
+        - name: VITE_API_BASE_URL
+          value: "http://oran-orchestrator:8080/api"
+        - name: VITE_WS_URL
+          value: "ws://oran-orchestrator:8080"
+        - name: VITE_PROMETHEUS_URL
+          value: "http://prometheus:9090"
+        - name: VITE_ENVIRONMENT
+          value: "production"
+        envFrom:
+        - configMapRef:
+            name: oran-dashboard-config
+        - secretRef:
+            name: oran-dashboard-secrets
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 101
+          capabilities:
+            drop:
+            - ALL
+      securityContext:
+        fsGroup: 101
+        runAsNonRoot: true
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - oran-dashboard
+              topologyKey: kubernetes.io/hostname
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: oran-dashboard-service
+  namespace: oran-system
+  labels:
+    app: oran-dashboard
+    component: dashboard
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: http
+    protocol: TCP
+    name: http
+  selector:
+    app: oran-dashboard
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: oran-dashboard-config
+  namespace: oran-system
+  labels:
+    app: oran-dashboard
+    component: dashboard
+data:
+  VITE_ENABLE_EXPERIMENTS: "true"
+  VITE_ENABLE_REAL_TIME_METRICS: "true"
+  VITE_ENABLE_ADVANCED_CHARTS: "true"
+  VITE_ENABLE_NOTIFICATIONS: "true"
+  VITE_GRAFANA_URL: "http://grafana:3001"
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: oran-dashboard-secrets
+  namespace: oran-system
+  labels:
+    app: oran-dashboard
+    component: dashboard
+type: Opaque
+stringData:
+  VITE_OAUTH_CLIENT_ID: "your-oauth-client-id"
+  VITE_OAUTH_REDIRECT_URI: "https://dashboard.oran.local/auth/callback"
+  VITE_OAUTH_ISSUER: "https://your-oauth-provider.com"
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: oran-dashboard-ingress
+  namespace: oran-system
+  labels:
+    app: oran-dashboard
+    component: dashboard
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  tls:
+  - hosts:
+    - dashboard.oran.local
+    secretName: oran-dashboard-tls
+  rules:
+  - host: dashboard.oran.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: oran-dashboard-service
+            port:
+              number: 80
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: oran-dashboard-pdb
+  namespace: oran-system
+  labels:
+    app: oran-dashboard
+    component: dashboard
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: oran-dashboard
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: oran-dashboard-hpa
+  namespace: oran-system
+  labels:
+    app: oran-dashboard
+    component: dashboard
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: oran-dashboard
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80

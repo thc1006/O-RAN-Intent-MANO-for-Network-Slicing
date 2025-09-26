@@ -1,0 +1,421 @@
+Makefile:249: warning: overriding recipe for target 'test-security'
+Makefile:175: warning: ignoring old recipe for target 'test-security'
+Makefile:259: warning: overriding recipe for target 'test-coverage'
+Makefile:193: warning: ignoring old recipe for target 'test-coverage'
+Makefile:268: warning: overriding recipe for target 'test-unit'
+Makefile:145: warning: ignoring old recipe for target 'test-unit'
+Makefile:273: warning: overriding recipe for target 'test-integration'
+Makefile:151: warning: ignoring old recipe for target 'test-integration'
+[1;33mVerifying environment...[0m 
+[0;32mEnvironment verified[0m 
+[1;33mGenerating test coverage report...[0m 
+go: downloading k8s.io/metrics v0.29.3
+go: downloading sigs.k8s.io/controller-runtime v0.22.1
+go: downloading sigs.k8s.io/kustomize/api v0.20.1
+go: downloading sigs.k8s.io/kustomize/kyaml v0.20.1
+go: downloading github.com/GoogleContainerTools/kpt/porch/api v0.0.0-20240427025202-5cbd3cbd9237
+go: downloading github.com/spf13/pflag v1.0.10
+go: downloading github.com/evanphx/json-patch/v5 v5.9.11
+go: downloading github.com/evanphx/json-patch v5.6.0+incompatible
+go: downloading github.com/blang/semver/v4 v4.0.0
+go: downloading github.com/go-errors/errors v1.4.2
+go: downloading github.com/monochromegane/go-gitignore v0.0.0-20200626010858-205db1a8cc00
+go: downloading github.com/xlab/treeprint v1.2.0
+go: downloading gomodules.xyz/jsonpatch/v2 v2.4.0
+go: downloading k8s.io/apiextensions-apiserver v0.34.0
+go: downloading github.com/google/btree v1.1.3
+go: downloading golang.org/x/sync v0.16.0
+go: downloading github.com/fsnotify/fsnotify v1.9.0
+	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing			github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/architecture		coverage: 0.0% of statements
+	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework		coverage: 0.0% of statements
+	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/cmd		coverage: 0.0% of statements
+	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/monitoring/pkg		coverage: 0.0% of statements
+	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/o2client		coverage: 0.0% of statements
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/architecture/deepcopy.go:9:					DeepCopyInto				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/architecture/deepcopy.go:18:					DeepCopy				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/architecture/deepcopy.go:28:					DeepCopyObject				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/architecture/deepcopy.go:33:					DeepCopyInto				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/architecture/deepcopy.go:47:					DeepCopy				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/architecture/deepcopy.go:57:					DeepCopyObject				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/architecture/deepcopy.go:62:					DeepCopyInto				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/architecture/deepcopy.go:81:					DeepCopy				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/architecture/deepcopy.go:91:					DeepCopyInto				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/architecture/deepcopy.go:114:					DeepCopy				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/architecture/deepcopy.go:124:					DeepCopyInto				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/architecture/deepcopy.go:138:					DeepCopy				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/architecture/deepcopy.go:148:					DeepCopyInto				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/architecture/deepcopy.go:158:					DeepCopy				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/architecture/deepcopy.go:168:					DeepCopyInto				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/architecture/deepcopy.go:181:					DeepCopy				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/architecture/deepcopy.go:191:					DeepCopyInto				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/architecture/deepcopy.go:210:					DeepCopy				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/architecture/nephio-adapter-controller.go:221:			Reconcile				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/architecture/nephio-adapter-controller.go:273:			handlePendingPhase			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/architecture/nephio-adapter-controller.go:299:			handlePlanningPhase			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/architecture/nephio-adapter-controller.go:350:			handlePackagingPhase			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/architecture/nephio-adapter-controller.go:399:			handleDeployingPhase			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/architecture/nephio-adapter-controller.go:455:			handleReadyPhase			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/architecture/nephio-adapter-controller.go:465:			handleFailedPhase			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/architecture/nephio-adapter-controller.go:474:			handleDeletion				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/architecture/nephio-adapter-controller.go:497:			validateQoSRequirements			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/architecture/nephio-adapter-controller.go:505:			validateNetworkFunctions		0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/architecture/nephio-adapter-controller.go:513:			convertToNetworkFunction		0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/architecture/nephio-adapter-controller.go:531:			updatePlacementDecisions		0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/architecture/nephio-adapter-controller.go:540:			countReadyFunctions			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/architecture/nephio-adapter-controller.go:550:			updateStatus				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/architecture/nephio-adapter-controller.go:558:			SetupWithManager			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/architecture/nephio-adapter-controller.go:586:			addKnownTypes				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/architecture/nephio-adapter-controller.go:595:			init					0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/architecture/package-generator.go:183:				GeneratePackages			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/architecture/package-generator.go:210:				generateVNFPackage			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/architecture/package-generator.go:302:				generateSliceOrchestrationPackage	0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/architecture/package-generator.go:359:				generateConfigSyncPackage		0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/architecture/package-generator.go:438:				generateNetworkConfig			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/architecture/package-generator.go:481:				generateKustomization			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/architecture/package-generator.go:499:				generateSliceMonitoringConfig		0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/architecture/package-generator.go:526:				generateSliceNetworkPolicy		0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/architecture/package-generator.go:573:				generateClusterOverrides		0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/architecture/package-generator.go:594:				getTargetCluster			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/architecture/package-generator.go:602:				getGitRepository			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/architecture/package-generator.go:606:				getClusterCloudType			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/architecture/package-generator.go:617:				getQoSPriority				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/architecture/package-generator.go:630:				parseFloat64				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/argocd_validator.go:283:		NewArgoCDValidator			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/argocd_validator.go:308:		ValidateArgoCD				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/argocd_validator.go:366:		checkArgoCDInstallation			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/argocd_validator.go:407:		validateArgoCDServer			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/argocd_validator.go:427:		validateApplications			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/argocd_validator.go:461:		parseApplicationStatus			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/argocd_validator.go:526:		parseApplicationSource			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/argocd_validator.go:543:		parseApplicationDestination		0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/argocd_validator.go:560:		parseSyncStatus				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/argocd_validator.go:574:		parseHealthStatus			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/argocd_validator.go:588:		parseApplicationConditions		0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/argocd_validator.go:610:		parseOperationState			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/argocd_validator.go:624:		parseResourceStatuses			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/argocd_validator.go:658:		validateProjects			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/argocd_validator.go:692:		validateRepositories			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/argocd_validator.go:728:		validateClusters			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/argocd_validator.go:761:		calculateApplicationStats		0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/argocd_validator.go:777:		WaitForApplicationSync			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/cmd/main.go:36:			main					0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/cmd/main.go:84:			setupLogging				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/cmd/main.go:102:			runValidation				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/cmd/main.go:141:			runContinuousMonitoring			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/cmd/main.go:195:			runDriftDetection			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/cmd/main.go:203:			handleValidationFailure			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/cmd/main.go:212:			outputResults				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/cmd/main.go:245:			marshalYAML				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/cmd/main.go:275:			formatTable				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/cmd/main.go:308:			truncateString				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/cmd/main.go:316:			writeToFile				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/cmd/main.go:338:			init					0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/configsync_validator.go:165:	NewConfigSyncValidator			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/configsync_validator.go:190:	ValidateConfigSync			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/configsync_validator.go:242:	checkConfigSyncInstallation		0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/configsync_validator.go:283:	validateRootSync			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/configsync_validator.go:303:	parseRootSyncStatus			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/configsync_validator.go:344:	validateRepoSyncs			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/configsync_validator.go:372:	parseRepoSyncStatus			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/configsync_validator.go:410:	parseSourceStatus			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/configsync_validator.go:444:	parseSyncStatus				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/configsync_validator.go:470:	parseRenderingStatus			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/configsync_validator.go:492:	parseConditions				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/configsync_validator.go:520:	parseErrorStatuses			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/configsync_validator.go:544:	validateSyncedResources			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/configsync_validator.go:593:	checkResourceExists			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/configsync_validator.go:615:	apiVersionKindToGVR			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/configsync_validator.go:641:	calculateOverallSyncStatus		0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/drift_detector.go:110:		NewDriftDetector			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/drift_detector.go:125:		ScanForDrift				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/drift_detector.go:193:		getDesiredState				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/drift_detector.go:227:		getActualState				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/drift_detector.go:271:		listResources				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/drift_detector.go:313:		shouldMonitorResource			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/drift_detector.go:333:		compareStates				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/drift_detector.go:408:		compareResources			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/drift_detector.go:435:		compareObjects				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/drift_detector.go:512:		compareMetadata				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/drift_detector.go:544:		filterIgnoredFields			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/drift_detector.go:572:		shouldIgnoreField			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/drift_detector.go:596:		shouldIgnoreMetadataField		0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/drift_detector.go:613:		filterSystemAnnotations			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/drift_detector.go:630:		isManagedResource			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/drift_detector.go:663:		calculateSeverity			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/drift_detector.go:683:		isCriticalResource			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/drift_detector.go:706:		calculateModificationSeverity		0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/drift_detector.go:732:		calculateChecksum			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/drift_detector.go:744:		remediateDrift				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/drift_detector.go:756:		correctDrift				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/drift_detector.go:780:		correctResourceDrift			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/drift_detector.go:794:		updateResource				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/drift_detector.go:812:		createResource				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/drift_detector.go:830:		deleteResource				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/drift_detector.go:841:		triggerRollback				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/drift_detector.go:848:		getGVR					0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/drift_detector.go:873:		GetDriftStatus				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/drift_detector.go:886:		getResourceKey				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/drift_detector.go:891:		getResourceKeyFromObject		0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/drift_detector.go:896:		isKubernetesResourceFile		0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/drift_detector.go:901:		parseResourceFile			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/e2e_pipeline.go:141:		NewE2EPipeline				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/e2e_pipeline.go:150:		Execute					0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/e2e_pipeline.go:233:		executeStages				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/e2e_pipeline.go:260:		buildDependencyGraph			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/e2e_pipeline.go:271:		getReadyStages				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/e2e_pipeline.go:296:		executeReadyStages			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/e2e_pipeline.go:310:		groupParallelStages			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/e2e_pipeline.go:335:		executeStageGroup			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/e2e_pipeline.go:369:		executeStage				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/e2e_pipeline.go:438:		executeStageType			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/e2e_pipeline.go:464:		executeGitSync				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/e2e_pipeline.go:485:		executePackageValidation		0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/e2e_pipeline.go:516:		executePackageSync			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/e2e_pipeline.go:527:		executeDeployment			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/e2e_pipeline.go:567:		executeHealthCheck			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/e2e_pipeline.go:575:		executePerformanceTest			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/e2e_pipeline.go:608:		executeE2ETest				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/e2e_pipeline.go:617:		executeDriftCheck			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/e2e_pipeline.go:628:		executeCleanup				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/e2e_pipeline.go:635:		addStageResult				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/e2e_pipeline.go:642:		calculateOverallSuccess			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/e2e_pipeline.go:656:		calculateSummary			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/e2e_pipeline.go:670:		calculateDoDCompliance			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/e2e_pipeline.go:701:		collectFinalMetrics			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/e2e_pipeline.go:751:		generateReport				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/e2e_pipeline.go:772:		generateJSONReport			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/e2e_pipeline.go:779:		generateYAMLReport			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/e2e_pipeline.go:786:		generateHTMLReport			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/e2e_pipeline.go:793:		sendNotifications			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/e2e_pipeline.go:810:		findStageByName				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/e2e_pipeline.go:820:		isContextError				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/git_repository.go:72:		NewGitRepository			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/git_repository.go:103:		setupAuth				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/git_repository.go:128:		configureTokenAuth			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/git_repository.go:143:		configureSSHAuth			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/git_repository.go:167:		validateRepository			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/git_repository.go:192:		GetCurrentBranch			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/git_repository.go:206:		GetLastCommit				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/git_repository.go:220:		GetLastCommitInfo			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/git_repository.go:266:		IsClean					0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/git_repository.go:281:		GetStatus				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/git_repository.go:365:		getAheadBehind				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/git_repository.go:394:		getRemoteURL				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/git_repository.go:408:		getTags					0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/git_repository.go:426:		getRemotes				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/git_repository.go:451:		GetSyncStatus				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/git_repository.go:484:		fetchRemote				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/git_repository.go:498:		Pull					0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/git_repository.go:514:		Push					0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/git_repository.go:530:		CreateBranch				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/git_repository.go:549:		SwitchBranch				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/git_repository.go:568:		GetDiff					0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/git_repository.go:590:		GetChangedFiles				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/git_repository.go:616:		Reset					0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/git_repository.go:640:		GetCommitHistory			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/metrics_collector.go:130:	NewMetricsCollector			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/metrics_collector.go:151:	CollectMetrics				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/metrics_collector.go:175:	collectPerformanceMetrics		0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/metrics_collector.go:214:	collectClusterMetrics			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/metrics_collector.go:245:	collectClusterResourceMetrics		0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/metrics_collector.go:280:	collectResourceUsage			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/metrics_collector.go:321:	collectNetworkMetrics			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/metrics_collector.go:360:	collectApplicationMetrics		0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/metrics_collector.go:379:	collectAppTypeMetrics			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/metrics_collector.go:435:	collectRTTMetrics			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/metrics_collector.go:442:	collectNetworkLatency			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/metrics_collector.go:455:	collectPacketLoss			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/metrics_collector.go:468:	collectDeploymentTime			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/metrics_collector.go:475:	queryPrometheus				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/metrics_collector.go:522:	parsePrometheusValue			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/metrics_collector.go:536:	CollectKubernetesMetrics		0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/metrics_collector.go:574:	collectMetricsServerData		0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/metrics_collector.go:615:	ExportMetrics				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/metrics_collector.go:627:	exportPrometheusFormat			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/nephio_validator.go:136:		NewNephioValidator			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/nephio_validator.go:167:		ValidatePackage				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/nephio_validator.go:181:		ValidatePackageDetailed			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/nephio_validator.go:243:		validatePackageStructure		0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/nephio_validator.go:278:		validateKptfile				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/nephio_validator.go:318:		renderPackage				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/nephio_validator.go:348:		copyDirectory				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/nephio_validator.go:367:		parseRenderedResources			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/nephio_validator.go:438:		validateResource			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/nephio_validator.go:468:		validateDeployment			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/nephio_validator.go:490:		validateDeploymentReplicas		0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/nephio_validator.go:498:		validateDeploymentSelector		0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/nephio_validator.go:512:		validateDeploymentTemplate		0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/nephio_validator.go:532:		validateService				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/nephio_validator.go:547:		validateConfigMap			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/nephio_validator.go:553:		validateSecret				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/nephio_validator.go:559:		validateRenderedResources		0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/nephio_validator.go:576:		checkDeploymentReadiness		0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/nephio_validator.go:584:		RenderPackageWithKustomize		0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/nephio_validator.go:609:		GetPackageRevisions			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/nephio_validator.go:616:		GetPackageRevision			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/nephio_validator.go:623:		CreatePackageRevision			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/nephio_validator.go:630:		UpdatePackageRevision			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/nephio_validator.go:637:		DeletePackageRevision			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/rollback_manager.go:96:		NewRollbackManager			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/rollback_manager.go:110:		ExecuteRollback				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/rollback_manager.go:153:		executeRollbackSteps			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/rollback_manager.go:193:		validateTargetCommit			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/rollback_manager.go:210:		getChangedResources			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/rollback_manager.go:228:		isKubernetesResourceFile		0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/rollback_manager.go:252:		planRollbackActions			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/rollback_manager.go:330:		parseResourceFile			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/rollback_manager.go:382:		getFileAtCommit				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/rollback_manager.go:404:		resourcesMatch				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/rollback_manager.go:412:		executeGitRollback			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/rollback_manager.go:435:		executeResourceRollback			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/rollback_manager.go:465:		getActionPriority			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/rollback_manager.go:479:		executeResourceAction			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/rollback_manager.go:495:		deleteResource				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/rollback_manager.go:503:		createResource				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/rollback_manager.go:515:		updateResource				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/rollback_manager.go:527:		getGVR					0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/rollback_manager.go:553:		validateRollbackSuccess			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/rollback_manager.go:581:		GetRollbackHistory			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/rollback_manager.go:591:		CanRollback				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/rollback_manager.go:615:		TriggerRollback				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/rollback_manager.go:631:		shouldTriggerRollback			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/rollback_manager.go:656:		getPreviousStableCommit			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/sync_manager.go:176:		NewSyncManager				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/sync_manager.go:187:		SynchronizeAll				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/sync_manager.go:235:		synchronizePackageGroup			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/sync_manager.go:284:		synchronizePackage			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/sync_manager.go:317:		synchronizePackageToCluster		0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/sync_manager.go:372:		syncResource				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/sync_manager.go:401:		createResource				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/sync_manager.go:412:		updateResource				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/sync_manager.go:435:		resourceNeedsUpdate			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/sync_manager.go:461:		hasConflict				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/sync_manager.go:468:		resolveConflict				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/sync_manager.go:484:		mergeResources				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/sync_manager.go:498:		preserveClusterFields			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/sync_manager.go:511:		getPackageFromGit			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/sync_manager.go:528:		getGVRFromResource			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/sync_manager.go:545:		updateSyncStatus			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/sync_manager.go:575:		getSortedPackageGroups			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/sync_manager.go:592:		waitForGroupDependencies		0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/sync_manager.go:610:		waitForPackageDependencies		0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/sync_manager.go:626:		waitForGroupCompletion			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/sync_manager.go:651:		waitForPackageCompletion		0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/sync_manager.go:671:		isPackageSynced				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/sync_manager.go:688:		GetSyncStatus				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/sync_manager.go:701:		deepEqual				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/sync_manager.go:707:		filterSystemAnnotations			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/validator.go:211:		NewValidationFramework			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/validator.go:254:		LoadValidationConfig			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/validator.go:288:		createClusterClient			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/validator.go:332:		ValidateAll				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/validator.go:368:		ValidateCluster				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/validator.go:424:		validateGitState			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/validator.go:459:		validateNephioPackages			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/validator.go:479:		validateResources			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/validator.go:505:		validateResource			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/validator.go:526:		checkResourceReadiness			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/validator.go:541:		checkDeploymentReadiness		0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/validator.go:558:		checkPodReadiness			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/validator.go:573:		checkServiceReadiness			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/validator.go:579:		extractConditions			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/validator.go:606:		validatePerformance			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/validator.go:633:		checkPerformanceThresholds		0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/validator.go:665:		detectDrift				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/clusters/validation-framework/validator.go:681:		findClusterConfig			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/monitoring/pkg/bottleneck_analyzer.go:189:			NewBottleneckAnalyzer			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/monitoring/pkg/bottleneck_analyzer.go:208:			Start					0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/monitoring/pkg/bottleneck_analyzer.go:224:			Stop					0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/monitoring/pkg/bottleneck_analyzer.go:229:			AnalyzeComponent			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/monitoring/pkg/bottleneck_analyzer.go:259:			detectBottleneck			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/monitoring/pkg/bottleneck_analyzer.go:277:			analyzeNLPBottleneck			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/monitoring/pkg/bottleneck_analyzer.go:301:			analyzePlacementBottleneck		0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/monitoring/pkg/bottleneck_analyzer.go:325:			analyzeVNFBottleneck			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/monitoring/pkg/bottleneck_analyzer.go:350:			analyzeVXLANBottleneck			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/monitoring/pkg/bottleneck_analyzer.go:369:			analyzeSMFBottleneck			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/monitoring/pkg/bottleneck_analyzer.go:390:			analyzeGenericBottleneck		0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/monitoring/pkg/bottleneck_analyzer.go:423:			calculateBottleneckScore		0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/monitoring/pkg/bottleneck_analyzer.go:455:			generateDescription			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/monitoring/pkg/bottleneck_analyzer.go:488:			generateRecommendations			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/monitoring/pkg/bottleneck_analyzer.go:548:			calculateTrend				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/monitoring/pkg/bottleneck_analyzer.go:588:			storeAnalysisResult			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/monitoring/pkg/bottleneck_analyzer.go:596:			generateAlert				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/monitoring/pkg/bottleneck_analyzer.go:609:			metricWorker				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/monitoring/pkg/bottleneck_analyzer.go:623:			processMetricSample			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/monitoring/pkg/bottleneck_analyzer.go:629:			analysisLoop				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/monitoring/pkg/bottleneck_analyzer.go:645:			cleanupLoop				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/monitoring/pkg/bottleneck_analyzer.go:661:			performPeriodicAnalysis			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/monitoring/pkg/bottleneck_analyzer.go:674:			cleanupOldData				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/monitoring/pkg/bottleneck_analyzer.go:687:			GetBottleneckReport			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/monitoring/pkg/bottleneck_analyzer.go:719:			defaultThresholds			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/monitoring/pkg/bottleneck_analyzer.go:768:			defaultPatterns				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/monitoring/pkg/bottleneck_analyzer.go:790:			NewMetricsCollector			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/monitoring/pkg/bottleneck_analyzer.go:794:			GetComponentMetrics			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/monitoring/pkg/bottleneck_analyzer.go:801:			NewAlertManager				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/monitoring/pkg/bottleneck_analyzer.go:807:			CreateAlert				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/o2client/client.go:17:					NewClient				0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/o2client/client.go:34:					GetDeploymentManagers			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/o2client/client.go:55:					DeployNetworkFunction			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/o2client/client.go:61:					GetAvailableSites			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/o2client/client.go:78:					GetDeploymentStatus			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/o2client/client.go:103:					DeleteDeployment			0.0%
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/test.go:1:							main					0.0%
+total:															(statements)				0.0%
+=== RUN   TestCoverage_GenerateAndAnalyze
+    coverage_test.go:71: Warning: Could not generate coverage report: coverage file coverage.out does not exist
+    coverage_test.go:72: Coverage analysis requires running 'go test -coverprofile=coverage.out ./...' first
+--- SKIP: TestCoverage_GenerateAndAnalyze (0.00s)
+=== RUN   TestCoverage_UnitTestCoverage
+=== RUN   TestCoverage_UnitTestCoverage/../../agent/pkg/http.go
+=== RUN   TestCoverage_UnitTestCoverage/../../agent/pkg/iperf.go
+=== RUN   TestCoverage_UnitTestCoverage/../../agent/pkg/vxlan/optimized_manager.go
+=== RUN   TestCoverage_UnitTestCoverage/../../agent/pkg/vxlan/manager.go
+    coverage_test.go:314: Test file ../../agent/pkg/vxlan/manager_test.go does not exist for source file ../../agent/pkg/vxlan/manager.go
+--- FAIL: TestCoverage_UnitTestCoverage (0.00s)
+    --- PASS: TestCoverage_UnitTestCoverage/../../agent/pkg/http.go (0.00s)
+    --- PASS: TestCoverage_UnitTestCoverage/../../agent/pkg/iperf.go (0.00s)
+    --- PASS: TestCoverage_UnitTestCoverage/../../agent/pkg/vxlan/optimized_manager.go (0.00s)
+    --- FAIL: TestCoverage_UnitTestCoverage/../../agent/pkg/vxlan/manager.go (0.00s)
+=== RUN   TestCoverage_IntegrationTestCoverage
+=== RUN   TestCoverage_IntegrationTestCoverage/../integration/http_integration_test.go
+    coverage_test.go:333: Integration test file ../integration/http_integration_test.go exists
+=== RUN   TestCoverage_IntegrationTestCoverage/../integration/iperf_integration_test.go
+    coverage_test.go:333: Integration test file ../integration/iperf_integration_test.go exists
+=== RUN   TestCoverage_IntegrationTestCoverage/../integration/vxlan_integration_test.go
+    coverage_test.go:333: Integration test file ../integration/vxlan_integration_test.go exists
+--- PASS: TestCoverage_IntegrationTestCoverage (0.00s)
+    --- PASS: TestCoverage_IntegrationTestCoverage/../integration/http_integration_test.go (0.00s)
+    --- PASS: TestCoverage_IntegrationTestCoverage/../integration/iperf_integration_test.go (0.00s)
+    --- PASS: TestCoverage_IntegrationTestCoverage/../integration/vxlan_integration_test.go (0.00s)
+=== RUN   TestCoverage_SecurityTestCoverage
+=== RUN   TestCoverage_SecurityTestCoverage/../security/kubernetes_manifest_test.go
+    coverage_test.go:350: Security test file ../security/kubernetes_manifest_test.go exists
+--- PASS: TestCoverage_SecurityTestCoverage (0.00s)
+    --- PASS: TestCoverage_SecurityTestCoverage/../security/kubernetes_manifest_test.go (0.00s)
+=== RUN   TestCoverage_TestQuality
+=== RUN   TestCoverage_TestQuality/test_file_naming_convention
+    coverage_test.go:368: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/coverage/coverage_test.go:368
+        	Error:      	Should be true
+        	Test:       	TestCoverage_TestQuality/test_file_naming_convention
+        	Messages:   	Should have test files
+    coverage_test.go:369: Found 0 test files
+=== RUN   TestCoverage_TestQuality/test_coverage_thresholds
+    coverage_test.go:381: Component critical_components should have at least 90.0% coverage
+    coverage_test.go:381: Component core_functionality should have at least 85.0% coverage
+    coverage_test.go:381: Component supporting_code should have at least 75.0% coverage
+--- FAIL: TestCoverage_TestQuality (0.00s)
+    --- FAIL: TestCoverage_TestQuality/test_file_naming_convention (0.00s)
+    --- PASS: TestCoverage_TestQuality/test_coverage_thresholds (0.00s)
+=== RUN   TestCoverage_HelperFunctions
+=== RUN   TestCoverage_HelperFunctions/extract_package_name
+=== RUN   TestCoverage_HelperFunctions/calculate_percentage
+=== RUN   TestCoverage_HelperFunctions/is_critical_package
+--- PASS: TestCoverage_HelperFunctions (0.00s)
+    --- PASS: TestCoverage_HelperFunctions/extract_package_name (0.00s)
+    --- PASS: TestCoverage_HelperFunctions/calculate_percentage (0.00s)
+    --- PASS: TestCoverage_HelperFunctions/is_critical_package (0.00s)
+FAIL
+FAIL	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/coverage	0.007s
+FAIL
+make: *** [Makefile:263: test-coverage] Error 1

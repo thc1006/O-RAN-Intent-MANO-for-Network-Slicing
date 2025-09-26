@@ -1,0 +1,26 @@
+Makefile:249: warning: overriding recipe for target 'test-security'
+Makefile:175: warning: ignoring old recipe for target 'test-security'
+Makefile:259: warning: overriding recipe for target 'test-coverage'
+Makefile:193: warning: ignoring old recipe for target 'test-coverage'
+Makefile:268: warning: overriding recipe for target 'test-unit'
+Makefile:145: warning: ignoring old recipe for target 'test-unit'
+Makefile:273: warning: overriding recipe for target 'test-integration'
+Makefile:151: warning: ignoring old recipe for target 'test-integration'
+[1;33mVerifying environment...[0m 
+[0;32mEnvironment verified[0m 
+[1;33mRunning security tests...[0m 
+=== RUN   TestKubernetesManifests_SecurityValidation
+    kubernetes_manifest_test.go:143: No Kubernetes manifest files found for validation
+--- SKIP: TestKubernetesManifests_SecurityValidation (0.00s)
+=== RUN   TestKubernetesManifests_NetworkPolicies
+    kubernetes_manifest_test.go:708: No network policy files found
+--- SKIP: TestKubernetesManifests_NetworkPolicies (0.00s)
+=== RUN   TestKubernetesManifests_RBAC
+    kubernetes_manifest_test.go:737: No RBAC files found
+--- SKIP: TestKubernetesManifests_RBAC (0.00s)
+=== RUN   TestKubernetesManifests_PodSecurityPolicies
+    kubernetes_manifest_test.go:805: No security policy files found
+--- SKIP: TestKubernetesManifests_PodSecurityPolicies (0.00s)
+PASS
+ok  	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/security	0.007s
+[1;33mgosec not installed, skipping security scan[0m 

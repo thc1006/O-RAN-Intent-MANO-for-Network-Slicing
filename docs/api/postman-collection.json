@@ -1,0 +1,1524 @@
+{
+  "info": {
+    "name": "O-RAN Intent-MANO API",
+    "description": "Complete API collection for O-RAN Intent-based Management and Network Orchestration system",
+    "version": "1.0.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{access_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://api.oran-mano.io/v1",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refresh_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "intent_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "vnf_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "agent_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "deployment_manager_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "deployment_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "slice_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('access_token', response.access_token);",
+                  "    pm.collectionVariables.set('refresh_token', response.refresh_token);",
+                  "    pm.test('Access token received', () => {",
+                  "        pm.expect(response.access_token).to.exist;",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin@oran-mano.io\",\n  \"password\": \"SecureP@ssw0rd\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Authenticate user and obtain access token"
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('access_token', response.access_token);",
+                  "    pm.test('New access token received', () => {",
+                  "        pm.expect(response.access_token).to.exist;",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "refresh"]
+            },
+            "description": "Refresh access token using refresh token"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Orchestrator",
+      "item": [
+        {
+          "name": "List QoS Intents",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has intents array', () => {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response).to.have.property('intents');",
+                  "    pm.expect(response.intents).to.be.an('array');",
+                  "});",
+                  "",
+                  "if (pm.response.json().intents.length > 0) {",
+                  "    pm.collectionVariables.set('intent_id', pm.response.json().intents[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/orchestrator/intents?limit=50&offset=0",
+              "host": ["{{base_url}}"],
+              "path": ["orchestrator", "intents"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "50"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                },
+                {
+                  "key": "slice_type",
+                  "value": "uRLLC",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "deployed",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Retrieve list of QoS intents with optional filtering"
+          }
+        },
+        {
+          "name": "Create QoS Intent - uRLLC",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201', () => {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Intent created with ID', () => {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response).to.have.property('id');",
+                  "    pm.collectionVariables.set('intent_id', response.id);",
+                  "});",
+                  "",
+                  "pm.test('Intent has correct slice type', () => {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.slice_type).to.equal('uRLLC');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bandwidth\": 100.0,\n  \"latency\": 10.0,\n  \"slice_type\": \"uRLLC\",\n  \"jitter\": 2.0,\n  \"packet_loss\": 0.001,\n  \"reliability\": 0.9999\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/orchestrator/intents",
+              "host": ["{{base_url}}"],
+              "path": ["orchestrator", "intents"]
+            },
+            "description": "Create a new uRLLC QoS intent"
+          }
+        },
+        {
+          "name": "Create QoS Intent - eMBB",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201', () => {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Intent has correct slice type', () => {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.slice_type).to.equal('eMBB');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bandwidth\": 500.0,\n  \"latency\": 50.0,\n  \"slice_type\": \"eMBB\",\n  \"jitter\": 5.0,\n  \"packet_loss\": 0.01,\n  \"reliability\": 0.999\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/orchestrator/intents",
+              "host": ["{{base_url}}"],
+              "path": ["orchestrator", "intents"]
+            },
+            "description": "Create a new eMBB QoS intent"
+          }
+        },
+        {
+          "name": "Get QoS Intent",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Intent has required fields', () => {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response).to.have.property('id');",
+                  "    pm.expect(response).to.have.property('bandwidth');",
+                  "    pm.expect(response).to.have.property('latency');",
+                  "    pm.expect(response).to.have.property('slice_type');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/orchestrator/intents/{{intent_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["orchestrator", "intents", "{{intent_id}}"]
+            },
+            "description": "Retrieve specific QoS intent by ID"
+          }
+        },
+        {
+          "name": "Generate Orchestration Plan",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Plan contains allocations', () => {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response).to.have.property('allocations');",
+                  "    pm.expect(response.allocations).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"intents\": [\n    {\n      \"bandwidth\": 100.0,\n      \"latency\": 10.0,\n      \"slice_type\": \"uRLLC\"\n    },\n    {\n      \"bandwidth\": 500.0,\n      \"latency\": 50.0,\n      \"slice_type\": \"eMBB\"\n    }\n  ],\n  \"dry_run\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/orchestrator/plan",
+              "host": ["{{base_url}}"],
+              "path": ["orchestrator", "plan"]
+            },
+            "description": "Generate orchestration plan for multiple intents"
+          }
+        },
+        {
+          "name": "Execute Deployment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 202', () => {",
+                  "    pm.response.to.have.status(202);",
+                  "});",
+                  "",
+                  "pm.test('Deployment initiated', () => {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response).to.have.property('deployment_id');",
+                  "    pm.expect(response.status).to.equal('running');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"plan_id\": \"plan-001\",\n  \"force\": false\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/orchestrator/deploy",
+              "host": ["{{base_url}}"],
+              "path": ["orchestrator", "deploy"]
+            },
+            "description": "Execute deployment from orchestration plan"
+          }
+        },
+        {
+          "name": "Update QoS Intent",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bandwidth\": 150.0,\n  \"latency\": 8.0,\n  \"slice_type\": \"uRLLC\",\n  \"jitter\": 1.5,\n  \"packet_loss\": 0.0005,\n  \"reliability\": 0.99999\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/orchestrator/intents/{{intent_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["orchestrator", "intents", "{{intent_id}}"]
+            },
+            "description": "Update existing QoS intent"
+          }
+        },
+        {
+          "name": "Delete QoS Intent",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/orchestrator/intents/{{intent_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["orchestrator", "intents", "{{intent_id}}"]
+            },
+            "description": "Delete QoS intent and associated deployments"
+          }
+        }
+      ]
+    },
+    {
+      "name": "VNF Operator",
+      "item": [
+        {
+          "name": "List VNFs",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has vnfs array', () => {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response).to.have.property('vnfs');",
+                  "    pm.expect(response.vnfs).to.be.an('array');",
+                  "});",
+                  "",
+                  "if (pm.response.json().vnfs.length > 0) {",
+                  "    pm.collectionVariables.set('vnf_id', pm.response.json().vnfs[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/vnf-operator/vnfs?limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["vnf-operator", "vnfs"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "type",
+                  "value": "UPF",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "Running",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Retrieve list of VNFs with optional filtering"
+          }
+        },
+        {
+          "name": "Create VNF - UPF",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201', () => {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('VNF created with ID', () => {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response).to.have.property('id');",
+                  "    pm.collectionVariables.set('vnf_id', response.id);",
+                  "});",
+                  "",
+                  "pm.test('VNF has correct type', () => {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.type).to.equal('UPF');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"upf-edge-001\",\n  \"type\": \"UPF\",\n  \"version\": \"v1.2.3\",\n  \"qos\": {\n    \"bandwidth\": 1000.0,\n    \"latency\": 5.0,\n    \"slice_type\": \"eMBB\"\n  },\n  \"placement\": {\n    \"cloud_type\": \"edge\",\n    \"region\": \"us-east\",\n    \"zone\": \"us-east-1a\"\n  },\n  \"target_clusters\": [\"edge-cluster-01\"],\n  \"resources\": {\n    \"cpu_cores\": 8,\n    \"memory_gb\": 16,\n    \"storage_gb\": 100\n  },\n  \"config\": {\n    \"plmn_id\": \"001001\",\n    \"dnn\": \"internet\"\n  },\n  \"image\": {\n    \"repository\": \"registry.oran.io/vnf/upf\",\n    \"tag\": \"v1.2.3\",\n    \"pull_policy\": \"IfNotPresent\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/vnf-operator/vnfs",
+              "host": ["{{base_url}}"],
+              "path": ["vnf-operator", "vnfs"]
+            },
+            "description": "Deploy a new UPF VNF"
+          }
+        },
+        {
+          "name": "Create VNF - AMF",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201', () => {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('VNF has correct type', () => {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.type).to.equal('AMF');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"amf-regional-001\",\n  \"type\": \"AMF\",\n  \"version\": \"v2.1.0\",\n  \"qos\": {\n    \"bandwidth\": 500.0,\n    \"latency\": 20.0,\n    \"slice_type\": \"balanced\"\n  },\n  \"placement\": {\n    \"cloud_type\": \"regional\",\n    \"region\": \"us-east\",\n    \"preferred_zones\": [\"us-east-1b\", \"us-east-1c\"]\n  },\n  \"target_clusters\": [\"regional-cluster-01\"],\n  \"resources\": {\n    \"cpu_cores\": 4,\n    \"memory_gb\": 8,\n    \"storage_gb\": 50\n  },\n  \"config\": {\n    \"plmn_id\": \"001001\",\n    \"tac\": \"000001\"\n  },\n  \"image\": {\n    \"repository\": \"registry.oran.io/vnf/amf\",\n    \"tag\": \"v2.1.0\",\n    \"pull_policy\": \"Always\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/vnf-operator/vnfs",
+              "host": ["{{base_url}}"],
+              "path": ["vnf-operator", "vnfs"]
+            },
+            "description": "Deploy a new AMF VNF"
+          }
+        },
+        {
+          "name": "Get VNF",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('VNF has required fields', () => {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response).to.have.property('id');",
+                  "    pm.expect(response).to.have.property('name');",
+                  "    pm.expect(response).to.have.property('type');",
+                  "    pm.expect(response).to.have.property('status');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/vnf-operator/vnfs/{{vnf_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["vnf-operator", "vnfs", "{{vnf_id}}"]
+            },
+            "description": "Retrieve specific VNF details"
+          }
+        },
+        {
+          "name": "Scale VNF",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 202', () => {",
+                  "    pm.response.to.have.status(202);",
+                  "});",
+                  "",
+                  "pm.test('Scaling operation initiated', () => {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response).to.have.property('operation_id');",
+                  "    pm.expect(response.status).to.equal('running');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"replicas\": 3\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/vnf-operator/vnfs/{{vnf_id}}/scale",
+              "host": ["{{base_url}}"],
+              "path": ["vnf-operator", "vnfs", "{{vnf_id}}", "scale"]
+            },
+            "description": "Scale VNF instances up or down"
+          }
+        },
+        {
+          "name": "Update VNF",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"upf-edge-001-updated\",\n  \"type\": \"UPF\",\n  \"version\": \"v1.2.4\",\n  \"qos\": {\n    \"bandwidth\": 1200.0,\n    \"latency\": 4.0,\n    \"slice_type\": \"eMBB\"\n  },\n  \"placement\": {\n    \"cloud_type\": \"edge\",\n    \"region\": \"us-east\",\n    \"zone\": \"us-east-1a\"\n  },\n  \"target_clusters\": [\"edge-cluster-01\"],\n  \"resources\": {\n    \"cpu_cores\": 10,\n    \"memory_gb\": 20,\n    \"storage_gb\": 120\n  },\n  \"image\": {\n    \"repository\": \"registry.oran.io/vnf/upf\",\n    \"tag\": \"v1.2.4\",\n    \"pull_policy\": \"IfNotPresent\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/vnf-operator/vnfs/{{vnf_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["vnf-operator", "vnfs", "{{vnf_id}}"]
+            },
+            "description": "Update VNF configuration"
+          }
+        },
+        {
+          "name": "Delete VNF",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/vnf-operator/vnfs/{{vnf_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["vnf-operator", "vnfs", "{{vnf_id}}"]
+            },
+            "description": "Delete VNF and associated resources"
+          }
+        }
+      ]
+    },
+    {
+      "name": "TN Manager",
+      "item": [
+        {
+          "name": "List TN Agents",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has agents array', () => {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response).to.have.property('agents');",
+                  "    pm.expect(response.agents).to.be.an('array');",
+                  "});",
+                  "",
+                  "if (pm.response.json().agents.length > 0) {",
+                  "    pm.collectionVariables.set('agent_id', pm.response.json().agents[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/tn-manager/agents",
+              "host": ["{{base_url}}"],
+              "path": ["tn-manager", "agents"]
+            },
+            "description": "Retrieve list of Transport Network agents"
+          }
+        },
+        {
+          "name": "Register TN Agent",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201', () => {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Agent registered with ID', () => {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response).to.have.property('id');",
+                  "    pm.collectionVariables.set('agent_id', response.id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Edge Site 01 Agent\",\n  \"endpoint\": \"https://edge01.oran.io:8443\",\n  \"capabilities\": [\"vxlan\", \"tc\", \"performance_test\"]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/tn-manager/agents",
+              "host": ["{{base_url}}"],
+              "path": ["tn-manager", "agents"]
+            },
+            "description": "Register new Transport Network agent"
+          }
+        },
+        {
+          "name": "Configure Network Slice",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Slice configured successfully', () => {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.status).to.equal('configured');",
+                  "    pm.collectionVariables.set('slice_id', response.slice_id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"slice_id\": \"slice-uRLLC-001\",\n  \"bandwidth_mbps\": 100.0,\n  \"vlan_id\": 2001,\n  \"qos_class\": \"uRLLC\",\n  \"priority\": 7,\n  \"latency_budget_ms\": 10.0\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/tn-manager/agents/{{agent_id}}/slices",
+              "host": ["{{base_url}}"],
+              "path": ["tn-manager", "agents", "{{agent_id}}", "slices"]
+            },
+            "description": "Configure network slice on TN agent"
+          }
+        },
+        {
+          "name": "Run Performance Test",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Performance metrics returned', () => {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response).to.have.property('throughput');",
+                  "    pm.expect(response).to.have.property('latency');",
+                  "    pm.expect(response).to.have.property('packet_loss');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"test_id\": \"perf-test-001\",\n  \"duration_seconds\": 60,\n  \"bandwidth_mbps\": 100.0,\n  \"packet_size\": 1500,\n  \"target_host\": \"192.168.1.100\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/tn-manager/agents/{{agent_id}}/performance",
+              "host": ["{{base_url}}"],
+              "path": ["tn-manager", "agents", "{{agent_id}}", "performance"]
+            },
+            "description": "Execute performance test on TN agent"
+          }
+        },
+        {
+          "name": "Get Agent Status",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Agent status returned', () => {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response).to.have.property('agent_id');",
+                  "    pm.expect(response).to.have.property('status');",
+                  "    pm.expect(response).to.have.property('interfaces');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/tn-manager/agents/{{agent_id}}/status",
+              "host": ["{{base_url}}"],
+              "path": ["tn-manager", "agents", "{{agent_id}}", "status"]
+            },
+            "description": "Retrieve current status of TN agent"
+          }
+        }
+      ]
+    },
+    {
+      "name": "O2 Client",
+      "item": [
+        {
+          "name": "List Deployment Managers",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has deployment_managers array', () => {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response).to.have.property('deployment_managers');",
+                  "    pm.expect(response.deployment_managers).to.be.an('array');",
+                  "});",
+                  "",
+                  "if (pm.response.json().deployment_managers.length > 0) {",
+                  "    pm.collectionVariables.set('deployment_manager_id', pm.response.json().deployment_managers[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/o2-client/deployment-managers?limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["o2-client", "deployment-managers"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Retrieve available O2 DMS deployment managers"
+          }
+        },
+        {
+          "name": "List NF Descriptors",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has descriptors array', () => {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response).to.have.property('descriptors');",
+                  "    pm.expect(response.descriptors).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/o2-client/deployment-managers/{{deployment_manager_id}}/nf-descriptors?limit=5",
+              "host": ["{{base_url}}"],
+              "path": ["o2-client", "deployment-managers", "{{deployment_manager_id}}", "nf-descriptors"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "5"
+                }
+              ]
+            },
+            "description": "Retrieve NF deployment descriptors"
+          }
+        },
+        {
+          "name": "List NF Deployments",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has deployments array', () => {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response).to.have.property('deployments');",
+                  "    pm.expect(response.deployments).to.be.an('array');",
+                  "});",
+                  "",
+                  "if (pm.response.json().deployments.length > 0) {",
+                  "    pm.collectionVariables.set('deployment_id', pm.response.json().deployments[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/o2-client/deployment-managers/{{deployment_manager_id}}/deployments?limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["o2-client", "deployment-managers", "{{deployment_manager_id}}", "deployments"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Retrieve NF deployments"
+          }
+        },
+        {
+          "name": "Create NF Deployment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201', () => {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Deployment created with ID', () => {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response).to.have.property('id');",
+                  "    pm.collectionVariables.set('deployment_id', response.id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"upf-deployment-001\",\n  \"description\": \"UPF deployment for slice uRLLC-001\",\n  \"nf_deployment_descriptor_id\": \"nfd-upf-basic\",\n  \"input_params\": {\n    \"plmn_id\": \"001001\",\n    \"dnn\": \"internet\",\n    \"ip_pool\": \"10.45.0.0/16\"\n  },\n  \"location_constraints\": [\"edge\", \"us-east-1a\"],\n  \"extensions\": {\n    \"oran.io/qos-bandwidth\": 100.0,\n    \"oran.io/qos-latency\": 10.0,\n    \"oran.io/slice-type\": \"uRLLC\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/o2-client/deployment-managers/{{deployment_manager_id}}/deployments",
+              "host": ["{{base_url}}"],
+              "path": ["o2-client", "deployment-managers", "{{deployment_manager_id}}", "deployments"]
+            },
+            "description": "Deploy Network Function via O2 DMS"
+          }
+        },
+        {
+          "name": "Get NF Deployment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Deployment has required fields', () => {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response).to.have.property('id');",
+                  "    pm.expect(response).to.have.property('name');",
+                  "    pm.expect(response).to.have.property('status');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/o2-client/deployment-managers/{{deployment_manager_id}}/deployments/{{deployment_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["o2-client", "deployment-managers", "{{deployment_manager_id}}", "deployments", "{{deployment_id}}"]
+            },
+            "description": "Retrieve specific NF deployment details"
+          }
+        },
+        {
+          "name": "Delete NF Deployment",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/o2-client/deployment-managers/{{deployment_manager_id}}/deployments/{{deployment_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["o2-client", "deployment-managers", "{{deployment_manager_id}}", "deployments", "{{deployment_id}}"]
+            },
+            "description": "Remove NF deployment via O2 DMS"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Monitoring",
+      "item": [
+        {
+          "name": "Health Check",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('System is healthy', () => {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.status).to.equal('healthy');",
+                  "});",
+                  "",
+                  "pm.test('Components status included', () => {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response).to.have.property('components');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/monitoring/health",
+              "host": ["{{base_url}}"],
+              "path": ["monitoring", "health"]
+            },
+            "description": "Check system health status"
+          }
+        },
+        {
+          "name": "Get System Metrics",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Metrics in Prometheus format', () => {",
+                  "    pm.expect(pm.response.text()).to.include('# HELP');",
+                  "    pm.expect(pm.response.text()).to.include('# TYPE');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/monitoring/metrics",
+              "host": ["{{base_url}}"],
+              "path": ["monitoring", "metrics"]
+            },
+            "description": "Retrieve system metrics in Prometheus format"
+          }
+        },
+        {
+          "name": "Get Slice Metrics",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Slice metrics returned', () => {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response).to.have.property('slice_id');",
+                  "    pm.expect(response).to.have.property('bandwidth_utilization');",
+                  "    pm.expect(response).to.have.property('latency');",
+                  "    pm.expect(response).to.have.property('throughput');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/monitoring/slices/{{slice_id}}/metrics?timeframe=1h",
+              "host": ["{{base_url}}"],
+              "path": ["monitoring", "slices", "{{slice_id}}", "metrics"],
+              "query": [
+                {
+                  "key": "timeframe",
+                  "value": "1h"
+                }
+              ]
+            },
+            "description": "Retrieve metrics for specific network slice"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Test Scenarios",
+      "item": [
+        {
+          "name": "Complete uRLLC Slice Deployment",
+          "item": [
+            {
+              "name": "1. Create uRLLC Intent",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('uRLLC intent created', () => {",
+                      "    pm.response.to.have.status(201);",
+                      "    const response = pm.response.json();",
+                      "    pm.expect(response.slice_type).to.equal('uRLLC');",
+                      "    pm.collectionVariables.set('urlcc_intent_id', response.id);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"bandwidth\": 100.0,\n  \"latency\": 5.0,\n  \"slice_type\": \"uRLLC\",\n  \"jitter\": 1.0,\n  \"packet_loss\": 0.0001,\n  \"reliability\": 0.99999\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/orchestrator/intents",
+                  "host": ["{{base_url}}"],
+                  "path": ["orchestrator", "intents"]
+                }
+              }
+            },
+            {
+              "name": "2. Generate Orchestration Plan",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Plan generated successfully', () => {",
+                      "    pm.response.to.have.status(200);",
+                      "    const response = pm.response.json();",
+                      "    pm.expect(response).to.have.property('allocations');",
+                      "    pm.collectionVariables.set('plan_id', response.id);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"intents\": [\n    {\n      \"bandwidth\": 100.0,\n      \"latency\": 5.0,\n      \"slice_type\": \"uRLLC\",\n      \"reliability\": 0.99999\n    }\n  ],\n  \"dry_run\": true\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/orchestrator/plan",
+                  "host": ["{{base_url}}"],
+                  "path": ["orchestrator", "plan"]
+                }
+              }
+            },
+            {
+              "name": "3. Deploy UPF for uRLLC",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('UPF deployed successfully', () => {",
+                      "    pm.response.to.have.status(201);",
+                      "    const response = pm.response.json();",
+                      "    pm.expect(response.type).to.equal('UPF');",
+                      "    pm.collectionVariables.set('urlcc_upf_id', response.id);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"upf-urlcc-001\",\n  \"type\": \"UPF\",\n  \"version\": \"v1.3.0\",\n  \"qos\": {\n    \"bandwidth\": 100.0,\n    \"latency\": 5.0,\n    \"slice_type\": \"uRLLC\"\n  },\n  \"placement\": {\n    \"cloud_type\": \"edge\",\n    \"region\": \"us-east\"\n  },\n  \"target_clusters\": [\"edge-cluster-01\"],\n  \"resources\": {\n    \"cpu_cores\": 6,\n    \"memory_gb\": 12,\n    \"storage_gb\": 80\n  },\n  \"image\": {\n    \"repository\": \"registry.oran.io/vnf/upf\",\n    \"tag\": \"v1.3.0-urlcc\"\n  }\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/vnf-operator/vnfs",
+                  "host": ["{{base_url}}"],
+                  "path": ["vnf-operator", "vnfs"]
+                }
+              }
+            },
+            {
+              "name": "4. Configure TN Slice",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('TN slice configured', () => {",
+                      "    pm.response.to.have.status(200);",
+                      "    const response = pm.response.json();",
+                      "    pm.expect(response.status).to.equal('configured');",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"slice_id\": \"slice-uRLLC-test-001\",\n  \"bandwidth_mbps\": 100.0,\n  \"vlan_id\": 3001,\n  \"qos_class\": \"uRLLC\",\n  \"priority\": 8,\n  \"latency_budget_ms\": 5.0\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/tn-manager/agents/{{agent_id}}/slices",
+                  "host": ["{{base_url}}"],
+                  "path": ["tn-manager", "agents", "{{agent_id}}", "slices"]
+                }
+              }
+            },
+            {
+              "name": "5. Verify Deployment",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('uRLLC intent deployed', () => {",
+                      "    pm.response.to.have.status(200);",
+                      "    const response = pm.response.json();",
+                      "    pm.expect(response.status).to.be.oneOf(['deployed', 'running']);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/orchestrator/intents/{{urlcc_intent_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["orchestrator", "intents", "{{urlcc_intent_id}}"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Performance Testing Workflow",
+          "item": [
+            {
+              "name": "1. Get Agent Status",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Agent is healthy', () => {",
+                      "    pm.response.to.have.status(200);",
+                      "    const response = pm.response.json();",
+                      "    pm.expect(response.status).to.equal('healthy');",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/tn-manager/agents/{{agent_id}}/status",
+                  "host": ["{{base_url}}"],
+                  "path": ["tn-manager", "agents", "{{agent_id}}", "status"]
+                }
+              }
+            },
+            {
+              "name": "2. Run Bandwidth Test",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Bandwidth test completed', () => {",
+                      "    pm.response.to.have.status(200);",
+                      "    const response = pm.response.json();",
+                      "    pm.expect(response.throughput.avg_mbps).to.be.above(90);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"test_id\": \"bandwidth-test-001\",\n  \"duration_seconds\": 30,\n  \"bandwidth_mbps\": 100.0,\n  \"packet_size\": 1500,\n  \"target_host\": \"192.168.1.100\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/tn-manager/agents/{{agent_id}}/performance",
+                  "host": ["{{base_url}}"],
+                  "path": ["tn-manager", "agents", "{{agent_id}}", "performance"]
+                }
+              }
+            },
+            {
+              "name": "3. Run Latency Test",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Latency test completed', () => {",
+                      "    pm.response.to.have.status(200);",
+                      "    const response = pm.response.json();",
+                      "    pm.expect(response.latency.avg_rtt_ms).to.be.below(10);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"test_id\": \"latency-test-001\",\n  \"duration_seconds\": 30,\n  \"bandwidth_mbps\": 10.0,\n  \"packet_size\": 64,\n  \"target_host\": \"192.168.1.100\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/tn-manager/agents/{{agent_id}}/performance",
+                  "host": ["{{base_url}}"],
+                  "path": ["tn-manager", "agents", "{{agent_id}}", "performance"]
+                }
+              }
+            },
+            {
+              "name": "4. Get Slice Metrics",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Slice metrics available', () => {",
+                      "    pm.response.to.have.status(200);",
+                      "    const response = pm.response.json();",
+                      "    pm.expect(response.availability.uptime_percent).to.be.above(99);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/monitoring/slices/{{slice_id}}/metrics?timeframe=1h",
+                  "host": ["{{base_url}}"],
+                  "path": ["monitoring", "slices", "{{slice_id}}", "metrics"],
+                  "query": [
+                    {
+                      "key": "timeframe",
+                      "value": "1h"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

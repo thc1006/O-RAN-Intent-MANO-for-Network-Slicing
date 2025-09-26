@@ -1,0 +1,505 @@
+Makefile:249: warning: overriding recipe for target 'test-security'
+Makefile:175: warning: ignoring old recipe for target 'test-security'
+Makefile:259: warning: overriding recipe for target 'test-coverage'
+Makefile:193: warning: ignoring old recipe for target 'test-coverage'
+Makefile:268: warning: overriding recipe for target 'test-unit'
+Makefile:145: warning: ignoring old recipe for target 'test-unit'
+Makefile:273: warning: overriding recipe for target 'test-integration'
+Makefile:151: warning: ignoring old recipe for target 'test-integration'
+[1;33mVerifying environment...[0m 
+[0;32mEnvironment verified[0m 
+[1;33mRunning integration tests...[0m 
+[1;33mNote: Integration tests may require elevated privileges[0m 
+=== RUN   TestE2ESliceTestSuite
+[E2E] 2025/09/26 20:47:55 [2025-09-26T20:47:55.997Z][f8aaaeb5] Starting TN Manager for cluster: manager
+[E2E] 2025/09/26 20:47:55 Metrics collector started
+[E2E] 2025/09/26 20:47:55 TN Manager started successfully
+[E2E] 2025/09/26 20:47:55 Starting agent in test mode
+[E2E] 2025/09/26 20:47:55 [2025-09-26T20:47:55.997Z][f8aaaeb5] Connecting to TN agent at http://localhost:8081
+    e2e_slice_test.go:63: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/integration/e2e_slice_test.go:63
+        	            				/home/ubuntu/go/pkg/mod/github.com/stretchr/testify@v1.11.1/suite/suite.go:211
+        	            				/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/integration/e2e_slice_test.go:562
+        	Error:      	Received unexpected error:
+        	            	failed to connect to agent edge01: failed to connect to agent: Get "http://localhost:8081/health": dial tcp 127.0.0.1:8081: connect: connection refused
+        	Test:       	TestE2ESliceTestSuite
+        	Messages:   	Should register agent for cluster edge01
+--- FAIL: TestE2ESliceTestSuite (0.00s)
+=== RUN   TestHTTPIntegration_HealthEndpoint
+    http_integration_test.go:209: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/integration/http_integration_test.go:209
+        	Error:      	Not equal: 
+        	            	expected: "application/json"
+        	            	actual  : "text/plain; charset=utf-8"
+        	            	
+        	            	Diff:
+        	            	--- Expected
+        	            	+++ Actual
+        	            	@@ -1 +1 @@
+        	            	-application/json
+        	            	+text/plain; charset=utf-8
+        	Test:       	TestHTTPIntegration_HealthEndpoint
+    http_integration_test.go:215: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/integration/http_integration_test.go:215
+        	Error:      	Not equal: 
+        	            	expected: bool(true)
+        	            	actual  : <nil>(<nil>)
+        	Test:       	TestHTTPIntegration_HealthEndpoint
+    http_integration_test.go:216: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/integration/http_integration_test.go:216
+        	Error:      	Not equal: 
+        	            	expected: string("integration-test-cluster")
+        	            	actual  : <nil>(<nil>)
+        	Test:       	TestHTTPIntegration_HealthEndpoint
+    http_integration_test.go:217: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/integration/http_integration_test.go:217
+        	Error:      	Not equal: 
+        	            	expected: string("1.0.0")
+        	            	actual  : <nil>(<nil>)
+        	Test:       	TestHTTPIntegration_HealthEndpoint
+    http_integration_test.go:218: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/integration/http_integration_test.go:218
+        	Error:      	Expected value not to be nil.
+        	Test:       	TestHTTPIntegration_HealthEndpoint
+--- FAIL: TestHTTPIntegration_HealthEndpoint (0.01s)
+=== RUN   TestHTTPIntegration_StatusEndpoint
+--- PASS: TestHTTPIntegration_StatusEndpoint (0.00s)
+=== RUN   TestHTTPIntegration_ConfigurationEndpoints
+    http_integration_test.go:293: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/integration/http_integration_test.go:293
+        	Error:      	Not equal: 
+        	            	expected: "updated"
+        	            	actual  : ""
+        	            	
+        	            	Diff:
+        	            	--- Expected
+        	            	+++ Actual
+        	            	@@ -1 +1 @@
+        	            	-updated
+        	            	+
+        	Test:       	TestHTTPIntegration_ConfigurationEndpoints
+    http_integration_test.go:303: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/integration/http_integration_test.go:303
+        	Error:      	Not equal: 
+        	            	expected: 400
+        	            	actual  : 200
+        	Test:       	TestHTTPIntegration_ConfigurationEndpoints
+--- FAIL: TestHTTPIntegration_ConfigurationEndpoints (0.00s)
+=== RUN   TestHTTPIntegration_SliceManagement
+    http_integration_test.go:325: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/integration/http_integration_test.go:325
+        	Error:      	Not equal: 
+        	            	expected: 200
+        	            	actual  : 201
+        	Test:       	TestHTTPIntegration_SliceManagement
+    http_integration_test.go:331: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/integration/http_integration_test.go:331
+        	Error:      	Not equal: 
+        	            	expected: string("test-slice-1")
+        	            	actual  : <nil>(<nil>)
+        	Test:       	TestHTTPIntegration_SliceManagement
+    http_integration_test.go:332: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/integration/http_integration_test.go:332
+        	Error:      	Not equal: 
+        	            	expected: string("configured")
+        	            	actual  : <nil>(<nil>)
+        	Test:       	TestHTTPIntegration_SliceManagement
+    http_integration_test.go:333: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/integration/http_integration_test.go:333
+        	Error:      	Expected value not to be nil.
+        	Test:       	TestHTTPIntegration_SliceManagement
+    http_integration_test.go:348: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/integration/http_integration_test.go:348
+        	Error:      	Not equal: 
+        	            	expected: string("test-slice-1")
+        	            	actual  : <nil>(<nil>)
+        	Test:       	TestHTTPIntegration_SliceManagement
+    http_integration_test.go:349: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/integration/http_integration_test.go:349
+        	Error:      	Not equal: 
+        	            	expected: string("deleted")
+        	            	actual  : <nil>(<nil>)
+        	Test:       	TestHTTPIntegration_SliceManagement
+--- FAIL: TestHTTPIntegration_SliceManagement (0.00s)
+=== RUN   TestHTTPIntegration_PerformanceTests
+    http_integration_test.go:371: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/integration/http_integration_test.go:371
+        	Error:      	Should be true
+        	Test:       	TestHTTPIntegration_PerformanceTests
+    http_integration_test.go:384: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/integration/http_integration_test.go:384
+        	Error:      	Not equal: 
+        	            	expected: "integration-test-1"
+        	            	actual  : "test-123"
+        	            	
+        	            	Diff:
+        	            	--- Expected
+        	            	+++ Actual
+        	            	@@ -1 +1 @@
+        	            	-integration-test-1
+        	            	+test-123
+        	Test:       	TestHTTPIntegration_PerformanceTests
+--- FAIL: TestHTTPIntegration_PerformanceTests (0.00s)
+=== RUN   TestHTTPIntegration_VXLANManagement
+--- PASS: TestHTTPIntegration_VXLANManagement (0.00s)
+=== RUN   TestHTTPIntegration_TrafficControl
+--- PASS: TestHTTPIntegration_TrafficControl (0.00s)
+=== RUN   TestHTTPIntegration_IperfManagement
+    http_integration_test.go:489: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/integration/http_integration_test.go:489
+        	Error:      	Expected value not to be nil.
+        	Test:       	TestHTTPIntegration_IperfManagement
+    http_integration_test.go:505: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/integration/http_integration_test.go:505
+        	Error:      	Not equal: 
+        	            	expected: float64(15001)
+        	            	actual  : <nil>(<nil>)
+        	Test:       	TestHTTPIntegration_IperfManagement
+    http_integration_test.go:506: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/integration/http_integration_test.go:506
+        	Error:      	Not equal: 
+        	            	expected: string("started")
+        	            	actual  : <nil>(<nil>)
+        	Test:       	TestHTTPIntegration_IperfManagement
+    http_integration_test.go:522: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/integration/http_integration_test.go:522
+        	Error:      	Not equal: 
+        	            	expected: float64(15001)
+        	            	actual  : <nil>(<nil>)
+        	Test:       	TestHTTPIntegration_IperfManagement
+    http_integration_test.go:523: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/integration/http_integration_test.go:523
+        	Error:      	Not equal: 
+        	            	expected: string("stopped")
+        	            	actual  : <nil>(<nil>)
+        	Test:       	TestHTTPIntegration_IperfManagement
+--- FAIL: TestHTTPIntegration_IperfManagement (0.00s)
+=== RUN   TestHTTPIntegration_MonitoringEndpoints
+    http_integration_test.go:555: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/integration/http_integration_test.go:555
+        	Error:      	Not equal: 
+        	            	expected: "application/json"
+        	            	actual  : "text/plain; charset=utf-8"
+        	            	
+        	            	Diff:
+        	            	--- Expected
+        	            	+++ Actual
+        	            	@@ -1 +1 @@
+        	            	-application/json
+        	            	+text/plain; charset=utf-8
+        	Test:       	TestHTTPIntegration_MonitoringEndpoints
+    http_integration_test.go:556: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/integration/http_integration_test.go:556
+        	Error:      	"" does not contain "attachment"
+        	Test:       	TestHTTPIntegration_MonitoringEndpoints
+--- FAIL: TestHTTPIntegration_MonitoringEndpoints (0.00s)
+=== RUN   TestHTTPIntegration_BandwidthStream
+    http_integration_test.go:579: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/integration/http_integration_test.go:579
+        	Error:      	Not equal: 
+        	            	expected: "text/event-stream"
+        	            	actual  : "text/plain; charset=utf-8"
+        	            	
+        	            	Diff:
+        	            	--- Expected
+        	            	+++ Actual
+        	            	@@ -1 +1 @@
+        	            	-text/event-stream
+        	            	+text/plain; charset=utf-8
+        	Test:       	TestHTTPIntegration_BandwidthStream
+    http_integration_test.go:580: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/integration/http_integration_test.go:580
+        	Error:      	Not equal: 
+        	            	expected: "no-cache"
+        	            	actual  : ""
+        	            	
+        	            	Diff:
+        	            	--- Expected
+        	            	+++ Actual
+        	            	@@ -1 +1 @@
+        	            	-no-cache
+        	            	+
+        	Test:       	TestHTTPIntegration_BandwidthStream
+--- FAIL: TestHTTPIntegration_BandwidthStream (0.00s)
+=== RUN   TestHTTPIntegration_ConcurrentRequests
+--- PASS: TestHTTPIntegration_ConcurrentRequests (0.00s)
+=== RUN   TestHTTPIntegration_LargePayloads
+--- PASS: TestHTTPIntegration_LargePayloads (0.00s)
+=== RUN   TestHTTPIntegration_ErrorRecovery
+=== RUN   TestHTTPIntegration_ErrorRecovery/malformed_payload_0
+    http_integration_test.go:708: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/integration/http_integration_test.go:708
+        	Error:      	Not equal: 
+        	            	expected: 400
+        	            	actual  : 200
+        	Test:       	TestHTTPIntegration_ErrorRecovery/malformed_payload_0
+=== RUN   TestHTTPIntegration_ErrorRecovery/malformed_payload_1
+    http_integration_test.go:708: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/integration/http_integration_test.go:708
+        	Error:      	Not equal: 
+        	            	expected: 400
+        	            	actual  : 200
+        	Test:       	TestHTTPIntegration_ErrorRecovery/malformed_payload_1
+=== RUN   TestHTTPIntegration_ErrorRecovery/malformed_payload_2
+    http_integration_test.go:708: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/integration/http_integration_test.go:708
+        	Error:      	Not equal: 
+        	            	expected: 400
+        	            	actual  : 200
+        	Test:       	TestHTTPIntegration_ErrorRecovery/malformed_payload_2
+=== RUN   TestHTTPIntegration_ErrorRecovery/malformed_payload_3
+    http_integration_test.go:708: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/integration/http_integration_test.go:708
+        	Error:      	Not equal: 
+        	            	expected: 400
+        	            	actual  : 200
+        	Test:       	TestHTTPIntegration_ErrorRecovery/malformed_payload_3
+=== RUN   TestHTTPIntegration_ErrorRecovery/malformed_payload_4
+    http_integration_test.go:708: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/integration/http_integration_test.go:708
+        	Error:      	Not equal: 
+        	            	expected: 400
+        	            	actual  : 200
+        	Test:       	TestHTTPIntegration_ErrorRecovery/malformed_payload_4
+=== RUN   TestHTTPIntegration_ErrorRecovery/malformed_payload_5
+    http_integration_test.go:708: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/integration/http_integration_test.go:708
+        	Error:      	Not equal: 
+        	            	expected: 400
+        	            	actual  : 200
+        	Test:       	TestHTTPIntegration_ErrorRecovery/malformed_payload_5
+--- FAIL: TestHTTPIntegration_ErrorRecovery (0.01s)
+    --- FAIL: TestHTTPIntegration_ErrorRecovery/malformed_payload_0 (0.00s)
+    --- FAIL: TestHTTPIntegration_ErrorRecovery/malformed_payload_1 (0.00s)
+    --- FAIL: TestHTTPIntegration_ErrorRecovery/malformed_payload_2 (0.00s)
+    --- FAIL: TestHTTPIntegration_ErrorRecovery/malformed_payload_3 (0.00s)
+    --- FAIL: TestHTTPIntegration_ErrorRecovery/malformed_payload_4 (0.00s)
+    --- FAIL: TestHTTPIntegration_ErrorRecovery/malformed_payload_5 (0.00s)
+=== RUN   TestHTTPIntegration_ConnectionHandling
+--- PASS: TestHTTPIntegration_ConnectionHandling (0.00s)
+=== RUN   TestHTTPIntegration_ContentNegotiation
+    http_integration_test.go:763: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/integration/http_integration_test.go:763
+        	Error:      	Not equal: 
+        	            	expected: "application/json"
+        	            	actual  : "text/plain; charset=utf-8"
+        	            	
+        	            	Diff:
+        	            	--- Expected
+        	            	+++ Actual
+        	            	@@ -1 +1 @@
+        	            	-application/json
+        	            	+text/plain; charset=utf-8
+        	Test:       	TestHTTPIntegration_ContentNegotiation
+    http_integration_test.go:775: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/integration/http_integration_test.go:775
+        	Error:      	Should be true
+        	Test:       	TestHTTPIntegration_ContentNegotiation
+--- FAIL: TestHTTPIntegration_ContentNegotiation (0.00s)
+=== RUN   TestHTTPIntegration_SecurityHeaders
+    http_integration_test.go:791: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/integration/http_integration_test.go:791
+        	Error:      	Not equal: 
+        	            	expected: 200
+        	            	actual  : 405
+        	Test:       	TestHTTPIntegration_SecurityHeaders
+    http_integration_test.go:792: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/integration/http_integration_test.go:792
+        	Error:      	Not equal: 
+        	            	expected: "*"
+        	            	actual  : ""
+        	            	
+        	            	Diff:
+        	            	--- Expected
+        	            	+++ Actual
+        	            	@@ -1 +1 @@
+        	            	-*
+        	            	+
+        	Test:       	TestHTTPIntegration_SecurityHeaders
+    http_integration_test.go:793: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/integration/http_integration_test.go:793
+        	Error:      	"" does not contain "GET"
+        	Test:       	TestHTTPIntegration_SecurityHeaders
+    http_integration_test.go:794: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/integration/http_integration_test.go:794
+        	Error:      	"" does not contain "POST"
+        	Test:       	TestHTTPIntegration_SecurityHeaders
+--- FAIL: TestHTTPIntegration_SecurityHeaders (0.00s)
+=== RUN   TestHTTPIntegration_LoadTesting
+    http_integration_test.go:842: Load test completed: 100 requests in 6.396026ms
+    http_integration_test.go:843: Request rate: 15634.71 req/s
+    http_integration_test.go:844: Error rate: 0.00%
+--- PASS: TestHTTPIntegration_LoadTesting (0.01s)
+=== RUN   TestHTTPIntegration_NetworkErrors
+    http_integration_test.go:876: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/integration/http_integration_test.go:876
+        	Error:      	Should be true
+        	Test:       	TestHTTPIntegration_NetworkErrors
+--- FAIL: TestHTTPIntegration_NetworkErrors (0.00s)
+=== RUN   TestTNIntegrationSuite
+[TN-Integration] 2025/09/26 20:47:56 integration_test.go:178: Loaded test configuration with 3 clusters, 3 scenarios
+[E2E] 2025/09/26 20:47:56 [2025-09-26T20:47:56.043Z][f8aaaeb5] Starting TN Manager for cluster: tn-manager
+[TN-Integration] 2025/09/26 20:47:56 metrics.go:161: Metrics collector started
+[TN-Integration] 2025/09/26 20:47:56 manager.go:51: TN Manager started successfully
+[TN-Integration] 2025/09/26 20:47:56 integration_test.go:192: TN Manager initialized successfully
+[E2E] 2025/09/26 20:47:56 [2025-09-26T20:47:56.043Z][f8aaaeb5] Starting TN Agent for cluster: cluster-edge01
+[TN-Integration] 2025/09/26 20:47:56 agent.go:129: Initializing VXLAN manager
+[E2E] 2025/09/26 20:47:56 [2025-09-26T20:47:56.043Z][f8aaaeb5] Creating VXLAN tunnel vxlan1001 with VNI %!d(string=1001)
+[E2E] 2025/09/26 20:47:56 [2025-09-26T20:47:56.043Z][f8aaaeb5] Deleting VXLAN tunnel vxlan1001
+    integration_test.go:281: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/integration/integration_test.go:281
+        	            				/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/integration/integration_test.go:198
+        	            				/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/integration/integration_test.go:87
+        	            				/home/ubuntu/go/pkg/mod/github.com/stretchr/testify@v1.11.1/suite/suite.go:211
+        	            				/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/integration/integration_test.go:639
+        	            				/home/ubuntu/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.7.linux-amd64/src/runtime/asm_amd64.s:1700
+        	Error:      	Received unexpected error:
+        	            	failed to initialize VXLAN: failed to create VXLAN tunnel: failed to create VXLAN interface: command execution failed: exit status 2
+        	Test:       	TestTNIntegrationSuite
+--- FAIL: TestTNIntegrationSuite (0.08s)
+=== RUN   TestIperfIntegration_ServerLifecycle
+=== RUN   TestIperfIntegration_ServerLifecycle/start_server_successfully
+[E2E] 2025/09/26 20:47:56 [2025-09-26T20:47:56.126Z][f8aaaeb5] Starting iperf3 server on port %!d(string=15001)
+    iperf_integration_test.go:51: Failed to start iperf server: failed to start iperf3 server: command execution failed: exec: "iperf3": executable file not found in $PATH
+=== RUN   TestIperfIntegration_ServerLifecycle/stop_server_successfully
+    iperf_integration_test.go:65: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/integration/iperf_integration_test.go:65
+        	Error:      	Received unexpected error:
+        	            	no iperf3 server running on port 15001
+        	Test:       	TestIperfIntegration_ServerLifecycle/stop_server_successfully
+=== RUN   TestIperfIntegration_ServerLifecycle/restart_server_on_same_port
+[E2E] 2025/09/26 20:47:56 [2025-09-26T20:47:56.227Z][f8aaaeb5] Starting iperf3 server on port %!d(string=15001)
+    iperf_integration_test.go:83: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/integration/iperf_integration_test.go:83
+        	Error:      	Received unexpected error:
+        	            	failed to start iperf3 server: command execution failed: exec: "iperf3": executable file not found in $PATH
+        	Test:       	TestIperfIntegration_ServerLifecycle/restart_server_on_same_port
+--- FAIL: TestIperfIntegration_ServerLifecycle (0.10s)
+    --- FAIL: TestIperfIntegration_ServerLifecycle/start_server_successfully (0.00s)
+    --- FAIL: TestIperfIntegration_ServerLifecycle/stop_server_successfully (0.10s)
+    --- FAIL: TestIperfIntegration_ServerLifecycle/restart_server_on_same_port (0.00s)
+=== RUN   TestIperfIntegration_MultipleServers
+[E2E] 2025/09/26 20:47:56 [2025-09-26T20:47:56.228Z][f8aaaeb5] Starting iperf3 server on port %!d(string=15101)
+    iperf_integration_test.go:112: Failed to start server on port 15101: failed to start iperf3 server: command execution failed: exec: "iperf3": executable file not found in $PATH
+[E2E] 2025/09/26 20:47:56 [2025-09-26T20:47:56.228Z][f8aaaeb5] Starting iperf3 server on port %!d(string=15111)
+    iperf_integration_test.go:112: Failed to start server on port 15111: failed to start iperf3 server: command execution failed: exec: "iperf3": executable file not found in $PATH
+[E2E] 2025/09/26 20:47:56 [2025-09-26T20:47:56.228Z][f8aaaeb5] Starting iperf3 server on port %!d(string=15121)
+    iperf_integration_test.go:112: Failed to start server on port 15121: failed to start iperf3 server: command execution failed: exec: "iperf3": executable file not found in $PATH
+    iperf_integration_test.go:126: Started 0 out of 3 servers
+--- PASS: TestIperfIntegration_MultipleServers (0.00s)
+=== RUN   TestIperfIntegration_ServerErrorHandling
+=== RUN   TestIperfIntegration_ServerErrorHandling/start_server_on_invalid_port
+=== RUN   TestIperfIntegration_ServerErrorHandling/start_server_on_privileged_port
+[E2E] 2025/09/26 20:47:56 [2025-09-26T20:47:56.228Z][f8aaaeb5] Starting iperf3 server on port %!d(string=80)
+    iperf_integration_test.go:161: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/integration/iperf_integration_test.go:161
+        	Error:      	"failed to start iperf3 server: command execution failed: exec: \"iperf3\": executable file not found in $PATH" does not contain "permission"
+        	Test:       	TestIperfIntegration_ServerErrorHandling/start_server_on_privileged_port
+=== RUN   TestIperfIntegration_ServerErrorHandling/stop_non-existent_server
+=== RUN   TestIperfIntegration_ServerErrorHandling/start_server_on_busy_port
+[E2E] 2025/09/26 20:47:56 [2025-09-26T20:47:56.229Z][f8aaaeb5] Starting iperf3 server on port %!d(string=15201)
+--- FAIL: TestIperfIntegration_ServerErrorHandling (0.00s)
+    --- PASS: TestIperfIntegration_ServerErrorHandling/start_server_on_invalid_port (0.00s)
+    --- FAIL: TestIperfIntegration_ServerErrorHandling/start_server_on_privileged_port (0.00s)
+    --- PASS: TestIperfIntegration_ServerErrorHandling/stop_non-existent_server (0.00s)
+    --- PASS: TestIperfIntegration_ServerErrorHandling/start_server_on_busy_port (0.00s)
+=== RUN   TestIperfIntegration_ClientTesting
+[E2E] 2025/09/26 20:47:56 [2025-09-26T20:47:56.229Z][f8aaaeb5] Starting iperf3 server on port %!d(string=15301)
+    iperf_integration_test.go:206: Failed to start test server: failed to start iperf3 server: command execution failed: exec: "iperf3": executable file not found in $PATH
+--- FAIL: TestIperfIntegration_ClientTesting (0.00s)
+=== RUN   TestIperfIntegration_ThroughputTesting
+[E2E] 2025/09/26 20:47:56 [2025-09-26T20:47:56.229Z][f8aaaeb5] Starting iperf3 server on port %!d(string=15401)
+    iperf_integration_test.go:293: Failed to start test server: failed to start iperf3 server: command execution failed: exec: "iperf3": executable file not found in $PATH
+--- FAIL: TestIperfIntegration_ThroughputTesting (0.00s)
+=== RUN   TestIperfIntegration_LatencyTesting
+=== RUN   TestIperfIntegration_LatencyTesting/latency_test_to_localhost
+[E2E] 2025/09/26 20:47:56 [2025-09-26T20:47:56.230Z][f8aaaeb5] Running latency test to 127.0.0.1:%!d(string=80)
+[E2E] 2025/09/26 20:47:57 [2025-09-26T20:47:57.172Z][f8aaaeb5] Latency test completed: Avg=%!f(string=0.) ms, Min=%!f(string=0.) ms, Max=%!f(string=0.) ms
+    iperf_integration_test.go:365: Latency results: Avg=0.04 ms, Min=0.03 ms, Max=0.06 ms
+=== RUN   TestIperfIntegration_LatencyTesting/latency_test_with_validation_errors
+=== RUN   TestIperfIntegration_LatencyTesting/latency_test_to_unreachable_host
+[E2E] 2025/09/26 20:47:57 [2025-09-26T20:47:57.172Z][f8aaaeb5] Running latency test to 192.0.2.1:%!d(string=80)
+--- PASS: TestIperfIntegration_LatencyTesting (11.88s)
+    --- PASS: TestIperfIntegration_LatencyTesting/latency_test_to_localhost (0.94s)
+    --- PASS: TestIperfIntegration_LatencyTesting/latency_test_with_validation_errors (0.00s)
+    --- PASS: TestIperfIntegration_LatencyTesting/latency_test_to_unreachable_host (10.94s)
+=== RUN   TestIperfIntegration_ConcurrentOperations
+=== RUN   TestIperfIntegration_ConcurrentOperations/concurrent_server_start/stop
+[E2E] 2025/09/26 20:48:08 [2025-09-26T20:48:08.109Z][f8aaaeb5] Starting iperf3 server on port %!d(string=15591)
+[E2E] 2025/09/26 20:48:08 [2025-09-26T20:48:08.109Z][f8aaaeb5] Starting iperf3 server on port %!d(string=15541)
+[E2E] 2025/09/26 20:48:08 [2025-09-26T20:48:08.109Z][f8aaaeb5] Starting iperf3 server on port %!d(string=15501)
+[E2E] 2025/09/26 20:48:08 [2025-09-26T20:48:08.110Z][f8aaaeb5] Starting iperf3 server on port %!d(string=15511)
+[E2E] 2025/09/26 20:48:08 [2025-09-26T20:48:08.110Z][f8aaaeb5] Starting iperf3 server on port %!d(string=15521)
+[E2E] 2025/09/26 20:48:08 [2025-09-26T20:48:08.110Z][f8aaaeb5] Starting iperf3 server on port %!d(string=15561)
+[E2E] 2025/09/26 20:48:08 [2025-09-26T20:48:08.116Z][f8aaaeb5] Starting iperf3 server on port %!d(string=15531)
+[E2E] 2025/09/26 20:48:08 [2025-09-26T20:48:08.116Z][f8aaaeb5] Starting iperf3 server on port %!d(string=15551)
+[E2E] 2025/09/26 20:48:08 [2025-09-26T20:48:08.116Z][f8aaaeb5] Starting iperf3 server on port %!d(string=15571)
+[E2E] 2025/09/26 20:48:08 [2025-09-26T20:48:08.116Z][f8aaaeb5] Starting iperf3 server on port %!d(string=15581)
+    iperf_integration_test.go:445: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/integration/iperf_integration_test.go:445
+        	Error:      	Should be true
+        	Test:       	TestIperfIntegration_ConcurrentOperations/concurrent_server_start/stop
+        	Messages:   	Too many errors in concurrent operations: [start port 15591: failed to start iperf3 server: command execution failed: exec: "iperf3": executable file not found in $PATH start port 15541: failed to start iperf3 server: command execution failed: exec: "iperf3": executable file not found in $PATH start port 15501: failed to start iperf3 server: command execution failed: exec: "iperf3": executable file not found in $PATH start port 15511: failed to start iperf3 server: command execution failed: exec: "iperf3": executable file not found in $PATH start port 15521: failed to start iperf3 server: command execution failed: exec: "iperf3": executable file not found in $PATH start port 15561: failed to start iperf3 server: command execution failed: exec: "iperf3": executable file not found in $PATH start port 15531: failed to start iperf3 server: command execution failed: exec: "iperf3": executable file not found in $PATH start port 15551: failed to start iperf3 server: command execution failed: exec: "iperf3": executable file not found in $PATH start port 15571: failed to start iperf3 server: command execution failed: exec: "iperf3": executable file not found in $PATH start port 15581: failed to start iperf3 server: command execution failed: exec: "iperf3": executable file not found in $PATH]
+=== RUN   TestIperfIntegration_ConcurrentOperations/concurrent_client_tests
+[E2E] 2025/09/26 20:48:08 [2025-09-26T20:48:08.117Z][f8aaaeb5] Starting iperf3 server on port %!d(string=15601)
+    iperf_integration_test.go:456: Failed to start test server: failed to start iperf3 server: command execution failed: exec: "iperf3": executable file not found in $PATH
+--- FAIL: TestIperfIntegration_ConcurrentOperations (0.01s)
+    --- FAIL: TestIperfIntegration_ConcurrentOperations/concurrent_server_start/stop (0.01s)
+    --- FAIL: TestIperfIntegration_ConcurrentOperations/concurrent_client_tests (0.00s)
+=== RUN   TestIperfIntegration_ResourceCleanup
+[E2E] 2025/09/26 20:48:08 [2025-09-26T20:48:08.117Z][f8aaaeb5] Starting iperf3 server on port %!d(string=15701)
+    iperf_integration_test.go:517: Failed to start server on port 15701: failed to start iperf3 server: command execution failed: exec: "iperf3": executable file not found in $PATH
+[E2E] 2025/09/26 20:48:08 [2025-09-26T20:48:08.117Z][f8aaaeb5] Starting iperf3 server on port %!d(string=15711)
+    iperf_integration_test.go:517: Failed to start server on port 15711: failed to start iperf3 server: command execution failed: exec: "iperf3": executable file not found in $PATH
+[E2E] 2025/09/26 20:48:08 [2025-09-26T20:48:08.117Z][f8aaaeb5] Starting iperf3 server on port %!d(string=15721)
+    iperf_integration_test.go:517: Failed to start server on port 15721: failed to start iperf3 server: command execution failed: exec: "iperf3": executable file not found in $PATH
+    iperf_integration_test.go:522: No servers could be started
+--- SKIP: TestIperfIntegration_ResourceCleanup (0.00s)
+=== RUN   TestIperfIntegration_SecurityValidation
+=== RUN   TestIperfIntegration_SecurityValidation/malicious_server_IP
+    iperf_integration_test.go:583: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/integration/iperf_integration_test.go:583
+        	Error:      	Expected value not to be nil.
+        	Test:       	TestIperfIntegration_SecurityValidation/malicious_server_IP
+=== RUN   TestIperfIntegration_SecurityValidation/command_injection_in_bandwidth
+    iperf_integration_test.go:583: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/integration/iperf_integration_test.go:583
+        	Error:      	Expected value not to be nil.
+        	Test:       	TestIperfIntegration_SecurityValidation/command_injection_in_bandwidth
+=== RUN   TestIperfIntegration_SecurityValidation/path_traversal_in_window_size
+    iperf_integration_test.go:583: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/integration/iperf_integration_test.go:583
+        	Error:      	Expected value not to be nil.
+        	Test:       	TestIperfIntegration_SecurityValidation/path_traversal_in_window_size
+--- FAIL: TestIperfIntegration_SecurityValidation (0.00s)
+    --- FAIL: TestIperfIntegration_SecurityValidation/malicious_server_IP (0.00s)
+    --- FAIL: TestIperfIntegration_SecurityValidation/command_injection_in_bandwidth (0.00s)
+    --- FAIL: TestIperfIntegration_SecurityValidation/path_traversal_in_window_size (0.00s)
+=== RUN   TestIperfIntegration_NetworkErrorHandling
+=== RUN   TestIperfIntegration_NetworkErrorHandling/connection_timeout
+    iperf_integration_test.go:642: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/integration/iperf_integration_test.go:642
+        	Error:      	Expected value not to be nil.
+        	Test:       	TestIperfIntegration_NetworkErrorHandling/connection_timeout
+--- FAIL: TestIperfIntegration_NetworkErrorHandling (0.00s)
+    --- FAIL: TestIperfIntegration_NetworkErrorHandling/connection_timeout (0.00s)
+panic: runtime error: invalid memory address or nil pointer dereference [recovered]
+	panic: runtime error: invalid memory address or nil pointer dereference
+[signal SIGSEGV: segmentation violation code=0x1 addr=0x118 pc=0x9b6983]
+
+goroutine 1204 [running]:
+testing.tRunner.func1.2({0xac5260, 0x1104d30})
+	/home/ubuntu/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.7.linux-amd64/src/testing/testing.go:1734 +0x21c
+testing.tRunner.func1()
+	/home/ubuntu/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.7.linux-amd64/src/testing/testing.go:1737 +0x35e
+panic({0xac5260?, 0x1104d30?})
+	/home/ubuntu/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.7.linux-amd64/src/runtime/panic.go:792 +0x132
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/integration.TestIperfIntegration_NetworkErrorHandling.func1(0xc000365c00)
+	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/integration/iperf_integration_test.go:643 +0x103
+testing.tRunner(0xc000365c00, 0xc000324600)
+	/home/ubuntu/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.7.linux-amd64/src/testing/testing.go:1792 +0xf4
+created by testing.(*T).Run in goroutine 1203
+	/home/ubuntu/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.7.linux-amd64/src/testing/testing.go:1851 +0x413
+FAIL	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tn/tests/integration	12.132s
+FAIL
+make: *** [Makefile:275: test-integration] Error 1

@@ -1,0 +1,463 @@
+Makefile:249: warning: overriding recipe for target 'test-security'
+Makefile:175: warning: ignoring old recipe for target 'test-security'
+Makefile:259: warning: overriding recipe for target 'test-coverage'
+Makefile:193: warning: ignoring old recipe for target 'test-coverage'
+Makefile:268: warning: overriding recipe for target 'test-unit'
+Makefile:145: warning: ignoring old recipe for target 'test-unit'
+Makefile:273: warning: overriding recipe for target 'test-integration'
+Makefile:151: warning: ignoring old recipe for target 'test-integration'
+[1;33mVerifying environment...[0m 
+[0;32mEnvironment verified[0m 
+[1;33mRunning unit tests...[0m 
+go: downloading k8s.io/api v0.34.1
+go: downloading k8s.io/client-go v0.34.1
+go: downloading github.com/gorilla/mux v1.8.1
+go: downloading k8s.io/apimachinery v0.34.1
+go: downloading github.com/prometheus/client_golang v1.23.2
+go: downloading github.com/stretchr/testify v1.11.1
+go: downloading github.com/beorn7/perks v1.0.1
+go: downloading github.com/cespare/xxhash/v2 v2.3.0
+go: downloading github.com/prometheus/client_model v0.6.2
+go: downloading github.com/prometheus/common v0.66.1
+go: downloading github.com/prometheus/procfs v0.16.1
+go: downloading google.golang.org/protobuf v1.36.9
+go: downloading github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
+go: downloading github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2
+go: downloading github.com/gogo/protobuf v1.3.2
+go: downloading k8s.io/utils v0.0.0-20250604170112-4c0f3b243397
+go: downloading sigs.k8s.io/randfill v1.0.0
+go: downloading github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822
+go: downloading go.yaml.in/yaml/v2 v2.4.2
+go: downloading golang.org/x/sys v0.35.0
+go: downloading gopkg.in/yaml.v3 v3.0.1
+go: downloading gopkg.in/inf.v0 v0.9.1
+go: downloading k8s.io/klog/v2 v2.130.1
+go: downloading sigs.k8s.io/structured-merge-diff/v6 v6.3.0
+go: downloading sigs.k8s.io/json v0.0.0-20241014173422-cfa47c3a1cc8
+go: downloading github.com/go-logr/logr v1.4.3
+go: downloading github.com/json-iterator/go v1.1.12
+go: downloading github.com/fxamacker/cbor/v2 v2.9.0
+go: downloading golang.org/x/net v0.43.0
+go: downloading github.com/google/gnostic-models v0.7.0
+go: downloading golang.org/x/time v0.13.0
+go: downloading github.com/x448/float16 v0.8.4
+go: downloading github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd
+go: downloading github.com/modern-go/reflect2 v1.0.3-0.20250322232337-35a7c28c31ee
+go: downloading k8s.io/kube-openapi v0.0.0-20250710124328-f3f2b991d03b
+go: downloading golang.org/x/term v0.34.0
+go: downloading golang.org/x/oauth2 v0.30.0
+go: downloading sigs.k8s.io/yaml v1.6.0
+go: downloading go.yaml.in/yaml/v3 v3.0.4
+go: downloading gopkg.in/evanphx/json-patch.v4 v4.12.0
+go: downloading github.com/go-openapi/swag v0.23.0
+go: downloading github.com/go-openapi/jsonreference v0.20.2
+go: downloading github.com/google/uuid v1.6.0
+go: downloading golang.org/x/text v0.28.0
+go: downloading github.com/pkg/errors v0.9.1
+go: downloading github.com/go-openapi/jsonpointer v0.21.0
+go: downloading github.com/emicklei/go-restful/v3 v3.12.2
+go: downloading github.com/emicklei/go-restful v2.16.0+incompatible
+go: downloading github.com/mailru/easyjson v0.7.7
+go: downloading github.com/josharian/intern v1.0.0
+=== RUN   TestHTTPHandlers_HealthCheck
+=== RUN   TestHTTPHandlers_HealthCheck/successful_health_check
+    http_test.go:82: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/agent/pkg/http_test.go:82
+        	Error:      	Not equal: 
+        	            	expected: 200
+        	            	actual  : 503
+        	Test:       	TestHTTPHandlers_HealthCheck/successful_health_check
+=== RUN   TestHTTPHandlers_HealthCheck/health_check_with_malformed_request
+    http_test.go:94: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/agent/pkg/http_test.go:94
+        	Error:      	Not equal: 
+        	            	expected: 200
+        	            	actual  : 503
+        	Test:       	TestHTTPHandlers_HealthCheck/health_check_with_malformed_request
+--- FAIL: TestHTTPHandlers_HealthCheck (0.00s)
+    --- FAIL: TestHTTPHandlers_HealthCheck/successful_health_check (0.00s)
+    --- FAIL: TestHTTPHandlers_HealthCheck/health_check_with_malformed_request (0.00s)
+=== RUN   TestHTTPHandlers_Status
+=== RUN   TestHTTPHandlers_Status/successful_status_request
+    http_test.go:113: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/agent/pkg/http_test.go:113
+        	Error:      	map[string]interface {}{"activeConnections":1, "bandwidthUsage":map[string]interface {}{}, "healthy":false, "lastUpdate":"2025-09-26T20:46:55.422470612Z", "tcStatus":map[string]interface {}{"interfaces":interface {}(nil), "queueStats":interface {}(nil), "rulesActive":false, "shapingActive":false}, "vxlanStatus":map[string]interface {}{"lastHeartbeat":"0001-01-01T00:00:00Z", "packetStats":interface {}(nil), "remotePeers":interface {}(nil), "tunnelUp":false}} does not contain "status"
+        	Test:       	TestHTTPHandlers_Status/successful_status_request
+=== RUN   TestHTTPHandlers_Status/status_with_invalid_method
+    http_test.go:122: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/agent/pkg/http_test.go:122
+        	Error:      	Not equal: 
+        	            	expected: 405
+        	            	actual  : 200
+        	Test:       	TestHTTPHandlers_Status/status_with_invalid_method
+--- FAIL: TestHTTPHandlers_Status (0.00s)
+    --- FAIL: TestHTTPHandlers_Status/successful_status_request (0.00s)
+    --- FAIL: TestHTTPHandlers_Status/status_with_invalid_method (0.00s)
+=== RUN   TestHTTPHandlers_Configuration
+=== RUN   TestHTTPHandlers_Configuration/successful_config_update
+[TEST] 2025/09/26 20:46:55 [2025-09-26T20:46:55.423Z][f5540fc0] Updating configuration for cluster: updated-cluster
+[TEST] 2025/09/26 20:46:55 [2025-09-26T20:46:55.423Z][f5540fc0] Configuration updated successfully for cluster: updated-cluster
+=== RUN   TestHTTPHandlers_Configuration/malformed_json_config
+    http_test.go:168: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/agent/pkg/http_test.go:168
+        	Error:      	"Invalid configuration: unexpected EOF\n" does not contain "error"
+        	Test:       	TestHTTPHandlers_Configuration/malformed_json_config
+=== RUN   TestHTTPHandlers_Configuration/empty_request_body
+=== RUN   TestHTTPHandlers_Configuration/invalid_content_type
+=== RUN   TestHTTPHandlers_Configuration/get_current_config
+    http_test.go:203: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/agent/pkg/http_test.go:203
+        	Error:      	Not equal: 
+        	            	expected: "test-cluster"
+        	            	actual  : "updated-cluster"
+        	            	
+        	            	Diff:
+        	            	--- Expected
+        	            	+++ Actual
+        	            	@@ -1 +1 @@
+        	            	-test-cluster
+        	            	+updated-cluster
+        	Test:       	TestHTTPHandlers_Configuration/get_current_config
+--- FAIL: TestHTTPHandlers_Configuration (0.00s)
+    --- PASS: TestHTTPHandlers_Configuration/successful_config_update (0.00s)
+    --- FAIL: TestHTTPHandlers_Configuration/malformed_json_config (0.00s)
+    --- PASS: TestHTTPHandlers_Configuration/empty_request_body (0.00s)
+    --- PASS: TestHTTPHandlers_Configuration/invalid_content_type (0.00s)
+    --- FAIL: TestHTTPHandlers_Configuration/get_current_config (0.00s)
+=== RUN   TestHTTPHandlers_SliceManagement
+=== RUN   TestHTTPHandlers_SliceManagement/create_slice_success
+[TEST] 2025/09/26 20:46:55 [2025-09-26T20:46:55.423Z][f5540fc0] Configuring network slice: <empty>
+[TEST] 2025/09/26 20:46:55 [2025-09-26T20:46:55.423Z][f5540fc0] Network slice <empty> configured successfully
+=== RUN   TestHTTPHandlers_SliceManagement/create_slice_invalid_json
+=== RUN   TestHTTPHandlers_SliceManagement/get_slices_list
+    http_test.go:248: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/agent/pkg/http_test.go:248
+        	Error:      	Not equal: 
+        	            	expected: 200
+        	            	actual  : 400
+        	Test:       	TestHTTPHandlers_SliceManagement/get_slices_list
+--- FAIL: TestHTTPHandlers_SliceManagement (0.00s)
+    --- PASS: TestHTTPHandlers_SliceManagement/create_slice_success (0.00s)
+    --- PASS: TestHTTPHandlers_SliceManagement/create_slice_invalid_json (0.00s)
+    --- FAIL: TestHTTPHandlers_SliceManagement/get_slices_list (0.00s)
+=== RUN   TestHTTPHandlers_PerformanceTesting
+=== RUN   TestHTTPHandlers_PerformanceTesting/start_performance_test_success
+    http_test.go:272: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/agent/pkg/http_test.go:272
+        	Error:      	Should be true
+        	Test:       	TestHTTPHandlers_PerformanceTesting/start_performance_test_success
+=== RUN   TestHTTPHandlers_PerformanceTesting/performance_test_invalid_config
+[TEST] 2025/09/26 20:46:55 [2025-09-26T20:46:55.424Z][f5540fc0] Running performance test: test_1758919615
+[TEST] 2025/09/26 20:46:55 [2025-09-26T20:46:55.424Z][f5540fc0] Running throughput test to 192.168.1.1:%!d(string=8081) for -1ns
+[TEST] 2025/09/26 20:46:55 [2025-09-26T20:46:55.424Z][f5540fc0] Running iperf3 test to 192.168.1.1:%!d(string=8081)
+[TEST] 2025/09/26 20:46:55 Iperf3 test failed: command execution failed: exec: "iperf3": executable file not found in $PATH
+[TEST] 2025/09/26 20:46:55 [2025-09-26T20:46:55.424Z][f5540fc0] Running latency test to 192.168.1.1:%!d(string=8081)
+[TEST] 2025/09/26 20:47:05 [2025-09-26T20:47:05.431Z][f5540fc0] Performance test completed: %!f(string=0) Mbps throughput, %!f(string=0) ms latency
+    http_test.go:289: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/agent/pkg/http_test.go:289
+        	Error:      	Not equal: 
+        	            	expected: 400
+        	            	actual  : 200
+        	Test:       	TestHTTPHandlers_PerformanceTesting/performance_test_invalid_config
+=== RUN   TestHTTPHandlers_PerformanceTesting/get_performance_results
+    http_test.go:298: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/agent/pkg/http_test.go:298
+        	Error:      	Not equal: 
+        	            	expected: 200
+        	            	actual  : 400
+        	Test:       	TestHTTPHandlers_PerformanceTesting/get_performance_results
+--- FAIL: TestHTTPHandlers_PerformanceTesting (10.01s)
+    --- FAIL: TestHTTPHandlers_PerformanceTesting/start_performance_test_success (0.00s)
+    --- FAIL: TestHTTPHandlers_PerformanceTesting/performance_test_invalid_config (10.01s)
+    --- FAIL: TestHTTPHandlers_PerformanceTesting/get_performance_results (0.00s)
+=== RUN   TestHTTPHandlers_ErrorHandling
+=== RUN   TestHTTPHandlers_ErrorHandling/large_request_body
+    http_test.go:315: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/agent/pkg/http_test.go:315
+        	Error:      	Not equal: 
+        	            	expected: 413
+        	            	actual  : 400
+        	Test:       	TestHTTPHandlers_ErrorHandling/large_request_body
+=== RUN   TestHTTPHandlers_ErrorHandling/unsupported_endpoint
+=== RUN   TestHTTPHandlers_ErrorHandling/request_timeout
+    http_test.go:348: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/agent/pkg/http_test.go:348
+        	Error:      	Should be true
+        	Test:       	TestHTTPHandlers_ErrorHandling/request_timeout
+--- FAIL: TestHTTPHandlers_ErrorHandling (0.01s)
+    --- FAIL: TestHTTPHandlers_ErrorHandling/large_request_body (0.00s)
+    --- PASS: TestHTTPHandlers_ErrorHandling/unsupported_endpoint (0.00s)
+    --- FAIL: TestHTTPHandlers_ErrorHandling/request_timeout (0.01s)
+=== RUN   TestHTTPHandlers_SecurityValidation
+=== RUN   TestHTTPHandlers_SecurityValidation/sql_injection_attempt
+[TEST] 2025/09/26 20:47:05 [2025-09-26T20:47:05.443Z][f5540fc0] Updating configuration for cluster: '; DROP TABLE users; --
+[TEST] 2025/09/26 20:47:05 [2025-09-26T20:47:05.443Z][f5540fc0] Configuration updated successfully for cluster: '; DROP TABLE users; --
+    http_test.go:371: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/agent/pkg/http_test.go:371
+        	Error:      	Should be true
+        	Test:       	TestHTTPHandlers_SecurityValidation/sql_injection_attempt
+=== RUN   TestHTTPHandlers_SecurityValidation/xss_attempt
+[TEST] 2025/09/26 20:47:05 [2025-09-26T20:47:05.443Z][f5540fc0] Updating configuration for cluster: <suspicious-input:pattern=<script:len=29>
+[TEST] 2025/09/26 20:47:05 [2025-09-26T20:47:05.443Z][f5540fc0] Configuration updated successfully for cluster: <suspicious-input:pattern=<script:len=29>
+    http_test.go:390: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/agent/pkg/http_test.go:390
+        	Error:      	Should be true
+        	Test:       	TestHTTPHandlers_SecurityValidation/xss_attempt
+=== RUN   TestHTTPHandlers_SecurityValidation/command_injection_attempt
+[TEST] 2025/09/26 20:47:05 [2025-09-26T20:47:05.443Z][f5540fc0] Updating configuration for cluster: test && rm -rf /
+[TEST] 2025/09/26 20:47:05 [2025-09-26T20:47:05.443Z][f5540fc0] Configuration updated successfully for cluster: test && rm -rf /
+    http_test.go:409: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/agent/pkg/http_test.go:409
+        	Error:      	Should be true
+        	Test:       	TestHTTPHandlers_SecurityValidation/command_injection_attempt
+--- FAIL: TestHTTPHandlers_SecurityValidation (0.00s)
+    --- FAIL: TestHTTPHandlers_SecurityValidation/sql_injection_attempt (0.00s)
+    --- FAIL: TestHTTPHandlers_SecurityValidation/xss_attempt (0.00s)
+    --- FAIL: TestHTTPHandlers_SecurityValidation/command_injection_attempt (0.00s)
+=== RUN   TestHTTPHandlers_ConcurrentRequests
+=== RUN   TestHTTPHandlers_ConcurrentRequests/concurrent_status_requests
+=== RUN   TestHTTPHandlers_ConcurrentRequests/concurrent_config_updates
+[TEST] 2025/09/26 20:47:05 [2025-09-26T20:47:05.444Z][f5540fc0] Updating configuration for cluster: cluster-9
+[TEST] 2025/09/26 20:47:05 [2025-09-26T20:47:05.444Z][f5540fc0] Configuration updated successfully for cluster: cluster-9
+[TEST] 2025/09/26 20:47:05 [2025-09-26T20:47:05.444Z][f5540fc0] Updating configuration for cluster: cluster-3
+[TEST] 2025/09/26 20:47:05 [2025-09-26T20:47:05.444Z][f5540fc0] Configuration updated successfully for cluster: cluster-3
+[TEST] 2025/09/26 20:47:05 [2025-09-26T20:47:05.444Z][f5540fc0] Updating configuration for cluster: cluster-0
+[TEST] 2025/09/26 20:47:05 [2025-09-26T20:47:05.444Z][f5540fc0] Configuration updated successfully for cluster: cluster-0
+[TEST] 2025/09/26 20:47:05 [2025-09-26T20:47:05.444Z][f5540fc0] Updating configuration for cluster: cluster-2
+[TEST] 2025/09/26 20:47:05 [2025-09-26T20:47:05.444Z][f5540fc0] Configuration updated successfully for cluster: cluster-2
+[TEST] 2025/09/26 20:47:05 [2025-09-26T20:47:05.444Z][f5540fc0] Updating configuration for cluster: cluster-6
+[TEST] 2025/09/26 20:47:05 [2025-09-26T20:47:05.444Z][f5540fc0] Configuration updated successfully for cluster: cluster-6
+[TEST] 2025/09/26 20:47:05 [2025-09-26T20:47:05.444Z][f5540fc0] Updating configuration for cluster: cluster-4
+[TEST] 2025/09/26 20:47:05 [2025-09-26T20:47:05.444Z][f5540fc0] Configuration updated successfully for cluster: cluster-4
+[TEST] 2025/09/26 20:47:05 [2025-09-26T20:47:05.444Z][f5540fc0] Updating configuration for cluster: cluster-7
+[TEST] 2025/09/26 20:47:05 [2025-09-26T20:47:05.444Z][f5540fc0] Configuration updated successfully for cluster: cluster-7
+[TEST] 2025/09/26 20:47:05 [2025-09-26T20:47:05.444Z][f5540fc0] Updating configuration for cluster: cluster-5
+[TEST] 2025/09/26 20:47:05 [2025-09-26T20:47:05.444Z][f5540fc0] Configuration updated successfully for cluster: cluster-5
+[TEST] 2025/09/26 20:47:05 [2025-09-26T20:47:05.444Z][f5540fc0] Updating configuration for cluster: cluster-8
+[TEST] 2025/09/26 20:47:05 [2025-09-26T20:47:05.444Z][f5540fc0] Configuration updated successfully for cluster: cluster-8
+[TEST] 2025/09/26 20:47:05 [2025-09-26T20:47:05.444Z][f5540fc0] Updating configuration for cluster: cluster-1
+[TEST] 2025/09/26 20:47:05 [2025-09-26T20:47:05.444Z][f5540fc0] Configuration updated successfully for cluster: cluster-1
+--- PASS: TestHTTPHandlers_ConcurrentRequests (0.00s)
+    --- PASS: TestHTTPHandlers_ConcurrentRequests/concurrent_status_requests (0.00s)
+    --- PASS: TestHTTPHandlers_ConcurrentRequests/concurrent_config_updates (0.00s)
+=== RUN   TestIperfManager_StartServer_ErrorHandling
+=== RUN   TestIperfManager_StartServer_ErrorHandling/invalid_port_number
+=== RUN   TestIperfManager_StartServer_ErrorHandling/port_out_of_range
+=== RUN   TestIperfManager_StartServer_ErrorHandling/port_already_in_use
+[TEST] 2025/09/26 20:47:05 [2025-09-26T20:47:05.445Z][f5540fc0] Starting iperf3 server on port %!d(string=5001)
+    iperf_test.go:47: First server start failed (expected in test): failed to start iperf3 server: command execution failed: exec: "iperf3": executable file not found in $PATH
+[TEST] 2025/09/26 20:47:05 [2025-09-26T20:47:05.445Z][f5540fc0] Starting iperf3 server on port %!d(string=5001)
+--- PASS: TestIperfManager_StartServer_ErrorHandling (0.00s)
+    --- PASS: TestIperfManager_StartServer_ErrorHandling/invalid_port_number (0.00s)
+    --- PASS: TestIperfManager_StartServer_ErrorHandling/port_out_of_range (0.00s)
+    --- PASS: TestIperfManager_StartServer_ErrorHandling/port_already_in_use (0.00s)
+=== RUN   TestIperfManager_StopServer_ErrorHandling
+=== RUN   TestIperfManager_StopServer_ErrorHandling/server_not_found
+    iperf_test.go:62: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/agent/pkg/iperf_test.go:62
+        	Error:      	"no iperf3 server running on port 5001" does not contain "not found"
+        	Test:       	TestIperfManager_StopServer_ErrorHandling/server_not_found
+=== RUN   TestIperfManager_StopServer_ErrorHandling/stop_after_start
+[TEST] 2025/09/26 20:47:05 [2025-09-26T20:47:05.445Z][f5540fc0] Starting iperf3 server on port %!d(string=5001)
+    iperf_test.go:71: Server start failed (expected in test): failed to start iperf3 server: command execution failed: exec: "iperf3": executable file not found in $PATH
+--- FAIL: TestIperfManager_StopServer_ErrorHandling (0.00s)
+    --- FAIL: TestIperfManager_StopServer_ErrorHandling/server_not_found (0.00s)
+    --- PASS: TestIperfManager_StopServer_ErrorHandling/stop_after_start (0.00s)
+=== RUN   TestIperfManager_InputValidation
+=== RUN   TestIperfManager_InputValidation/validate_port_boundaries
+=== RUN   TestIperfManager_InputValidation/validate_port_boundaries/negative_port
+=== RUN   TestIperfManager_InputValidation/validate_port_boundaries/zero_port
+=== RUN   TestIperfManager_InputValidation/validate_port_boundaries/minimum_valid_port
+[TEST] 2025/09/26 20:47:05 [2025-09-26T20:47:05.445Z][f5540fc0] Starting iperf3 server on port %!d(string=1)
+=== RUN   TestIperfManager_InputValidation/validate_port_boundaries/common_port
+[TEST] 2025/09/26 20:47:05 [2025-09-26T20:47:05.445Z][f5540fc0] Starting iperf3 server on port %!d(string=80)
+=== RUN   TestIperfManager_InputValidation/validate_port_boundaries/typical_iperf_port
+[TEST] 2025/09/26 20:47:05 [2025-09-26T20:47:05.446Z][f5540fc0] Starting iperf3 server on port %!d(string=5001)
+=== RUN   TestIperfManager_InputValidation/validate_port_boundaries/maximum_valid_port
+[TEST] 2025/09/26 20:47:05 [2025-09-26T20:47:05.446Z][f5540fc0] Starting iperf3 server on port %!d(string=65535)
+=== RUN   TestIperfManager_InputValidation/validate_port_boundaries/port_too_high
+=== RUN   TestIperfManager_InputValidation/validate_port_boundaries/definitely_too_high
+--- PASS: TestIperfManager_InputValidation (0.00s)
+    --- PASS: TestIperfManager_InputValidation/validate_port_boundaries (0.00s)
+        --- PASS: TestIperfManager_InputValidation/validate_port_boundaries/negative_port (0.00s)
+        --- PASS: TestIperfManager_InputValidation/validate_port_boundaries/zero_port (0.00s)
+        --- PASS: TestIperfManager_InputValidation/validate_port_boundaries/minimum_valid_port (0.00s)
+        --- PASS: TestIperfManager_InputValidation/validate_port_boundaries/common_port (0.00s)
+        --- PASS: TestIperfManager_InputValidation/validate_port_boundaries/typical_iperf_port (0.00s)
+        --- PASS: TestIperfManager_InputValidation/validate_port_boundaries/maximum_valid_port (0.00s)
+        --- PASS: TestIperfManager_InputValidation/validate_port_boundaries/port_too_high (0.00s)
+        --- PASS: TestIperfManager_InputValidation/validate_port_boundaries/definitely_too_high (0.00s)
+=== RUN   TestIperfManager_GetServerStatus
+=== RUN   TestIperfManager_GetServerStatus/nonexistent_server_status
+=== RUN   TestIperfManager_GetServerStatus/active_server_status
+[TEST] 2025/09/26 20:47:05 [2025-09-26T20:47:05.446Z][f5540fc0] Starting iperf3 server on port %!d(string=5001)
+    iperf_test.go:139: Server start failed in test environment: failed to start iperf3 server: command execution failed: exec: "iperf3": executable file not found in $PATH
+--- PASS: TestIperfManager_GetServerStatus (0.00s)
+    --- PASS: TestIperfManager_GetServerStatus/nonexistent_server_status (0.00s)
+    --- PASS: TestIperfManager_GetServerStatus/active_server_status (0.00s)
+=== RUN   TestIperfManager_SecurityValidation
+=== RUN   TestIperfManager_SecurityValidation/port_range_validation
+--- PASS: TestIperfManager_SecurityValidation (0.00s)
+    --- PASS: TestIperfManager_SecurityValidation/port_range_validation (0.00s)
+=== RUN   TestIperfManager_ResourceManagement
+=== RUN   TestIperfManager_ResourceManagement/server_lifecycle
+[TEST] 2025/09/26 20:47:05 [2025-09-26T20:47:05.446Z][f5540fc0] Starting iperf3 server on port %!d(string=5001)
+    iperf_test.go:184: Server start failed in test environment: failed to start iperf3 server: command execution failed: exec: "iperf3": executable file not found in $PATH
+--- PASS: TestIperfManager_ResourceManagement (0.00s)
+    --- PASS: TestIperfManager_ResourceManagement/server_lifecycle (0.00s)
+=== RUN   TestIperfManager_ErrorResilience
+=== RUN   TestIperfManager_ErrorResilience/multiple_operations
+[TEST] 2025/09/26 20:47:05 [2025-09-26T20:47:05.447Z][f5540fc0] Starting iperf3 server on port %!d(string=5000)
+    iperf_test.go:214: Start server 5000 failed: failed to start iperf3 server: command execution failed: exec: "iperf3": executable file not found in $PATH
+    iperf_test.go:219: Stop server 5000 failed: no iperf3 server running on port 5000
+[TEST] 2025/09/26 20:47:05 [2025-09-26T20:47:05.447Z][f5540fc0] Starting iperf3 server on port %!d(string=5001)
+    iperf_test.go:214: Start server 5001 failed: failed to start iperf3 server: command execution failed: exec: "iperf3": executable file not found in $PATH
+    iperf_test.go:219: Stop server 5001 failed: no iperf3 server running on port 5001
+[TEST] 2025/09/26 20:47:05 [2025-09-26T20:47:05.447Z][f5540fc0] Starting iperf3 server on port %!d(string=5002)
+    iperf_test.go:214: Start server 5002 failed: failed to start iperf3 server: command execution failed: exec: "iperf3": executable file not found in $PATH
+    iperf_test.go:219: Stop server 5002 failed: no iperf3 server running on port 5002
+[TEST] 2025/09/26 20:47:05 [2025-09-26T20:47:05.447Z][f5540fc0] Starting iperf3 server on port %!d(string=5003)
+    iperf_test.go:214: Start server 5003 failed: failed to start iperf3 server: command execution failed: exec: "iperf3": executable file not found in $PATH
+    iperf_test.go:219: Stop server 5003 failed: no iperf3 server running on port 5003
+[TEST] 2025/09/26 20:47:05 [2025-09-26T20:47:05.447Z][f5540fc0] Starting iperf3 server on port %!d(string=5004)
+    iperf_test.go:214: Start server 5004 failed: failed to start iperf3 server: command execution failed: exec: "iperf3": executable file not found in $PATH
+    iperf_test.go:219: Stop server 5004 failed: no iperf3 server running on port 5004
+=== RUN   TestIperfManager_ErrorResilience/invalid_operations
+--- PASS: TestIperfManager_ErrorResilience (0.00s)
+    --- PASS: TestIperfManager_ErrorResilience/multiple_operations (0.00s)
+    --- PASS: TestIperfManager_ErrorResilience/invalid_operations (0.00s)
+FAIL
+FAIL	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tn/agent/pkg	10.035s
+=== RUN   TestShaper_ApplyRules_InputValidation
+=== RUN   TestShaper_ApplyRules_InputValidation/valid_interface_and_rules
+=== RUN   TestShaper_ApplyRules_InputValidation/invalid_interface_name
+=== RUN   TestShaper_ApplyRules_InputValidation/empty_interface_name
+=== RUN   TestShaper_ApplyRules_InputValidation/invalid_priority_-_zero
+=== RUN   TestShaper_ApplyRules_InputValidation/invalid_priority_-_too_high
+=== RUN   TestShaper_ApplyRules_InputValidation/invalid_rate_-_zero
+=== RUN   TestShaper_ApplyRules_InputValidation/invalid_rate_-_negative
+=== RUN   TestShaper_ApplyRules_InputValidation/invalid_burst_-_zero
+=== RUN   TestShaper_ApplyRules_InputValidation/invalid_burst_-_negative
+=== RUN   TestShaper_ApplyRules_InputValidation/invalid_latency_-_negative
+=== RUN   TestShaper_ApplyRules_InputValidation/valid_latency_-_zero
+--- PASS: TestShaper_ApplyRules_InputValidation (0.30s)
+    --- PASS: TestShaper_ApplyRules_InputValidation/valid_interface_and_rules (0.30s)
+    --- PASS: TestShaper_ApplyRules_InputValidation/invalid_interface_name (0.00s)
+    --- PASS: TestShaper_ApplyRules_InputValidation/empty_interface_name (0.00s)
+    --- PASS: TestShaper_ApplyRules_InputValidation/invalid_priority_-_zero (0.00s)
+    --- PASS: TestShaper_ApplyRules_InputValidation/invalid_priority_-_too_high (0.00s)
+    --- PASS: TestShaper_ApplyRules_InputValidation/invalid_rate_-_zero (0.00s)
+    --- PASS: TestShaper_ApplyRules_InputValidation/invalid_rate_-_negative (0.00s)
+    --- PASS: TestShaper_ApplyRules_InputValidation/invalid_burst_-_zero (0.00s)
+    --- PASS: TestShaper_ApplyRules_InputValidation/invalid_burst_-_negative (0.00s)
+    --- PASS: TestShaper_ApplyRules_InputValidation/invalid_latency_-_negative (0.00s)
+    --- PASS: TestShaper_ApplyRules_InputValidation/valid_latency_-_zero (0.00s)
+=== RUN   TestShaper_GetStatistics_InputValidation
+=== RUN   TestShaper_GetStatistics_InputValidation/valid_interface
+=== RUN   TestShaper_GetStatistics_InputValidation/invalid_interface_with_command_injection
+=== RUN   TestShaper_GetStatistics_InputValidation/empty_interface
+=== RUN   TestShaper_GetStatistics_InputValidation/interface_with_special_characters
+--- PASS: TestShaper_GetStatistics_InputValidation (0.00s)
+    --- PASS: TestShaper_GetStatistics_InputValidation/valid_interface (0.00s)
+    --- PASS: TestShaper_GetStatistics_InputValidation/invalid_interface_with_command_injection (0.00s)
+    --- PASS: TestShaper_GetStatistics_InputValidation/empty_interface (0.00s)
+    --- PASS: TestShaper_GetStatistics_InputValidation/interface_with_special_characters (0.00s)
+=== RUN   TestRule_ValidationBoundaries
+=== RUN   TestRule_ValidationBoundaries/minimum_valid_priority
+=== RUN   TestRule_ValidationBoundaries/maximum_valid_priority
+=== RUN   TestRule_ValidationBoundaries/minimum_valid_rate
+=== RUN   TestRule_ValidationBoundaries/minimum_valid_burst
+=== RUN   TestRule_ValidationBoundaries/minimum_valid_latency
+=== RUN   TestRule_ValidationBoundaries/invalid_priority_-_boundary
+=== RUN   TestRule_ValidationBoundaries/invalid_priority_-_upper_boundary
+=== RUN   TestRule_ValidationBoundaries/invalid_rate_-_boundary
+=== RUN   TestRule_ValidationBoundaries/invalid_burst_-_boundary
+=== RUN   TestRule_ValidationBoundaries/invalid_latency_-_boundary
+--- PASS: TestRule_ValidationBoundaries (0.02s)
+    --- PASS: TestRule_ValidationBoundaries/minimum_valid_priority (0.00s)
+    --- PASS: TestRule_ValidationBoundaries/maximum_valid_priority (0.01s)
+    --- PASS: TestRule_ValidationBoundaries/minimum_valid_rate (0.00s)
+    --- PASS: TestRule_ValidationBoundaries/minimum_valid_burst (0.00s)
+    --- PASS: TestRule_ValidationBoundaries/minimum_valid_latency (0.00s)
+    --- PASS: TestRule_ValidationBoundaries/invalid_priority_-_boundary (0.00s)
+    --- PASS: TestRule_ValidationBoundaries/invalid_priority_-_upper_boundary (0.00s)
+    --- PASS: TestRule_ValidationBoundaries/invalid_rate_-_boundary (0.00s)
+    --- PASS: TestRule_ValidationBoundaries/invalid_burst_-_boundary (0.00s)
+    --- PASS: TestRule_ValidationBoundaries/invalid_latency_-_boundary (0.00s)
+=== RUN   TestNewShaper
+--- PASS: TestNewShaper (0.00s)
+=== RUN   TestCleanup
+    shaper_test.go:252: Cleanup failed as expected in test environment: failed to clear root qdisc: command execution failed: exit status 1
+--- PASS: TestCleanup (0.00s)
+PASS
+ok  	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tn/agent/pkg/tc	0.334s
+=== RUN   TestNewOptimizedManager
+--- PASS: TestNewOptimizedManager (0.00s)
+=== RUN   TestOptimizedManager_CreateTunnelOptimized_ValidationErrors
+=== RUN   TestOptimizedManager_CreateTunnelOptimized_ValidationErrors/negative_VXLAN_ID
+    optimized_manager_test.go:104: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/agent/pkg/vxlan/optimized_manager_test.go:104
+        	Error:      	An error is expected but got nil.
+        	Test:       	TestOptimizedManager_CreateTunnelOptimized_ValidationErrors/negative_VXLAN_ID
+=== RUN   TestOptimizedManager_CreateTunnelOptimized_ValidationErrors/empty_local_IP
+    optimized_manager_test.go:104: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/agent/pkg/vxlan/optimized_manager_test.go:104
+        	Error:      	An error is expected but got nil.
+        	Test:       	TestOptimizedManager_CreateTunnelOptimized_ValidationErrors/empty_local_IP
+=== RUN   TestOptimizedManager_CreateTunnelOptimized_ValidationErrors/empty_physical_interface
+    optimized_manager_test.go:104: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/agent/pkg/vxlan/optimized_manager_test.go:104
+        	Error:      	An error is expected but got nil.
+        	Test:       	TestOptimizedManager_CreateTunnelOptimized_ValidationErrors/empty_physical_interface
+=== RUN   TestOptimizedManager_CreateTunnelOptimized_ValidationErrors/empty_remote_IPs
+--- FAIL: TestOptimizedManager_CreateTunnelOptimized_ValidationErrors (0.00s)
+    --- FAIL: TestOptimizedManager_CreateTunnelOptimized_ValidationErrors/negative_VXLAN_ID (0.00s)
+    --- FAIL: TestOptimizedManager_CreateTunnelOptimized_ValidationErrors/empty_local_IP (0.00s)
+    --- FAIL: TestOptimizedManager_CreateTunnelOptimized_ValidationErrors/empty_physical_interface (0.00s)
+    --- PASS: TestOptimizedManager_CreateTunnelOptimized_ValidationErrors/empty_remote_IPs (0.00s)
+=== RUN   TestOptimizedManager_CreateTunnelOptimized_WorkerPoolTimeout
+--- PASS: TestOptimizedManager_CreateTunnelOptimized_WorkerPoolTimeout (5.00s)
+=== RUN   TestOptimizedManager_CreateTunnelOptimized_ExistingTunnel
+--- PASS: TestOptimizedManager_CreateTunnelOptimized_ExistingTunnel (0.00s)
+=== RUN   TestOptimizedManager_CreateTunnelOptimized_DeletionPermissionError
+Warning: failed to delete existing tunnel 101: failed to delete interface: secure command execution failed: permission denied
+--- PASS: TestOptimizedManager_CreateTunnelOptimized_DeletionPermissionError (0.00s)
+=== RUN   TestOptimizedManager_CreateTunnelOptimized_DeletionNonCriticalError
+Warning: failed to delete existing tunnel 101: failed to delete interface: secure command execution failed: device not found
+Info: continuing with tunnel creation despite deletion failure
+--- PASS: TestOptimizedManager_CreateTunnelOptimized_DeletionNonCriticalError (0.00s)
+=== RUN   TestOptimizedManager_CreateTunnelIPCommand_CommandFailures
+=== RUN   TestOptimizedManager_CreateTunnelIPCommand_CommandFailures/interface_creation_fails
+=== RUN   TestOptimizedManager_CreateTunnelIPCommand_CommandFailures/MTU_setting_fails
+=== RUN   TestOptimizedManager_CreateTunnelIPCommand_CommandFailures/interface_up_fails
+=== RUN   TestOptimizedManager_CreateTunnelIPCommand_CommandFailures/IP_assignment_fails_with_non-exists_error
+    optimized_manager_test.go:328: 
+        	Error Trace:	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/agent/pkg/vxlan/optimized_manager_test.go:328
+        	Error:      	An error is expected but got nil.
+        	Test:       	TestOptimizedManager_CreateTunnelIPCommand_CommandFailures/IP_assignment_fails_with_non-exists_error
+--- FAIL: TestOptimizedManager_CreateTunnelIPCommand_CommandFailures (0.00s)
+    --- PASS: TestOptimizedManager_CreateTunnelIPCommand_CommandFailures/interface_creation_fails (0.00s)
+    --- PASS: TestOptimizedManager_CreateTunnelIPCommand_CommandFailures/MTU_setting_fails (0.00s)
+    --- PASS: TestOptimizedManager_CreateTunnelIPCommand_CommandFailures/interface_up_fails (0.00s)
+    --- FAIL: TestOptimizedManager_CreateTunnelIPCommand_CommandFailures/IP_assignment_fails_with_non-exists_error (0.00s)
+panic: runtime error: invalid memory address or nil pointer dereference [recovered]
+	panic: runtime error: invalid memory address or nil pointer dereference
+[signal SIGSEGV: segmentation violation code=0x1 addr=0x18 pc=0x5ca1be]
+
+goroutine 63 [running]:
+testing.tRunner.func1.2({0x633d40, 0x889330})
+	/home/ubuntu/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.7.linux-amd64/src/testing/testing.go:1734 +0x21c
+testing.tRunner.func1()
+	/home/ubuntu/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.7.linux-amd64/src/testing/testing.go:1737 +0x35e
+panic({0x633d40?, 0x889330?})
+	/home/ubuntu/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.7.linux-amd64/src/runtime/panic.go:792 +0x132
+github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tn/agent/pkg/vxlan.TestOptimizedManager_CreateTunnelIPCommand_CommandFailures.func6(0xc00029d880)
+	/home/ubuntu/dev/O-RAN-Intent-MANO-for-Network-Slicing/tn/agent/pkg/vxlan/optimized_manager_test.go:329 +0xbe
+testing.tRunner(0xc00029d880, 0xc00028e510)
+	/home/ubuntu/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.7.linux-amd64/src/testing/testing.go:1792 +0xf4
+created by testing.(*T).Run in goroutine 56
+	/home/ubuntu/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.7.linux-amd64/src/testing/testing.go:1851 +0x413
+FAIL	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tn/agent/pkg/vxlan	5.015s
+?   	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tn/agent/pkg/watcher	[no test files]
+FAIL
+make: *** [Makefile:269: test-unit] Error 1

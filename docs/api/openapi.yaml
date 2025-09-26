@@ -1,0 +1,1958 @@
+openapi: 3.0.3
+info:
+  title: O-RAN Intent-MANO API
+  description: |
+    Comprehensive API specification for O-RAN Intent-based Management and Network Orchestration (MANO) system.
+
+    This API provides orchestration capabilities for:
+    - Network Function Virtualization (NFV) lifecycle management
+    - Transport Network (TN) configuration and monitoring
+    - O-RAN O2 DMS/IMS integration
+    - Intent-based network slice orchestration
+
+    ## Authentication
+    Most endpoints require Bearer token authentication. Obtain tokens through the `/auth/login` endpoint.
+
+    ## Rate Limiting
+    - Standard endpoints: 1000 requests per minute
+    - Deployment operations: 100 requests per minute
+    - Monitoring endpoints: 5000 requests per minute
+
+    ## Versioning
+    API versioning follows semantic versioning. Current version: v1
+  version: 1.0.0
+  contact:
+    name: O-RAN Intent-MANO Project
+    url: https://github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+
+servers:
+  - url: https://api.oran-mano.io/v1
+    description: Production server
+  - url: https://staging-api.oran-mano.io/v1
+    description: Staging server
+  - url: http://localhost:8080/v1
+    description: Development server
+
+tags:
+  - name: orchestrator
+    description: Intent-based orchestration operations
+  - name: vnf-operator
+    description: VNF lifecycle management
+  - name: tn-manager
+    description: Transport Network management
+  - name: o2-client
+    description: O-RAN O2 DMS/IMS operations
+  - name: monitoring
+    description: System monitoring and metrics
+  - name: auth
+    description: Authentication and authorization
+
+security:
+  - bearerAuth: []
+
+paths:
+  # Authentication endpoints
+  /auth/login:
+    post:
+      tags: [auth]
+      summary: Authenticate user
+      description: Obtain access token for API authentication
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username:
+                  type: string
+                  description: Username or email
+                password:
+                  type: string
+                  format: password
+                  description: User password
+            example:
+              username: admin@oran-mano.io
+              password: SecureP@ssw0rd
+      responses:
+        '200':
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                    description: JWT access token
+                  token_type:
+                    type: string
+                    example: Bearer
+                  expires_in:
+                    type: integer
+                    description: Token expiry in seconds
+                    example: 3600
+                  refresh_token:
+                    type: string
+                    description: Refresh token for obtaining new access tokens
+              example:
+                access_token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                token_type: Bearer
+                expires_in: 3600
+                refresh_token: def50200e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /auth/refresh:
+    post:
+      tags: [auth]
+      summary: Refresh access token
+      description: Obtain new access token using refresh token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties:
+                refresh_token:
+                  type: string
+                  description: Valid refresh token
+      responses:
+        '200':
+          description: Token refresh successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # Orchestrator endpoints
+  /orchestrator/intents:
+    get:
+      tags: [orchestrator]
+      summary: List QoS intents
+      description: Retrieve list of all QoS intents in the system
+      parameters:
+        - $ref: '#/components/parameters/LimitParam'
+        - $ref: '#/components/parameters/OffsetParam'
+        - name: slice_type
+          in: query
+          description: Filter by slice type
+          schema:
+            type: string
+            enum: [eMBB, uRLLC, mIoT, balanced]
+        - name: status
+          in: query
+          description: Filter by status
+          schema:
+            type: string
+            enum: [planned, deployed, failed, deleting]
+      responses:
+        '200':
+          description: List of QoS intents
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  intents:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/QoSIntent'
+                  total:
+                    type: integer
+                    description: Total number of intents
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    post:
+      tags: [orchestrator]
+      summary: Create QoS intent
+      description: Submit new QoS intent for orchestration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QoSIntentRequest'
+      responses:
+        '201':
+          description: Intent created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QoSIntent'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /orchestrator/intents/{intentId}:
+    get:
+      tags: [orchestrator]
+      summary: Get QoS intent
+      description: Retrieve specific QoS intent by ID
+      parameters:
+        - name: intentId
+          in: path
+          required: true
+          description: Intent identifier
+          schema:
+            type: string
+      responses:
+        '200':
+          description: QoS intent details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QoSIntent'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    put:
+      tags: [orchestrator]
+      summary: Update QoS intent
+      description: Update existing QoS intent
+      parameters:
+        - name: intentId
+          in: path
+          required: true
+          description: Intent identifier
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QoSIntentRequest'
+      responses:
+        '200':
+          description: Intent updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QoSIntent'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+    delete:
+      tags: [orchestrator]
+      summary: Delete QoS intent
+      description: Remove QoS intent and associated deployments
+      parameters:
+        - name: intentId
+          in: path
+          required: true
+          description: Intent identifier
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Intent deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Cannot delete intent with active deployments
+
+  /orchestrator/plan:
+    post:
+      tags: [orchestrator]
+      summary: Generate orchestration plan
+      description: Create orchestration plan for deployment without executing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                intents:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/QoSIntentRequest'
+                dry_run:
+                  type: boolean
+                  default: true
+      responses:
+        '200':
+          description: Orchestration plan generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrchestrationPlan'
+
+  /orchestrator/deploy:
+    post:
+      tags: [orchestrator]
+      summary: Execute deployment
+      description: Apply orchestration plan and deploy network slices
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                plan_id:
+                  type: string
+                  description: ID of orchestration plan to execute
+                force:
+                  type: boolean
+                  default: false
+                  description: Force deployment even if conflicts exist
+      responses:
+        '202':
+          description: Deployment initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeploymentStatus'
+        '409':
+          description: Deployment conflicts detected
+
+  # VNF Operator endpoints
+  /vnf-operator/vnfs:
+    get:
+      tags: [vnf-operator]
+      summary: List VNFs
+      description: Retrieve list of Virtual Network Functions
+      parameters:
+        - $ref: '#/components/parameters/LimitParam'
+        - $ref: '#/components/parameters/OffsetParam'
+        - name: type
+          in: query
+          description: Filter by VNF type
+          schema:
+            $ref: '#/components/schemas/VNFType'
+        - name: status
+          in: query
+          description: Filter by VNF status
+          schema:
+            type: string
+            enum: [Pending, Creating, Running, Failed, Deleting]
+      responses:
+        '200':
+          description: List of VNFs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  vnfs:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/VNF'
+                  total:
+                    type: integer
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+
+    post:
+      tags: [vnf-operator]
+      summary: Create VNF
+      description: Deploy new Virtual Network Function
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VNFRequest'
+      responses:
+        '201':
+          description: VNF created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VNF'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /vnf-operator/vnfs/{vnfId}:
+    get:
+      tags: [vnf-operator]
+      summary: Get VNF
+      description: Retrieve specific VNF details
+      parameters:
+        - name: vnfId
+          in: path
+          required: true
+          description: VNF identifier
+          schema:
+            type: string
+      responses:
+        '200':
+          description: VNF details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VNF'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags: [vnf-operator]
+      summary: Update VNF
+      description: Modify VNF configuration
+      parameters:
+        - name: vnfId
+          in: path
+          required: true
+          description: VNF identifier
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VNFRequest'
+      responses:
+        '200':
+          description: VNF updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VNF'
+
+    delete:
+      tags: [vnf-operator]
+      summary: Delete VNF
+      description: Remove VNF and associated resources
+      parameters:
+        - name: vnfId
+          in: path
+          required: true
+          description: VNF identifier
+          schema:
+            type: string
+      responses:
+        '204':
+          description: VNF deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /vnf-operator/vnfs/{vnfId}/scale:
+    post:
+      tags: [vnf-operator]
+      summary: Scale VNF
+      description: Scale VNF instances up or down
+      parameters:
+        - name: vnfId
+          in: path
+          required: true
+          description: VNF identifier
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [replicas]
+              properties:
+                replicas:
+                  type: integer
+                  minimum: 0
+                  maximum: 100
+                  description: Target number of replicas
+      responses:
+        '202':
+          description: Scaling operation initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationStatus'
+
+  # TN Manager endpoints
+  /tn-manager/agents:
+    get:
+      tags: [tn-manager]
+      summary: List TN agents
+      description: Retrieve list of Transport Network agents
+      responses:
+        '200':
+          description: List of TN agents
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  agents:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TNAgent'
+
+    post:
+      tags: [tn-manager]
+      summary: Register TN agent
+      description: Register new Transport Network agent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TNAgentRequest'
+      responses:
+        '201':
+          description: Agent registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TNAgent'
+
+  /tn-manager/agents/{agentId}/slices:
+    post:
+      tags: [tn-manager]
+      summary: Configure network slice
+      description: Configure network slice on TN agent
+      parameters:
+        - name: agentId
+          in: path
+          required: true
+          description: TN agent identifier
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TNSliceConfig'
+      responses:
+        '200':
+          description: Slice configured successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TNSliceStatus'
+
+  /tn-manager/agents/{agentId}/performance:
+    post:
+      tags: [tn-manager]
+      summary: Run performance test
+      description: Execute performance test on TN agent
+      parameters:
+        - name: agentId
+          in: path
+          required: true
+          description: TN agent identifier
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PerformanceTestConfig'
+      responses:
+        '200':
+          description: Performance test completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PerformanceMetrics'
+
+  /tn-manager/agents/{agentId}/status:
+    get:
+      tags: [tn-manager]
+      summary: Get agent status
+      description: Retrieve current status of TN agent
+      parameters:
+        - name: agentId
+          in: path
+          required: true
+          description: TN agent identifier
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Agent status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TNStatus'
+
+  # O2 Client endpoints
+  /o2-client/deployment-managers:
+    get:
+      tags: [o2-client]
+      summary: List deployment managers
+      description: Retrieve available O2 DMS deployment managers
+      parameters:
+        - $ref: '#/components/parameters/LimitParam'
+        - $ref: '#/components/parameters/OffsetParam'
+      responses:
+        '200':
+          description: List of deployment managers
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deployment_managers:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DeploymentManager'
+
+  /o2-client/deployment-managers/{dmId}/nf-descriptors:
+    get:
+      tags: [o2-client]
+      summary: List NF descriptors
+      description: Retrieve NF deployment descriptors for deployment manager
+      parameters:
+        - name: dmId
+          in: path
+          required: true
+          description: Deployment manager ID
+          schema:
+            type: string
+        - $ref: '#/components/parameters/LimitParam'
+        - $ref: '#/components/parameters/OffsetParam'
+      responses:
+        '200':
+          description: List of NF descriptors
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  descriptors:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/NFDeploymentDescriptor'
+
+  /o2-client/deployment-managers/{dmId}/deployments:
+    get:
+      tags: [o2-client]
+      summary: List NF deployments
+      description: Retrieve NF deployments for deployment manager
+      parameters:
+        - name: dmId
+          in: path
+          required: true
+          description: Deployment manager ID
+          schema:
+            type: string
+        - $ref: '#/components/parameters/LimitParam'
+        - $ref: '#/components/parameters/OffsetParam'
+      responses:
+        '200':
+          description: List of NF deployments
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deployments:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/NFDeployment'
+
+    post:
+      tags: [o2-client]
+      summary: Create NF deployment
+      description: Deploy new Network Function via O2 DMS
+      parameters:
+        - name: dmId
+          in: path
+          required: true
+          description: Deployment manager ID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeploymentRequest'
+      responses:
+        '201':
+          description: Deployment created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NFDeployment'
+
+  /o2-client/deployment-managers/{dmId}/deployments/{deploymentId}:
+    get:
+      tags: [o2-client]
+      summary: Get NF deployment
+      description: Retrieve specific NF deployment details
+      parameters:
+        - name: dmId
+          in: path
+          required: true
+          description: Deployment manager ID
+          schema:
+            type: string
+        - name: deploymentId
+          in: path
+          required: true
+          description: Deployment ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: NF deployment details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NFDeployment'
+
+    delete:
+      tags: [o2-client]
+      summary: Delete NF deployment
+      description: Remove NF deployment via O2 DMS
+      parameters:
+        - name: dmId
+          in: path
+          required: true
+          description: Deployment manager ID
+          schema:
+            type: string
+        - name: deploymentId
+          in: path
+          required: true
+          description: Deployment ID
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Deployment deleted successfully
+
+  # Monitoring endpoints
+  /monitoring/health:
+    get:
+      tags: [monitoring]
+      summary: Health check
+      description: Check system health status
+      security: []
+      responses:
+        '200':
+          description: System is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: healthy
+                  timestamp:
+                    type: string
+                    format: date-time
+                  version:
+                    type: string
+                    example: 1.0.0
+                  components:
+                    type: object
+                    properties:
+                      database:
+                        type: string
+                        enum: [healthy, unhealthy]
+                      redis:
+                        type: string
+                        enum: [healthy, unhealthy]
+                      message_queue:
+                        type: string
+                        enum: [healthy, unhealthy]
+
+  /monitoring/metrics:
+    get:
+      tags: [monitoring]
+      summary: Get metrics
+      description: Retrieve system metrics in Prometheus format
+      security: []
+      responses:
+        '200':
+          description: Metrics data
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: |
+                  # HELP http_requests_total Total number of HTTP requests
+                  # TYPE http_requests_total counter
+                  http_requests_total{method="GET",status="200"} 1024
+
+  /monitoring/slices/{sliceId}/metrics:
+    get:
+      tags: [monitoring]
+      summary: Get slice metrics
+      description: Retrieve metrics for specific network slice
+      parameters:
+        - name: sliceId
+          in: path
+          required: true
+          description: Network slice identifier
+          schema:
+            type: string
+        - name: timeframe
+          in: query
+          description: Time window for metrics
+          schema:
+            type: string
+            enum: [1h, 6h, 24h, 7d]
+            default: 1h
+      responses:
+        '200':
+          description: Slice metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SliceMetrics'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    LimitParam:
+      name: limit
+      in: query
+      description: Maximum number of items to return
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 1000
+        default: 50
+
+    OffsetParam:
+      name: offset
+      in: query
+      description: Number of items to skip
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+
+  schemas:
+    # Authentication schemas
+    TokenResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+          description: JWT access token
+        token_type:
+          type: string
+          example: Bearer
+        expires_in:
+          type: integer
+          description: Token expiry in seconds
+        refresh_token:
+          type: string
+          description: Refresh token
+
+    # Orchestrator schemas
+    QoSIntent:
+      type: object
+      required: [id, bandwidth, latency, slice_type]
+      properties:
+        id:
+          type: string
+          description: Unique intent identifier
+        bandwidth:
+          type: number
+          minimum: 1
+          maximum: 10000
+          description: Required bandwidth in Mbps
+        latency:
+          type: number
+          minimum: 1
+          maximum: 1000
+          description: Maximum acceptable latency in ms
+        slice_type:
+          type: string
+          enum: [eMBB, uRLLC, mIoT, balanced]
+          description: Type of network slice
+        jitter:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: Maximum jitter in ms
+        packet_loss:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Maximum packet loss rate (0-1)
+        reliability:
+          type: number
+          minimum: 0.95
+          maximum: 0.99999
+          description: Required reliability (0.95-0.99999)
+        status:
+          type: string
+          enum: [planned, deployed, failed, deleting]
+          description: Current status of the intent
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      example:
+        id: intent-001
+        bandwidth: 100.0
+        latency: 10.0
+        slice_type: uRLLC
+        jitter: 2.0
+        packet_loss: 0.001
+        reliability: 0.9999
+        status: deployed
+
+    QoSIntentRequest:
+      type: object
+      required: [bandwidth, latency, slice_type]
+      properties:
+        bandwidth:
+          type: number
+          minimum: 1
+          maximum: 10000
+          description: Required bandwidth in Mbps
+        latency:
+          type: number
+          minimum: 1
+          maximum: 1000
+          description: Maximum acceptable latency in ms
+        slice_type:
+          type: string
+          enum: [eMBB, uRLLC, mIoT, balanced]
+          description: Type of network slice
+        jitter:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: Maximum jitter in ms
+        packet_loss:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Maximum packet loss rate (0-1)
+        reliability:
+          type: number
+          minimum: 0.95
+          maximum: 0.99999
+          description: Required reliability (0.95-0.99999)
+
+    OrchestrationPlan:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Plan identifier
+        timestamp:
+          type: string
+          format: date-time
+        allocations:
+          type: array
+          items:
+            $ref: '#/components/schemas/SliceAllocation'
+        total_slices:
+          type: integer
+          description: Total number of slices in plan
+        estimated_cost:
+          type: number
+          description: Estimated deployment cost
+        estimated_time:
+          type: integer
+          description: Estimated deployment time in seconds
+
+    SliceAllocation:
+      type: object
+      properties:
+        slice_id:
+          type: string
+          description: Network slice identifier
+        qos:
+          $ref: '#/components/schemas/QoSIntent'
+        placement:
+          $ref: '#/components/schemas/PlacementDecision'
+        resources:
+          $ref: '#/components/schemas/ResourceAllocation'
+        status:
+          type: string
+          enum: [planned, deploying, deployed, failed]
+
+    PlacementDecision:
+      type: object
+      properties:
+        site_id:
+          type: string
+          description: Selected deployment site
+        cloud_type:
+          type: string
+          enum: [edge, regional, central]
+        region:
+          type: string
+        zone:
+          type: string
+        score:
+          type: number
+          description: Placement score (0-100)
+        constraints_met:
+          type: boolean
+        reasons:
+          type: array
+          items:
+            type: string
+
+    ResourceAllocation:
+      type: object
+      properties:
+        ran_resources:
+          type: object
+          properties:
+            cpu_cores:
+              type: number
+            memory_mb:
+              type: number
+            antennas:
+              type: integer
+            frequency_mhz:
+              type: number
+        cn_resources:
+          type: object
+          properties:
+            cpu_cores:
+              type: number
+            memory_mb:
+              type: number
+            storage_gb:
+              type: number
+            upf_capacity:
+              type: number
+        tn_resources:
+          type: object
+          properties:
+            bandwidth_mbps:
+              type: number
+            vlan_id:
+              type: integer
+            qos_class:
+              type: string
+            latency_budget_ms:
+              type: number
+
+    # VNF Operator schemas
+    VNF:
+      type: object
+      properties:
+        id:
+          type: string
+          description: VNF identifier
+        name:
+          type: string
+          description: VNF name
+        type:
+          $ref: '#/components/schemas/VNFType'
+        version:
+          type: string
+          description: VNF version
+        status:
+          type: string
+          enum: [Pending, Creating, Running, Failed, Deleting]
+        qos:
+          $ref: '#/components/schemas/QoSRequirements'
+        placement:
+          $ref: '#/components/schemas/PlacementRequirements'
+        target_clusters:
+          type: array
+          items:
+            type: string
+        resources:
+          $ref: '#/components/schemas/ResourceRequirements'
+        config:
+          type: object
+          additionalProperties:
+            type: string
+        image:
+          $ref: '#/components/schemas/ImageSpec'
+        instances:
+          type: array
+          items:
+            $ref: '#/components/schemas/VNFInstance'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    VNFRequest:
+      type: object
+      required: [name, type, version, qos, placement, image]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 63
+          pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
+        type:
+          $ref: '#/components/schemas/VNFType'
+        version:
+          type: string
+        qos:
+          $ref: '#/components/schemas/QoSRequirements'
+        placement:
+          $ref: '#/components/schemas/PlacementRequirements'
+        target_clusters:
+          type: array
+          items:
+            type: string
+        resources:
+          $ref: '#/components/schemas/ResourceRequirements'
+        config:
+          type: object
+          additionalProperties:
+            type: string
+        image:
+          $ref: '#/components/schemas/ImageSpec'
+
+    VNFType:
+      type: string
+      enum: [UPF, AMF, SMF, PCF, UDM, AUSF, NSSF, NEF, NRF, gNB, CU, DU, RU, RAN, CN, TN]
+      description: Type of Virtual Network Function
+
+    QoSRequirements:
+      type: object
+      required: [bandwidth, latency]
+      properties:
+        bandwidth:
+          type: number
+          minimum: 1
+          maximum: 5000
+          description: Bandwidth allocation in Mbps
+        latency:
+          type: number
+          minimum: 1
+          maximum: 1000
+          description: Maximum latency in milliseconds
+        jitter:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: Maximum jitter in milliseconds
+        packet_loss:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Maximum packet loss rate as percentage
+        reliability:
+          type: number
+          minimum: 0.95
+          maximum: 0.99999
+          description: Required reliability as percentage
+        slice_type:
+          type: string
+          enum: [eMBB, uRLLC, mIoT, balanced]
+          description: Type of network slice
+
+    PlacementRequirements:
+      type: object
+      required: [cloud_type]
+      properties:
+        cloud_type:
+          type: string
+          enum: [edge, regional, central]
+          description: Type of cloud deployment
+        region:
+          type: string
+          description: Geographic region
+        zone:
+          type: string
+          description: Availability zone
+        site:
+          type: string
+          description: Specific site
+        preferred_zones:
+          type: array
+          items:
+            type: string
+          description: Preferred zones for placement
+        affinity_rules:
+          type: array
+          items:
+            $ref: '#/components/schemas/AffinityRule'
+
+    AffinityRule:
+      type: object
+      required: [type, scope, target]
+      properties:
+        type:
+          type: string
+          enum: [affinity, anti-affinity]
+          description: Type of affinity rule
+        scope:
+          type: string
+          enum: [host, rack, zone, region]
+          description: Scope of the rule
+        target:
+          type: string
+          description: Target VNF or service
+
+    ResourceRequirements:
+      type: object
+      properties:
+        cpu_cores:
+          type: integer
+          minimum: 1
+          description: CPU cores required
+        memory_gb:
+          type: integer
+          minimum: 1
+          description: Memory in GB
+        storage_gb:
+          type: integer
+          minimum: 1
+          description: Storage in GB
+        gpu:
+          $ref: '#/components/schemas/GPURequirements'
+
+    GPURequirements:
+      type: object
+      required: [count]
+      properties:
+        count:
+          type: integer
+          minimum: 1
+          description: Number of GPUs
+        type:
+          type: string
+          description: GPU type
+
+    ImageSpec:
+      type: object
+      required: [repository, tag]
+      properties:
+        repository:
+          type: string
+          description: Container image repository
+        tag:
+          type: string
+          description: Image tag
+        pull_policy:
+          type: string
+          enum: [Always, IfNotPresent, Never]
+          default: IfNotPresent
+          description: Pull policy
+        pull_secrets:
+          type: array
+          items:
+            type: string
+          description: Pull secrets
+
+    VNFInstance:
+      type: object
+      properties:
+        cluster:
+          type: string
+          description: Cluster where instance is deployed
+        namespace:
+          type: string
+          description: Namespace of the instance
+        name:
+          type: string
+          description: Name of the instance
+        status:
+          type: string
+          description: Status of the instance
+        ip_address:
+          type: string
+          description: IP address assigned to the instance
+        endpoints:
+          type: array
+          items:
+            $ref: '#/components/schemas/VNFEndpoint'
+
+    VNFEndpoint:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Name of the endpoint
+        protocol:
+          type: string
+          enum: [TCP, UDP, SCTP]
+          description: Protocol
+        port:
+          type: integer
+          minimum: 1
+          maximum: 65535
+          description: Port number
+        external_ip:
+          type: string
+          description: External IP if exposed externally
+
+    # TN Manager schemas
+    TNAgent:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Agent identifier
+        name:
+          type: string
+          description: Agent name
+        endpoint:
+          type: string
+          format: uri
+          description: Agent endpoint URL
+        status:
+          type: string
+          enum: [connected, disconnected, error]
+        version:
+          type: string
+          description: Agent version
+        capabilities:
+          type: array
+          items:
+            type: string
+          description: Agent capabilities
+        last_seen:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+
+    TNAgentRequest:
+      type: object
+      required: [name, endpoint]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 63
+        endpoint:
+          type: string
+          format: uri
+        capabilities:
+          type: array
+          items:
+            type: string
+
+    TNSliceConfig:
+      type: object
+      required: [slice_id, bandwidth_mbps]
+      properties:
+        slice_id:
+          type: string
+          description: Network slice identifier
+        bandwidth_mbps:
+          type: number
+          minimum: 1
+          description: Bandwidth allocation in Mbps
+        vlan_id:
+          type: integer
+          minimum: 1
+          maximum: 4094
+          description: VLAN ID for slice isolation
+        qos_class:
+          type: string
+          enum: [eMBB, uRLLC, mIoT, balanced]
+          description: QoS class
+        priority:
+          type: integer
+          minimum: 1
+          maximum: 8
+          description: Traffic priority
+        latency_budget_ms:
+          type: number
+          minimum: 1
+          description: Latency budget in milliseconds
+
+    TNSliceStatus:
+      type: object
+      properties:
+        slice_id:
+          type: string
+        status:
+          type: string
+          enum: [configured, active, failed, deleting]
+        bandwidth_allocated:
+          type: number
+          description: Actually allocated bandwidth
+        vlan_id:
+          type: integer
+        message:
+          type: string
+          description: Status message
+        configured_at:
+          type: string
+          format: date-time
+
+    PerformanceTestConfig:
+      type: object
+      required: [test_id, duration_seconds]
+      properties:
+        test_id:
+          type: string
+          description: Test identifier
+        duration_seconds:
+          type: integer
+          minimum: 1
+          maximum: 3600
+          description: Test duration in seconds
+        bandwidth_mbps:
+          type: number
+          minimum: 1
+          description: Test bandwidth
+        packet_size:
+          type: integer
+          minimum: 64
+          maximum: 9000
+          default: 1500
+          description: Packet size in bytes
+        target_host:
+          type: string
+          description: Target host for test
+
+    PerformanceMetrics:
+      type: object
+      properties:
+        test_id:
+          type: string
+        throughput:
+          type: object
+          properties:
+            avg_mbps:
+              type: number
+            max_mbps:
+              type: number
+            min_mbps:
+              type: number
+        latency:
+          type: object
+          properties:
+            avg_rtt_ms:
+              type: number
+            max_rtt_ms:
+              type: number
+            min_rtt_ms:
+              type: number
+            jitter_ms:
+              type: number
+        packet_loss:
+          type: object
+          properties:
+            rate:
+              type: number
+              description: Packet loss rate (0-1)
+            packets_sent:
+              type: integer
+            packets_received:
+              type: integer
+        test_duration:
+          type: integer
+          description: Actual test duration in seconds
+        timestamp:
+          type: string
+          format: date-time
+
+    TNStatus:
+      type: object
+      properties:
+        agent_id:
+          type: string
+        status:
+          type: string
+          enum: [healthy, degraded, failed]
+        uptime_seconds:
+          type: integer
+        active_slices:
+          type: integer
+        total_bandwidth_mbps:
+          type: number
+        available_bandwidth_mbps:
+          type: number
+        cpu_usage_percent:
+          type: number
+        memory_usage_percent:
+          type: number
+        interfaces:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              status:
+                type: string
+                enum: [up, down]
+              speed_mbps:
+                type: number
+              utilization_percent:
+                type: number
+        last_updated:
+          type: string
+          format: date-time
+
+    # O2 Client schemas
+    DeploymentManager:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Deployment manager identifier
+        name:
+          type: string
+          description: Display name
+        description:
+          type: string
+          description: Description
+        endpoint:
+          type: string
+          format: uri
+          description: Deployment manager endpoint
+        status:
+          type: string
+          enum: [available, unavailable, maintenance]
+        capabilities:
+          type: array
+          items:
+            type: string
+          description: Supported capabilities
+        supported_nf_types:
+          type: array
+          items:
+            type: string
+          description: Supported NF types
+        version:
+          type: string
+          description: O2 DMS version
+
+    NFDeploymentDescriptor:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Descriptor identifier
+        name:
+          type: string
+          description: Descriptor name
+        version:
+          type: string
+          description: Descriptor version
+        nf_type:
+          type: string
+          description: Network function type
+        vendor:
+          type: string
+          description: Vendor name
+        description:
+          type: string
+          description: Description
+        input_parameters:
+          type: object
+          description: Required input parameters schema
+        artifacts:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              type:
+                type: string
+              url:
+                type: string
+                format: uri
+
+    NFDeployment:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Deployment identifier
+        name:
+          type: string
+          description: Deployment name
+        description:
+          type: string
+          description: Description
+        nf_deployment_descriptor_id:
+          type: string
+          description: Descriptor ID used for deployment
+        status:
+          type: string
+          enum: [not_instantiated, instantiating, instantiated, terminating, terminated, failed]
+        input_params:
+          type: object
+          description: Input parameters used
+        location_constraints:
+          type: array
+          items:
+            type: string
+          description: Location constraints
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    DeploymentRequest:
+      type: object
+      required: [name, nf_deployment_descriptor_id]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Deployment name
+        description:
+          type: string
+          description: Deployment description
+        nf_deployment_descriptor_id:
+          type: string
+          description: ID of deployment descriptor to use
+        parent_deployment_id:
+          type: string
+          description: Parent deployment ID if this is a sub-deployment
+        input_params:
+          type: object
+          description: Input parameters for deployment
+        location_constraints:
+          type: array
+          items:
+            type: string
+          description: Location constraints
+        extensions:
+          type: object
+          description: Extension data
+
+    # Monitoring schemas
+    SliceMetrics:
+      type: object
+      properties:
+        slice_id:
+          type: string
+        timeframe:
+          type: string
+        bandwidth_utilization:
+          type: object
+          properties:
+            current_mbps:
+              type: number
+            allocated_mbps:
+              type: number
+            utilization_percent:
+              type: number
+            peak_mbps:
+              type: number
+        latency:
+          type: object
+          properties:
+            current_ms:
+              type: number
+            target_ms:
+              type: number
+            percentile_95_ms:
+              type: number
+            percentile_99_ms:
+              type: number
+        throughput:
+          type: object
+          properties:
+            rx_mbps:
+              type: number
+            tx_mbps:
+              type: number
+            rx_packets_per_sec:
+              type: number
+            tx_packets_per_sec:
+              type: number
+        quality:
+          type: object
+          properties:
+            packet_loss_rate:
+              type: number
+            jitter_ms:
+              type: number
+            error_rate:
+              type: number
+        availability:
+          type: object
+          properties:
+            uptime_percent:
+              type: number
+            downtime_seconds:
+              type: integer
+            sla_compliance:
+              type: boolean
+        timestamp:
+          type: string
+          format: date-time
+
+    # Common schemas
+    DeploymentStatus:
+      type: object
+      properties:
+        deployment_id:
+          type: string
+          description: Deployment identifier
+        status:
+          type: string
+          enum: [queued, running, completed, failed, cancelled]
+        progress_percent:
+          type: integer
+          minimum: 0
+          maximum: 100
+        message:
+          type: string
+          description: Current status message
+        started_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+        estimated_completion:
+          type: string
+          format: date-time
+
+    OperationStatus:
+      type: object
+      properties:
+        operation_id:
+          type: string
+          description: Operation identifier
+        status:
+          type: string
+          enum: [pending, running, completed, failed]
+        message:
+          type: string
+          description: Operation status message
+        started_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+
+    APIError:
+      type: object
+      properties:
+        status:
+          type: integer
+          description: HTTP status code
+        title:
+          type: string
+          description: Error title
+        detail:
+          type: string
+          description: Detailed error message
+        type:
+          type: string
+          format: uri
+          description: URI that identifies the problem type
+        instance:
+          type: string
+          format: uri
+          description: URI reference that identifies the specific occurrence of the problem
+
+    ValidationError:
+      type: object
+      properties:
+        status:
+          type: integer
+          example: 422
+        title:
+          type: string
+          example: Validation Error
+        detail:
+          type: string
+          example: Input validation failed
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+                description: Field name that failed validation
+              message:
+                type: string
+                description: Validation error message
+              code:
+                type: string
+                description: Error code
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/APIError'
+          example:
+            status: 400
+            title: Bad Request
+            detail: The request could not be understood by the server
+
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/APIError'
+          example:
+            status: 401
+            title: Unauthorized
+            detail: Authentication credentials are required
+
+    Forbidden:
+      description: Access forbidden
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/APIError'
+          example:
+            status: 403
+            title: Forbidden
+            detail: You do not have permission to access this resource
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/APIError'
+          example:
+            status: 404
+            title: Not Found
+            detail: The requested resource was not found
+
+    Conflict:
+      description: Resource conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/APIError'
+          example:
+            status: 409
+            title: Conflict
+            detail: The request conflicts with the current state of the resource
+
+    ValidationError:
+      description: Input validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationError'
+          example:
+            status: 422
+            title: Validation Error
+            detail: Input validation failed
+            errors:
+              - field: bandwidth
+                message: bandwidth must be between 1 and 10000
+                code: RANGE_ERROR
+
+    TooManyRequests:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/APIError'
+          example:
+            status: 429
+            title: Too Many Requests
+            detail: Rate limit exceeded. Please try again later.
+
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/APIError'
+          example:
+            status: 500
+            title: Internal Server Error
+            detail: An unexpected error occurred
+
+webhooks:
+  deploymentStatusChanged:
+    post:
+      summary: Deployment status changed
+      description: Webhook notification when deployment status changes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                event:
+                  type: string
+                  enum: [deployment.started, deployment.completed, deployment.failed]
+                deployment_id:
+                  type: string
+                status:
+                  type: string
+                message:
+                  type: string
+                timestamp:
+                  type: string
+                  format: date-time
+      responses:
+        '200':
+          description: Webhook received successfully
+
+  sliceStatusChanged:
+    post:
+      summary: Network slice status changed
+      description: Webhook notification when network slice status changes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                event:
+                  type: string
+                  enum: [slice.created, slice.deployed, slice.failed, slice.deleted]
+                slice_id:
+                  type: string
+                status:
+                  type: string
+                metrics:
+                  $ref: '#/components/schemas/SliceMetrics'
+                timestamp:
+                  type: string
+                  format: date-time
+      responses:
+        '200':
+          description: Webhook received successfully

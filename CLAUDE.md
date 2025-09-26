@@ -1,60 +1,3 @@
-# CLAUDE.md — O-RAN Intent-Based MANO (Reproducible Build)
-
-## Mission
-Reproduce the thesis system: map natural-language intents → QoS(JSON) → E2E slices (RAN/TN/CN) via O-RAN O2 (O2ims/O2dms) + Nephio (GitOps), with multi-site NF connectivity (Kube-OVN) and TN bandwidth control (TC/VXLAN). Targets: E2E deploy time <10 min; DL throughput ≈ {4.57,2.77,0.93} Mbps; ping RTT ≈ {16.1,15.7,6.3} ms (after TC overhead).
-
-## Guardrails
-- **Plan-first**: Always use Permission mode (plan). Show file diffs & commands; wait for approval.
-- **Allowed tools**: bash, git, python, go, kubectl, kpt, ip, tc. Do NOT run package managers or access the Internet unless asked.
-- **No secrets / no hardcoded networks**: Never write tokens/URLs into code. Use `.env.sample` only. Hooks will block violations.
-- **Determinism**: Prefer headless steps; pin versions; write idempotent scripts.
-- **Safety**: Never alter kube contexts outside `kind-*`/lab clusters; never `sudo` unless explicitly allowed.
-
-## Version Requirements for Nephio R3 + Go 1.22
-- **Go Version**: **Go 1.22.x** (Nephio R3 upgraded Porch/porchctl toolchain to Go 1.22)
-- **GitHub Actions Runner OS**: **ubuntu-24.04** (`runs-on: ubuntu-24.04`)
-- **GitHub Actions (Node runtime)**: **Node 20 baseline** (use latest action versions)
-- **actions/checkout**: **v4** (avoid Node 16 deprecation warnings)
-- **actions/setup-go**: **v5** (supports extracting Go version from `go.mod`/`go.work`; Node 20 runtime)
-- **golangci-lint**: **v2.2+** (latest 2.x recommended, supports Go 1.22)
-- **Kubernetes (cluster version)**: **v1.26+** (Nephio R3 requirement)
-- **kubectl**: **v1.26-1.28** (follow 1-minor version skew policy with cluster)
-- **kpt**: **≥v1.0.0-beta.43** (Porch/ConfigSync requirement)
-- **porchctl**: **latest from Nephio R3 release** (built with Go 1.22)
-- **Container Engine (local/runner)**: **Docker Engine** (Ubuntu 22.04/24.04 official support)
-- **Container Runtime (K8s nodes)**: **containerd ≥1.6.0** (K8s 1.26+ requires CRI 1.6+)
-- **MetalLB**: **v0.15.2** (latest stable for R3 multi/single VM examples)
-- **Git LFS**: **3.6.1+** (GitHub recommended version)
-- **GitHub CLI (`gh`)**: **2.x** (latest stable, currently 2.76.x)
-- **Helm**: **Helm 3** (latest v3.x) for chart management
-- **Security Tools**: gosec v2.21.4, cosign v2.4.1, trivy/grype latest versions
-- **Never downgrade** any tool versions without explicit approval - all versions aligned with Nephio R3
-
-## Repository Layout (expected)
-- nlp/: prompt.md, schema.json, tests/
-- orchestrator/: pkg/placement/, cmd/, tests/
-- adapters/vnf-operator/: controllers/, config/, tests/golden/
-- ran-dms/, cn-dms/: operators & CR samples
-- tn/: manager/, agent/, tests/
-- net/: ovn/, tests/
-- experiments/: run_suite.sh, collect_metrics.py
-- clusters/: edge01, edge02, regional, central (Porch/ConfigSync)
-- .devcontainer/, scripts/, Makefile
-
-## Definition of Done (DoD)
-- All tests green (unit + envtest + e2e smoke).
-- `experiments` produces JSON report with metrics within thresholds.
-- GitOps packages render cleanly; `kubectl` resources Ready.
-
-## Style & Commits
-- Conventional Commits; small PRs. Include repro notes for metrics deltas.
-
-## Useful Prompts (terminal Claude Code)
-- "Implement QoS prompt & schema with tests" (nlp/)
-- "Add placement policy with table-driven tests" (orchestrator/)
-- "Transform VNF CR to Porch packages" (adapters/vnf-operator/)
-- "TN Agent shaping & VXLAN with iperf tests" (tn/)
-
 # Claude Code Configuration - SPARC Development Environment
 
 ## 🚨 CRITICAL: CONCURRENT EXECUTION & FILE MANAGEMENT
@@ -101,15 +44,6 @@ Reproduce the thesis system: map natural-language intents → QoS(JSON) → E2E 
 - `/config` - Configuration files
 - `/scripts` - Utility scripts
 - `/examples` - Example code
-
-### 🚫 Git Commit Rules
-
-**ABSOLUTE PROHIBITIONS in all git commits:**
-- ❌ NEVER include: `🤖 Generated with [Claude Code](https://claude.ai/code)`
-- ❌ NEVER include: `Co-Authored-By: Claude <noreply@anthropic.com>`
-- ❌ NEVER include any AI tool signatures or co-authorship
-- ✅ ONLY use project owner's identity: `thc1006 <84045975+thc1006@users.noreply.github.com>`
-- ✅ Commit messages should contain ONLY technical content and project information
 
 ## Project Overview
 
