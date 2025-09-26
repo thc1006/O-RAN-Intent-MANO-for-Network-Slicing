@@ -1,5 +1,66 @@
 # Claude Code Configuration - SPARC Development Environment
 
+## 🎯 CORE DEVELOPMENT PRINCIPLES
+
+### Test-Driven Development (TDD)
+**MANDATORY: Write tests BEFORE implementation**
+
+1. **Red-Green-Refactor Cycle**:
+   - ❌ RED: Write failing test first
+   - ✅ GREEN: Write minimal code to pass
+   - 🔄 REFACTOR: Improve code quality
+
+2. **TDD Workflow**:
+   ```bash
+   # Step 1: Write test (it should fail)
+   make test-unit  # Expected: FAIL
+
+   # Step 2: Implement minimal code
+   # Edit implementation files
+
+   # Step 3: Run test (it should pass)
+   make test-unit  # Expected: PASS
+
+   # Step 4: Refactor and verify
+   make test-unit  # Expected: PASS
+   ```
+
+3. **Test Coverage Requirements**:
+   - Unit tests: ≥90% coverage
+   - Integration tests: All critical paths
+   - E2E tests: All user scenarios
+   - Never commit untested code
+
+### Model-Based Systems Engineering (MBSE)
+**MANDATORY: Model-first approach for system design**
+
+1. **System Modeling Hierarchy**:
+   ```
+   Intent Model (Natural Language)
+     ↓
+   QoS Model (Structured JSON Schema)
+     ↓
+   Resource Model (Kubernetes CRDs)
+     ↓
+   Deployment Model (Nephio Packages)
+     ↓
+   Runtime Model (Live System State)
+   ```
+
+2. **MBSE Workflow**:
+   - Define models in `docs/models/` before coding
+   - Use SysML/UML for architecture diagrams
+   - Validate models against requirements
+   - Generate code from models when possible
+   - Maintain bidirectional traceability
+
+3. **Required Models**:
+   - System context diagrams
+   - Component interaction diagrams
+   - State machine diagrams
+   - Data flow diagrams
+   - Deployment architecture
+
 ## 🚨 CRITICAL: CONCURRENT EXECUTION & FILE MANAGEMENT
 
 **ABSOLUTE RULES**:
@@ -7,6 +68,8 @@
 2. **NEVER save working files, text/mds and tests to the root folder**
 3. ALWAYS organize files in appropriate subdirectories
 4. **USE CLAUDE CODE'S TASK TOOL** for spawning agents concurrently, not just MCP
+5. **ALWAYS follow TDD**: Tests before implementation
+6. **ALWAYS model first**: Design models before coding
 
 ### ⚡ GOLDEN RULE: "1 MESSAGE = ALL RELATED OPERATIONS"
 
@@ -68,21 +131,61 @@ This project uses SPARC (Specification, Pseudocode, Architecture, Refinement, Co
 - `npm run lint` - Linting
 - `npm run typecheck` - Type checking
 
-## SPARC Workflow Phases
+## SPARC Workflow Phases (TDD + MBSE Integrated)
 
-1. **Specification** - Requirements analysis (`sparc run spec-pseudocode`)
-2. **Pseudocode** - Algorithm design (`sparc run spec-pseudocode`)
-3. **Architecture** - System design (`sparc run architect`)
-4. **Refinement** - TDD implementation (`sparc tdd`)
-5. **Completion** - Integration (`sparc run integration`)
+1. **Specification** - Requirements analysis + MBSE modeling
+   - Define system requirements
+   - Create SysML/UML models
+   - Validate requirements against models
+   - Command: `sparc run spec-pseudocode`
+
+2. **Pseudocode** - Algorithm design + test scenarios
+   - Design algorithms with pseudocode
+   - Define test cases for each algorithm
+   - Create test data fixtures
+   - Command: `sparc run spec-pseudocode`
+
+3. **Architecture** - System design + model validation
+   - Design component architecture
+   - Create architecture models (C4, UML)
+   - Define interfaces and contracts
+   - Validate against MBSE models
+   - Command: `sparc run architect`
+
+4. **Refinement** - TDD implementation (RED-GREEN-REFACTOR)
+   - Write failing tests first (RED)
+   - Implement minimal code (GREEN)
+   - Refactor for quality (REFACTOR)
+   - Command: `sparc tdd`
+
+5. **Completion** - Integration + model synchronization
+   - Integration tests
+   - Update models to reflect implementation
+   - Verify traceability
+   - Command: `sparc run integration`
 
 ## Code Style & Best Practices
 
+### TDD-Driven Development
+- **Test-First**: ALWAYS write tests before implementation
+- **Red-Green-Refactor**: Follow strict TDD cycle
+- **Table-Driven Tests**: Use Go table-driven test pattern
+- **Mock External Dependencies**: Use interfaces for testability
+- **CI/CD Integration**: All tests must pass before merge
+
+### MBSE-Driven Design
+- **Model-First**: Design system models before coding
+- **Traceability**: Maintain requirement → model → code links
+- **Validation**: Validate models against requirements
+- **Documentation**: Auto-generate docs from models
+- **Version Control**: Track model changes in Git
+
+### General Best Practices
 - **Modular Design**: Files under 500 lines
 - **Environment Safety**: Never hardcode secrets
-- **Test-First**: Write tests before implementation
-- **Clean Architecture**: Separate concerns
-- **Documentation**: Keep updated
+- **Clean Architecture**: Separate concerns (Domain, Use Cases, Infrastructure)
+- **SOLID Principles**: Follow object-oriented design principles
+- **Documentation**: Keep models and docs synchronized
 
 ## 🚀 Available Agents (54 Total)
 
