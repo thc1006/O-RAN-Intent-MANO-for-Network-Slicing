@@ -1,0 +1,85 @@
+@startuml O-RAN Intent-MANO System Context
+!theme plain
+title O-RAN Intent-MANO 系統環境圖 / System Context Diagram
+
+actor "Network Operator\n網路營運商" as operator
+actor "End User\n終端用戶" as enduser
+actor "Service Provider\n服務提供商" as serviceprov
+
+package "O-RAN Intent-MANO System\nO-RAN 意圖管理與網路編排系統" {
+  component "Intent Manager\n意圖管理器" as intentmgr
+  component "QoS Orchestrator\n服務品質編排器" as qosorchestrator
+  component "Resource Allocator\n資源分配器" as resalloc
+  component "VNF Operator\nVNF 操作器" as vnfop
+}
+
+package "External Systems\n外部系統" {
+  component "Nephio Platform\nNephio 平台" as nephio
+  component "Kubernetes Cluster\nK8s 叢集" as k8s
+  component "O-RAN Components\nO-RAN 組件" {
+    component "Near-RT RIC\n近即時 RIC" as nearrtric
+    component "Non-RT RIC\n非即時 RIC" as nonrtric
+    component "SMO\n服務管理與編排" as smo
+    component "O-CU\nO-雲端單元" as ocu
+    component "O-DU\nO-分散式單元" as odu
+    component "O-RU\nO-無線單元" as oru
+  }
+  component "GitOps Repository\nGitOps 儲存庫" as gitops
+  component "DMS (Deployment Management System)\n部署管理系統" as dms
+  component "Network Monitoring\n網路監控" as monitoring
+}
+
+' User interactions / 用戶互動
+operator --> intentmgr : Submit Intent\n提交意圖
+serviceprov --> intentmgr : Define Service Template\n定義服務模板
+enduser --> monitoring : Monitor Performance\n監控效能
+
+' Internal interactions / 內部互動
+intentmgr --> qosorchestrator : Parsed Intent\n解析後意圖
+qosorchestrator --> resalloc : QoS Requirements\n服務品質需求
+resalloc --> vnfop : Resource Allocation\n資源分配
+
+' External system interactions / 外部系統互動
+vnfop --> nephio : Package Deployment\n套件部署
+nephio --> k8s : Kubernetes Resources\nK8s 資源
+vnfop --> gitops : Configuration Updates\n組態更新
+gitops --> dms : Deployment Triggers\n部署觸發
+
+' O-RAN interactions / O-RAN 互動
+qosorchestrator --> smo : Policy Updates\n政策更新
+smo --> nearrtric : Real-time Control\n即時控制
+smo --> nonrtric : Analytics & ML\n分析與機器學習
+nearrtric --> ocu : RAN Configuration\nRAN 組態
+ocu --> odu : Functional Split\n功能分割
+odu --> oru : RF Control\n射頻控制
+
+' Monitoring and feedback / 監控與回饋
+k8s --> monitoring : Metrics & Logs\n指標與日誌
+monitoring --> qosorchestrator : Performance Data\n效能資料
+nearrtric --> monitoring : RAN Metrics\nRAN 指標
+
+note right of intentmgr
+  Processes natural language intents
+  處理自然語言意圖
+  - Intent validation / 意圖驗證
+  - Template matching / 模板匹配
+  - Policy enforcement / 政策執行
+end note
+
+note right of qosorchestrator
+  Translates intents to QoS parameters
+  將意圖轉換為 QoS 參數
+  - SLA mapping / SLA 映射
+  - Resource optimization / 資源最佳化
+  - Performance tracking / 效能追蹤
+end note
+
+note bottom of k8s
+  Target deployment platform
+  目標部署平台
+  - Container orchestration / 容器編排
+  - Service mesh / 服務網格
+  - Auto-scaling / 自動擴展
+end note
+
+@enduml

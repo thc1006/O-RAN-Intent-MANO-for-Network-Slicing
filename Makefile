@@ -263,14 +263,14 @@ test-coverage: verify-env
 	@$(GO) test ./tn/tests/coverage/... -v
 	@echo -e "$(GREEN)Coverage report generated: coverage.html$(NC)"
 
-## test-unit: Run unit tests only
-test-unit: verify-env
-	@echo -e "$(YELLOW)Running unit tests...$(NC)"
+## test-unit-tn: Run TN unit tests only
+test-unit-tn: verify-env
+	@echo -e "$(YELLOW)Running TN unit tests...$(NC)"
 	@$(GO) test ./tn/agent/pkg/... -v
 
-## test-integration: Run integration tests only
-test-integration: verify-env
-	@echo -e "$(YELLOW)Running integration tests...$(NC)"
+## test-integration-tn: Run TN integration tests only
+test-integration-tn: verify-env
+	@echo -e "$(YELLOW)Running TN integration tests...$(NC)"
 	@echo -e "$(YELLOW)Note: Integration tests may require elevated privileges$(NC)"
 	@$(GO) test ./tn/tests/integration/... -v -timeout 10m
 

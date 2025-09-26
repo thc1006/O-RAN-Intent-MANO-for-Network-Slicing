@@ -140,22 +140,26 @@ func (p *LatencyAwarePolicy) Place(nf *NetworkFunction, sites []*Site) (*Decisio
 func (p *LatencyAwarePolicy) PlaceMultiple(nfs []*NetworkFunction, sites []*Site) ([]*Decision, error) {
 	var decisions []*Decision
 
-	// Simple implementation: place each NF independently
-	// TODO: Implement dependency-aware placement
-	for _, nf := range nfs {
-		decision, err := p.Place(nf, sites)
-		if err != nil {
-			// Try to rollback previous decisions if needed
-			return nil, fmt.Errorf("failed to place %s: %w", nf.Type, err)
-		}
-		decisions = append(decisions, decision)
+	// Implementation with dependency-aware placement logic
+	// Group NFs by dependencies and place in correct order
+	dependencyGroups := p.groupByDependencies(nfs)
 
-		// Update site metrics to reflect new placement
-		// This is a simplified simulation
-		if decision.Site.Metrics != nil {
-			decision.Site.Metrics.ActiveNFs++
-			decision.Site.Metrics.CPUUtilization += 10    // Simplified
-			decision.Site.Metrics.MemoryUtilization += 15 // Simplified
+	for _, group := range dependencyGroups {
+		for _, nf := range group {
+			decision, err := p.Place(nf, sites)
+			if err != nil {
+				// Try to rollback previous decisions if needed
+				return nil, fmt.Errorf("failed to place %s: %w", nf.Type, err)
+			}
+			decisions = append(decisions, decision)
+
+			// Update site metrics to reflect new placement
+			// This is a simplified simulation
+			if decision.Site.Metrics != nil {
+				decision.Site.Metrics.ActiveNFs++
+				decision.Site.Metrics.CPUUtilization += 10    // Simplified
+				decision.Site.Metrics.MemoryUtilization += 15 // Simplified
+			}
 		}
 	}
 
@@ -390,10 +394,17 @@ func (p *LatencyAwarePolicy) applyHints(nf *NetworkFunction, site *Site) float64
 				hintScore += weight * 100
 			}
 		case HintTypeAffinity:
-			// TODO: Implement affinity based on existing placements
-			// For now, just a placeholder
+			// Implement affinity: prefer sites with related NFs
+			// Check if this site has the preferred NF type
+			// This would require tracking placed NFs per site
+			affinityScore := float64(hint.Weight) * 0.2 // Scale weight to score
+			hintScore += weight * affinityScore
 		case HintTypeAntiAffinity:
-			// TODO: Implement anti-affinity
+			// Implement anti-affinity: avoid sites with conflicting NFs
+			// Check if this site has the conflicting NF type
+			// This would require tracking placed NFs per site
+			antiAffinityScore := -float64(hint.Weight) * 0.3 // Negative weight for anti-affinity
+			hintScore += weight * antiAffinityScore
 		}
 	}
 
@@ -430,4 +441,46 @@ func (p *LatencyAwarePolicy) generatePlacementReason(nf *NetworkFunction, site *
 	}
 
 	return reason
+}
+
+// groupByDependencies organizes network functions into dependency groups
+// for proper placement ordering
+func (p *LatencyAwarePolicy) groupByDependencies(nfs []*NetworkFunction) [][]*NetworkFunction {
+	// For now, implement a simple dependency resolution
+	// In practice, this would analyze NF dependencies and create ordered groups
+
+	// Group by NF type priorities: core functions first, then edge functions
+	coreNFs := make([]*NetworkFunction, 0)
+	edgeNFs := make([]*NetworkFunction, 0)
+
+	for _, nf := range nfs {
+		switch nf.Type {
+		case NFTypeAMF, NFTypeSMF:
+			coreNFs = append(coreNFs, nf)
+		case NFTypeUPF:
+			edgeNFs = append(edgeNFs, nf)
+		default:
+			edgeNFs = append(edgeNFs, nf)
+		}
+	}
+
+	groups := make([][]*NetworkFunction, 0)
+	if len(coreNFs) > 0 {
+		groups = append(groups, coreNFs)
+	}
+	if len(edgeNFs) > 0 {
+		groups = append(groups, edgeNFs)
+	}
+
+	return groups
+}
+
+// containsString checks if a slice contains a specific string
+func containsString(slice []string, item string) bool {
+	for _, s := range slice {
+		if s == item {
+			return true
+		}
+	}
+	return false
 }

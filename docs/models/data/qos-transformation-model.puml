@@ -1,0 +1,288 @@
+@startuml QoS Transformation Model
+!theme plain
+title QoS 轉換模型 / QoS Transformation Model
+
+package "Intent Layer\n意圖層" {
+  object "Natural Language Intent\n自然語言意圖" as intent {
+    text = "Deploy low-latency gaming slice for 1000 users with guaranteed 1ms latency"
+    language = "English"
+    domain = "Gaming"
+    priority = "High"
+    timestamp = "2024-01-15T10:30:00Z"
+  }
+}
+
+package "Semantic Layer\n語義層" {
+  object "Parsed Intent\n解析後意圖" as parsedintent {
+    service_type = "Gaming"
+    latency_requirement = "1ms"
+    user_capacity = "1000"
+    reliability = "High"
+    bandwidth_hint = "High throughput"
+  }
+
+  object "Intent Classification\n意圖分類" as classification {
+    category = "URLLC" // Ultra-Reliable Low-Latency Communication
+    subcategory = "Gaming"
+    complexity = "Medium"
+    estimated_resources = "High"
+  }
+}
+
+package "QoS Parameter Layer\nQoS 參數層" {
+  object "5G QoS Parameters\n5G QoS 參數" as fivegqos {
+    **5QI (5G QoS Identifier)**
+    5qi = "1" // Conversational Voice
+    priority_level = "20"
+    packet_delay_budget = "1ms"
+    packet_error_rate = "10^-6"
+
+    **GFBR/MFBR**
+    guaranteed_bit_rate = "10 Mbps"
+    maximum_bit_rate = "100 Mbps"
+
+    **Allocation Retention Priority**
+    arp_priority = "1"
+    preemption_capability = "SHALL_NOT_PREEMPT"
+    preemption_vulnerability = "NOT_PREEMPTABLE"
+  }
+
+  object "O-RAN QoS Profile\nO-RAN QoS 配置" as oranqos {
+    **RAN Parameters**
+    rrc_establishment_delay = "10ms"
+    handover_interruption_time = "0ms"
+    radio_resource_allocation = "Dedicated"
+
+    **Near-RT RIC Policies**
+    traffic_steering_policy = "Latency-based"
+    interference_management = "Advanced"
+    load_balancing = "Priority-based"
+
+    **A1 Policy Parameters**
+    policy_type = "QoS_Management"
+    policy_scope = "Cell_Level"
+    optimization_target = "Latency"
+  }
+}
+
+package "Resource Requirement Layer\n資源需求層" {
+  object "Compute Resources\n計算資源" as compute {
+    **CPU Requirements**
+    cpu_cores = "4"
+    cpu_frequency = "3.2 GHz"
+    cpu_architecture = "x86_64"
+
+    **Memory Requirements**
+    memory_size = "8 GB"
+    memory_type = "DDR4"
+    memory_bandwidth = "25.6 GB/s"
+
+    **Accelerators**
+    gpu_required = "Yes"
+    gpu_type = "NVIDIA T4"
+    dpdk_support = "Required"
+  }
+
+  object "Network Resources\n網路資源" as network {
+    **Bandwidth Requirements**
+    ingress_bandwidth = "1 Gbps"
+    egress_bandwidth = "1 Gbps"
+    burst_capacity = "2 Gbps"
+
+    **Latency Requirements**
+    network_latency = "0.5ms"
+    jitter_tolerance = "0.1ms"
+
+    **Quality Requirements**
+    packet_loss_rate = "0.001%"
+    availability = "99.999%"
+  }
+
+  object "Storage Resources\n儲存資源" as storage {
+    **Primary Storage**
+    storage_type = "NVMe SSD"
+    storage_size = "100 GB"
+    iops_requirement = "10000"
+
+    **Persistent Storage**
+    persistent_volume = "50 GB"
+    backup_requirement = "Yes"
+    replication_factor = "3"
+  }
+}
+
+package "Kubernetes Resource Layer\nKubernetes 資源層" {
+  object "Pod Specifications\nPod 規格" as podspec {
+    **Resource Requests**
+    cpu_request = "2000m"
+    memory_request = "4Gi"
+    gpu_request = "1"
+
+    **Resource Limits**
+    cpu_limit = "4000m"
+    memory_limit = "8Gi"
+    ephemeral_storage = "10Gi"
+
+    **QoS Class**
+    qos_class = "Guaranteed"
+  }
+
+  object "Service Specifications\n服務規格" as servicespec {
+    **Network Policies**
+    ingress_rules = "Allow from gaming namespace"
+    egress_rules = "Allow to external gaming servers"
+
+    **Service Mesh Config**
+    istio_sidecar = "Enabled"
+    circuit_breaker = "Enabled"
+    retry_policy = "3 attempts"
+
+    **Load Balancing**
+    session_affinity = "ClientIP"
+    load_balancer_type = "MetalLB"
+  }
+
+  object "Node Affinity\n節點親和性" as nodeaffinity {
+    **Hardware Requirements**
+    node_selector = "gpu=nvidia-t4"
+    cpu_model = "Intel Xeon Gold"
+    network_card = "SR-IOV capable"
+
+    **Topology Constraints**
+    zone_spreading = "Required"
+    rack_diversity = "Preferred"
+    latency_zone = "Ultra-low"
+  }
+}
+
+package "Deployment Resource Layer\n部署資源層" {
+  object "Helm Values\nHelm 值" as helmvalues {
+    **Gaming VNF Configuration**
+    game_server_replicas = "3"
+    game_server_image = "gaming-vnf:v1.2.3"
+
+    **Resource Allocation**
+    resources_requests_cpu = "2000m"
+    resources_requests_memory = "4Gi"
+    resources_limits_cpu = "4000m"
+    resources_limits_memory = "8Gi"
+
+    **Networking**
+    service_type = "LoadBalancer"
+    ingress_enabled = "true"
+    istio_enabled = "true"
+  }
+
+  object "Kustomization\nKustomize 組態" as kustomization {
+    **Environment Overlays**
+    environment = "production"
+    cluster = "edge-cluster-01"
+    region = "asia-pacific"
+
+    **Configuration Patches**
+    config_patches = ["latency-optimization.yaml"]
+    secret_generators = ["gaming-credentials"]
+
+    **Resource Transformations**
+    name_prefix = "gaming-slice-"
+    namespace = "oran-gaming"
+    labels = {"slice-id": "slice-12345"}
+  }
+}
+
+' Transformation relationships / 轉換關係
+intent --> parsedintent : **NLP Processing**\n自然語言處理
+parsedintent --> classification : **Intent Classification**\n意圖分類
+classification --> fivegqos : **5G Standards Mapping**\n5G 標準映射
+fivegqos --> oranqos : **O-RAN Optimization**\nO-RAN 最佳化
+
+oranqos --> compute : **Resource Estimation**\n資源估算
+oranqos --> network : **Network Planning**\n網路規劃
+oranqos --> storage : **Storage Planning**\n儲存規劃
+
+compute --> podspec : **K8s Resource Mapping**\nK8s 資源映射
+network --> servicespec : **Service Configuration**\n服務組態
+storage --> nodeaffinity : **Node Selection**\n節點選擇
+
+podspec --> helmvalues : **Helm Templating**\nHelm 模板化
+servicespec --> helmvalues : **Service Configuration**\n服務組態
+nodeaffinity --> kustomization : **Deployment Customization**\n部署自訂
+
+note top of intent
+  **Intent Processing Rules / 意圖處理規則:**
+
+  **Latency Keywords:**
+  - "low-latency", "real-time" → 5QI 1-2
+  - "gaming", "interactive" → URLLC category
+  - "critical", "mission-critical" → High priority
+
+  **Capacity Keywords:**
+  - "1000 users" → Calculate concurrent sessions
+  - "high throughput" → Increase bandwidth allocation
+  - "peak hours" → Add burst capacity
+end note
+
+note top of fivegqos
+  **5G QoS Mapping Rules / 5G QoS 映射規則:**
+
+  **5QI Selection Logic:**
+  - Gaming + Real-time → 5QI 1 (GBR)
+  - Video streaming → 5QI 2 (GBR)
+  - Voice over IP → 5QI 5 (Non-GBR)
+  - Best effort → 5QI 9 (Non-GBR)
+
+  **Priority Calculation:**
+  Priority = f(service_type, user_count, latency_req)
+end note
+
+note top of compute
+  **Resource Calculation Formulas / 資源計算公式:**
+
+  **CPU Calculation:**
+  CPU = base_load + (users × cpu_per_user) × safety_factor
+
+  **Memory Calculation:**
+  Memory = os_overhead + app_memory + (users × memory_per_session)
+
+  **GPU Calculation:**
+  GPU_cores = (rendering_load + ai_processing) / gpu_capability
+end note
+
+note bottom of podspec
+  **Kubernetes QoS Classes / K8s QoS 類別:**
+
+  **Guaranteed (保證):**
+  - requests = limits for all resources
+  - Highest scheduling priority
+  - Never evicted due to resource pressure
+
+  **Burstable (突發):**
+  - requests < limits
+  - Medium scheduling priority
+  - May be evicted under pressure
+
+  **BestEffort (盡力而為):**
+  - No requests/limits specified
+  - Lowest priority, first to be evicted
+end note
+
+note bottom of helmvalues
+  **Deployment Validation Rules / 部署驗證規則:**
+
+  **Resource Constraints:**
+  - CPU limits ≥ CPU requests
+  - Memory limits ≥ Memory requests
+  - GPU availability validation
+
+  **Network Validation:**
+  - Bandwidth requirements vs cluster capacity
+  - Latency constraints vs network topology
+  - Security policy compliance
+
+  **Storage Validation:**
+  - Storage class availability
+  - IOPS capability matching
+  - Backup policy enforcement
+end note
+
+@enduml

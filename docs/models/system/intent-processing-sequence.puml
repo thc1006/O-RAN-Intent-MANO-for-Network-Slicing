@@ -1,0 +1,164 @@
+@startuml Intent Processing Sequence
+!theme plain
+title O-RAN 意圖處理序列圖 / Intent Processing Sequence Diagram
+
+actor "Operator\n營運商" as operator
+participant "Intent Manager\n意圖管理器" as intentmgr
+participant "Intent Parser\n意圖解析器" as parser
+participant "QoS Mapper\n服務品質映射器" as qosmapper
+participant "Resource Allocator\n資源分配器" as resalloc
+participant "VNF Operator\nVNF 操作器" as vnfop
+participant "Nephio\nNephio" as nephio
+participant "Kubernetes\nK8s" as k8s
+participant "O-RAN SMO\nO-RAN SMO" as smo
+participant "State Manager\n狀態管理器" as statemgr
+
+== Intent Submission Phase / 意圖提交階段 ==
+
+operator -> intentmgr : **POST /api/v1/intents**\nSubmit Natural Language Intent\n提交自然語言意圖
+activate intentmgr
+
+intentmgr -> parser : parseIntent(intentText)\n解析意圖文本
+activate parser
+
+alt Valid Intent / 有效意圖
+    parser -> parser : validateSyntax()\n驗證語法
+    parser -> parser : extractParameters()\n提取參數
+    parser --> intentmgr : ParsedIntent\n解析後意圖
+    deactivate parser
+
+    intentmgr -> statemgr : createSliceRecord()\n建立切片記錄
+    activate statemgr
+    statemgr --> intentmgr : sliceId\n切片ID
+    deactivate statemgr
+
+else Invalid Intent / 無效意圖
+    parser --> intentmgr : **Error**: Invalid Intent Format\n錯誤：無效意圖格式
+    deactivate parser
+    intentmgr --> operator : **400 Bad Request**\nIntent Validation Failed\n意圖驗證失敗
+    deactivate intentmgr
+    stop
+end
+
+== QoS Mapping Phase / 服務品質映射階段 ==
+
+intentmgr -> qosmapper : mapToQoS(parsedIntent)\n映射到服務品質
+activate qosmapper
+
+qosmapper -> qosmapper : loadQoSTemplates()\n載入QoS模板
+qosmapper -> qosmapper : calculateSLA()\n計算服務等級協議
+
+alt QoS Mapping Success / QoS映射成功
+    qosmapper --> intentmgr : QoSProfile\n服務品質配置檔
+    deactivate qosmapper
+else QoS Mapping Failed / QoS映射失敗
+    qosmapper --> intentmgr : **Error**: QoS Mapping Failed\n錯誤：QoS映射失敗
+    deactivate qosmapper
+    intentmgr -> statemgr : updateSliceState(sliceId, "FAILED")\n更新切片狀態為失敗
+    intentmgr --> operator : **500 Internal Error**\nQoS Mapping Failed\nQoS映射失敗
+    deactivate intentmgr
+    stop
+end
+
+== Resource Allocation Phase / 資源分配階段 ==
+
+intentmgr -> resalloc : allocateResources(qosProfile)\n分配資源
+activate resalloc
+
+resalloc -> resalloc : checkResourceAvailability()\n檢查資源可用性
+resalloc -> resalloc : optimizeResourceUsage()\n最佳化資源使用
+
+alt Resources Available / 資源可用
+    resalloc -> resalloc : reserveResources()\n預留資源
+    resalloc --> intentmgr : ResourceAllocation\n資源分配
+    deactivate resalloc
+else Insufficient Resources / 資源不足
+    resalloc --> intentmgr : **Error**: Insufficient Resources\n錯誤：資源不足
+    deactivate resalloc
+    intentmgr -> statemgr : updateSliceState(sliceId, "RESOURCE_FAILED")\n更新切片狀態為資源失敗
+    intentmgr --> operator : **503 Service Unavailable**\nInsufficient Resources\n資源不足
+    deactivate intentmgr
+    stop
+end
+
+== Deployment Phase / 部署階段 ==
+
+intentmgr -> vnfop : deployVNFs(resourceAllocation)\n部署VNFs
+activate vnfop
+
+vnfop -> vnfop : generatePackages()\n生成套件
+vnfop -> nephio : **POST /api/v1/packages**\nDeploy Nephio Package\n部署Nephio套件
+activate nephio
+
+nephio -> k8s : **kubectl apply**\nDeploy Kubernetes Resources\n部署K8s資源
+activate k8s
+
+k8s -> k8s : createNamespaces()\n建立命名空間
+k8s -> k8s : deployWorkloads()\n部署工作負載
+k8s -> k8s : configureNetworking()\n配置網路
+
+alt Deployment Success / 部署成功
+    k8s --> nephio : **200 OK**\nDeployment Successful\n部署成功
+    deactivate k8s
+    nephio --> vnfop : **201 Created**\nPackage Deployed\n套件已部署
+    deactivate nephio
+
+    vnfop -> smo : **POST /api/v1/policies**\nUpdate O-RAN Policies\n更新O-RAN政策
+    activate smo
+    smo --> vnfop : **200 OK**\nPolicies Updated\n政策已更新
+    deactivate smo
+
+    vnfop --> intentmgr : **200 OK**\nDeployment Complete\n部署完成
+    deactivate vnfop
+
+    intentmgr -> statemgr : updateSliceState(sliceId, "ACTIVE")\n更新切片狀態為活躍
+    intentmgr --> operator : **201 Created**\n{\n  "sliceId": "slice-xxx",\n  "status": "ACTIVE",\n  "endpoints": [...]\n}
+    deactivate intentmgr
+
+else Deployment Failed / 部署失敗
+    k8s --> nephio : **500 Internal Error**\nDeployment Failed\n部署失敗
+    deactivate k8s
+    nephio --> vnfop : **500 Internal Error**\nPackage Deployment Failed\n套件部署失敗
+    deactivate nephio
+    vnfop --> intentmgr : **500 Internal Error**\nVNF Deployment Failed\nVNF部署失敗
+    deactivate vnfop
+
+    intentmgr -> statemgr : updateSliceState(sliceId, "DEPLOY_FAILED")\n更新切片狀態為部署失敗
+    intentmgr -> resalloc : releaseResources(resourceAllocation)\n釋放資源
+    intentmgr --> operator : **500 Internal Error**\nDeployment Failed\n部署失敗
+    deactivate intentmgr
+    stop
+end
+
+== Monitoring Phase / 監控階段 ==
+
+loop Continuous Monitoring / 持續監控
+    k8s -> statemgr : **Metrics Push**\nResource Metrics\n資源指標
+    smo -> statemgr : **Metrics Push**\nO-RAN Performance\nO-RAN效能
+
+    alt Performance Degradation / 效能下降
+        statemgr -> intentmgr : **Alert**\nPerformance Issue\n效能問題
+        intentmgr -> operator : **WebSocket**\nPerformance Alert\n效能警報
+    end
+end
+
+note over operator, statemgr
+  **Error Handling Strategies / 錯誤處理策略:**
+
+  1. **Intent Validation / 意圖驗證**
+     - Syntax validation / 語法驗證
+     - Semantic validation / 語義驗證
+     - Template matching / 模板匹配
+
+  2. **Resource Management / 資源管理**
+     - Resource reservation / 資源預留
+     - Rollback on failure / 失敗時回滾
+     - Resource cleanup / 資源清理
+
+  3. **State Management / 狀態管理**
+     - Persistent state tracking / 持久狀態追蹤
+     - State transition validation / 狀態轉換驗證
+     - Recovery mechanisms / 恢復機制
+end note
+
+@enduml

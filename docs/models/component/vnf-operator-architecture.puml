@@ -1,0 +1,207 @@
+@startuml VNF Operator Architecture
+!theme plain
+title VNF 操作器架構圖 / VNF Operator Architecture Diagram
+
+package "VNF Operator\nVNF 操作器" {
+
+  package "Controller Layer\n控制器層" {
+    component "VNF Controller\nVNF 控制器" as vnfcontroller {
+      component "Reconciliation Loop\n協調循環" as reconciler
+      component "Event Handler\n事件處理器" as eventhandler
+      component "Watch Manager\n監聽管理器" as watchmgr
+    }
+
+    component "Slice Controller\n切片控制器" as slicecontroller {
+      component "Slice Reconciler\n切片協調器" as slicereconciler
+      component "Resource Tracker\n資源追蹤器" as resourcetracker
+      component "Dependency Manager\n依賴管理器" as depmgr
+    }
+  }
+
+  package "Lifecycle Management\n生命週期管理" {
+    component "Deployment Manager\n部署管理器" as deploymentmgr {
+      component "Package Builder\n套件建構器" as pkgbuilder
+      component "Helm Manager\nHelm 管理器" as helmmgr
+      component "Kustomize Processor\nKustomize 處理器" as kustomize
+    }
+
+    component "Scaling Manager\n擴展管理器" as scalingmgr {
+      component "HPA Controller\nHPA 控制器" as hpacontroller
+      component "VPA Controller\nVPA 控制器" as vpacontroller
+      component "Cluster Autoscaler\n叢集自動擴展器" as clusterautoscaler
+    }
+
+    component "Upgrade Manager\n升級管理器" as upgrademgr {
+      component "Rolling Update\n滾動更新" as rollupdate
+      component "Blue-Green Deploy\n藍綠部署" as bluegreen
+      component "Canary Deploy\n金絲雀部署" as canary
+    }
+  }
+
+  package "Configuration Management\n組態管理" {
+    component "Config Renderer\n組態渲染器" as configrenderer {
+      component "Template Engine\n模板引擎" as templateengine
+      component "Variable Substitution\n變數替換" as varsub
+      component "Config Validation\n組態驗證" as configval
+    }
+
+    component "GitOps Manager\nGitOps 管理器" as gitopsmgr {
+      component "Git Sync\nGit 同步" as gitsync
+      component "ArgoCD Interface\nArgoCD 介面" as argocd
+      component "Flux Interface\nFlux 介面" as flux
+    }
+  }
+
+  package "Monitoring & Health\n監控與健康" {
+    component "Health Monitor\n健康監控器" as healthmonitor {
+      component "Liveness Probe\n存活探針" as livenessprobe
+      component "Readiness Probe\n就緒探針" as readinessprobe
+      component "Startup Probe\n啟動探針" as startupprobe
+    }
+
+    component "Metrics Collector\n指標收集器" as metricscollector {
+      component "Prometheus Exporter\nPrometheus 匯出器" as promexporter
+      component "Custom Metrics\n自訂指標" as custommetrics
+      component "Performance Analytics\n效能分析" as perfanalytics
+    }
+  }
+
+  package "Integration Layer\n整合層" {
+    component "Nephio Adapter\nNephio 適配器" as nephioadapter {
+      component "Package Manager\n套件管理器" as packagemgr
+      component "Workload API\n工作負載 API" as workloadapi
+      component "Config Injector\n組態注入器" as configinjector
+    }
+
+    component "O-RAN Adapter\nO-RAN 適配器" as oranadapter {
+      component "SMO Client\nSMO 客戶端" as smoclient
+      component "Policy Engine\n政策引擎" as policyengine
+      component "A1 Interface\nA1 介面" as a1interface
+    }
+  }
+}
+
+package "Custom Resource Definitions\n自訂資源定義" {
+  component "VNFDeployment CRD\nVNF 部署 CRD" as vnfdeploymentcrd
+  component "NetworkSlice CRD\n網路切片 CRD" as slicecrd
+  component "QoSPolicy CRD\nQoS 政策 CRD" as qospolicycrd
+  component "ResourceQuota CRD\n資源配額 CRD" as quotacrd
+}
+
+package "External Systems\n外部系統" {
+  component "Kubernetes API Server\nK8s API 伺服器" as k8sapi
+  component "Nephio Packages\nNephio 套件" as nephiopkgs
+  component "Git Repository\nGit 儲存庫" as gitrepo
+  component "O-RAN SMO\nO-RAN SMO" as smo
+  component "DMS (Deployment Management)\n部署管理系統" as dms
+  component "Monitoring Stack\n監控堆疊" as monitoring
+}
+
+' Controller Layer Flows / 控制器層流程
+vnfcontroller --> deploymentmgr : Deployment Request\n部署請求
+reconciler --> eventhandler : Reconciliation Events\n協調事件
+eventhandler --> watchmgr : Resource Changes\n資源變更
+watchmgr --> slicecontroller : Slice Events\n切片事件
+
+slicecontroller --> scalingmgr : Scaling Decisions\n擴展決策
+slicereconciler --> resourcetracker : Resource Status\n資源狀態
+resourcetracker --> depmgr : Dependency Graph\n依賴圖
+depmgr --> vnfcontroller : Deployment Order\n部署順序
+
+' Lifecycle Management Flows / 生命週期管理流程
+deploymentmgr --> configrenderer : Config Templates\n組態模板
+pkgbuilder --> helmmgr : Helm Charts\nHelm 圖表
+helmmgr --> kustomize : Kustomized Manifests\nKustomize 清單
+kustomize --> k8sapi : Apply Resources\n應用資源
+
+scalingmgr --> hpacontroller : HPA Rules\nHPA 規則
+hpacontroller --> vpacontroller : VPA Recommendations\nVPA 建議
+vpacontroller --> clusterautoscaler : Node Scaling\n節點擴展
+
+upgrademgr --> rollupdate : Rolling Strategy\n滾動策略
+rollupdate --> bluegreen : Blue-Green Strategy\n藍綠策略
+bluegreen --> canary : Canary Strategy\n金絲雀策略
+
+' Configuration Management Flows / 組態管理流程
+configrenderer --> gitopsmgr : Rendered Config\n渲染後組態
+templateengine --> varsub : Template Output\n模板輸出
+varsub --> configval : Substituted Config\n替換後組態
+configval --> gitopsmgr : Validated Config\n驗證後組態
+
+gitopsmgr --> argocd : ArgoCD Sync\nArgoCD 同步
+gitopsmgr --> flux : Flux Sync\nFlux 同步
+gitsync --> gitrepo : Git Operations\nGit 操作
+
+' Monitoring Flows / 監控流程
+healthmonitor --> metricscollector : Health Status\n健康狀態
+livenessprobe --> readinessprobe : Probe Results\n探針結果
+readinessprobe --> startupprobe : Startup Status\n啟動狀態
+
+metricscollector --> monitoring : Metrics Data\n指標資料
+promexporter --> custommetrics : Custom Metrics\n自訂指標
+custommetrics --> perfanalytics : Performance Data\n效能資料
+
+' Integration Flows / 整合流程
+deploymentmgr --> nephioadapter : Package Requests\n套件請求
+packagemgr --> workloadapi : Workload Spec\n工作負載規格
+workloadapi --> configinjector : Config Injection\n組態注入
+
+scalingmgr --> oranadapter : Scaling Policies\n擴展政策
+smoclient --> policyengine : Policy Updates\n政策更新
+policyengine --> a1interface : A1 Policies\nA1 政策
+
+' CRD Relationships / CRD 關係
+vnfcontroller --> vnfdeploymentcrd : Manages\n管理
+slicecontroller --> slicecrd : Manages\n管理
+oranadapter --> qospolicycrd : Updates\n更新
+scalingmgr --> quotacrd : Enforces\n執行
+
+' External System Integrations / 外部系統整合
+k8sapi --> vnfcontroller : Resource Events\n資源事件
+nephiopkgs --> nephioadapter : Package Data\n套件資料
+gitrepo --> gitopsmgr : Config Changes\n組態變更
+smo --> oranadapter : Policy Updates\n政策更新
+dms --> deploymentmgr : Deployment Triggers\n部署觸發
+monitoring --> healthmonitor : Alerts\n警報
+
+note top of vnfcontroller
+  **Controller Pattern / 控制器模式:**
+  - Kubernetes controller pattern / K8s 控制器模式
+  - Declarative reconciliation / 宣告式協調
+  - Event-driven architecture / 事件驅動架構
+  - Error handling & retry logic / 錯誤處理與重試邏輯
+end note
+
+note top of deploymentmgr
+  **Deployment Strategies / 部署策略:**
+  - Zero-downtime deployments / 零停機部署
+  - Multi-cluster deployment / 多叢集部署
+  - Configuration drift detection / 組態漂移偵測
+  - Automated rollback / 自動回滾
+end note
+
+note top of scalingmgr
+  **Auto-scaling Features / 自動擴展功能:**
+  - CPU/Memory-based scaling / 基於 CPU/記憶體的擴展
+  - Custom metrics scaling / 自訂指標擴展
+  - Predictive scaling / 預測性擴展
+  - Multi-dimensional scaling / 多維度擴展
+end note
+
+note bottom of healthmonitor
+  **Health Check Strategy / 健康檢查策略:**
+  - Multi-layer health monitoring / 多層健康監控
+  - Service mesh integration / 服務網格整合
+  - Circuit breaker patterns / 熔斷器模式
+  - Self-healing mechanisms / 自我修復機制
+end note
+
+note bottom of nephioadapter
+  **Nephio Integration / Nephio 整合:**
+  - Package lifecycle management / 套件生命週期管理
+  - Workload specialization / 工作負載專業化
+  - Configuration automation / 組態自動化
+  - Multi-vendor support / 多廠商支援
+end note
+
+@enduml

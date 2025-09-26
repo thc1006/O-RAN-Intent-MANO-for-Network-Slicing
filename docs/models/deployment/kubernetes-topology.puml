@@ -1,0 +1,259 @@
+@startuml Kubernetes Topology
+!theme plain
+title Kubernetes 拓撲架構 / Kubernetes Topology Architecture
+
+!define NAMESPACE_COLOR #E1F5FE
+!define CONTROL_COLOR #F3E5F5
+!define COMPUTE_COLOR #E8F5E8
+!define STORAGE_COLOR #FFF3E0
+!define NETWORK_COLOR #FCE4EC
+
+package "Multi-Cluster Environment\n多叢集環境" {
+
+  package "Management Cluster\n管理叢集" <<CONTROL_COLOR>> {
+    node "Master Node 1\n主節點 1" as master1 {
+      component "kube-apiserver\nAPI 伺服器" as apiserver1
+      component "etcd\n分散式資料庫" as etcd1
+      component "kube-scheduler\n排程器" as scheduler1
+      component "kube-controller-manager\n控制器管理器" as controllermgr1
+    }
+
+    node "Master Node 2\n主節點 2" as master2 {
+      component "kube-apiserver" as apiserver2
+      component "etcd" as etcd2
+      component "kube-scheduler" as scheduler2
+      component "kube-controller-manager" as controllermgr2
+    }
+
+    node "Master Node 3\n主節點 3" as master3 {
+      component "kube-apiserver" as apiserver3
+      component "etcd" as etcd3
+      component "kube-scheduler" as scheduler3
+      component "kube-controller-manager" as controllermgr3
+    }
+
+    package "Control Plane Namespaces\n控制平面命名空間" <<NAMESPACE_COLOR>> {
+      rectangle "kube-system\n系統命名空間" as kubesystem {
+        component "CoreDNS\n核心 DNS" as coredns
+        component "Calico CNI\nCalico 網路" as calico
+        component "MetalLB\n負載均衡器" as metallb
+      }
+
+      rectangle "nephio-system\nNephio 系統" as nephiosystem {
+        component "Nephio Controller\nNephio 控制器" as nephiocontroller
+        component "Package Manager\n套件管理器" as packagemgr
+        component "Config Controller\n組態控制器" as configcontroller
+      }
+
+      rectangle "o-ran-system\nO-RAN 系統" as oransystem {
+        component "Intent Manager\n意圖管理器" as intentmgr
+        component "VNF Operator\nVNF 操作器" as vnfoperator
+        component "QoS Orchestrator\nQoS 編排器" as qosorchestrator
+      }
+
+      rectangle "istio-system\nIstio 系統" as istiosystem {
+        component "Istiod\nIstio 守護程序" as istiod
+        component "Istio Gateway\nIstio 閘道" as istiogateway
+        component "Istio Proxy\nIstio 代理" as istioproxy
+      }
+    }
+  }
+
+  package "Edge Cluster 1\n邊緣叢集 1" <<COMPUTE_COLOR>> {
+    node "Edge Master\n邊緣主節點" as edgemaster1 {
+      component "Lightweight API Server\n輕量 API 伺服器" as edgeapi1
+      component "Local etcd\n本地 etcd" as localetcd1
+    }
+
+    node "Worker Node 1\n工作節點 1" as worker1 {
+      component "kubelet\n節點代理" as kubelet1
+      component "kube-proxy\n網路代理" as kubeproxy1
+      component "Container Runtime\n容器執行時" as containerd1
+      component "GPU Driver\nGPU 驅動程式" as gpu1
+    }
+
+    node "Worker Node 2\n工作節點 2" as worker2 {
+      component "kubelet" as kubelet2
+      component "kube-proxy" as kubeproxy2
+      component "Container Runtime" as containerd2
+      component "SR-IOV Driver\nSR-IOV 驅動程式" as sriov2
+    }
+
+    package "RAN Namespaces\nRAN 命名空間" <<NAMESPACE_COLOR>> {
+      rectangle "o-ran-ran\nO-RAN RAN" as oranran {
+        component "Near-RT RIC\n近即時 RIC" as nearrtric
+        component "O-CU\nO-雲端單元" as ocu
+        component "O-DU\nO-分散式單元" as odu
+      }
+
+      rectangle "o-ran-gaming\nO-RAN 遊戲" as orangaming {
+        component "Gaming VNF\n遊戲 VNF" as gamingvnf
+        component "Edge Cache\n邊緣快取" as edgecache
+        component "Load Balancer\n負載均衡器" as gamelb
+      }
+    }
+  }
+
+  package "Edge Cluster 2\n邊緣叢集 2" <<COMPUTE_COLOR>> {
+    node "Edge Master\n邊緣主節點" as edgemaster2 {
+      component "Lightweight API Server" as edgeapi2
+      component "Local etcd" as localetcd2
+    }
+
+    node "Worker Node 3\n工作節點 3" as worker3 {
+      component "kubelet" as kubelet3
+      component "kube-proxy" as kubeproxy3
+      component "Container Runtime" as containerd3
+      component "FPGA Card\nFPGA 卡" as fpga3
+    }
+
+    node "Worker Node 4\n工作節點 4" as worker4 {
+      component "kubelet" as kubelet4
+      component "kube-proxy" as kubeproxy4
+      component "Container Runtime" as containerd4
+      component "High-Speed NIC\n高速網卡" as highspeednic4
+    }
+
+    package "Core Network Namespaces\n核心網路命名空間" <<NAMESPACE_COLOR>> {
+      rectangle "o-ran-cn\nO-RAN 核心網路" as orancn {
+        component "5G Core\n5G 核心網路" as fivegcore
+        component "UPF\n用戶平面功能" as upf
+        component "AMF\n存取與行動管理" as amf
+      }
+
+      rectangle "o-ran-tn\nO-RAN 傳輸網路" as orantn {
+        component "Transport Controller\n傳輸控制器" as transportctrl
+        component "Network Slicing\n網路切片" as networkslicing
+        component "QoS Manager\nQoS 管理器" as qosmgr
+      }
+    }
+  }
+
+  package "Storage Cluster\n儲存叢集" <<STORAGE_COLOR>> {
+    node "Storage Node 1\n儲存節點 1" as storage1 {
+      component "Ceph OSD\nCeph 物件儲存" as cephosd1
+      component "Local NVMe\n本地 NVMe" as nvme1
+    }
+
+    node "Storage Node 2\n儲存節點 2" as storage2 {
+      component "Ceph OSD" as cephosd2
+      component "Local NVMe" as nvme2
+    }
+
+    node "Storage Node 3\n儲存節點 3" as storage3 {
+      component "Ceph OSD" as cephosd3
+      component "Local NVMe" as nvme3
+    }
+
+    package "Storage Namespaces\n儲存命名空間" <<NAMESPACE_COLOR>> {
+      rectangle "rook-ceph\nRook Ceph" as rookceph {
+        component "Ceph Monitor\nCeph 監控器" as cephmon
+        component "Ceph Manager\nCeph 管理器" as cephmgr
+        component "Ceph Dashboard\nCeph 儀表板" as cephdashboard
+      }
+    }
+  }
+}
+
+package "Network Infrastructure\n網路基礎設施" <<NETWORK_COLOR>> {
+  component "Service Mesh\n服務網格" as servicemesh {
+    component "Envoy Proxy\nEnvoy 代理" as envoy
+    component "Traffic Management\n流量管理" as trafficmgmt
+    component "Security Policies\n安全政策" as secpolicies
+  }
+
+  component "CNI Network\nCNI 網路" as cninetwork {
+    component "Pod Network\nPod 網路" as podnet
+    component "Service Network\n服務網路" as servicenet
+    component "Ingress Network\n入口網路" as ingressnet
+  }
+
+  component "Load Balancers\n負載均衡器" as loadbalancers {
+    component "External LB\n外部負載均衡器" as externallb
+    component "Internal LB\n內部負載均衡器" as internallb
+    component "L4 LB\nL4 負載均衡器" as l4lb
+  }
+}
+
+' Cluster connections / 叢集連接
+master1 <--> edgemaster1 : **Cluster Federation**\n叢集聯邦
+master1 <--> edgemaster2 : **Multi-cluster Management**\n多叢集管理
+edgemaster1 <--> edgemaster2 : **Edge Coordination**\n邊緣協調
+
+' Control plane connections / 控制平面連接
+apiserver1 <--> etcd1 : **State Storage**\n狀態儲存
+scheduler1 <--> apiserver1 : **Pod Scheduling**\nPod 排程
+controllermgr1 <--> apiserver1 : **Resource Control**\n資源控制
+
+' Worker node connections / 工作節點連接
+kubelet1 <--> edgeapi1 : **Node Registration**\n節點註冊
+kubeproxy1 <--> cninetwork : **Network Rules**\n網路規則
+containerd1 <--> kubelet1 : **Container Management**\n容器管理
+
+' Namespace relationships / 命名空間關係
+oransystem --> oranran : **RAN Management**\nRAN 管理
+oransystem --> orancn : **Core Network Control**\n核心網路控制
+oransystem --> orantn : **Transport Control**\n傳輸控制
+
+' Storage connections / 儲存連接
+worker1 <--> storage1 : **Persistent Volumes**\n持久卷
+worker2 <--> storage2 : **Block Storage**\n區塊儲存
+worker3 <--> storage3 : **Object Storage**\n物件儲存
+
+' Service mesh connections / 服務網格連接
+servicemesh --> oranran : **RAN Service Mesh**\nRAN 服務網格
+servicemesh --> orancn : **Core Network Mesh**\n核心網路網格
+servicemesh --> orangaming : **Gaming Service Mesh**\n遊戲服務網格
+
+note top of master1
+  **Control Plane HA / 控制平面高可用:**
+  - 3-node etcd cluster / 3 節點 etcd 叢集
+  - Load balanced API servers / 負載均衡 API 伺服器
+  - Leader election for controllers / 控制器領導者選舉
+  - Automated failover / 自動故障轉移
+end note
+
+note top of worker1
+  **Edge Node Capabilities / 邊緣節點能力:**
+  - GPU acceleration / GPU 加速
+  - SR-IOV networking / SR-IOV 網路
+  - Real-time kernel / 即時核心
+  - Hardware timestamping / 硬體時間戳
+end note
+
+note top of oranran
+  **RAN Workload Placement / RAN 工作負載配置:**
+  - Near-RT RIC: Edge nodes with GPU / 近即時 RIC：具備 GPU 的邊緣節點
+  - O-CU: Compute-optimized nodes / O-CU：計算最佳化節點
+  - O-DU: Network-optimized nodes / O-DU：網路最佳化節點
+  - Latency-aware scheduling / 延遲感知排程
+end note
+
+note bottom of servicemesh
+  **Service Mesh Features / 服務網格功能:**
+  - mTLS encryption / mTLS 加密
+  - Traffic shaping / 流量塑形
+  - Circuit breaking / 熔斷器
+  - Distributed tracing / 分散式追蹤
+  - A/B testing / A/B 測試
+end note
+
+note bottom of storage1
+  **Storage Architecture / 儲存架構:**
+  - Ceph distributed storage / Ceph 分散式儲存
+  - NVMe for performance / NVMe 提供效能
+  - 3-replica data protection / 3 副本資料保護
+  - Dynamic provisioning / 動態佈建
+  - Backup and disaster recovery / 備份與災難恢復
+end note
+
+note bottom of cninetwork
+  **Network Segmentation / 網路分段:**
+  - Management network: 10.0.0.0/16 / 管理網路
+  - Pod network: 192.168.0.0/16 / Pod 網路
+  - Service network: 10.96.0.0/12 / 服務網路
+  - Storage network: 172.16.0.0/16 / 儲存網路
+  - O-RAN fronthaul: 10.10.0.0/16 / O-RAN 前傳
+end note
+
+@enduml

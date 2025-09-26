@@ -1,0 +1,218 @@
+@startuml Slice State Machine
+!theme plain
+title 網路切片狀態機 / Network Slice State Machine
+
+[*] --> INTENT_SUBMITTED : Submit Intent\n提交意圖
+
+state "INTENT_SUBMITTED\n意圖已提交" as INTENT_SUBMITTED {
+  state "Parsing Intent\n解析意圖" as PARSING
+  state "Validating Syntax\n驗證語法" as VALIDATING
+  state "Template Matching\n模板匹配" as MATCHING
+
+  [*] --> PARSING
+  PARSING --> VALIDATING : Parse Complete\n解析完成
+  VALIDATING --> MATCHING : Syntax Valid\n語法有效
+  MATCHING --> [*] : Template Found\n找到模板
+}
+
+state "QOS_MAPPING\nQoS 映射中" as QOS_MAPPING {
+  state "Loading Templates\n載入模板" as LOADING_TEMPLATES
+  state "Calculating SLA\n計算 SLA" as CALCULATING_SLA
+  state "Optimizing QoS\n最佳化 QoS" as OPTIMIZING_QOS
+
+  [*] --> LOADING_TEMPLATES
+  LOADING_TEMPLATES --> CALCULATING_SLA : Templates Loaded\n模板已載入
+  CALCULATING_SLA --> OPTIMIZING_QOS : SLA Calculated\nSLA 已計算
+  OPTIMIZING_QOS --> [*] : QoS Optimized\nQoS 已最佳化
+}
+
+state "RESOURCE_ALLOCATION\n資源分配中" as RESOURCE_ALLOCATION {
+  state "Checking Availability\n檢查可用性" as CHECKING_AVAIL
+  state "Reserving Resources\n預留資源" as RESERVING
+  state "Optimizing Placement\n最佳化配置" as OPTIMIZING_PLACEMENT
+
+  [*] --> CHECKING_AVAIL
+  CHECKING_AVAIL --> RESERVING : Resources Available\n資源可用
+  RESERVING --> OPTIMIZING_PLACEMENT : Resources Reserved\n資源已預留
+  OPTIMIZING_PLACEMENT --> [*] : Placement Optimized\n配置已最佳化
+}
+
+state "DEPLOYING\n部署中" as DEPLOYING {
+  state "Generating Packages\n生成套件" as GENERATING_PACKAGES
+  state "Deploying VNFs\n部署 VNFs" as DEPLOYING_VNFS
+  state "Configuring Network\n配置網路" as CONFIGURING_NETWORK
+  state "Starting Services\n啟動服務" as STARTING_SERVICES
+
+  [*] --> GENERATING_PACKAGES
+  GENERATING_PACKAGES --> DEPLOYING_VNFS : Packages Generated\n套件已生成
+  DEPLOYING_VNFS --> CONFIGURING_NETWORK : VNFs Deployed\nVNFs 已部署
+  CONFIGURING_NETWORK --> STARTING_SERVICES : Network Configured\n網路已配置
+  STARTING_SERVICES --> [*] : Services Started\n服務已啟動
+}
+
+state "ACTIVE\n啟用中" as ACTIVE {
+  state "Monitoring Performance\n監控效能" as MONITORING
+  state "Auto-scaling\n自動擴展" as AUTO_SCALING
+  state "Self-healing\n自我修復" as SELF_HEALING
+
+  [*] --> MONITORING
+  MONITORING --> AUTO_SCALING : Scale Trigger\n擴展觸發
+  MONITORING --> SELF_HEALING : Health Issue\n健康問題
+  AUTO_SCALING --> MONITORING : Scaling Complete\n擴展完成
+  SELF_HEALING --> MONITORING : Healing Complete\n修復完成
+}
+
+state "UPDATING\n更新中" as UPDATING {
+  state "Planning Update\n規劃更新" as PLANNING_UPDATE
+  state "Rolling Update\n滾動更新" as ROLLING_UPDATE
+  state "Validating Update\n驗證更新" as VALIDATING_UPDATE
+
+  [*] --> PLANNING_UPDATE
+  PLANNING_UPDATE --> ROLLING_UPDATE : Update Plan Ready\n更新計劃就緒
+  ROLLING_UPDATE --> VALIDATING_UPDATE : Update Applied\n更新已應用
+  VALIDATING_UPDATE --> [*] : Update Validated\n更新已驗證
+}
+
+state "TERMINATING\n終止中" as TERMINATING {
+  state "Draining Traffic\n排空流量" as DRAINING
+  state "Stopping Services\n停止服務" as STOPPING
+  state "Cleaning Resources\n清理資源" as CLEANING
+
+  [*] --> DRAINING
+  DRAINING --> STOPPING : Traffic Drained\n流量已排空
+  STOPPING --> CLEANING : Services Stopped\n服務已停止
+  CLEANING --> [*] : Resources Cleaned\n資源已清理
+}
+
+state "ERROR_STATES\n錯誤狀態" as ERROR_STATES {
+  state "PARSE_FAILED\n解析失敗" as PARSE_FAILED
+  state "QOS_MAPPING_FAILED\nQoS 映射失敗" as QOS_MAPPING_FAILED
+  state "RESOURCE_INSUFFICIENT\n資源不足" as RESOURCE_INSUFFICIENT
+  state "DEPLOYMENT_FAILED\n部署失敗" as DEPLOYMENT_FAILED
+  state "RUNTIME_ERROR\n執行時錯誤" as RUNTIME_ERROR
+}
+
+state "TERMINATED\n已終止" as TERMINATED
+
+' Main state transitions / 主要狀態轉換
+INTENT_SUBMITTED --> QOS_MAPPING : Intent Valid\n意圖有效
+QOS_MAPPING --> RESOURCE_ALLOCATION : QoS Mapped\nQoS 已映射
+RESOURCE_ALLOCATION --> DEPLOYING : Resources Allocated\n資源已分配
+DEPLOYING --> ACTIVE : Deployment Complete\n部署完成
+
+' Update flow / 更新流程
+ACTIVE --> UPDATING : Update Request\n更新請求
+UPDATING --> ACTIVE : Update Success\n更新成功
+
+' Termination flow / 終止流程
+ACTIVE --> TERMINATING : Terminate Request\n終止請求
+UPDATING --> TERMINATING : Terminate Request\n終止請求
+TERMINATING --> TERMINATED : Termination Complete\n終止完成
+
+' Error transitions / 錯誤轉換
+INTENT_SUBMITTED --> PARSE_FAILED : Parse Error\n解析錯誤
+QOS_MAPPING --> QOS_MAPPING_FAILED : QoS Error\nQoS 錯誤
+RESOURCE_ALLOCATION --> RESOURCE_INSUFFICIENT : No Resources\n無資源
+DEPLOYING --> DEPLOYMENT_FAILED : Deploy Error\n部署錯誤
+ACTIVE --> RUNTIME_ERROR : Runtime Issue\n執行時問題
+UPDATING --> RUNTIME_ERROR : Update Error\n更新錯誤
+
+' Error recovery / 錯誤恢復
+PARSE_FAILED --> INTENT_SUBMITTED : Retry Parse\n重試解析
+QOS_MAPPING_FAILED --> QOS_MAPPING : Retry QoS\n重試 QoS
+RESOURCE_INSUFFICIENT --> RESOURCE_ALLOCATION : Resources Available\n資源可用
+DEPLOYMENT_FAILED --> DEPLOYING : Retry Deploy\n重試部署
+RUNTIME_ERROR --> ACTIVE : Error Resolved\n錯誤已解決
+
+' Error to termination / 錯誤到終止
+PARSE_FAILED --> TERMINATED : Abandon Slice\n放棄切片
+QOS_MAPPING_FAILED --> TERMINATED : Abandon Slice\n放棄切片
+RESOURCE_INSUFFICIENT --> TERMINATED : Abandon Slice\n放棄切片
+DEPLOYMENT_FAILED --> TERMINATING : Cleanup Failed\n清理失敗
+RUNTIME_ERROR --> TERMINATING : Manual Terminate\n手動終止
+
+note top of INTENT_SUBMITTED
+  **Intent Processing / 意圖處理:**
+  - NLP parsing / 自然語言解析
+  - Semantic validation / 語義驗證
+  - Template matching / 模板匹配
+  - Intent classification / 意圖分類
+
+  **Timeout**: 30 seconds / 30 秒
+  **Retry Policy**: 3 attempts / 3 次嘗試
+end note
+
+note top of QOS_MAPPING
+  **QoS Mapping Process / QoS 映射過程:**
+  - SLA requirement analysis / SLA 需求分析
+  - QoS parameter calculation / QoS 參數計算
+  - Performance prediction / 效能預測
+  - Resource requirement estimation / 資源需求估算
+
+  **Timeout**: 60 seconds / 60 秒
+  **Rollback**: Return to INTENT_SUBMITTED / 返回意圖已提交
+end note
+
+note top of RESOURCE_ALLOCATION
+  **Resource Management / 資源管理:**
+  - Multi-cluster resource discovery / 多叢集資源發現
+  - Capacity planning / 容量規劃
+  - Resource reservation / 資源預留
+  - Conflict resolution / 衝突解決
+
+  **Timeout**: 120 seconds / 120 秒
+  **Retry**: Wait for resource availability / 等待資源可用
+end note
+
+note top of DEPLOYING
+  **Deployment Process / 部署過程:**
+  - Package generation / 套件生成
+  - Multi-stage deployment / 多階段部署
+  - Network configuration / 網路配置
+  - Service mesh setup / 服務網格設定
+
+  **Timeout**: 300 seconds / 300 秒
+  **Rollback**: Resource cleanup / 資源清理
+end note
+
+note right of ACTIVE
+  **Active State Features / 啟用狀態功能:**
+  - Real-time monitoring / 即時監控
+  - Auto-scaling / 自動擴展
+  - Self-healing / 自我修復
+  - Performance optimization / 效能最佳化
+  - SLA enforcement / SLA 執行
+
+  **Health Checks**: Every 30s / 每 30 秒
+  **Metrics Collection**: Every 10s / 每 10 秒
+  **Alert Threshold**: 99.9% SLA / 99.9% SLA
+end note
+
+note bottom of ERROR_STATES
+  **Error Handling Strategy / 錯誤處理策略:**
+
+  **Exponential Backoff**: 1s, 2s, 4s, 8s
+  **Circuit Breaker**: 5 failures trigger open
+  **Dead Letter Queue**: Failed intents archived
+  **Alerting**: Immediate notification for failures
+  **Metrics**: Error rate, MTTR, MTBF tracking
+
+  **Recovery Mechanisms** / 恢復機制:
+  - Automatic retry with backoff / 自動重試與退避
+  - Manual intervention triggers / 手動干預觸發
+  - Resource reclamation / 資源回收
+  - State consistency checks / 狀態一致性檢查
+end note
+
+note bottom of TERMINATING
+  **Graceful Termination / 優雅終止:**
+  - Traffic draining / 流量排空
+  - Connection completion / 連接完成
+  - Data persistence / 資料持久化
+  - Resource cleanup / 資源清理
+
+  **Timeout**: 180 seconds / 180 秒
+  **Force Termination**: After timeout / 超時後強制終止
+end note
+
+@enduml

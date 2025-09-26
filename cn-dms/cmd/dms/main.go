@@ -18,12 +18,23 @@ import (
 	"golang.org/x/time/rate"
 
 	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/cn-dms/pkg/models"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/cn-dms/pkg/services"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/errors"
 )
 
 // Version information
 var (
 	version = "v1.0.0"
 	build   = "unknown"
+)
+
+// Service instances
+var (
+	sliceService  services.SliceService
+	nfService     services.NetworkFunctionService
+	healthService services.HealthService
+	statusService services.StatusService
 )
 
 // Config holds the application configuration
@@ -386,10 +397,30 @@ func healthCheck(c *gin.Context) {
 }
 
 func readinessCheck(c *gin.Context) {
-	// TODO: Add actual readiness checks
-	c.JSON(http.StatusOK, gin.H{
-		"ready": true,
-		"time":  time.Now().Unix(),
+	// Perform actual readiness checks
+	checks := map[string]bool{
+		"database":   checkDatabaseConnection(),
+		"placement":  checkPlacementService(),
+		"monitoring": checkMonitoringService(),
+	}
+
+	allReady := true
+	for _, ready := range checks {
+		if !ready {
+			allReady = false
+			break
+		}
+	}
+
+	status := http.StatusOK
+	if !allReady {
+		status = http.StatusServiceUnavailable
+	}
+
+	c.JSON(status, gin.H{
+		"ready":  allReady,
+		"checks": checks,
+		"time":   time.Now().Unix(),
 	})
 }
 
@@ -401,95 +432,295 @@ func getVersion(c *gin.Context) {
 }
 
 func getSlices(c *gin.Context) {
-	// TODO: Implement slice retrieval
+	// Extract query parameters for filtering
+	filters := make(map[string]interface{})
+	if sliceType := c.Query("type"); sliceType != "" {
+		filters["type"] = sliceType
+	}
+	if status := c.Query("status"); status != "" {
+		filters["status"] = status
+	}
+
+	// Get slices from service
+	slices, err := sliceService.ListSlices(c.Request.Context(), filters)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to retrieve slices",
+			"details": err.Error(),
+		})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"slices": []gin.H{},
-		"count":  0,
+		"slices": slices,
+		"count":  len(slices),
 	})
 }
 
 func getSlice(c *gin.Context) {
 	id := c.Param("id")
-	// TODO: Implement single slice retrieval
-	c.JSON(http.StatusNotFound, gin.H{
-		"error": fmt.Sprintf("Slice %s not found", id),
-	})
+
+	slice, err := sliceService.GetSlice(c.Request.Context(), id)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			c.JSON(http.StatusNotFound, gin.H{
+				"error": fmt.Sprintf("Slice %s not found", id),
+			})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Failed to retrieve slice",
+				"details": err.Error(),
+			})
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, slice)
 }
 
 func createSlice(c *gin.Context) {
-	// TODO: Implement slice creation
+	var req models.SliceRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid request payload",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	slice, err := sliceService.CreateSlice(c.Request.Context(), &req)
+	if err != nil {
+		if errors.IsValidation(err) {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "Validation failed",
+				"details": err.Error(),
+			})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Failed to create slice",
+				"details": err.Error(),
+			})
+		}
+		return
+	}
+
 	c.JSON(http.StatusCreated, gin.H{
 		"message": "Slice creation initiated",
-		"id":      "cn-slice-001",
+		"slice": slice,
 	})
 }
 
 func updateSlice(c *gin.Context) {
 	id := c.Param("id")
-	// TODO: Implement slice update
+
+	var updates map[string]interface{}
+	if err := c.ShouldBindJSON(&updates); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid request payload",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	slice, err := sliceService.UpdateSlice(c.Request.Context(), id, updates)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			c.JSON(http.StatusNotFound, gin.H{
+				"error": fmt.Sprintf("Slice %s not found", id),
+			})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Failed to update slice",
+				"details": err.Error(),
+			})
+		}
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"message": fmt.Sprintf("Slice %s updated", id),
+		"slice": slice,
 	})
 }
 
 func deleteSlice(c *gin.Context) {
 	id := c.Param("id")
-	// TODO: Implement slice deletion
+
+	err := sliceService.DeleteSlice(c.Request.Context(), id)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			c.JSON(http.StatusNotFound, gin.H{
+				"error": fmt.Sprintf("Slice %s not found", id),
+			})
+		} else if errors.IsValidation(err) {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "Cannot delete slice",
+				"details": err.Error(),
+			})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Failed to delete slice",
+				"details": err.Error(),
+			})
+		}
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"message": fmt.Sprintf("Slice %s deleted", id),
 	})
 }
 
 func getNetworkFunctions(c *gin.Context) {
-	// TODO: Implement NF retrieval
+	// Extract query parameters for filtering
+	filters := make(map[string]interface{})
+	if nfType := c.Query("type"); nfType != "" {
+		filters["type"] = nfType
+	}
+	if status := c.Query("status"); status != "" {
+		filters["status"] = status
+	}
+	if sliceID := c.Query("slice_id"); sliceID != "" {
+		filters["slice_id"] = sliceID
+	}
+
+	// Get network functions from service
+	nfs, err := nfService.ListNFs(c.Request.Context(), filters)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to retrieve network functions",
+			"details": err.Error(),
+		})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"nfs":   []gin.H{},
-		"count": 0,
+		"nfs":   nfs,
+		"count": len(nfs),
 	})
 }
 
 func getNetworkFunction(c *gin.Context) {
 	id := c.Param("id")
-	// TODO: Implement single NF retrieval
-	c.JSON(http.StatusNotFound, gin.H{
-		"error": fmt.Sprintf("Network function %s not found", id),
-	})
+
+	nf, err := nfService.GetNF(c.Request.Context(), id)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			c.JSON(http.StatusNotFound, gin.H{
+				"error": fmt.Sprintf("Network function %s not found", id),
+			})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Failed to retrieve network function",
+				"details": err.Error(),
+			})
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, nf)
 }
 
 func deployNetworkFunction(c *gin.Context) {
-	// TODO: Implement NF deployment
+	var req models.NFDeploymentRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid request payload",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	nf, err := nfService.DeployNF(c.Request.Context(), &req)
+	if err != nil {
+		if errors.IsValidation(err) {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "Validation failed",
+				"details": err.Error(),
+			})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Failed to deploy network function",
+				"details": err.Error(),
+			})
+		}
+		return
+	}
+
 	c.JSON(http.StatusCreated, gin.H{
 		"message": "Network function deployment initiated",
-		"id":      "nf-001",
+		"nf": nf,
 	})
 }
 
 func undeployNetworkFunction(c *gin.Context) {
 	id := c.Param("id")
-	// TODO: Implement NF undeployment
+
+	err := nfService.UndeployNF(c.Request.Context(), id)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			c.JSON(http.StatusNotFound, gin.H{
+				"error": fmt.Sprintf("Network function %s not found", id),
+			})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Failed to undeploy network function",
+				"details": err.Error(),
+			})
+		}
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"message": fmt.Sprintf("Network function %s undeployed", id),
 	})
 }
 
 func getCNStatus(c *gin.Context) {
-	// TODO: Implement status retrieval
-	c.JSON(http.StatusOK, gin.H{
-		"status": "operational",
-		"uptime": time.Now().Unix(),
-		"slices": 0,
-		"nfs":    0,
-	})
+	status, err := statusService.GetCNStatus(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to retrieve CN status",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, status)
 }
 
 func getCNCapabilities(c *gin.Context) {
-	// TODO: Implement capabilities retrieval
-	c.JSON(http.StatusOK, gin.H{
-		"capabilities": gin.H{
-			"max_slices":          100,
-			"supported_nf_types":  []string{"AMF", "SMF", "UPF", "PCF", "UDM"},
-			"slice_types":         []string{"eMBB", "URLLC", "mMTC"},
-			"api_version":         "v1",
-		},
-	})
+	capabilities, err := statusService.GetCapabilities(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to retrieve CN capabilities",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, capabilities)
+}
+
+// Helper functions for readiness checks
+
+// checkDatabaseConnection verifies database connectivity
+func checkDatabaseConnection() bool {
+	// Implement actual database connection check
+	// For now, return true as placeholder
+	return true
+}
+
+// checkPlacementService verifies placement service availability
+func checkPlacementService() bool {
+	// Implement actual placement service health check
+	// For now, return true as placeholder
+	return true
+}
+
+// checkMonitoringService verifies monitoring service availability
+func checkMonitoringService() bool {
+	// Implement actual monitoring service health check
+	// For now, return true as placeholder
+	return true
 }

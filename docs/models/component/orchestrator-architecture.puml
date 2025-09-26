@@ -1,0 +1,172 @@
+@startuml Orchestrator Architecture
+!theme plain
+title O-RAN 編排器架構圖 / Orchestrator Architecture Diagram
+
+package "O-RAN Intent-MANO Orchestrator\nO-RAN 意圖管理與網路編排器" {
+
+  package "API Gateway Layer\nAPI 閘道層" {
+    component "REST API Gateway\nREST API 閘道" as apigateway
+    component "GraphQL Endpoint\nGraphQL 端點" as graphql
+    component "WebSocket Server\nWebSocket 伺服器" as websocket
+  }
+
+  package "Intent Processing Layer\n意圖處理層" {
+    component "Intent Parser\n意圖解析器" as parser {
+      component "NLP Engine\n自然語言處理引擎" as nlp
+      component "Intent Validator\n意圖驗證器" as validator
+      component "Template Matcher\n模板匹配器" as matcher
+    }
+
+    component "QoS Mapper\n服務品質映射器" as qosmapper {
+      component "SLA Calculator\nSLA 計算器" as slacalc
+      component "Performance Predictor\n效能預測器" as perfpredictor
+      component "Resource Estimator\n資源估算器" as resourceest
+    }
+  }
+
+  package "Resource Management Layer\n資源管理層" {
+    component "Resource Allocator\n資源分配器" as resalloc {
+      component "Capacity Planner\n容量規劃器" as capacityplanner
+      component "Resource Optimizer\n資源最佳化器" as optimizer
+      component "Admission Controller\n准入控制器" as admission
+    }
+
+    component "VNF Lifecycle Manager\nVNF 生命週期管理器" as vnfmgr {
+      component "Package Generator\n套件生成器" as pkggen
+      component "Deployment Controller\n部署控制器" as deployctrl
+      component "Health Monitor\n健康監控器" as healthmon
+    }
+  }
+
+  package "State Management Layer\n狀態管理層" {
+    component "State Manager\n狀態管理器" as statemgr {
+      component "Slice State Machine\n切片狀態機" as slicestatemachine
+      component "Event Bus\n事件匯流排" as eventbus
+      component "Workflow Engine\n工作流程引擎" as workflow
+    }
+
+    component "Configuration Manager\n組態管理器" as configmgr {
+      component "Config Validator\n組態驗證器" as configvalidator
+      component "Version Controller\n版本控制器" as versionctrl
+      component "Rollback Manager\n回滾管理器" as rollbackmgr
+    }
+  }
+
+  package "Data Access Layer\n資料存取層" {
+    component "Repository Layer\n儲存庫層" as repolayer {
+      component "Intent Repository\n意圖儲存庫" as intentrepo
+      component "QoS Repository\nQoS 儲存庫" as qosrepo
+      component "Resource Repository\n資源儲存庫" as resourcerepo
+    }
+
+    component "Cache Layer\n快取層" as cachelayer {
+      component "Redis Cache\nRedis 快取" as redis
+      component "Memory Cache\n記憶體快取" as memcache
+    }
+  }
+}
+
+package "External Dependencies\n外部依賴" {
+  database "PostgreSQL\nPostgreSQL 資料庫" as postgres
+  database "Time Series DB\n時間序列資料庫" as timeseries
+  component "Nephio API\nNephio API" as nephioapi
+  component "Kubernetes API\nK8s API" as k8sapi
+  component "O-RAN SMO API\nO-RAN SMO API" as smoapi
+  component "GitOps Repository\nGitOps 儲存庫" as gitopsrepo
+}
+
+' API Layer Connections / API 層連接
+apigateway --> parser : Intent Requests\n意圖請求
+graphql --> qosmapper : QoS Queries\nQoS 查詢
+websocket --> statemgr : Real-time Updates\n即時更新
+
+' Intent Processing Flow / 意圖處理流程
+parser --> qosmapper : Parsed Intent\n解析後意圖
+nlp --> validator : Extracted Entities\n提取的實體
+validator --> matcher : Validated Intent\n驗證後意圖
+matcher --> qosmapper : Matched Template\n匹配的模板
+
+' QoS Mapping Flow / QoS 映射流程
+qosmapper --> resalloc : QoS Requirements\nQoS 需求
+slacalc --> perfpredictor : SLA Metrics\nSLA 指標
+perfpredictor --> resourceest : Performance Estimates\n效能估算
+resourceest --> resalloc : Resource Requirements\n資源需求
+
+' Resource Allocation Flow / 資源分配流程
+resalloc --> vnfmgr : Resource Allocation\n資源分配
+capacityplanner --> optimizer : Capacity Plan\n容量計劃
+optimizer --> admission : Optimized Plan\n最佳化計劃
+admission --> vnfmgr : Approved Allocation\n核准的分配
+
+' VNF Management Flow / VNF 管理流程
+vnfmgr --> statemgr : Deployment Events\n部署事件
+pkggen --> deployctrl : Generated Packages\n生成的套件
+deployctrl --> healthmon : Deployment Status\n部署狀態
+healthmon --> statemgr : Health Events\n健康事件
+
+' State Management Flow / 狀態管理流程
+statemgr --> configmgr : State Changes\n狀態變更
+slicestatemachine --> eventbus : State Events\n狀態事件
+eventbus --> workflow : Triggered Events\n觸發的事件
+workflow --> configmgr : Config Updates\n組態更新
+
+' Configuration Management Flow / 組態管理流程
+configmgr --> repolayer : Configuration Data\n組態資料
+configvalidator --> versionctrl : Validated Config\n驗證後組態
+versionctrl --> rollbackmgr : Versioned Config\n版本化組態
+
+' Data Access Flow / 資料存取流程
+repolayer --> cachelayer : Cache Queries\n快取查詢
+intentrepo --> postgres : Intent Data\n意圖資料
+qosrepo --> postgres : QoS Data\nQoS 資料
+resourcerepo --> timeseries : Resource Metrics\n資源指標
+cachelayer --> redis : Distributed Cache\n分散式快取
+cachelayer --> memcache : Local Cache\n本地快取
+
+' External API Connections / 外部 API 連接
+deployctrl --> nephioapi : Package Deployment\n套件部署
+deployctrl --> k8sapi : Resource Management\n資源管理
+qosmapper --> smoapi : Policy Updates\n政策更新
+configmgr --> gitopsrepo : Configuration Sync\n組態同步
+
+note top of parser
+  **Intent Processing Capabilities / 意圖處理能力:**
+  - Natural language understanding / 自然語言理解
+  - Intent classification / 意圖分類
+  - Parameter extraction / 參數提取
+  - Template-based validation / 基於模板的驗證
+end note
+
+note top of qosmapper
+  **QoS Mapping Features / QoS 映射功能:**
+  - SLA-to-QoS translation / SLA 到 QoS 轉換
+  - Performance prediction / 效能預測
+  - Resource estimation / 資源估算
+  - Optimization algorithms / 最佳化演算法
+end note
+
+note top of resalloc
+  **Resource Management / 資源管理:**
+  - Multi-cluster resource planning / 多叢集資源規劃
+  - Dynamic resource optimization / 動態資源最佳化
+  - Admission control policies / 准入控制政策
+  - Resource conflict resolution / 資源衝突解決
+end note
+
+note top of statemgr
+  **State Management / 狀態管理:**
+  - Finite state machine / 有限狀態機
+  - Event-driven architecture / 事件驅動架構
+  - Workflow orchestration / 工作流程編排
+  - Distributed state consistency / 分散式狀態一致性
+end note
+
+note bottom of repolayer
+  **Data Persistence Strategy / 資料持久化策略:**
+  - ACID transactions / ACID 事務
+  - Event sourcing / 事件溯源
+  - Multi-tier caching / 多層快取
+  - Data partitioning / 資料分區
+end note
+
+@enduml
