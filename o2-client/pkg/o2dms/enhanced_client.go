@@ -7,7 +7,6 @@ import (
 	"log"
 	"math"
 	"math/rand"
-	"net/http"
 	"sync"
 	"time"
 

@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // TestHelpers provides utility functions for test setup and validation
@@ -106,12 +107,12 @@ func (h *TestHelpers) ValidateQoSProfile(profile QoSProfile, sliceType SliceType
 
 func (h *TestHelpers) ValidateEMBBQoS(profile QoSProfile) {
 	// eMBB typically has moderate latency (10-50ms) and high throughput
-	assert.NotEmpty(h.t, profile.Latency.Value, "eMBB latency should be specified")
-	assert.NotEmpty(h.t, profile.Throughput.Downlink, "eMBB throughput should be specified")
+	assert.NotEmpty(h.t, profile.Latency, "eMBB latency should be specified")
+	assert.NotEmpty(h.t, profile.Throughput, "eMBB throughput should be specified")
 
 	// Validate latency is reasonable for eMBB (should be <= 100ms)
-	if profile.Latency.Value != "" && profile.Latency.Unit == "ms" {
-		latencyMs := parseLatencyValue(profile.Latency.Value)
+	if profile.Latency != "" && profile == "ms" {
+		latencyMs := parseLatencyValue(profile.Latency)
 		assert.LessOrEqual(h.t, latencyMs, 100.0, "eMBB latency should be <= 100ms")
 		assert.GreaterOrEqual(h.t, latencyMs, 1.0, "eMBB latency should be >= 1ms")
 	}
@@ -119,12 +120,12 @@ func (h *TestHelpers) ValidateEMBBQoS(profile QoSProfile) {
 
 func (h *TestHelpers) ValidateURLLCQoS(profile QoSProfile) {
 	// URLLC requires ultra-low latency (< 1ms) and high reliability
-	assert.NotEmpty(h.t, profile.Latency.Value, "URLLC latency should be specified")
+	assert.NotEmpty(h.t, profile.Latency, "URLLC latency should be specified")
 	assert.NotEmpty(h.t, profile.Reliability.Value, "URLLC reliability should be specified")
 
 	// Validate latency is ultra-low
-	if profile.Latency.Value != "" && profile.Latency.Unit == "ms" {
-		latencyMs := parseLatencyValue(profile.Latency.Value)
+	if profile.Latency != "" && profile == "ms" {
+		latencyMs := parseLatencyValue(profile.Latency)
 		assert.LessOrEqual(h.t, latencyMs, 1.0, "URLLC latency should be <= 1ms")
 	}
 
@@ -137,11 +138,11 @@ func (h *TestHelpers) ValidateURLLCQoS(profile QoSProfile) {
 
 func (h *TestHelpers) ValidateMmTCQoS(profile QoSProfile) {
 	// mMTC can tolerate higher latency but needs to support massive connections
-	assert.NotEmpty(h.t, profile.Latency.Value, "mMTC latency should be specified")
+	assert.NotEmpty(h.t, profile.Latency, "mMTC latency should be specified")
 
 	// Validate latency tolerance
-	if profile.Latency.Value != "" && profile.Latency.Unit == "ms" {
-		latencyMs := parseLatencyValue(profile.Latency.Value)
+	if profile.Latency != "" && profile == "ms" {
+		latencyMs := parseLatencyValue(profile.Latency)
 		assert.LessOrEqual(h.t, latencyMs, 1000.0, "mMTC latency should be <= 1000ms")
 		assert.GreaterOrEqual(h.t, latencyMs, 10.0, "mMTC latency should be >= 10ms")
 	}
@@ -292,7 +293,7 @@ func NewVNFBuilder() *VNFBuilder {
 					CPU:    "2000m",
 					Memory: "4Gi",
 				},
-				QoSProfile: QoSProfile{
+				QoSProfile: VNFQoSProfile{
 					Latency: LatencyRequirement{
 						Value: "20",
 						Unit:  "ms",
@@ -329,14 +330,14 @@ func (b *VNFBuilder) WithSliceType(sliceType SliceType) *VNFBuilder {
 }
 
 func (b *VNFBuilder) WithLatency(value, unit string) *VNFBuilder {
-	b.vnf.Spec.QoSProfile.Latency.Value = value
-	b.vnf.Spec.QoSProfile.Latency.Unit = unit
+	b.vnf.Spec.QoSProfile.Latency = value
+	b.vnf.Spec.QoSProfile = unit
 	return b
 }
 
 func (b *VNFBuilder) WithThroughput(downlink, uplink string) *VNFBuilder {
-	b.vnf.Spec.QoSProfile.Throughput.Downlink = downlink
-	b.vnf.Spec.QoSProfile.Throughput.Uplink = uplink
+	b.vnf.Spec.QoSProfile.Throughput = downlink
+	b.vnf.Spec.QoSProfile = uplink
 	return b
 }
 

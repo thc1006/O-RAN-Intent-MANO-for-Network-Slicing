@@ -426,7 +426,7 @@ func ExpectedURLLCParsedIntent() ParsedIntent {
 	parsed.SliceType = SliceTypeURLLC
 	parsed.QoSProfile.Latency.Value = "1"
 	parsed.QoSProfile.Reliability.Value = "99.999"
-	parsed.QoSProfile.PacketLoss = &PacketLossRequirement{
+	parsed.QoSProfile.PacketLoss = PacketLossRequirement{
 		Value: "0.001",
 		Unit:  "percentage",
 	}

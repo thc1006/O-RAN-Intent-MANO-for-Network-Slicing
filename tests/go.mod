@@ -9,4 +9,5 @@ require (
 	github.com/onsi/gomega v1.36.1
 	github.com/stretchr/testify v1.11.1
 	gopkg.in/yaml.v3 v3.0.1
+	k8s.io/apimachinery v0.34.1
 )

@@ -17,7 +17,7 @@ type VNFDeploymentSpec struct {
 	VNFType     string            `json:"vnfType"`
 	SliceType   string            `json:"sliceType"`
 	Resources   ResourceRequests  `json:"resources"`
-	QoSProfile  QoSProfile        `json:"qosProfile"`
+	QoSProfile  VNFQoSProfile     `json:"qosProfile"`
 	Placement   PlacementPolicy   `json:"placement"`
 	DMSConfig   DMSConfiguration  `json:"dmsConfig"`
 }
@@ -35,7 +35,7 @@ type ResourceRequests struct {
 	GPU    string `json:"gpu,omitempty"`
 }
 
-type QoSProfile struct {
+type VNFQoSProfile struct {
 	Latency    string `json:"latency"`
 	Throughput string `json:"throughput"`
 	Reliability string `json:"reliability"`
@@ -94,7 +94,7 @@ func ValidVNFDeployment() *VNFDeployment {
 				Memory: "4Gi",
 				GPU:    "1",
 			},
-			QoSProfile: QoSProfile{
+			QoSProfile: VNFQoSProfile{
 				Latency:     "10ms",
 				Throughput:  "1Gbps",
 				Reliability: "99.99%",
@@ -127,7 +127,7 @@ func eMBBVNFDeployment() *VNFDeployment {
 	vnf := ValidVNFDeployment()
 	vnf.Name = "embb-vnf"
 	vnf.Spec.SliceType = "eMBB"
-	vnf.Spec.QoSProfile = QoSProfile{
+	vnf.Spec.QoSProfile = VNFQoSProfile{
 		Latency:     "20ms",
 		Throughput:  "10Gbps",
 		Reliability: "99.9%",
@@ -139,7 +139,7 @@ func URLLCVNFDeployment() *VNFDeployment {
 	vnf := ValidVNFDeployment()
 	vnf.Name = "urllc-vnf"
 	vnf.Spec.SliceType = "URLLC"
-	vnf.Spec.QoSProfile = QoSProfile{
+	vnf.Spec.QoSProfile = VNFQoSProfile{
 		Latency:     "1ms",
 		Throughput:  "100Mbps",
 		Reliability: "99.999%",
@@ -151,7 +151,7 @@ func mMTCVNFDeployment() *VNFDeployment {
 	vnf := ValidVNFDeployment()
 	vnf.Name = "mmtc-vnf"
 	vnf.Spec.SliceType = "mMTC"
-	vnf.Spec.QoSProfile = QoSProfile{
+	vnf.Spec.QoSProfile = VNFQoSProfile{
 		Latency:     "100ms",
 		Throughput:  "10Mbps",
 		Reliability: "99.9%",

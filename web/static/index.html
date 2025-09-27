@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>O-RAN Intent-MANO | 智能網路切片管理平台</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="logo">
+                <i class="fas fa-network-wired"></i>
+                <h1>O-RAN Intent-MANO</h1>
+            </div>
+            <nav class="nav">
+                <a href="#home" class="nav-link active">首頁</a>
+                <a href="#monitor" class="nav-link">監控</a>
+                <a href="#docs" class="nav-link">文檔</a>
+                <div class="status-indicator">
+                    <span class="status-dot" id="systemStatus"></span>
+                    <span id="statusText">檢查中...</span>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="container">
+            <!-- Hero Section -->
+            <section class="hero">
+                <h2>智能網路切片管理平台</h2>
+                <p>使用自然語言描述需求，自動生成並部署 5G 網路切片</p>
+            </section>
+
+            <!-- Quick Scenarios -->
+            <section class="scenarios">
+                <h3><i class="fas fa-rocket"></i> 快速場景</h3>
+                <div class="scenario-grid">
+                    <button class="scenario-card embb" onclick="loadScenario('embb')">
+                        <i class="fas fa-video"></i>
+                        <h4>eMBB - 增強型行動寬頻</h4>
+                        <p>高速影音串流、4K/8K 視訊</p>
+                        <div class="specs">
+                            <span><i class="fas fa-tachometer-alt"></i> 100 Mbps</span>
+                            <span><i class="fas fa-clock"></i> 20 ms</span>
+                        </div>
+                    </button>
+
+                    <button class="scenario-card urllc" onclick="loadScenario('urllc')">
+                        <i class="fas fa-car"></i>
+                        <h4>URLLC - 超可靠低延遲通訊</h4>
+                        <p>自動駕駛、工業自動化、遠程手術</p>
+                        <div class="specs">
+                            <span><i class="fas fa-tachometer-alt"></i> 10 Mbps</span>
+                            <span><i class="fas fa-clock"></i> 1 ms</span>
+                            <span><i class="fas fa-shield-alt"></i> 99.999%</span>
+                        </div>
+                    </button>
+
+                    <button class="scenario-card mmtc" onclick="loadScenario('mmtc')">
+                        <i class="fas fa-microchip"></i>
+                        <h4>mMTC - 大規模機器通訊</h4>
+                        <p>IoT 感測器、智慧城市、智慧農業</p>
+                        <div class="specs">
+                            <span><i class="fas fa-tachometer-alt"></i> 1 Mbps</span>
+                            <span><i class="fas fa-clock"></i> 100 ms</span>
+                            <span><i class="fas fa-network-wired"></i> 大規模連接</span>
+                        </div>
+                    </button>
+
+                    <button class="scenario-card custom" onclick="focusNaturalInput()">
+                        <i class="fas fa-edit"></i>
+                        <h4>自定義場景</h4>
+                        <p>使用自然語言描述您的需求</p>
+                        <div class="specs">
+                            <span><i class="fas fa-comments"></i> 自然語言</span>
+                        </div>
+                    </button>
+                </div>
+            </section>
+
+            <!-- Natural Language Input -->
+            <section class="intent-input">
+                <h3><i class="fas fa-comments"></i> 自然語言輸入</h3>
+                <div class="input-container">
+                    <textarea
+                        id="naturalLanguageInput"
+                        placeholder="例如：我需要一個支援 4K 影音串流的網路切片，延遲不超過 20ms，頻寬至少 100Mbps..."
+                        rows="4"
+                    ></textarea>
+                    <div class="input-actions">
+                        <button class="btn btn-secondary" onclick="clearInput()">
+                            <i class="fas fa-eraser"></i> 清除
+                        </button>
+                        <button class="btn btn-primary" onclick="parseAndDeploy()" id="deployBtn">
+                            <i class="fas fa-paper-plane"></i> 解析並部署
+                        </button>
+                    </div>
+                </div>
+                <div class="examples">
+                    <span class="example-label">範例：</span>
+                    <button class="example-tag" onclick="setExample('我需要支援 4K 影音串流，延遲 20ms 以內')">4K 影音</button>
+                    <button class="example-tag" onclick="setExample('自動駕駛需要超低延遲 1ms 和 99.999% 可靠度')">自動駕駛</button>
+                    <button class="example-tag" onclick="setExample('智慧城市 IoT 感測器網路，支援 10000 個設備')">IoT 感測器</button>
+                    <button class="example-tag" onclick="setExample('工廠機器人控制，1ms 延遲，100Mbps 頻寬')">工業自動化</button>
+                </div>
+            </section>
+
+            <!-- Processing Pipeline Visualization -->
+            <section class="pipeline" id="pipeline" style="display: none;">
+                <h3><i class="fas fa-project-diagram"></i> 處理流程視覺化</h3>
+                <div class="pipeline-container">
+                    <div class="pipeline-step" id="step1">
+                        <div class="step-icon">
+                            <i class="fas fa-language"></i>
+                        </div>
+                        <div class="step-content">
+                            <h4>1. 自然語言解析</h4>
+                            <p class="step-status">待處理</p>
+                            <div class="step-details" id="step1-details"></div>
+                        </div>
+                    </div>
+
+                    <div class="pipeline-arrow">
+                        <i class="fas fa-arrow-down"></i>
+                    </div>
+
+                    <div class="pipeline-step" id="step2">
+                        <div class="step-icon">
+                            <i class="fas fa-cogs"></i>
+                        </div>
+                        <div class="step-content">
+                            <h4>2. QoS Profile 生成</h4>
+                            <p class="step-status">待處理</p>
+                            <div class="step-details" id="step2-details"></div>
+                        </div>
+                    </div>
+
+                    <div class="pipeline-arrow">
+                        <i class="fas fa-arrow-down"></i>
+                    </div>
+
+                    <div class="pipeline-step" id="step3">
+                        <div class="step-icon">
+                            <i class="fas fa-map-marked-alt"></i>
+                        </div>
+                        <div class="step-content">
+                            <h4>3. 智能資源配置</h4>
+                            <p class="step-status">待處理</p>
+                            <div class="step-details" id="step3-details"></div>
+                        </div>
+                    </div>
+
+                    <div class="pipeline-arrow">
+                        <i class="fas fa-arrow-down"></i>
+                    </div>
+
+                    <div class="pipeline-step" id="step4">
+                        <div class="step-icon">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                        </div>
+                        <div class="step-content">
+                            <h4>4. 切片部署</h4>
+                            <p class="step-status">待處理</p>
+                            <div class="step-details" id="step4-details"></div>
+                        </div>
+                    </div>
+
+                    <div class="pipeline-arrow">
+                        <i class="fas fa-arrow-down"></i>
+                    </div>
+
+                    <div class="pipeline-step" id="step5">
+                        <div class="step-icon">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="step-content">
+                            <h4>5. 部署完成</h4>
+                            <p class="step-status">待處理</p>
+                            <div class="step-details" id="step5-details"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Active Slices -->
+            <section class="active-slices">
+                <h3><i class="fas fa-layer-group"></i> 活動切片</h3>
+                <div class="slices-container" id="slicesContainer">
+                    <div class="loading">載入中...</div>
+                </div>
+            </section>
+
+            <!-- Metrics Dashboard -->
+            <section class="metrics">
+                <h3><i class="fas fa-chart-line"></i> 系統指標</h3>
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <i class="fas fa-layer-group"></i>
+                        <div class="metric-value" id="totalSlices">0</div>
+                        <div class="metric-label">總切片數</div>
+                    </div>
+                    <div class="metric-card">
+                        <i class="fas fa-check-circle"></i>
+                        <div class="metric-value" id="activeSlices">0</div>
+                        <div class="metric-label">活動切片</div>
+                    </div>
+                    <div class="metric-card">
+                        <i class="fas fa-clock"></i>
+                        <div class="metric-value" id="avgLatency">0 ms</div>
+                        <div class="metric-label">平均延遲</div>
+                    </div>
+                    <div class="metric-card">
+                        <i class="fas fa-tachometer-alt"></i>
+                        <div class="metric-value" id="totalBandwidth">0 Mbps</div>
+                        <div class="metric-label">總頻寬</div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 O-RAN Intent-MANO | Powered by Claude Code</p>
+            <p>Version: <span id="version">v0.1.0</span></p>
+        </div>
+    </footer>
+
+    <!-- Toast Notifications -->
+    <div id="toastContainer"></div>
+
+    <script src="/static/js/nlp-parser.js"></script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

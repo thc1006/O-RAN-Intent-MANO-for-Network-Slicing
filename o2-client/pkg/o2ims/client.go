@@ -6,9 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"log"
-	"math"
-	"math/rand"
 	"net/http"
 	"net/url"
 	"strconv"

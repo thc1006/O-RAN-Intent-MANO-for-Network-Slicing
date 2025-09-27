@@ -633,6 +633,23 @@ func startServer(config Config) {
 	// Create HTTP server mux
 	mux := http.NewServeMux()
 
+	// Web UI - serve static files
+	webDir := "../web/static"
+	if _, err := os.Stat(webDir); os.IsNotExist(err) {
+		webDir = "../../web/static"
+	}
+	if _, err := os.Stat(webDir); os.IsNotExist(err) {
+		webDir = "/app/web/static"
+	}
+	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir(webDir))))
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/" {
+			http.ServeFile(w, r, webDir+"/index.html")
+		} else {
+			http.NotFound(w, r)
+		}
+	})
+
 	// Health check endpoints
 	mux.HandleFunc("/health", healthHandler)
 	mux.HandleFunc("/ready", readinessHandler)

@@ -1,0 +1,17 @@
+FROM golang:1.24-alpine AS builder
+WORKDIR /build
+
+COPY go.mod go.sum* ./
+COPY . .
+RUN go mod download 2>/dev/null || true
+
+RUN cd orchestrator/cmd/orchestrator && CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /orchestrator
+
+FROM alpine:3.19
+RUN apk --no-cache add ca-certificates
+WORKDIR /app
+COPY --from=builder /orchestrator /app/orchestrator
+COPY web/static /app/web/static
+EXPOSE 80 9090
+ENTRYPOINT ["/app/orchestrator"]
+CMD ["--server"]
