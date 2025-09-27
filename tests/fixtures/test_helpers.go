@@ -29,6 +29,13 @@ const (
 	E2ETestTimeout         = 5 * time.Minute
 )
 
+// NOTE: All type definitions (SliceType, QoSProfile, Intent, ParsedIntent, VNFDeployment,
+// PlacementSolution, NetworkPath, etc.) are defined in their respective fixture files:
+// - intent_fixtures.go: Intent, ParsedIntent, SliceType, QoSProfile, etc.
+// - vnf_deployment_fixtures.go: VNFDeployment, VNFDeploymentSpec, VNFQoSProfile, ResourceRequests
+// - placement_fixtures.go: PlacementSolution, PlacementRequest, ResourcePlacement, NetworkPath
+// We only keep conversion functions here to avoid duplication
+
 // Test data generation utilities
 func GenerateTestID(prefix string) string {
 	return fmt.Sprintf("%s-%d", prefix, time.Now().UnixNano())
@@ -92,6 +99,30 @@ func (h *TestHelpers) ValidateLatency(latency time.Duration, maxAllowed time.Dur
 		"Latency in %s should be <= %v, got %v", context, maxAllowed, latency)
 }
 
+// ConvertVNFQoSProfileToQoSProfile converts VNFQoSProfile to QoSProfile for validation
+func ConvertVNFQoSProfileToQoSProfile(vnfProfile VNFQoSProfile) QoSProfile {
+	return QoSProfile{
+		Latency: LatencyRequirement{
+			Value: parseLatencyString(vnfProfile.Latency),
+			Unit:  "ms",
+			Type:  "end-to-end",
+		},
+		Throughput: ThroughputRequirement{
+			Downlink: vnfProfile.Throughput,
+			Uplink:   "100Mbps", // Default uplink
+			Unit:     "bps",
+		},
+		Reliability: ReliabilityRequirement{
+			Value: parseReliabilityString(vnfProfile.Reliability),
+			Unit:  "percentage",
+		},
+		Availability: AvailabilityRequirement{
+			Value: "99.9",
+			Unit:  "percentage",
+		},
+	}
+}
+
 func (h *TestHelpers) ValidateQoSProfile(profile QoSProfile, sliceType SliceType) {
 	switch sliceType {
 	case SliceTypeEMBB:
@@ -111,8 +142,8 @@ func (h *TestHelpers) ValidateEMBBQoS(profile QoSProfile) {
 	assert.NotEmpty(h.t, profile.Throughput, "eMBB throughput should be specified")
 
 	// Validate latency is reasonable for eMBB (should be <= 100ms)
-	if profile.Latency != "" && profile == "ms" {
-		latencyMs := parseLatencyValue(profile.Latency)
+	if profile.Latency.Value != "" && profile.Latency.Unit == "ms" {
+		latencyMs := parseLatencyValue(profile.Latency.Value)
 		assert.LessOrEqual(h.t, latencyMs, 100.0, "eMBB latency should be <= 100ms")
 		assert.GreaterOrEqual(h.t, latencyMs, 1.0, "eMBB latency should be >= 1ms")
 	}
@@ -124,8 +155,8 @@ func (h *TestHelpers) ValidateURLLCQoS(profile QoSProfile) {
 	assert.NotEmpty(h.t, profile.Reliability.Value, "URLLC reliability should be specified")
 
 	// Validate latency is ultra-low
-	if profile.Latency != "" && profile == "ms" {
-		latencyMs := parseLatencyValue(profile.Latency)
+	if profile.Latency.Value != "" && profile.Latency.Unit == "ms" {
+		latencyMs := parseLatencyValue(profile.Latency.Value)
 		assert.LessOrEqual(h.t, latencyMs, 1.0, "URLLC latency should be <= 1ms")
 	}
 
@@ -141,8 +172,8 @@ func (h *TestHelpers) ValidateMmTCQoS(profile QoSProfile) {
 	assert.NotEmpty(h.t, profile.Latency, "mMTC latency should be specified")
 
 	// Validate latency tolerance
-	if profile.Latency != "" && profile == "ms" {
-		latencyMs := parseLatencyValue(profile.Latency)
+	if profile.Latency.Value != "" && profile.Latency.Unit == "ms" {
+		latencyMs := parseLatencyValue(profile.Latency.Value)
 		assert.LessOrEqual(h.t, latencyMs, 1000.0, "mMTC latency should be <= 1000ms")
 		assert.GreaterOrEqual(h.t, latencyMs, 10.0, "mMTC latency should be >= 10ms")
 	}
@@ -237,8 +268,9 @@ func (h *TestHelpers) ValidateVNFDeployment(vnf *VNFDeployment) {
 	validSliceTypes := []string{string(SliceTypeEMBB), string(SliceTypeURLLC), string(SliceTypeMmTC)}
 	assert.Contains(h.t, validSliceTypes, vnf.Spec.SliceType, "Slice type should be valid")
 
-	// Validate QoS profile
-	h.ValidateQoSProfile(vnf.Spec.QoSProfile, SliceType(vnf.Spec.SliceType))
+	// Validate QoS profile - convert VNFQoSProfile to QoSProfile for validation
+	qosProfile := ConvertVNFQoSProfileToQoSProfile(vnf.Spec.QoSProfile)
+	h.ValidateQoSProfile(qosProfile, SliceType(vnf.Spec.SliceType))
 
 	// Validate resource profile
 	h.ValidateResourceProfile(ResourceProfile{
@@ -294,20 +326,9 @@ func NewVNFBuilder() *VNFBuilder {
 					Memory: "4Gi",
 				},
 				QoSProfile: VNFQoSProfile{
-					Latency: LatencyRequirement{
-						Value: "20",
-						Unit:  "ms",
-						Type:  "end-to-end",
-					},
-					Throughput: ThroughputRequirement{
-						Downlink: "1Gbps",
-						Uplink:   "100Mbps",
-						Unit:     "bps",
-					},
-					Reliability: ReliabilityRequirement{
-						Value: "99.9",
-						Unit:  "percentage",
-					},
+					Latency:     "20ms",
+					Throughput:  "1Gbps",
+					Reliability: "99.9%",
 				},
 			},
 		},
@@ -330,14 +351,13 @@ func (b *VNFBuilder) WithSliceType(sliceType SliceType) *VNFBuilder {
 }
 
 func (b *VNFBuilder) WithLatency(value, unit string) *VNFBuilder {
-	b.vnf.Spec.QoSProfile.Latency = value
-	b.vnf.Spec.QoSProfile = unit
+	b.vnf.Spec.QoSProfile.Latency = value + unit
 	return b
 }
 
 func (b *VNFBuilder) WithThroughput(downlink, uplink string) *VNFBuilder {
 	b.vnf.Spec.QoSProfile.Throughput = downlink
-	b.vnf.Spec.QoSProfile = uplink
+	// Note: VNFQoSProfile doesn't have separate uplink field, using downlink only
 	return b
 }
 
@@ -382,6 +402,24 @@ func parseReliabilityValue(value string) float64 {
 	default:
 		return 0.0
 	}
+}
+
+// parseLatencyString extracts numeric value from latency string (e.g., "10ms" -> "10")
+func parseLatencyString(latency string) string {
+	// Simple extraction - remove "ms" suffix
+	if len(latency) > 2 && latency[len(latency)-2:] == "ms" {
+		return latency[:len(latency)-2]
+	}
+	return latency
+}
+
+// parseReliabilityString extracts numeric value from reliability string (e.g., "99.9%" -> "99.9")
+func parseReliabilityString(reliability string) string {
+	// Simple extraction - remove "%" suffix
+	if len(reliability) > 1 && reliability[len(reliability)-1:] == "%" {
+		return reliability[:len(reliability)-1]
+	}
+	return reliability
 }
 
 // Assertion helpers
