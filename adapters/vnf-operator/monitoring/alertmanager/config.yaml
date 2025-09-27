@@ -1,0 +1,262 @@
+global:
+  smtp_smarthost: 'localhost:587'
+  smtp_from: 'oran-mano-alerts@example.com'
+  smtp_auth_username: 'alerts@example.com'
+  smtp_auth_password: 'password'
+  slack_api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+
+# Templates for alert notifications
+templates:
+- '/etc/alertmanager/templates/*.tmpl'
+
+# Route configuration
+route:
+  group_by: ['namespace', 'component', 'alertname']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 12h
+  receiver: 'default-receiver'
+  routes:
+  # Critical alerts go to Slack immediately
+  - match:
+      severity: critical
+    receiver: 'slack-critical'
+    group_wait: 10s
+    repeat_interval: 1h
+    routes:
+    # Network slice issues get special handling
+    - match:
+        domain: network-slice
+      receiver: 'slice-operations'
+      group_wait: 5s
+      repeat_interval: 30m
+    # Infrastructure issues need immediate attention
+    - match:
+        domain: infrastructure
+      receiver: 'infrastructure-team'
+      group_wait: 5s
+      repeat_interval: 15m
+
+  # Warning alerts go to email with longer intervals
+  - match:
+      severity: warning
+    receiver: 'email-warnings'
+    group_wait: 2m
+    repeat_interval: 6h
+
+  # Component-specific routing
+  - match:
+      component: orchestrator
+    receiver: 'orchestrator-team'
+    group_wait: 1m
+    repeat_interval: 4h
+
+  - match:
+      component: vnf-operator
+    receiver: 'vnf-team'
+    group_wait: 1m
+    repeat_interval: 4h
+
+  - match_re:
+      component: '.*dms.*'
+    receiver: 'dms-team'
+    group_wait: 1m
+    repeat_interval: 4h
+
+# Inhibition rules to reduce noise
+inhibit_rules:
+# If a service is down, don't alert on its high latency
+- source_match:
+    alertname: ServiceDown
+  target_match_re:
+    alertname: High.*Latency
+  equal: ['job', 'instance']
+
+# If a pod is crash looping, don't alert on service being down
+- source_match:
+    alertname: PodCrashLooping
+  target_match:
+    alertname: ServiceDown
+  equal: ['namespace', 'pod']
+
+# If there's a deployment replica mismatch, don't alert on service availability
+- source_match:
+    alertname: DeploymentReplicasMismatch
+  target_match:
+    alertname: ServiceDown
+  equal: ['namespace', 'deployment']
+
+# If there's high memory usage, inhibit high CPU alerts for the same pod
+- source_match:
+    alertname: HighMemoryUtilization
+  target_match:
+    alertname: HighCPUUtilization
+  equal: ['namespace', 'pod']
+
+# Receivers configuration
+receivers:
+- name: 'default-receiver'
+  email_configs:
+  - to: 'oran-ops@example.com'
+    subject: '[O-RAN MANO] {{ .GroupLabels.alertname }}'
+    body: |
+      {{ range .Alerts }}
+      Alert: {{ .Annotations.summary }}
+      Description: {{ .Annotations.description }}
+      Severity: {{ .Labels.severity }}
+      Component: {{ .Labels.component }}
+      Domain: {{ .Labels.domain }}
+      Runbook: {{ .Annotations.runbook_url }}
+      {{ end }}
+
+- name: 'slack-critical'
+  slack_configs:
+  - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+    channel: '#oran-alerts-critical'
+    username: 'O-RAN MANO AlertManager'
+    icon_emoji: ':rotating_light:'
+    title: 'CRITICAL: {{ .GroupLabels.alertname }}'
+    text: |
+      {{ range .Alerts }}
+      :red_circle: *{{ .Annotations.summary }}*
+      *Description:* {{ .Annotations.description }}
+      *Component:* {{ .Labels.component }}
+      *Domain:* {{ .Labels.domain }}
+      *Severity:* {{ .Labels.severity }}
+      *Runbook:* {{ .Annotations.runbook_url }}
+      {{ end }}
+    actions:
+    - type: button
+      text: 'View in Grafana'
+      url: 'http://grafana.oran-monitoring.svc.cluster.local/dashboard/db/oran-overview'
+    - type: button
+      text: 'View Runbook'
+      url: '{{ .Annotations.runbook_url }}'
+
+- name: 'slice-operations'
+  slack_configs:
+  - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+    channel: '#slice-operations'
+    username: 'O-RAN Slice Monitor'
+    icon_emoji: ':chart_with_downwards_trend:'
+    title: 'Slice Alert: {{ .GroupLabels.alertname }}'
+    text: |
+      {{ range .Alerts }}
+      :warning: *Network Slice Issue Detected*
+      *Alert:* {{ .Annotations.summary }}
+      *Description:* {{ .Annotations.description }}
+      *Slice ID:* {{ .Labels.slice_id }}
+      *Domain:* {{ .Labels.domain }}
+      *Severity:* {{ .Labels.severity }}
+      {{ end }}
+  email_configs:
+  - to: 'slice-ops@example.com'
+    subject: '[O-RAN Slice] {{ .GroupLabels.alertname }}'
+    body: |
+      Network Slice Alert Triggered
+
+      {{ range .Alerts }}
+      Alert: {{ .Annotations.summary }}
+      Description: {{ .Annotations.description }}
+      Slice ID: {{ .Labels.slice_id }}
+      Severity: {{ .Labels.severity }}
+      Time: {{ .StartsAt }}
+      Runbook: {{ .Annotations.runbook_url }}
+      {{ end }}
+
+- name: 'infrastructure-team'
+  slack_configs:
+  - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+    channel: '#infrastructure-alerts'
+    username: 'O-RAN Infrastructure Monitor'
+    icon_emoji: ':computer:'
+    title: 'Infrastructure Alert: {{ .GroupLabels.alertname }}'
+    text: |
+      {{ range .Alerts }}
+      :exclamation: *Infrastructure Issue*
+      *Alert:* {{ .Annotations.summary }}
+      *Description:* {{ .Annotations.description }}
+      *Namespace:* {{ .Labels.namespace }}
+      *Component:* {{ .Labels.component }}
+      *Severity:* {{ .Labels.severity }}
+      {{ end }}
+  email_configs:
+  - to: 'infrastructure@example.com'
+    subject: '[O-RAN Infrastructure] {{ .GroupLabels.alertname }}'
+
+- name: 'email-warnings'
+  email_configs:
+  - to: 'oran-warnings@example.com'
+    subject: '[O-RAN Warning] {{ .GroupLabels.alertname }}'
+    body: |
+      Warning Alert from O-RAN MANO System
+
+      {{ range .Alerts }}
+      Alert: {{ .Annotations.summary }}
+      Description: {{ .Annotations.description }}
+      Component: {{ .Labels.component }}
+      Severity: {{ .Labels.severity }}
+      Started: {{ .StartsAt }}
+      {{ if .Annotations.runbook_url }}
+      Runbook: {{ .Annotations.runbook_url }}
+      {{ end }}
+      {{ end }}
+
+- name: 'orchestrator-team'
+  email_configs:
+  - to: 'orchestrator-team@example.com'
+    subject: '[O-RAN Orchestrator] {{ .GroupLabels.alertname }}'
+    body: |
+      Orchestrator Component Alert
+
+      {{ range .Alerts }}
+      Alert: {{ .Annotations.summary }}
+      Description: {{ .Annotations.description }}
+      Severity: {{ .Labels.severity }}
+      Started: {{ .StartsAt }}
+      Runbook: {{ .Annotations.runbook_url }}
+      {{ end }}
+
+- name: 'vnf-team'
+  email_configs:
+  - to: 'vnf-team@example.com'
+    subject: '[O-RAN VNF Operator] {{ .GroupLabels.alertname }}'
+    body: |
+      VNF Operator Alert
+
+      {{ range .Alerts }}
+      Alert: {{ .Annotations.summary }}
+      Description: {{ .Annotations.description }}
+      Severity: {{ .Labels.severity }}
+      Started: {{ .StartsAt }}
+      Runbook: {{ .Annotations.runbook_url }}
+      {{ end }}
+
+- name: 'dms-team'
+  email_configs:
+  - to: 'dms-team@example.com'
+    subject: '[O-RAN DMS] {{ .GroupLabels.alertname }}'
+    body: |
+      Domain Management System Alert
+
+      {{ range .Alerts }}
+      Alert: {{ .Annotations.summary }}
+      Description: {{ .Annotations.description }}
+      Component: {{ .Labels.component }}
+      Domain: {{ .Labels.domain }}
+      Severity: {{ .Labels.severity }}
+      Started: {{ .StartsAt }}
+      Runbook: {{ .Annotations.runbook_url }}
+      {{ end }}
+
+# Mute specific alerts during maintenance windows
+# Can be configured via AlertManager API or web UI
+mute_time_intervals:
+- name: maintenance-window
+  time_intervals:
+  - times:
+    - start_time: '02:00'
+      end_time: '04:00'
+    weekdays: ['saturday', 'sunday']
+    months: ['1:12']
+    days_of_month: ['1:31']

@@ -1,0 +1,54 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: orchestrator-servicemonitor
+  namespace: oran-monitoring
+  labels:
+    app: orchestrator
+    component: o-ran-mano
+    app.kubernetes.io/part-of: o-ran-mano
+    monitoring.oran.io/component: orchestrator
+spec:
+  selector:
+    matchLabels:
+      app: orchestrator
+      component: o-ran-mano
+  namespaceSelector:
+    matchNames:
+    - oran-system
+  endpoints:
+  - port: metrics
+    interval: 30s
+    path: /metrics
+    scheme: http
+    scrapeTimeout: 10s
+    metricRelabelings:
+    - sourceLabels: [__name__]
+      regex: 'oran_intent_processing_duration_seconds.*'
+      targetLabel: __tmp_oran_intent_metric
+      replacement: 'true'
+    - sourceLabels: [__name__]
+      regex: 'oran_slice_deployments_total.*'
+      targetLabel: __tmp_oran_slice_metric
+      replacement: 'true'
+    - sourceLabels: [__name__]
+      regex: 'oran_active_slices.*'
+      targetLabel: __tmp_oran_active_metric
+      replacement: 'true'
+    - sourceLabels: [__name__]
+      regex: 'oran_placement_decisions_total.*'
+      targetLabel: __tmp_oran_placement_metric
+      replacement: 'true'
+    relabelings:
+    - sourceLabels: [__meta_kubernetes_service_name]
+      targetLabel: service
+    - sourceLabels: [__meta_kubernetes_namespace]
+      targetLabel: namespace
+    - sourceLabels: [__meta_kubernetes_pod_name]
+      targetLabel: pod
+    - sourceLabels: [__meta_kubernetes_pod_node_name]
+      targetLabel: node
+    - targetLabel: component
+      replacement: orchestrator
+    - targetLabel: system
+      replacement: o-ran-mano

@@ -1,0 +1,399 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "o-ran-orchestrator",
+    "title": "O-RAN Orchestrator Metrics",
+    "tags": ["o-ran", "orchestrator", "mano"],
+    "timezone": "UTC",
+    "schemaVersion": 36,
+    "version": 1,
+    "refresh": "30s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "timepicker": {
+      "refresh_intervals": ["5s", "10s", "30s", "1m", "5m", "15m", "30m", "1h", "2h", "1d"],
+      "time_options": ["5m", "15m", "1h", "6h", "12h", "24h", "2d", "7d", "30d"]
+    },
+    "templating": {
+      "list": [
+        {
+          "name": "namespace",
+          "type": "query",
+          "label": "Namespace",
+          "query": "label_values(o_ran_requests_total, namespace)",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus-o-ran"
+          },
+          "refresh": "on_time_range_changed",
+          "sort": 1,
+          "multi": true,
+          "includeAll": true,
+          "current": {
+            "text": "All",
+            "value": "$__all"
+          },
+          "options": []
+        },
+        {
+          "name": "component",
+          "type": "query",
+          "label": "Component",
+          "query": "label_values(o_ran_requests_total{namespace=\"$namespace\"}, component)",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus-o-ran"
+          },
+          "refresh": "on_time_range_changed",
+          "sort": 1,
+          "multi": true,
+          "includeAll": false,
+          "current": {
+            "text": "orchestrator",
+            "value": "orchestrator"
+          },
+          "options": []
+        },
+        {
+          "name": "instance",
+          "type": "query",
+          "label": "Instance",
+          "query": "label_values(o_ran_requests_total{namespace=\"$namespace\", component=\"$component\"}, instance)",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus-o-ran"
+          },
+          "refresh": "on_time_range_changed",
+          "sort": 1,
+          "multi": true,
+          "includeAll": true,
+          "current": {
+            "text": "All",
+            "value": "$__all"
+          },
+          "options": []
+        }
+      ]
+    },
+    "annotations": {
+      "list": [
+        {
+          "name": "O-RAN Alerts",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus-o-ran"
+          },
+          "enable": true,
+          "iconColor": "red",
+          "query": "ALERTS{alertname=~\"O_RAN.*\", namespace=\"$namespace\"}",
+          "titleFormat": "{{alertname}}: {{summary}}",
+          "textFormat": "{{description}}",
+          "tagsField": "alertname,severity"
+        }
+      ]
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Request Rate",
+        "type": "graph",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "rate(o_ran_requests_total{namespace=\"$namespace\", component=\"$component\", instance=~\"$instance\"}[5m])",
+            "legendFormat": "{{method}} {{endpoint}} - {{instance}}",
+            "refId": "A",
+            "interval": "30s"
+          }
+        ],
+        "xAxis": {
+          "show": true,
+          "mode": "time"
+        },
+        "yAxes": [
+          {
+            "label": "Requests/sec",
+            "show": true,
+            "min": 0
+          },
+          {
+            "show": true
+          }
+        ],
+        "legend": {
+          "show": true,
+          "values": false,
+          "min": false,
+          "max": false,
+          "current": false,
+          "total": false,
+          "avg": false
+        },
+        "nullPointMode": "null",
+        "tooltip": {
+          "shared": true,
+          "sort": 0,
+          "value_type": "individual"
+        }
+      },
+      {
+        "id": 2,
+        "title": "Response Time",
+        "type": "graph",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(o_ran_request_duration_seconds_bucket{namespace=\"$namespace\", component=\"$component\", instance=~\"$instance\"}[5m]))",
+            "legendFormat": "95th percentile - {{instance}}",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.50, rate(o_ran_request_duration_seconds_bucket{namespace=\"$namespace\", component=\"$component\", instance=~\"$instance\"}[5m]))",
+            "legendFormat": "50th percentile - {{instance}}",
+            "refId": "B"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Seconds",
+            "show": true,
+            "min": 0
+          },
+          {
+            "show": true
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Error Rate",
+        "type": "singlestat",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 0,
+          "y": 8
+        },
+        "targets": [
+          {
+            "expr": "rate(o_ran_requests_total{namespace=\"$namespace\", component=\"$component\", instance=~\"$instance\", status=~\"5..\"}[5m]) / rate(o_ran_requests_total{namespace=\"$namespace\", component=\"$component\", instance=~\"$instance\"}[5m]) * 100",
+            "refId": "A"
+          }
+        ],
+        "valueName": "current",
+        "format": "percent",
+        "colorBackground": true,
+        "thresholds": "1,5",
+        "colors": ["green", "yellow", "red"]
+      },
+      {
+        "id": 4,
+        "title": "CPU Usage",
+        "type": "stat",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 6,
+          "y": 8
+        },
+        "targets": [
+          {
+            "expr": "o_ran_cpu_usage{namespace=\"$namespace\", component=\"$component\", instance=~\"$instance\"} * 100",
+            "legendFormat": "CPU Usage",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 70
+                },
+                {
+                  "color": "red",
+                  "value": 90
+                }
+              ]
+            },
+            "unit": "percent",
+            "min": 0,
+            "max": 100
+          }
+        },
+        "options": {
+          "colorMode": "background",
+          "graphMode": "area",
+          "justifyMode": "center",
+          "orientation": "horizontal",
+          "reduceOptions": {
+            "calcs": ["lastNotNull"],
+            "fields": "",
+            "values": false
+          },
+          "textMode": "auto"
+        }
+      },
+      {
+        "id": 5,
+        "title": "Memory Usage",
+        "type": "stat",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 12,
+          "y": 8
+        },
+        "targets": [
+          {
+            "expr": "o_ran_memory_usage{namespace=\"$namespace\", component=\"$component\", instance=~\"$instance\"} / o_ran_memory_limit{namespace=\"$namespace\", component=\"$component\", instance=~\"$instance\"} * 100",
+            "legendFormat": "Memory Usage",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 80
+                },
+                {
+                  "color": "red",
+                  "value": 95
+                }
+              ]
+            },
+            "unit": "percent",
+            "min": 0,
+            "max": 100
+          }
+        }
+      },
+      {
+        "id": 6,
+        "title": "Active Connections",
+        "type": "stat",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 18,
+          "y": 8
+        },
+        "targets": [
+          {
+            "expr": "o_ran_active_connections{namespace=\"$namespace\", component=\"$component\", instance=~\"$instance\"}",
+            "legendFormat": "Active Connections",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "unit": "short"
+          }
+        }
+      },
+      {
+        "id": 7,
+        "title": "Request Volume by Endpoint",
+        "type": "piechart",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 12
+        },
+        "targets": [
+          {
+            "expr": "sum by (endpoint) (rate(o_ran_requests_total{namespace=\"$namespace\", component=\"$component\", instance=~\"$instance\"}[5m]))",
+            "legendFormat": "{{endpoint}}",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "reduceOptions": {
+            "calcs": ["lastNotNull"],
+            "fields": "",
+            "values": false
+          },
+          "pieType": "pie",
+          "tooltip": {
+            "mode": "single"
+          },
+          "legend": {
+            "displayMode": "list",
+            "placement": "right"
+          }
+        }
+      },
+      {
+        "id": 8,
+        "title": "Network I/O",
+        "type": "graph",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 12
+        },
+        "targets": [
+          {
+            "expr": "rate(o_ran_network_bytes_total{namespace=\"$namespace\", component=\"$component\", instance=~\"$instance\", direction=\"rx\"}[5m])",
+            "legendFormat": "Received - {{instance}}",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(o_ran_network_bytes_total{namespace=\"$namespace\", component=\"$component\", instance=~\"$instance\", direction=\"tx\"}[5m])",
+            "legendFormat": "Transmitted - {{instance}}",
+            "refId": "B"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Bytes/sec",
+            "show": true,
+            "min": 0
+          },
+          {
+            "show": true
+          }
+        ]
+      }
+    ]
+  },
+  "folderId": null,
+  "overwrite": false
+}

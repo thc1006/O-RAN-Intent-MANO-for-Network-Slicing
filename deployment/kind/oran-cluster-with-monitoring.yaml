@@ -1,0 +1,34 @@
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: oran-mano
+nodes:
+- role: control-plane
+  kubeadmConfigPatches:
+  - |
+    kind: InitConfiguration
+    nodeRegistration:
+      kubeletExtraArgs:
+        node-labels: "node-role.kubernetes.io/control-plane=true"
+  extraPortMappings:
+  - containerPort: 30080
+    hostPort: 30080
+    protocol: TCP
+    listenAddress: "0.0.0.0"
+  - containerPort: 30090
+    hostPort: 30090
+    protocol: TCP
+    listenAddress: "0.0.0.0"
+  - containerPort: 30300
+    hostPort: 30300
+    protocol: TCP
+    listenAddress: "0.0.0.0"
+- role: worker
+  labels:
+    workload: oran-system
+- role: worker
+  labels:
+    workload: monitoring
+networking:
+  disableDefaultCNI: false
+  podSubnet: "10.244.0.0/16"
+  serviceSubnet: "10.96.0.0/12"

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -13,6 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/metrics"
 
 	manov1alpha1 "github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/adapters/vnf-operator/api/v1alpha1"
 	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/adapters/vnf-operator/pkg/dms"
@@ -23,6 +25,59 @@ import (
 const (
 	vnfFinalizer = "mano.oran.io/finalizer"
 )
+
+var (
+	// VNF operator specific metrics
+	vnfReconciliationDuration = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name: "vnf_reconciliation_duration_seconds",
+			Help: "Time taken to reconcile VNF resources",
+			Buckets: prometheus.DefBuckets,
+		},
+		[]string{"vnf_name", "vnf_namespace", "phase", "result"},
+	)
+
+	vnfDeploymentErrors = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "vnf_deployment_errors_total",
+			Help: "Total number of VNF deployment errors",
+		},
+		[]string{"vnf_name", "vnf_namespace", "error_type"},
+	)
+
+	vnfActiveDeployments = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "vnf_active_deployments",
+			Help: "Number of currently active VNF deployments",
+		},
+		[]string{"cloud_type", "phase"},
+	)
+
+	vnfDMSOperations = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "vnf_dms_operations_total",
+			Help: "Total number of DMS operations performed",
+		},
+		[]string{"operation", "result"},
+	)
+
+	vnfPorchOperations = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "vnf_porch_operations_total",
+			Help: "Total number of Porch operations performed",
+		},
+		[]string{"operation", "result"},
+	)
+)
+
+func init() {
+	// Register metrics with the controller-runtime metrics registry
+	metrics.Registry.MustRegister(vnfReconciliationDuration)
+	metrics.Registry.MustRegister(vnfDeploymentErrors)
+	metrics.Registry.MustRegister(vnfActiveDeployments)
+	metrics.Registry.MustRegister(vnfDMSOperations)
+	metrics.Registry.MustRegister(vnfPorchOperations)
+}
 
 // VNFReconciler reconciles a VNF object
 type VNFReconciler struct {
@@ -41,7 +96,16 @@ type VNFReconciler struct {
 
 // Reconcile is part of the main kubernetes reconciliation loop
 func (r *VNFReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	start := time.Now()
 	log := log.FromContext(ctx)
+
+	var result string = "success"
+	var phase string = "unknown"
+
+	defer func() {
+		duration := time.Since(start).Seconds()
+		vnfReconciliationDuration.WithLabelValues(req.Name, req.Namespace, phase, result).Observe(duration)
+	}()
 
 	// Fetch the VNF instance
 	vnf := &manov1alpha1.VNF{}
@@ -51,7 +115,14 @@ func (r *VNFReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 			return ctrl.Result{}, nil
 		}
 		log.Error(err, "Failed to get VNF")
+		result = "error"
 		return ctrl.Result{}, err
+	}
+
+	// Set phase for metrics
+	phase = string(vnf.Status.Phase)
+	if phase == "" {
+		phase = "pending"
 	}
 
 	// Check if the VNF instance is marked for deletion
@@ -123,8 +194,10 @@ func (r *VNFReconciler) handlePending(ctx context.Context, vnf *manov1alpha1.VNF
 	// Push package to Porch repository
 	revision, err := r.GitOpsClient.PushPackage(ctx, pkg)
 	if err != nil {
+		vnfPorchOperations.WithLabelValues("push_package", "error").Inc()
 		return r.updateStatusWithError(ctx, vnf, "PorchPushFailed", err)
 	}
+	vnfPorchOperations.WithLabelValues("push_package", "success").Inc()
 
 	// Update status
 	vnf.Status.Phase = "Creating"
@@ -146,8 +219,10 @@ func (r *VNFReconciler) handleCreating(ctx context.Context, vnf *manov1alpha1.VN
 	// Create DMS deployment request
 	deploymentID, err := r.DMSClient.CreateDeployment(ctx, vnf)
 	if err != nil {
+		vnfDMSOperations.WithLabelValues("create_deployment", "error").Inc()
 		return r.updateStatusWithError(ctx, vnf, "DMSDeploymentFailed", err)
 	}
+	vnfDMSOperations.WithLabelValues("create_deployment", "success").Inc()
 
 	// Update status with DMS deployment ID
 	vnf.Status.DMSDeploymentID = deploymentID
@@ -158,6 +233,9 @@ func (r *VNFReconciler) handleCreating(ctx context.Context, vnf *manov1alpha1.VN
 
 	// Update deployed clusters based on target clusters
 	vnf.Status.DeployedClusters = vnf.Spec.TargetClusters
+
+	// Update active deployments gauge
+	vnfActiveDeployments.WithLabelValues(vnf.Spec.Placement.CloudType, "Running").Inc()
 
 	if err := r.Status().Update(ctx, vnf); err != nil {
 		return ctrl.Result{}, err
@@ -174,9 +252,11 @@ func (r *VNFReconciler) handleRunning(ctx context.Context, vnf *manov1alpha1.VNF
 	status, err := r.DMSClient.GetDeploymentStatus(ctx, vnf.Status.DMSDeploymentID)
 	if err != nil {
 		log.Error(err, "Failed to get DMS deployment status")
+		vnfDMSOperations.WithLabelValues("get_deployment_status", "error").Inc()
 		// Don't fail the VNF, just requeue
 		return ctrl.Result{RequeueAfter: 1 * time.Minute}, nil
 	}
+	vnfDMSOperations.WithLabelValues("get_deployment_status", "success").Inc()
 
 	// Update last reconcile time
 	vnf.Status.LastReconcileTime = &metav1.Time{Time: time.Now()}
@@ -184,6 +264,8 @@ func (r *VNFReconciler) handleRunning(ctx context.Context, vnf *manov1alpha1.VNF
 	// Check if deployment has issues
 	if status == "Failed" {
 		vnf.Status.Phase = "Failed"
+		vnfActiveDeployments.WithLabelValues(vnf.Spec.Placement.CloudType, "Running").Dec()
+		vnfActiveDeployments.WithLabelValues(vnf.Spec.Placement.CloudType, "Failed").Inc()
 		r.setCondition(vnf, "DeploymentFailed", metav1.ConditionTrue, "DMSFailure",
 			"DMS deployment reported failure")
 	}
@@ -261,6 +343,9 @@ func (r *VNFReconciler) updateStatusWithError(ctx context.Context, vnf *manov1al
 	reason string, err error) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
 	log.Error(err, "VNF reconciliation failed", "reason", reason)
+
+	// Record error metric
+	vnfDeploymentErrors.WithLabelValues(vnf.Name, vnf.Namespace, reason).Inc()
 
 	vnf.Status.Phase = "Failed"
 	r.setCondition(vnf, reason, metav1.ConditionFalse, "Error", err.Error())

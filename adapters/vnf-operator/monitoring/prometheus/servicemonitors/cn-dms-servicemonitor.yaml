@@ -1,0 +1,60 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: cn-dms-servicemonitor
+  namespace: oran-monitoring
+  labels:
+    app: cn-dms
+    component: dms
+    app.kubernetes.io/part-of: o-ran-mano
+    monitoring.oran.io/component: cn-dms
+spec:
+  selector:
+    matchLabels:
+      app: cn-dms
+      component: dms
+  namespaceSelector:
+    matchNames:
+    - oran-system
+  endpoints:
+  - port: metrics
+    interval: 30s
+    path: /metrics
+    scheme: http
+    scrapeTimeout: 10s
+    metricRelabelings:
+    - sourceLabels: [__name__]
+      regex: 'cn_amf_.*'
+      targetLabel: __tmp_cn_amf_metric
+      replacement: 'true'
+    - sourceLabels: [__name__]
+      regex: 'cn_smf_.*'
+      targetLabel: __tmp_cn_smf_metric
+      replacement: 'true'
+    - sourceLabels: [__name__]
+      regex: 'cn_upf_.*'
+      targetLabel: __tmp_cn_upf_metric
+      replacement: 'true'
+    - sourceLabels: [__name__]
+      regex: 'cn_slice_.*'
+      targetLabel: __tmp_cn_slice_metric
+      replacement: 'true'
+    - sourceLabels: [__name__]
+      regex: 'cn_sla_.*'
+      targetLabel: __tmp_cn_sla_metric
+      replacement: 'true'
+    relabelings:
+    - sourceLabels: [__meta_kubernetes_service_name]
+      targetLabel: service
+    - sourceLabels: [__meta_kubernetes_namespace]
+      targetLabel: namespace
+    - sourceLabels: [__meta_kubernetes_pod_name]
+      targetLabel: pod
+    - sourceLabels: [__meta_kubernetes_pod_node_name]
+      targetLabel: node
+    - targetLabel: component
+      replacement: cn-dms
+    - targetLabel: system
+      replacement: o-ran-mano
+    - targetLabel: domain
+      replacement: core-network

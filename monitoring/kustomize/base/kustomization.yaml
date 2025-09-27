@@ -1,0 +1,132 @@
+# Base Kustomize configuration for O-RAN MANO monitoring stack
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: oran-monitoring-base
+  annotations:
+    config.kubernetes.io/local-config: "true"
+
+namespace: monitoring
+
+# Common labels applied to all resources
+commonLabels:
+  app.kubernetes.io/managed-by: kustomize
+  oran.io/component: monitoring
+  oran.io/environment: base
+
+# Common annotations
+commonAnnotations:
+  oran.io/created-by: kustomize
+  oran.io/managed: "true"
+
+# Resources to include in the base
+resources:
+  - namespace.yaml
+  - servicemonitor-vnf-operator.yaml
+  - servicemonitor-intent-management.yaml
+  - servicemonitor-oran-components.yaml
+  - prometheusrule-oran.yaml
+  - configmap-grafana-dashboards.yaml
+  - secret-monitoring-config.yaml
+  - networkpolicy.yaml
+
+# ConfigMap generators for configuration files
+configMapGenerator:
+  - name: prometheus-custom-config
+    files:
+      - prometheus.yml
+    options:
+      labels:
+        app.kubernetes.io/component: prometheus
+        oran.io/config-type: prometheus
+
+  - name: alertmanager-custom-config
+    files:
+      - alertmanager.yml
+    options:
+      labels:
+        app.kubernetes.io/component: alertmanager
+        oran.io/config-type: alertmanager
+
+  - name: grafana-datasources
+    files:
+      - datasources.yml
+    options:
+      labels:
+        app.kubernetes.io/component: grafana
+        oran.io/config-type: datasources
+
+# Secret generators for sensitive configuration
+secretGenerator:
+  - name: monitoring-secrets
+    envs:
+      - secrets.env
+    options:
+      labels:
+        app.kubernetes.io/component: monitoring
+        oran.io/config-type: secrets
+
+# Patches to apply to resources
+patchesStrategicMerge:
+  - patches/prometheus-storage.yaml
+  - patches/grafana-config.yaml
+  - patches/alertmanager-config.yaml
+
+# JSON patches for specific modifications
+patchesJson6902:
+  - target:
+      group: monitoring.coreos.com
+      version: v1
+      kind: ServiceMonitor
+      name: vnf-operator
+    path: patches/servicemonitor-labels.yaml
+
+# Images to replace (for version management)
+images:
+  - name: quay.io/prometheus/prometheus
+    newTag: v2.47.0
+  - name: grafana/grafana
+    newTag: 10.1.0
+  - name: quay.io/prometheus/alertmanager
+    newTag: v0.26.0
+
+# Replicas for scaling
+replicas:
+  - name: prometheus-prometheus
+    count: 1
+  - name: alertmanager-alertmanager
+    count: 1
+
+# Variables for templating
+vars:
+  - name: MONITORING_NAMESPACE
+    objref:
+      kind: Namespace
+      name: monitoring
+      apiVersion: v1
+    fieldref:
+      fieldpath: metadata.name
+
+  - name: PROMETHEUS_RETENTION
+    objref:
+      kind: ConfigMap
+      name: prometheus-custom-config
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.retention
+
+# Label transformers
+labelSelectors:
+  - name: environment
+    behavior: replace
+
+# Annotation transformers
+annotationTransformers:
+  - kind: default
+    annotations:
+      deployment.kubernetes.io/revision: "1"
+
+# OpenAPI schema for validation
+openapi:
+  path: https://raw.githubusercontent.com/kubernetes/kubernetes/master/api/openapi-spec/swagger.json

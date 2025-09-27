@@ -1,0 +1,344 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ran-dms-config
+  namespace: oran-system
+  labels:
+    app: ran-dms
+    component: dms
+data:
+  config.yaml: |
+    server:
+      port: 8080
+      metrics_port: 9090
+    ran:
+      cell_management: true
+      handover_optimization: true
+      interference_coordination: true
+    metrics:
+      collection_interval: 30s
+      export_interval: 60s
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ran-dms
+  namespace: oran-system
+  labels:
+    app: ran-dms
+    component: dms
+    version: v1.0.0
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ran-dms
+  template:
+    metadata:
+      labels:
+        app: ran-dms
+        component: dms
+        version: v1.0.0
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+      - name: ran-dms
+        image: oran-mano/ran-dms:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 8080
+          protocol: TCP
+        - name: metrics
+          containerPort: 9090
+          protocol: TCP
+        env:
+        - name: CONFIG_PATH
+          value: "/etc/ran-dms/config.yaml"
+        volumeMounts:
+        - name: config
+          mountPath: /etc/ran-dms
+          readOnly: true
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 300m
+            memory: 256Mi
+      volumes:
+      - name: config
+        configMap:
+          name: ran-dms-config
+      serviceAccountName: dms-components
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ran-dms
+  namespace: oran-system
+  labels:
+    app: ran-dms
+    component: dms
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9090"
+    prometheus.io/path: "/metrics"
+spec:
+  ports:
+  - name: http
+    port: 80
+    targetPort: http
+  - name: metrics
+    port: 9090
+    targetPort: metrics
+  selector:
+    app: ran-dms
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cn-dms-config
+  namespace: oran-system
+  labels:
+    app: cn-dms
+    component: dms
+data:
+  config.yaml: |
+    server:
+      port: 8080
+      metrics_port: 9090
+    core_network:
+      amf_management: true
+      smf_management: true
+      upf_management: true
+    slice_management:
+      auto_scaling: true
+      sla_monitoring: true
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cn-dms
+  namespace: oran-system
+  labels:
+    app: cn-dms
+    component: dms
+    version: v1.0.0
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: cn-dms
+  template:
+    metadata:
+      labels:
+        app: cn-dms
+        component: dms
+        version: v1.0.0
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+      - name: cn-dms
+        image: oran-mano/cn-dms:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 8080
+          protocol: TCP
+        - name: metrics
+          containerPort: 9090
+          protocol: TCP
+        env:
+        - name: CONFIG_PATH
+          value: "/etc/cn-dms/config.yaml"
+        volumeMounts:
+        - name: config
+          mountPath: /etc/cn-dms
+          readOnly: true
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 300m
+            memory: 256Mi
+      volumes:
+      - name: config
+        configMap:
+          name: cn-dms-config
+      serviceAccountName: dms-components
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cn-dms
+  namespace: oran-system
+  labels:
+    app: cn-dms
+    component: dms
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9090"
+    prometheus.io/path: "/metrics"
+spec:
+  ports:
+  - name: http
+    port: 80
+    targetPort: http
+  - name: metrics
+    port: 9090
+    targetPort: metrics
+  selector:
+    app: cn-dms
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tn-manager-config
+  namespace: oran-system
+  labels:
+    app: tn-manager
+    component: dms
+data:
+  config.yaml: |
+    server:
+      port: 8080
+      metrics_port: 9090
+    transport_network:
+      sdn_controller: true
+      path_optimization: true
+      qos_enforcement: true
+    monitoring:
+      bandwidth_tracking: true
+      latency_monitoring: true
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tn-manager
+  namespace: oran-system
+  labels:
+    app: tn-manager
+    component: dms
+    version: v1.0.0
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: tn-manager
+  template:
+    metadata:
+      labels:
+        app: tn-manager
+        component: dms
+        version: v1.0.0
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+      - name: tn-manager
+        image: oran-mano/tn-manager:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 8080
+          protocol: TCP
+        - name: metrics
+          containerPort: 9090
+          protocol: TCP
+        env:
+        - name: CONFIG_PATH
+          value: "/etc/tn-manager/config.yaml"
+        volumeMounts:
+        - name: config
+          mountPath: /etc/tn-manager
+          readOnly: true
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 300m
+            memory: 256Mi
+      volumes:
+      - name: config
+        configMap:
+          name: tn-manager-config
+      serviceAccountName: dms-components
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tn-manager
+  namespace: oran-system
+  labels:
+    app: tn-manager
+    component: dms
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9090"
+    prometheus.io/path: "/metrics"
+spec:
+  ports:
+  - name: http
+    port: 80
+    targetPort: http
+  - name: metrics
+    port: 9090
+    targetPort: metrics
+  selector:
+    app: tn-manager
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dms-components
+  namespace: oran-system
+  labels:
+    component: dms

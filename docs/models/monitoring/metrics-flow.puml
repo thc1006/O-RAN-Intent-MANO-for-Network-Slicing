@@ -1,0 +1,276 @@
+@startuml Metrics-Flow
+!theme plain
+title Metrics Data Flow Architecture (指標資料流架構)
+
+' Define styles
+skinparam componentStyle rectangle
+skinparam linetype ortho
+skinparam backgroundColor white
+
+' Application layer
+package "Application Layer\n(應用程式層)" as app_layer {
+
+  package "O2 DMS Application\n(O2 DMS應用)" as o2_app {
+    [Business Logic\n(業務邏輯)] as o2_logic
+    [Metrics Library\n(指標函式庫)] as o2_metrics_lib
+    [HTTP Handler\n(HTTP處理器)] as o2_handler
+  }
+
+  package "CN DMS Application\n(CN DMS應用)" as cn_app {
+    [Business Logic\n(業務邏輯)] as cn_logic
+    [Metrics Library\n(指標函式庫)] as cn_metrics_lib
+    [gRPC Handler\n(gRPC處理器)] as cn_grpc_handler
+  }
+
+  package "VNF Operator\n(VNF操作器)" as vnf_app {
+    [Controller Logic\n(控制器邏輯)] as vnf_logic
+    [Metrics Library\n(指標函式庫)] as vnf_metrics_lib
+    [K8s API Handler\n(K8s API處理器)] as vnf_k8s_handler
+  }
+
+  package "Intent Service\n(意圖服務)" as intent_app {
+    [Intent Engine\n(意圖引擎)] as intent_logic
+    [Metrics Library\n(指標函式庫)] as intent_metrics_lib
+    [REST Handler\n(REST處理器)] as intent_rest_handler
+  }
+}
+
+' Metrics collection layer
+package "Metrics Collection Layer\n(指標收集層)" as collection_layer {
+
+  package "Metric Types\n(指標類型)" as metric_types {
+    [Counter\n(計數器)] as counter
+    [Gauge\n(計量器)] as gauge
+    [Histogram\n(直方圖)] as histogram
+    [Summary\n(摘要)] as summary
+  }
+
+  package "Metric Categories\n(指標類別)" as metric_categories {
+
+    package "Business Metrics\n(業務指標)" as business_metrics {
+      [Intent Processing Rate\n(意圖處理率)] as intent_rate
+      [VNF Deployment Success\n(VNF部署成功率)] as vnf_success
+      [QoS Compliance\n(QoS合規性)] as qos_compliance
+      [Network Slice Utilization\n(網路切片利用率)] as slice_util
+    }
+
+    package "Technical Metrics\n(技術指標)" as tech_metrics {
+      [HTTP Request Duration\n(HTTP請求持續時間)] as http_duration
+      [Database Query Time\n(資料庫查詢時間)] as db_query_time
+      [CPU Usage\n(CPU使用率)] as cpu_usage
+      [Memory Usage\n(記憶體使用量)] as memory_usage
+    }
+
+    package "Infrastructure Metrics\n(基礎設施指標)" as infra_metrics {
+      [Pod Restart Count\n(Pod重啟次數)] as pod_restarts
+      [Service Endpoint Health\n(服務端點健康狀況)] as endpoint_health
+      [Network I/O\n(網路I/O)] as network_io
+      [Disk I/O\n(磁碟I/O)] as disk_io
+    }
+
+    package "Error Metrics\n(錯誤指標)" as error_metrics {
+      [HTTP Error Rate\n(HTTP錯誤率)] as http_errors
+      [Database Connection Errors\n(資料庫連接錯誤)] as db_errors
+      [Service Timeout Rate\n(服務超時率)] as timeout_rate
+      [Custom Error Counters\n(自定義錯誤計數器)] as custom_errors
+    }
+  }
+
+  package "Metric Endpoints\n(指標端點)" as endpoints {
+    [/metrics (O2 DMS)\n(指標端點)] as o2_endpoint
+    [/metrics (CN DMS)\n(指標端點)] as cn_endpoint
+    [/metrics (VNF Op)\n(指標端點)] as vnf_endpoint
+    [/metrics (Intent)\n(指標端點)] as intent_endpoint
+  }
+
+  package "Label Strategy\n(標籤策略)" as labels {
+    [Service Labels\n(服務標籤)] as service_labels
+    [Component Labels\n(組件標籤)] as component_labels
+    [Environment Labels\n(環境標籤)] as env_labels
+    [Instance Labels\n(實例標籤)] as instance_labels
+  }
+}
+
+' Prometheus layer
+package "Prometheus Layer\n(Prometheus層)" as prom_layer {
+
+  package "Service Discovery\n(服務發現)" as service_discovery {
+    [Kubernetes SD\n(Kubernetes服務發現)] as k8s_sd
+    [ServiceMonitor\n(服務監控器)] as service_monitor
+    [PodMonitor\n(Pod監控器)] as pod_monitor
+    [Static Config\n(靜態配置)] as static_config
+  }
+
+  package "Scraping Engine\n(抓取引擎)" as scraping {
+    [Scrape Scheduler\n(抓取調度器)] as scrape_scheduler
+    [HTTP Client\n(HTTP客戶端)] as http_client
+    [Target Manager\n(目標管理器)] as target_manager
+    [Relabeling\n(重新標籤)] as relabeling
+  }
+
+  package "Storage Engine\n(儲存引擎)" as storage_engine {
+    [WAL\n(寫前日誌)] as wal
+    [TSDB\n(時序資料庫)] as tsdb
+    [Compression\n(壓縮)] as compression
+    [Retention\n(保留策略)] as retention
+  }
+
+  package "Query Engine\n(查詢引擎)" as query_engine {
+    [PromQL Parser\n(PromQL解析器)] as promql_parser
+    [Query Executor\n(查詢執行器)] as query_executor
+    [Result Formatter\n(結果格式化器)] as result_formatter
+    [Query Cache\n(查詢快取)] as query_cache
+  }
+}
+
+' Grafana layer
+package "Grafana Layer\n(Grafana層)" as grafana_layer {
+
+  package "Data Source\n(資料來源)" as grafana_ds {
+    [Prometheus DS\n(Prometheus資料來源)] as prom_ds
+    [Query Builder\n(查詢建構器)] as query_builder
+    [Time Range Selector\n(時間範圍選擇器)] as time_selector
+  }
+
+  package "Dashboard Engine\n(儀表板引擎)" as dashboard_engine {
+    [Panel Renderer\n(面板渲染器)] as panel_renderer
+    [Visualization\n(視覺化)] as visualization
+    [Alert Evaluator\n(告警評估器)] as alert_evaluator
+    [Template Variables\n(模板變數)] as template_vars
+  }
+
+  package "Query Patterns\n(查詢模式)" as query_patterns {
+    [Rate Queries\n(速率查詢)] as rate_queries
+    [Aggregation Queries\n(聚合查詢)] as agg_queries
+    [Percentile Queries\n(百分位查詢)] as percentile_queries
+    [Alert Queries\n(告警查詢)] as alert_queries
+  }
+}
+
+' Data flow connections
+' Application to metrics
+o2_logic --> o2_metrics_lib : "Instrument code\n(程式碼檢測)"
+o2_metrics_lib --> business_metrics : "Record metrics\n(記錄指標)"
+o2_metrics_lib --> tech_metrics : "Performance data\n(效能資料)"
+o2_handler --> o2_endpoint : "Expose /metrics\n(暴露指標端點)"
+
+cn_logic --> cn_metrics_lib : "Instrument code\n(程式碼檢測)"
+cn_metrics_lib --> business_metrics : "Record metrics\n(記錄指標)"
+cn_grpc_handler --> cn_endpoint : "Expose /metrics\n(暴露指標端點)"
+
+vnf_logic --> vnf_metrics_lib : "Instrument code\n(程式碼檢測)"
+vnf_metrics_lib --> infra_metrics : "Infrastructure data\n(基礎設施資料)"
+vnf_k8s_handler --> vnf_endpoint : "Expose /metrics\n(暴露指標端點)"
+
+intent_logic --> intent_metrics_lib : "Instrument code\n(程式碼檢測)"
+intent_metrics_lib --> business_metrics : "Business data\n(業務資料)"
+intent_rest_handler --> intent_endpoint : "Expose /metrics\n(暴露指標端點)"
+
+' Metrics to metric types
+business_metrics --> counter : "Event counting\n(事件計數)"
+business_metrics --> gauge : "Current values\n(當前值)"
+tech_metrics --> histogram : "Duration distribution\n(持續時間分佈)"
+tech_metrics --> summary : "Quantile estimation\n(分位數估計)"
+error_metrics --> counter : "Error counting\n(錯誤計數)"
+
+' Label application
+endpoints --> labels : "Apply labels\n(應用標籤)"
+service_labels --> endpoints : "service=o2dms\n(服務標籤)"
+component_labels --> endpoints : "component=controller\n(組件標籤)"
+env_labels --> endpoints : "env=production\n(環境標籤)"
+instance_labels --> endpoints : "instance=pod-name\n(實例標籤)"
+
+' Service discovery
+k8s_sd --> service_monitor : "Discover services\n(發現服務)"
+service_monitor --> o2_endpoint : "Target endpoint\n(目標端點)"
+service_monitor --> cn_endpoint : "Auto-discovery\n(自動發現)"
+pod_monitor --> vnf_endpoint : "Pod-level metrics\n(Pod級指標)"
+static_config --> intent_endpoint : "Static targets\n(靜態目標)"
+
+' Prometheus scraping
+service_discovery --> scraping : "Target list\n(目標清單)"
+scrape_scheduler --> http_client : "Schedule scrapes\n(調度抓取)"
+http_client --> endpoints : "HTTP GET /metrics\n(HTTP獲取指標)"
+target_manager --> relabeling : "Target management\n(目標管理)"
+
+' Storage flow
+scraping --> storage_engine : "Ingest metrics\n(攝取指標)"
+storage_engine --> wal : "Write WAL\n(寫入WAL)"
+wal --> tsdb : "Commit to TSDB\n(提交到TSDB)"
+tsdb --> compression : "Compress blocks\n(壓縮塊)"
+compression --> retention : "Apply retention\n(應用保留策略)"
+
+' Query flow
+grafana_ds --> query_engine : "PromQL queries\n(PromQL查詢)"
+query_engine --> promql_parser : "Parse query\n(解析查詢)"
+promql_parser --> query_executor : "Execute query\n(執行查詢)"
+query_executor --> tsdb : "Read TSDB\n(讀取TSDB)"
+query_executor --> result_formatter : "Format results\n(格式化結果)"
+result_formatter --> query_cache : "Cache results\n(快取結果)"
+
+' Grafana visualization
+prom_ds --> query_builder : "Build queries\n(建構查詢)"
+query_builder --> time_selector : "Time range\n(時間範圍)"
+dashboard_engine --> panel_renderer : "Render panels\n(渲染面板)"
+panel_renderer --> visualization : "Create charts\n(創建圖表)"
+
+' Query patterns
+query_patterns --> prom_ds : "Query templates\n(查詢模板)"
+rate_queries --> counter : "rate(counter[5m])\n(速率計算)"
+agg_queries --> gauge : "avg by (service)\n(按服務平均)"
+percentile_queries --> histogram : "histogram_quantile(0.95)\n(95百分位)"
+alert_queries --> alert_evaluator : "Alert conditions\n(告警條件)"
+
+note top of metric_types
+  **Metric Type Usage\n(指標類型使用)**
+  - Counter: API requests, errors
+  - Gauge: CPU, memory, connections
+  - Histogram: Request duration, size
+  - Summary: Response time quantiles
+  **指標類型使用**
+  - 計數器: API請求、錯誤
+  - 計量器: CPU、記憶體、連接
+  - 直方圖: 請求持續時間、大小
+  - 摘要: 回應時間分位數
+end note
+
+note right of labels
+  **Label Strategy\n(標籤策略)**
+  - High cardinality: instance, pod
+  - Medium cardinality: service, component
+  - Low cardinality: environment, cluster
+  - Max labels per metric: 10
+  **標籤策略**
+  - 高基數: 實例、Pod
+  - 中基數: 服務、組件
+  - 低基數: 環境、集群
+  - 每指標最大標籤數: 10
+end note
+
+note bottom of scraping
+  **Scraping Configuration\n(抓取配置)**
+  - Interval: 15s
+  - Timeout: 10s
+  - Sample limit: 100k per target
+  - Parallel limit: 100 targets
+  **抓取配置**
+  - 間隔: 15秒
+  - 超時: 10秒
+  - 樣本限制: 每目標100k
+  - 並行限制: 100個目標
+end note
+
+note left of query_patterns
+  **Query Best Practices\n(查詢最佳實踐)**
+  - Use recording rules for complex queries
+  - Limit time range for heavy queries
+  - Use appropriate step size
+  - Avoid high cardinality group-by
+  **查詢最佳實踐**
+  - 對複雜查詢使用記錄規則
+  - 限制重查詢的時間範圍
+  - 使用適當的步長
+  - 避免高基數group-by
+end note
+
+@enduml

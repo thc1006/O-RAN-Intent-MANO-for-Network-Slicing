@@ -1,0 +1,60 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: tn-manager-servicemonitor
+  namespace: oran-monitoring
+  labels:
+    app: tn-manager
+    component: dms
+    app.kubernetes.io/part-of: o-ran-mano
+    monitoring.oran.io/component: tn-manager
+spec:
+  selector:
+    matchLabels:
+      app: tn-manager
+      component: dms
+  namespaceSelector:
+    matchNames:
+    - oran-system
+  endpoints:
+  - port: metrics
+    interval: 30s
+    path: /metrics
+    scheme: http
+    scrapeTimeout: 10s
+    metricRelabelings:
+    - sourceLabels: [__name__]
+      regex: 'tn_bandwidth_.*'
+      targetLabel: __tmp_tn_bandwidth_metric
+      replacement: 'true'
+    - sourceLabels: [__name__]
+      regex: 'tn_latency_.*'
+      targetLabel: __tmp_tn_latency_metric
+      replacement: 'true'
+    - sourceLabels: [__name__]
+      regex: 'tn_path_.*'
+      targetLabel: __tmp_tn_path_metric
+      replacement: 'true'
+    - sourceLabels: [__name__]
+      regex: 'tn_qos_.*'
+      targetLabel: __tmp_tn_qos_metric
+      replacement: 'true'
+    - sourceLabels: [__name__]
+      regex: 'tn_sdn_.*'
+      targetLabel: __tmp_tn_sdn_metric
+      replacement: 'true'
+    relabelings:
+    - sourceLabels: [__meta_kubernetes_service_name]
+      targetLabel: service
+    - sourceLabels: [__meta_kubernetes_namespace]
+      targetLabel: namespace
+    - sourceLabels: [__meta_kubernetes_pod_name]
+      targetLabel: pod
+    - sourceLabels: [__meta_kubernetes_pod_node_name]
+      targetLabel: node
+    - targetLabel: component
+      replacement: tn-manager
+    - targetLabel: system
+      replacement: o-ran-mano
+    - targetLabel: domain
+      replacement: transport-network

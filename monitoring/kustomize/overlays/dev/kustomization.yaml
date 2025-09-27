@@ -1,0 +1,124 @@
+# Development environment overlay for O-RAN MANO monitoring
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: oran-monitoring-dev
+  annotations:
+    config.kubernetes.io/local-config: "true"
+
+# Reference to base configuration
+bases:
+  - ../../base
+
+# Environment-specific namespace
+namespace: monitoring
+
+# Development-specific labels
+commonLabels:
+  oran.io/environment: dev
+  oran.io/tier: development
+
+# Development-specific annotations
+commonAnnotations:
+  oran.io/deployment-date: "2024-01-01"
+  oran.io/environment-type: development
+  oran.io/auto-scaling: "disabled"
+
+# Resource patches for development
+patchesStrategicMerge:
+  - patches/prometheus-dev.yaml
+  - patches/grafana-dev.yaml
+  - patches/alertmanager-dev.yaml
+  - patches/resources-dev.yaml
+
+# JSON patches for specific dev modifications
+patchesJson6902:
+  - target:
+      group: monitoring.coreos.com
+      version: v1
+      kind: Prometheus
+      name: prometheus
+    path: patches/prometheus-dev-config.yaml
+
+# Development-specific ConfigMaps
+configMapGenerator:
+  - name: prometheus-dev-config
+    files:
+      - config/prometheus-dev.yml
+    options:
+      labels:
+        app.kubernetes.io/component: prometheus
+        oran.io/environment: dev
+
+  - name: alertmanager-dev-config
+    files:
+      - config/alertmanager-dev.yml
+    options:
+      labels:
+        app.kubernetes.io/component: alertmanager
+        oran.io/environment: dev
+
+  - name: grafana-dev-dashboards
+    files:
+      - dashboards/dev-overview.json
+      - dashboards/dev-debugging.json
+    options:
+      labels:
+        app.kubernetes.io/component: grafana
+        oran.io/environment: dev
+        grafana_dashboard: "1"
+
+# Development-specific secrets
+secretGenerator:
+  - name: dev-monitoring-secrets
+    envs:
+      - secrets/dev.env
+    options:
+      labels:
+        oran.io/environment: dev
+
+# Development image overrides (latest/dev tags)
+images:
+  - name: quay.io/prometheus/prometheus
+    newTag: latest
+  - name: grafana/grafana
+    newTag: latest-ubuntu
+  - name: quay.io/prometheus/alertmanager
+    newTag: latest
+
+# Development replica counts (minimal for resource saving)
+replicas:
+  - name: prometheus-prometheus
+    count: 1
+  - name: alertmanager-alertmanager
+    count: 1
+
+# Development-specific variables
+vars:
+  - name: DEV_RETENTION
+    objref:
+      kind: ConfigMap
+      name: prometheus-dev-config
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.retention
+
+  - name: DEV_STORAGE_SIZE
+    objref:
+      kind: ConfigMap
+      name: prometheus-dev-config
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.storage_size
+
+# Resources specific to development
+resources:
+  - resources/dev-servicemonitor.yaml
+  - resources/dev-ingress.yaml
+  - resources/dev-networkpolicy.yaml
+
+# Transformers for development
+transformers:
+  - transformers/dev-labels.yaml
+  - transformers/dev-resources.yaml

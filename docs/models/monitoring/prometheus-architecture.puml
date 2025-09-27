@@ -1,0 +1,213 @@
+@startuml Prometheus-Architecture
+!theme plain
+title Prometheus Monitoring Architecture (Prometheus監控架構)
+
+' Define styles
+skinparam componentStyle rectangle
+skinparam linetype ortho
+skinparam backgroundColor white
+
+' External components
+cloud "External Integrations\n(外部整合)" as external {
+  [Slack\n(Slack通知)] as slack
+  [PagerDuty\n(緊急通知)] as pagerduty
+  [Webhook\n(網頁鉤子)] as webhook
+}
+
+' Kubernetes cluster context
+package "Kubernetes Cluster\n(Kubernetes集群)" {
+
+  ' Prometheus Operator ecosystem
+  package "Prometheus Operator\n(Prometheus操作器)" as prom_operator {
+    [Prometheus Operator\n(Prometheus操作器)] as operator
+    [ServiceMonitor CRD\n(服務監控CRD)] as servicemonitor
+    [PodMonitor CRD\n(Pod監控CRD)] as podmonitor
+    [PrometheusRule CRD\n(Prometheus規則CRD)] as prometheusrule
+    [Alertmanager CRD\n(告警管理器CRD)] as alertmanager_crd
+  }
+
+  ' Core Prometheus components
+  package "Prometheus Core\n(Prometheus核心)" as prom_core {
+    [Prometheus Server\n(Prometheus伺服器)] as prometheus
+    [Config Reloader\n(配置重載器)] as config_reloader
+    [Thanos Sidecar\n(Thanos邊車)] as thanos_sidecar
+  }
+
+  ' AlertManager cluster
+  package "AlertManager Cluster\n(告警管理器集群)" as alert_cluster {
+    [AlertManager-0\n(告警管理器-0)] as am0
+    [AlertManager-1\n(告警管理器-1)] as am1
+    [AlertManager-2\n(告警管理器-2)] as am2
+  }
+
+  ' Storage layer
+  package "Storage Layer\n(儲存層)" as storage {
+    database "TSDB (Local)\n(時序資料庫-本地)" as tsdb
+    database "PVC Storage\n(持久卷儲存)" as pvc_storage
+    cloud "Object Storage\n(物件儲存)" as object_storage
+  }
+
+  ' O-RAN components being monitored
+  package "O-RAN Components\n(O-RAN組件)" as oran_components {
+
+    package "O2 DMS\n(O2設備管理服務)" as o2dms {
+      [O2 Service\n(O2服務)] as o2_service
+      [Metrics Endpoint\n(指標端點)] as o2_metrics
+    }
+
+    package "CN DMS\n(雲原生設備管理服務)" as cndms {
+      [CN Service\n(CN服務)] as cn_service
+      [Metrics Endpoint\n(指標端點)] as cn_metrics
+    }
+
+    package "VNF Operator\n(VNF操作器)" as vnfop {
+      [VNF Controller\n(VNF控制器)] as vnf_controller
+      [Metrics Endpoint\n(指標端點)] as vnf_metrics
+    }
+
+    package "Intent Service\n(意圖服務)" as intent {
+      [Intent Engine\n(意圖引擎)] as intent_engine
+      [Metrics Endpoint\n(指標端點)] as intent_metrics
+    }
+  }
+
+  ' Infrastructure monitoring
+  package "Infrastructure Monitoring\n(基礎設施監控)" as infra {
+    [Node Exporter\n(節點匯出器)] as node_exporter
+    [kube-state-metrics\n(K8s狀態指標)] as kube_state
+    [cAdvisor\n(容器監控)] as cadvisor
+    [CoreDNS Metrics\n(CoreDNS指標)] as coredns_metrics
+  }
+
+  ' Service mesh monitoring
+  package "Service Mesh Monitoring\n(服務網格監控)" as mesh {
+    [Istio Proxy Metrics\n(Istio代理指標)] as istio_metrics
+    [Envoy Metrics\n(Envoy指標)] as envoy_metrics
+  }
+
+  ' Federation and external systems
+  package "Federation\n(聯邦)" as federation {
+    [Remote Prometheus\n(遠端Prometheus)] as remote_prom
+    [Cortex\n(Cortex集群)] as cortex
+    [Thanos Query\n(Thanos查詢)] as thanos_query
+  }
+}
+
+' Operator relationships
+operator --> servicemonitor : "Generates\n(生成)"
+operator --> podmonitor : "Manages\n(管理)"
+operator --> prometheusrule : "Configures\n(配置)"
+operator --> alertmanager_crd : "Orchestrates\n(編排)"
+
+' Prometheus core relationships
+operator --> prometheus : "Deploys & Configures\n(部署和配置)"
+prometheus --> config_reloader : "Auto-reload config\n(自動重載配置)"
+prometheus --> thanos_sidecar : "Long-term storage\n(長期儲存)"
+
+' Service discovery and scraping
+servicemonitor --> o2_metrics : "Auto-discovery\n(自動發現)"
+servicemonitor --> cn_metrics : "Scrape config\n(抓取配置)"
+servicemonitor --> vnf_metrics : "Target selection\n(目標選擇)"
+servicemonitor --> intent_metrics : "Metric collection\n(指標收集)"
+
+podmonitor --> node_exporter : "Node metrics\n(節點指標)"
+podmonitor --> kube_state : "K8s API metrics\n(K8s API指標)"
+podmonitor --> cadvisor : "Container metrics\n(容器指標)"
+
+' Prometheus scraping
+prometheus --> o2_metrics : "Scrape /metrics\n(抓取指標)"
+prometheus --> cn_metrics : "15s interval\n(15秒間隔)"
+prometheus --> vnf_metrics : "HTTP GET\n(HTTP獲取)"
+prometheus --> intent_metrics : "Pull model\n(拉取模式)"
+
+prometheus --> node_exporter : "Infrastructure metrics\n(基礎設施指標)"
+prometheus --> kube_state : "Cluster state\n(集群狀態)"
+prometheus --> cadvisor : "Container stats\n(容器統計)"
+prometheus --> coredns_metrics : "DNS metrics\n(DNS指標)"
+
+prometheus --> istio_metrics : "Service mesh\n(服務網格)"
+prometheus --> envoy_metrics : "Proxy stats\n(代理統計)"
+
+' Storage connections
+prometheus --> tsdb : "Local storage\n(本地儲存)"
+tsdb --> pvc_storage : "Persistent volume\n(持久卷)"
+thanos_sidecar --> object_storage : "Long-term archive\n(長期歸檔)"
+
+' Alert flow
+prometheus --> prometheusrule : "Evaluate rules\n(評估規則)"
+prometheus --> am0 : "Send alerts\n(發送告警)"
+prometheus --> am1 : "HA setup\n(高可用設置)"
+prometheus --> am2 : "Load balancing\n(負載平衡)"
+
+' AlertManager cluster communication
+am0 <--> am1 : "Gossip protocol\n(Gossip協議)"
+am1 <--> am2 : "State sync\n(狀態同步)"
+am2 <--> am0 : "Deduplication\n(去重)"
+
+' External notifications
+am0 --> slack : "Notifications\n(通知)"
+am1 --> pagerduty : "Critical alerts\n(嚴重告警)"
+am2 --> webhook : "Custom integrations\n(自定義整合)"
+
+' Federation
+prometheus --> remote_prom : "Remote write\n(遠端寫入)"
+prometheus --> cortex : "Multi-tenant\n(多租戶)"
+thanos_query --> thanos_sidecar : "Query federation\n(查詢聯邦)"
+
+' Configuration and management
+config_reloader --> servicemonitor : "Watch changes\n(監視變更)"
+config_reloader --> prometheusrule : "Rule updates\n(規則更新)"
+
+note top of prom_operator
+  **Prometheus Operator Features\n(Prometheus操作器功能)**
+  - Declarative configuration
+  - Auto-discovery of services
+  - Rule management
+  - AlertManager orchestration
+  **功能特色**
+  - 聲明式配置
+  - 服務自動發現
+  - 規則管理
+  - 告警管理器編排
+end note
+
+note right of prometheus
+  **Scraping Configuration\n(抓取配置)**
+  - Interval: 15s (default)
+  - Timeout: 10s
+  - Retention: 30d local
+  - Compression: snappy
+  **抓取配置**
+  - 間隔: 15秒(預設)
+  - 超時: 10秒
+  - 保留: 本地30天
+  - 壓縮: snappy
+end note
+
+note bottom of storage
+  **Storage Strategy\n(儲存策略)**
+  - Local: 30 days TSDB
+  - Remote: Unlimited object storage
+  - Compression ratio: ~5:1
+  - Backup: Daily snapshots
+  **儲存策略**
+  - 本地: 30天時序資料庫
+  - 遠端: 無限制物件儲存
+  - 壓縮比: 約5:1
+  - 備份: 每日快照
+end note
+
+note left of alert_cluster
+  **High Availability\n(高可用性)**
+  - 3-node cluster
+  - Gossip-based sync
+  - Automatic failover
+  - Load distribution
+  **高可用性**
+  - 3節點集群
+  - 基於Gossip同步
+  - 自動故障轉移
+  - 負載分散
+end note
+
+@enduml

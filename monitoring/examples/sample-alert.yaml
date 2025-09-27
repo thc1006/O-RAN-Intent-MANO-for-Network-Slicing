@@ -1,0 +1,600 @@
+---
+# O-RAN Monitoring Stack - Sample Alert Rules
+# This file contains comprehensive alerting rules for O-RAN Intent MANO monitoring
+
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: oran-alert-rules
+  namespace: oran-monitoring
+  labels:
+    app.kubernetes.io/name: oran-alert-rules
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/part-of: oran-intent-mano
+spec:
+  groups:
+  # =============================================================================
+  # CRITICAL ALERTS - Immediate Response Required
+  # =============================================================================
+  - name: oran.critical
+    interval: 15s
+    rules:
+    - alert: ORANServiceDown
+      expr: up{job=~"oran-.*"} == 0
+      for: 1m
+      labels:
+        severity: critical
+        team: oran-platform
+        component: "{{ $labels.job }}"
+      annotations:
+        summary: "O-RAN service {{ $labels.job }} is down"
+        description: |
+          O-RAN service {{ $labels.job }} on instance {{ $labels.instance }}
+          has been down for more than 1 minute.
+
+          Immediate action required:
+          1. Check pod status: kubectl get pods -n {{ $labels.namespace }}
+          2. Check logs: kubectl logs -n {{ $labels.namespace }} deployment/{{ $labels.job }}
+          3. Restart if necessary: kubectl rollout restart deployment/{{ $labels.job }} -n {{ $labels.namespace }}
+        runbook_url: "https://docs.oran.company.com/runbooks/service-down"
+        dashboard_url: "https://grafana.oran.company.com/d/oran-overview"
+
+    - alert: PrometheusDown
+      expr: up{job="prometheus"} == 0
+      for: 30s
+      labels:
+        severity: critical
+        team: platform
+        component: prometheus
+      annotations:
+        summary: "Prometheus server is down"
+        description: |
+          Prometheus server has been down for more than 30 seconds.
+          This means we have no visibility into the system.
+
+          IMMEDIATE ACTION REQUIRED:
+          1. Check Prometheus pod: kubectl get pods -n oran-monitoring -l app.kubernetes.io/name=prometheus
+          2. Check logs: kubectl logs -n oran-monitoring deployment/prometheus
+          3. Check storage: kubectl get pvc -n oran-monitoring
+        runbook_url: "https://docs.oran.company.com/runbooks/prometheus-down"
+
+    - alert: ORANHighErrorRate
+      expr: |
+        (
+          rate(oran_intent_processing_total{status="error"}[5m]) /
+          rate(oran_intent_processing_total[5m])
+        ) > 0.1
+      for: 2m
+      labels:
+        severity: critical
+        team: oran-platform
+        component: intent-processing
+      annotations:
+        summary: "O-RAN intent processing error rate is critically high"
+        description: |
+          O-RAN intent processing error rate is {{ $value | humanizePercentage }}
+          which is above the critical threshold of 10%.
+
+          Current error rate: {{ $value | humanizePercentage }}
+
+          This indicates a critical system issue affecting user experience.
+        runbook_url: "https://docs.oran.company.com/runbooks/high-error-rate"
+
+    - alert: MemoryExhaustion
+      expr: |
+        (
+          container_memory_working_set_bytes{namespace=~"oran-.*",container!="POD"} /
+          container_spec_memory_limit_bytes
+        ) > 0.95
+      for: 1m
+      labels:
+        severity: critical
+        team: oran-platform
+        component: "{{ $labels.namespace }}"
+      annotations:
+        summary: "Container {{ $labels.container }} in {{ $labels.namespace }} is running out of memory"
+        description: |
+          Container {{ $labels.container }} in namespace {{ $labels.namespace }}
+          is using {{ $value | humanizePercentage }} of its memory limit.
+
+          Current usage: {{ $value | humanizePercentage }}
+          Pod: {{ $labels.pod }}
+
+          Risk of OOMKill - immediate attention required.
+        runbook_url: "https://docs.oran.company.com/runbooks/memory-exhaustion"
+
+  # =============================================================================
+  # HIGH SEVERITY ALERTS - Response within 15 minutes
+  # =============================================================================
+  - name: oran.high
+    interval: 30s
+    rules:
+    - alert: ORANSliceDeploymentFailing
+      expr: |
+        (
+          rate(oran_slice_deployment_total{status="failed"}[5m]) /
+          rate(oran_slice_deployment_total[5m])
+        ) > 0.05
+      for: 3m
+      labels:
+        severity: high
+        team: oran-platform
+        component: slice-deployment
+      annotations:
+        summary: "Network slice deployment failure rate is high"
+        description: |
+          Network slice deployment failure rate is {{ $value | humanizePercentage }}.
+
+          This affects the ability to provision new network slices and may impact
+          customer onboarding.
+
+          Current failure rate: {{ $value | humanizePercentage }}
+          Threshold: 5%
+        runbook_url: "https://docs.oran.company.com/runbooks/slice-deployment-failures"
+
+    - alert: ORANIntentProcessingLatencyHigh
+      expr: |
+        histogram_quantile(0.95, rate(oran_intent_processing_duration_seconds_bucket[5m])) > 2
+      for: 5m
+      labels:
+        severity: high
+        team: oran-platform
+        component: intent-processing
+      annotations:
+        summary: "O-RAN intent processing latency is high"
+        description: |
+          95th percentile of intent processing latency is {{ $value }}s,
+          which exceeds the SLA threshold of 2 seconds.
+
+          Current P95 latency: {{ $value }}s
+          SLA target: 2s
+
+          This may indicate performance issues or resource constraints.
+        runbook_url: "https://docs.oran.company.com/runbooks/high-latency"
+
+    - alert: VNFPlacementLatencyHigh
+      expr: |
+        histogram_quantile(0.95, rate(oran_vnf_placement_duration_seconds_bucket[5m])) > 60
+      for: 5m
+      labels:
+        severity: high
+        team: oran-platform
+        component: vnf-placement
+      annotations:
+        summary: "VNF placement is taking too long"
+        description: |
+          95th percentile of VNF placement time is {{ $value }}s,
+          which exceeds the expected threshold of 60 seconds.
+
+          This may indicate resource contention or placement algorithm issues.
+        runbook_url: "https://docs.oran.company.com/runbooks/vnf-placement-slow"
+
+    - alert: NetworkSliceLatencyHigh
+      expr: avg_over_time(oran_ping_rtt_milliseconds[5m]) > 20
+      for: 5m
+      labels:
+        severity: high
+        team: oran-platform
+        component: network-slice
+      annotations:
+        summary: "Network slice latency is degraded"
+        description: |
+          Average network slice latency is {{ $value }}ms, which exceeds
+          the performance threshold of 20ms.
+
+          This may affect user experience and SLA compliance.
+        runbook_url: "https://docs.oran.company.com/runbooks/network-latency"
+
+  # =============================================================================
+  # MEDIUM SEVERITY ALERTS - Response within 1 hour
+  # =============================================================================
+  - name: oran.medium
+    interval: 1m
+    rules:
+    - alert: HighCPUUsage
+      expr: |
+        (
+          rate(container_cpu_usage_seconds_total{namespace=~"oran-.*",container!="POD"}[5m]) /
+          (container_spec_cpu_quota / container_spec_cpu_period)
+        ) > 0.8
+      for: 10m
+      labels:
+        severity: medium
+        team: oran-platform
+        component: "{{ $labels.namespace }}"
+      annotations:
+        summary: "High CPU usage in {{ $labels.namespace }}/{{ $labels.container }}"
+        description: |
+          Container {{ $labels.container }} in {{ $labels.namespace }}
+          has been using {{ $value | humanizePercentage }} of CPU for more than 10 minutes.
+
+          Consider scaling up or investigating performance issues.
+        runbook_url: "https://docs.oran.company.com/runbooks/high-cpu"
+
+    - alert: HighMemoryUsage
+      expr: |
+        (
+          container_memory_working_set_bytes{namespace=~"oran-.*",container!="POD"} /
+          container_spec_memory_limit_bytes
+        ) > 0.8
+      for: 10m
+      labels:
+        severity: medium
+        team: oran-platform
+        component: "{{ $labels.namespace }}"
+      annotations:
+        summary: "High memory usage in {{ $labels.namespace }}/{{ $labels.container }}"
+        description: |
+          Container {{ $labels.container }} in {{ $labels.namespace }}
+          has been using {{ $value | humanizePercentage }} of memory for more than 10 minutes.
+
+          Monitor for potential memory leaks or consider increasing limits.
+        runbook_url: "https://docs.oran.company.com/runbooks/high-memory"
+
+    - alert: ORANIntentQueueBacklog
+      expr: oran_intent_queue_depth > 100
+      for: 5m
+      labels:
+        severity: medium
+        team: oran-platform
+        component: intent-queue
+      annotations:
+        summary: "Intent processing queue has significant backlog"
+        description: |
+          Intent processing queue depth is {{ $value }}, indicating
+          processing cannot keep up with incoming requests.
+
+          Consider scaling the intent processing service.
+        runbook_url: "https://docs.oran.company.com/runbooks/queue-backlog"
+
+    - alert: PrometheusStorageSpaceHigh
+      expr: |
+        (
+          (prometheus_tsdb_size_bytes + prometheus_tsdb_wal_size_bytes) /
+          prometheus_tsdb_retention_limit_bytes
+        ) > 0.8
+      for: 10m
+      labels:
+        severity: medium
+        team: platform
+        component: prometheus
+      annotations:
+        summary: "Prometheus storage usage is high"
+        description: |
+          Prometheus storage usage is {{ $value | humanizePercentage }}.
+
+          Consider expanding storage or reducing retention period.
+        runbook_url: "https://docs.oran.company.com/runbooks/prometheus-storage"
+
+  # =============================================================================
+  # WARNING ALERTS - Response within 4 hours
+  # =============================================================================
+  - name: oran.warning
+    interval: 2m
+    rules:
+    - alert: ORANModerateErrorRate
+      expr: |
+        (
+          rate(oran_intent_processing_total{status="error"}[5m]) /
+          rate(oran_intent_processing_total[5m])
+        ) > 0.02
+      for: 10m
+      labels:
+        severity: warning
+        team: oran-platform
+        component: intent-processing
+      annotations:
+        summary: "O-RAN intent processing error rate is elevated"
+        description: |
+          Intent processing error rate is {{ $value | humanizePercentage }},
+          which is above the warning threshold of 2%.
+
+          Monitor for trends and investigate if errors increase.
+        runbook_url: "https://docs.oran.company.com/runbooks/moderate-errors"
+
+    - alert: GrafanaSlowQueries
+      expr: |
+        histogram_quantile(0.95, rate(grafana_http_request_duration_seconds_bucket[5m])) > 5
+      for: 10m
+      labels:
+        severity: warning
+        team: platform
+        component: grafana
+      annotations:
+        summary: "Grafana queries are slow"
+        description: |
+          95th percentile of Grafana HTTP request duration is {{ $value }}s.
+
+          Dashboard performance may be degraded.
+        runbook_url: "https://docs.oran.company.com/runbooks/grafana-slow"
+
+    - alert: PrometheusQueryLatencyHigh
+      expr: |
+        histogram_quantile(0.95, rate(prometheus_http_request_duration_seconds_bucket[5m])) > 1
+      for: 15m
+      labels:
+        severity: warning
+        team: platform
+        component: prometheus
+      annotations:
+        summary: "Prometheus query latency is high"
+        description: |
+          95th percentile of Prometheus query duration is {{ $value }}s.
+
+          Query performance is degraded.
+        runbook_url: "https://docs.oran.company.com/runbooks/prometheus-slow"
+
+    - alert: HighPodRestartRate
+      expr: |
+        rate(kube_pod_container_status_restarts_total{namespace=~"oran-.*"}[5m]) > 0.01
+      for: 10m
+      labels:
+        severity: warning
+        team: oran-platform
+        component: "{{ $labels.namespace }}"
+      annotations:
+        summary: "High pod restart rate in {{ $labels.namespace }}"
+        description: |
+          Pod {{ $labels.pod }} in namespace {{ $labels.namespace }}
+          is restarting frequently.
+
+          This may indicate instability or resource issues.
+        runbook_url: "https://docs.oran.company.com/runbooks/pod-restarts"
+
+  # =============================================================================
+  # MONITORING STACK HEALTH ALERTS
+  # =============================================================================
+  - name: monitoring.health
+    interval: 1m
+    rules:
+    - alert: GrafanaDown
+      expr: up{job="grafana"} == 0
+      for: 2m
+      labels:
+        severity: critical
+        team: platform
+        component: grafana
+      annotations:
+        summary: "Grafana is down"
+        description: |
+          Grafana has been down for more than 2 minutes.
+          Dashboard access is unavailable.
+        runbook_url: "https://docs.oran.company.com/runbooks/grafana-down"
+
+    - alert: AlertmanagerDown
+      expr: up{job="alertmanager"} == 0
+      for: 2m
+      labels:
+        severity: critical
+        team: platform
+        component: alertmanager
+      annotations:
+        summary: "AlertManager is down"
+        description: |
+          AlertManager has been down for more than 2 minutes.
+          Alert notifications are not being sent.
+        runbook_url: "https://docs.oran.company.com/runbooks/alertmanager-down"
+
+    - alert: PrometheusTargetDown
+      expr: up{job!~"prometheus|grafana|alertmanager"} == 0
+      for: 5m
+      labels:
+        severity: warning
+        team: platform
+        component: monitoring
+      annotations:
+        summary: "Prometheus target {{ $labels.job }} is down"
+        description: |
+          Prometheus cannot scrape {{ $labels.job }} on {{ $labels.instance }}.
+          Metrics for this target are not being collected.
+        runbook_url: "https://docs.oran.company.com/runbooks/target-down"
+
+    - alert: PrometheusNotificationQueueFull
+      expr: predict_linear(prometheus_notifications_queue_length[5m], 60 * 30) > 100
+      for: 5m
+      labels:
+        severity: warning
+        team: platform
+        component: prometheus
+      annotations:
+        summary: "Prometheus notification queue filling up"
+        description: |
+          Prometheus notification queue is predicted to fill up in 30 minutes.
+          Alert notifications may be delayed or dropped.
+        runbook_url: "https://docs.oran.company.com/runbooks/notification-queue"
+
+  # =============================================================================
+  # BUSINESS IMPACT ALERTS
+  # =============================================================================
+  - name: oran.business
+    interval: 5m
+    rules:
+    - alert: SLAViolation_IntentProcessing
+      expr: |
+        (
+          rate(oran_intent_processing_total{status="success"}[5m]) /
+          rate(oran_intent_processing_total[5m])
+        ) < 0.999
+      for: 15m
+      labels:
+        severity: high
+        team: oran-platform
+        component: sla
+        sla: intent-processing
+      annotations:
+        summary: "Intent processing SLA violation"
+        description: |
+          Intent processing success rate is {{ $value | humanizePercentage }},
+          which violates the 99.9% SLA.
+
+          Current success rate: {{ $value | humanizePercentage }}
+          SLA target: 99.9%
+
+          Business impact: Customer experience degradation
+        runbook_url: "https://docs.oran.company.com/runbooks/sla-violation"
+
+    - alert: SLAViolation_NetworkSliceLatency
+      expr: |
+        (
+          histogram_quantile(0.95, rate(oran_ping_rtt_milliseconds_bucket[5m])) > 10
+        )
+      for: 10m
+      labels:
+        severity: high
+        team: oran-platform
+        component: sla
+        sla: network-latency
+      annotations:
+        summary: "Network slice latency SLA violation"
+        description: |
+          95th percentile network slice latency is {{ $value }}ms,
+          which violates the 10ms SLA.
+
+          Business impact: Poor user experience, potential customer complaints
+        runbook_url: "https://docs.oran.company.com/runbooks/latency-sla"
+
+    - alert: CapacityPlanning_IntentVolumeGrowth
+      expr: |
+        predict_linear(rate(oran_intent_processing_total[5m])[7d], 7*24*3600) >
+        rate(oran_intent_processing_total[5m]) * 2
+      for: 1h
+      labels:
+        severity: warning
+        team: oran-platform
+        component: capacity
+      annotations:
+        summary: "Intent processing volume growing rapidly"
+        description: |
+          Intent processing volume is predicted to double in the next 7 days.
+
+          Current rate: {{ rate(oran_intent_processing_total[5m]) }} req/s
+          Predicted growth: 100% in 7 days
+
+          Capacity planning action required.
+        runbook_url: "https://docs.oran.company.com/runbooks/capacity-planning"
+
+  # =============================================================================
+  # INFRASTRUCTURE ALERTS
+  # =============================================================================
+  - name: infrastructure
+    interval: 2m
+    rules:
+    - alert: NodeDiskSpaceHigh
+      expr: |
+        (
+          (node_filesystem_size_bytes - node_filesystem_avail_bytes) /
+          node_filesystem_size_bytes
+        ) > 0.85
+      for: 10m
+      labels:
+        severity: warning
+        team: platform
+        component: infrastructure
+      annotations:
+        summary: "Node {{ $labels.instance }} disk usage is high"
+        description: |
+          Disk usage on {{ $labels.instance }} mount {{ $labels.mountpoint }}
+          is {{ $value | humanizePercentage }}.
+
+          Free space is running low.
+        runbook_url: "https://docs.oran.company.com/runbooks/disk-space"
+
+    - alert: NodeLoadHigh
+      expr: node_load15 > 0.8
+      for: 15m
+      labels:
+        severity: warning
+        team: platform
+        component: infrastructure
+      annotations:
+        summary: "Node {{ $labels.instance }} load is high"
+        description: |
+          15-minute load average on {{ $labels.instance }} is {{ $value }}.
+
+          Node may be overloaded.
+        runbook_url: "https://docs.oran.company.com/runbooks/high-load"
+
+    - alert: PersistentVolumeUsageHigh
+      expr: |
+        (
+          kubelet_volume_stats_used_bytes /
+          kubelet_volume_stats_capacity_bytes
+        ) > 0.9
+      for: 10m
+      labels:
+        severity: warning
+        team: platform
+        component: storage
+      annotations:
+        summary: "PVC {{ $labels.persistentvolumeclaim }} usage is high"
+        description: |
+          PVC {{ $labels.persistentvolumeclaim }} in namespace {{ $labels.namespace }}
+          is {{ $value | humanizePercentage }} full.
+        runbook_url: "https://docs.oran.company.com/runbooks/pvc-full"
+
+---
+# Alert rule validation and testing configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alert-rule-tests
+  namespace: oran-monitoring
+  labels:
+    app.kubernetes.io/name: alert-rule-tests
+    app.kubernetes.io/component: monitoring
+data:
+  test-rules.yaml: |
+    # Alert rule unit tests
+    rule_files:
+      - "sample-alert.yaml"
+
+    evaluation_interval: 1m
+
+    tests:
+      # Test ORANServiceDown alert
+      - interval: 1m
+        input_series:
+          - series: 'up{job="oran-nlp", instance="10.0.0.1:8080"}'
+            values: '1 1 1 0 0 0'
+        alert_rule_test:
+          - eval_time: 1m
+            alertname: ORANServiceDown
+            exp_alerts:
+              - exp_labels:
+                  severity: critical
+                  job: oran-nlp
+                  instance: "10.0.0.1:8080"
+                exp_annotations:
+                  summary: "O-RAN service oran-nlp is down"
+
+      # Test high error rate alert
+      - interval: 1m
+        input_series:
+          - series: 'oran_intent_processing_total{status="error"}'
+            values: '0 10 20 30 40 50'
+          - series: 'oran_intent_processing_total{status="success"}'
+            values: '0 90 180 270 360 450'
+        alert_rule_test:
+          - eval_time: 5m
+            alertname: ORANHighErrorRate
+            exp_alerts:
+              - exp_labels:
+                  severity: critical
+                exp_annotations:
+                  summary: "O-RAN intent processing error rate is critically high"
+
+      # Test memory exhaustion alert
+      - interval: 1m
+        input_series:
+          - series: 'container_memory_working_set_bytes{namespace="oran-nlp", container="nlp-service"}'
+            values: '1000000000 1100000000 1200000000 1300000000 1400000000 1450000000'
+          - series: 'container_spec_memory_limit_bytes{namespace="oran-nlp", container="nlp-service"}'
+            values: '1500000000 1500000000 1500000000 1500000000 1500000000 1500000000'
+        alert_rule_test:
+          - eval_time: 2m
+            alertname: MemoryExhaustion
+            exp_alerts:
+              - exp_labels:
+                  severity: critical
+                  namespace: oran-nlp
+                  container: nlp-service

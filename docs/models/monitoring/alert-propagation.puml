@@ -1,0 +1,261 @@
+@startuml Alert-Propagation
+!theme plain
+title Alert Propagation Architecture (告警傳播架構)
+
+' Define styles
+skinparam componentStyle rectangle
+skinparam linetype ortho
+skinparam backgroundColor white
+
+' Monitoring sources
+package "Monitoring Sources\n(監控來源)" as sources {
+
+  package "Prometheus Instances\n(Prometheus實例)" as prom_instances {
+    [Prometheus-1\n(Prometheus-1)] as prom1
+    [Prometheus-2\n(Prometheus-2)] as prom2
+    [Prometheus-3\n(Prometheus-3)] as prom3
+  }
+
+  package "Alert Rules\n(告警規則)" as alert_rules {
+    [High CPU Usage\n(高CPU使用率)] as cpu_alert
+    [Memory Exhaustion\n(記憶體耗盡)] as memory_alert
+    [Service Down\n(服務下線)] as service_down
+    [API Error Rate\n(API錯誤率)] as api_error
+    [Intent Processing Failure\n(意圖處理失敗)] as intent_failure
+    [VNF Deployment Failure\n(VNF部署失敗)] as vnf_failure
+  }
+
+  package "Alert Severity Levels\n(告警嚴重程度)" as severity {
+    [Critical\n(嚴重)] as critical
+    [Warning\n(警告)] as warning
+    [Info\n(資訊)] as info
+  }
+}
+
+' AlertManager cluster
+package "AlertManager Cluster\n(告警管理器集群)" as alertmanager_cluster {
+
+  package "AlertManager Core\n(告警管理器核心)" as am_core {
+    [AlertManager-1\n(告警管理器-1)] as am1
+    [AlertManager-2\n(告警管理器-2)] as am2
+    [AlertManager-3\n(告警管理器-3)] as am3
+  }
+
+  package "Alert Processing\n(告警處理)" as alert_processing {
+    [Alert Receiver\n(告警接收器)] as alert_receiver
+    [Alert Grouping\n(告警分組)] as alert_grouping
+    [Deduplication\n(去重處理)] as deduplication
+    [Inhibition\n(抑制處理)] as inhibition
+    [Silence Manager\n(靜默管理器)] as silence_mgr
+  }
+
+  package "Routing Engine\n(路由引擎)" as routing {
+    [Route Matcher\n(路由匹配器)] as route_matcher
+    [Team Assignment\n(團隊分配)] as team_assignment
+    [Escalation Logic\n(升級邏輯)] as escalation
+    [Time-based Routing\n(基於時間的路由)] as time_routing
+  }
+
+  package "State Management\n(狀態管理)" as state_mgmt {
+    [Alert State Store\n(告警狀態儲存)] as alert_state
+    [Gossip Protocol\n(Gossip協議)] as gossip
+    [Cluster Sync\n(集群同步)] as cluster_sync
+    [Leader Election\n(領導者選舉)] as leader_election
+  }
+}
+
+' Notification channels
+package "Notification Channels\n(通知通道)" as notification_channels {
+
+  package "Immediate Channels\n(即時通道)" as immediate {
+    [Slack Integration\n(Slack整合)] as slack
+    [Microsoft Teams\n(Microsoft Teams)] as teams
+    [Discord\n(Discord)] as discord
+    [Webhook\n(網頁鉤子)] as webhook
+  }
+
+  package "Critical Channels\n(嚴重通道)" as critical_channels {
+    [PagerDuty\n(PagerDuty)] as pagerduty
+    [OpsGenie\n(OpsGenie)] as opsgenie
+    [SMS Gateway\n(簡訊閘道)] as sms
+    [Phone Calls\n(電話呼叫)] as phone
+  }
+
+  package "Documentation Channels\n(文件通道)" as doc_channels {
+    [Email\n(電子郵件)] as email
+    [JIRA Tickets\n(JIRA工單)] as jira
+    [ServiceNow\n(ServiceNow)] as servicenow
+    [Confluence\n(Confluence)] as confluence
+  }
+
+  package "Monitoring Channels\n(監控通道)" as monitoring_channels {
+    [Grafana Annotations\n(Grafana註解)] as grafana_annotations
+    [Status Page\n(狀態頁面)] as status_page
+    [Dashboard Updates\n(儀表板更新)] as dashboard_updates
+  }
+}
+
+' Escalation and automation
+package "Escalation & Automation\n(升級和自動化)" as escalation_automation {
+
+  package "Escalation Policies\n(升級策略)" as escalation_policies {
+    [Level 1: Team Lead\n(第1級: 團隊負責人)] as level1
+    [Level 2: Manager\n(第2級: 經理)] as level2
+    [Level 3: Director\n(第3級: 總監)] as level3
+    [Level 4: Emergency\n(第4級: 緊急)] as level4
+  }
+
+  package "Automation Workflows\n(自動化工作流程)" as automation {
+    [Auto-scaling\n(自動縮放)] as autoscaling
+    [Service Restart\n(服務重啟)] as service_restart
+    [Failover\n(故障轉移)] as failover
+    [Runbook Execution\n(運行手冊執行)] as runbook
+  }
+
+  package "Response Tracking\n(回應追蹤)" as response_tracking {
+    [Acknowledgment\n(確認)] as ack
+    [Investigation Status\n(調查狀態)] as investigation
+    [Resolution Time\n(解決時間)] as resolution_time
+    [Post-mortem\n(事後分析)] as postmortem
+  }
+}
+
+' External integrations
+package "External Integrations\n(外部整合)" as external {
+  [ITSM Systems\n(ITSM系統)] as itsm
+  [Cloud Provider APIs\n(雲端提供商API)] as cloud_apis
+  [Kubernetes API\n(Kubernetes API)] as k8s_api
+  [Load Balancer\n(負載平衡器)] as load_balancer
+}
+
+' Alert flow from sources
+sources --> alertmanager_cluster : "Alert Notifications\n(告警通知)"
+
+' Prometheus to AlertManager
+prom1 --> am1 : "Send alerts\n(發送告警)"
+prom2 --> am2 : "Load balance\n(負載平衡)"
+prom3 --> am3 : "High availability\n(高可用性)"
+
+' Alert rules to severity
+cpu_alert --> critical : "CPU > 90%\n(CPU使用率 > 90%)"
+memory_alert --> critical : "Memory > 95%\n(記憶體 > 95%)"
+service_down --> critical : "Service unavailable\n(服務不可用)"
+api_error --> warning : "Error rate > 5%\n(錯誤率 > 5%)"
+intent_failure --> warning : "Intent processing fail\n(意圖處理失敗)"
+vnf_failure --> critical : "VNF deployment fail\n(VNF部署失敗)"
+
+' AlertManager internal processing
+am1 <--> am2 : "Cluster communication\n(集群通信)"
+am2 <--> am3 : "State synchronization\n(狀態同步)"
+am3 <--> am1 : "Leader election\n(領導者選舉)"
+
+alert_receiver --> alert_grouping : "Group similar alerts\n(分組相似告警)"
+alert_grouping --> deduplication : "Remove duplicates\n(移除重複)"
+deduplication --> inhibition : "Suppress alerts\n(抑制告警)"
+inhibition --> routing : "Route to teams\n(路由到團隊)"
+
+' State management
+alert_processing --> state_mgmt : "Store alert state\n(儲存告警狀態)"
+gossip --> cluster_sync : "Sync between nodes\n(節點間同步)"
+leader_election --> alert_state : "Manage state\n(管理狀態)"
+
+' Routing logic
+route_matcher --> team_assignment : "Match alert labels\n(匹配告警標籤)"
+team_assignment --> escalation : "Assign to team\n(分配給團隊)"
+escalation --> time_routing : "Check time constraints\n(檢查時間約束)"
+
+' Notification routing based on severity
+critical --> critical_channels : "Critical alerts\n(嚴重告警)"
+warning --> immediate : "Warning alerts\n(警告告警)"
+info --> doc_channels : "Info alerts\n(資訊告警)"
+
+' Specific channel routing
+routing --> slack : "Team notifications\n(團隊通知)"
+routing --> pagerduty : "Critical escalation\n(嚴重升級)"
+routing --> email : "Documentation\n(文件記錄)"
+routing --> webhook : "Custom integrations\n(自定義整合)"
+
+' Escalation flow
+escalation --> escalation_policies : "Follow escalation\n(遵循升級)"
+level1 --> level2 : "No response in 15min\n(15分鐘內無回應)"
+level2 --> level3 : "No response in 30min\n(30分鐘內無回應)"
+level3 --> level4 : "No response in 1hr\n(1小時內無回應)"
+
+' Automation triggers
+critical --> automation : "Trigger automation\n(觸發自動化)"
+autoscaling --> k8s_api : "Scale resources\n(擴展資源)"
+service_restart --> k8s_api : "Restart pods\n(重啟Pod)"
+failover --> load_balancer : "Switch traffic\n(切換流量)"
+
+' Response tracking
+notification_channels --> response_tracking : "Track responses\n(追蹤回應)"
+ack --> investigation : "Start investigation\n(開始調查)"
+investigation --> resolution_time : "Track resolution\n(追蹤解決)"
+resolution_time --> postmortem : "Create post-mortem\n(創建事後分析)"
+
+' Silence management
+silence_mgr --> alert_processing : "Apply silences\n(應用靜默)"
+silence_mgr --> notification_channels : "Suppress notifications\n(抑制通知)"
+
+' External system integration
+automation --> external : "External actions\n(外部操作)"
+itsm --> jira : "Create tickets\n(創建工單)"
+cloud_apis --> autoscaling : "Cloud scaling\n(雲端縮放)"
+
+' Monitoring integration
+grafana_annotations --> monitoring_channels : "Visual indicators\n(視覺指標)"
+status_page --> external : "Public status\n(公開狀態)"
+
+note top of alertmanager_cluster
+  **AlertManager HA Configuration\n(告警管理器高可用配置)**
+  - 3-node cluster with gossip
+  - Automatic leader election
+  - State synchronization
+  - Load balancing across instances
+  **高可用配置**
+  - 3節點集群with Gossip
+  - 自動領導者選舉
+  - 狀態同步
+  - 實例間負載平衡
+end note
+
+note right of alert_processing
+  **Alert Processing Rules\n(告警處理規則)**
+  - Group by: cluster, service
+  - Group wait: 30s
+  - Group interval: 5m
+  - Repeat interval: 4h
+  **告警處理規則**
+  - 分組依據: 集群、服務
+  - 分組等待: 30秒
+  - 分組間隔: 5分鐘
+  - 重複間隔: 4小時
+end note
+
+note bottom of escalation_policies
+  **Escalation Timing\n(升級時間)**
+  - Level 1: Immediate
+  - Level 2: 15 minutes
+  - Level 3: 30 minutes
+  - Level 4: 1 hour
+  **升級時間**
+  - 第1級: 立即
+  - 第2級: 15分鐘
+  - 第3級: 30分鐘
+  - 第4級: 1小時
+end note
+
+note left of notification_channels
+  **Channel Selection Criteria\n(通道選擇標準)**
+  - Severity level
+  - Time of day
+  - Team on-call schedule
+  - Service ownership
+  **通道選擇標準**
+  - 嚴重程度
+  - 時間
+  - 團隊值班計劃
+  - 服務擁有權
+end note
+
+@enduml

@@ -1,0 +1,181 @@
+@startuml K8s-Deployment-Architecture
+!theme plain
+title O-RAN MANO Kubernetes Deployment Architecture (O-RAN MANO Kubernetes部署架構)
+
+' Define styles for better visualization
+skinparam componentStyle rectangle
+skinparam linetype ortho
+skinparam backgroundColor white
+
+' External systems
+cloud "External Networks\n(外部網路)" as external {
+  [Internet Gateway\n(網際網路閘道)] as igw
+  [Load Balancer\n(負載平衡器)] as lb
+}
+
+' Multi-cluster architecture
+package "Kind Cluster Environment\n(Kind集群環境)" {
+
+  ' Control Plane
+  package "Control Plane\n(控制平面)" as control {
+    [API Server\n(API伺服器)] as apiserver
+    [etcd] as etcd
+    [Controller Manager\n(控制器管理器)] as cm
+    [Scheduler\n(調度器)] as scheduler
+  }
+
+  ' Namespace organization
+  package "Namespace: oran-system\n(命名空間: O-RAN系統)" as oran_ns {
+
+    ' O-RAN Components
+    package "O-RAN Core Components\n(O-RAN核心組件)" {
+      [O2 DMS\n(O2設備管理服務)] as o2dms
+      [CN DMS\n(雲原生設備管理服務)] as cndms
+      [VNF Operator\n(VNF操作器)] as vnfop
+      [Intent Service\n(意圖服務)] as intent
+    }
+
+    ' SMO Components
+    package "SMO Components\n(SMO組件)" {
+      [Policy Framework\n(策略框架)] as policy
+      [Non-RT RIC\n(非即時RIC)] as nonrtric
+      [A1 Mediator\n(A1中介器)] as a1med
+    }
+
+    ' Network Functions
+    package "Network Functions\n(網路功能)" {
+      [CU Function\n(CU功能)] as cu
+      [DU Function\n(DU功能)] as du
+      [RU Function\n(RU功能)] as ru
+    }
+
+    ' Storage
+    package "Persistent Storage\n(持久化儲存)" {
+      database "PostgreSQL\n(資料庫)" as postgres
+      database "Redis Cache\n(快取)" as redis
+      storage "Shared PVC\n(共享持久卷)" as pvc
+    }
+  }
+
+  ' Monitoring namespace
+  package "Namespace: monitoring\n(命名空間: 監控)" as mon_ns {
+    [Prometheus\n(監控系統)] as prometheus
+    [Grafana\n(視覺化平台)] as grafana
+    [AlertManager\n(告警管理器)] as alertmgr
+  }
+
+  ' Observability namespace
+  package "Namespace: observability\n(命名空間: 可觀測性)" as obs_ns {
+    [Jaeger\n(分散式追蹤)] as jaeger
+    [Loki\n(日誌聚合)] as loki
+    [Tempo\n(追蹤後端)] as tempo
+  }
+
+  ' System namespace
+  package "Namespace: kube-system\n(命名空間: 系統)" as sys_ns {
+    [CoreDNS\n(DNS服務)] as coredns
+    [Calico CNI\n(網路插件)] as calico
+    [NGINX Ingress\n(入口控制器)] as nginx
+  }
+}
+
+' Security and Network Policies
+package "Security Layer\n(安全層)" {
+  [Network Policies\n(網路策略)] as netpol
+  [RBAC\n(角色存取控制)] as rbac
+  [Pod Security\n(Pod安全策略)] as podsec
+  [Service Mesh\n(服務網格)] as mesh
+}
+
+' Resource Management
+package "Resource Management\n(資源管理)" {
+  [Resource Quotas\n(資源配額)] as quotas
+  [Limit Ranges\n(限制範圍)] as limits
+  [HPA\n(水平Pod自動縮放)] as hpa
+  [VPA\n(垂直Pod自動縮放)] as vpa
+}
+
+' Connections - External Access
+external --> nginx : "HTTPS/443\n(HTTPS連接)"
+nginx --> o2dms : "Service Discovery\n(服務發現)"
+nginx --> cndms : "API Gateway\n(API閘道)"
+nginx --> grafana : "Dashboard Access\n(儀表板存取)"
+
+' Control Plane connections
+apiserver --> etcd : "State Storage\n(狀態儲存)"
+cm --> apiserver : "Control Loop\n(控制迴路)"
+scheduler --> apiserver : "Pod Placement\n(Pod放置)"
+
+' Inter-component connections
+o2dms --> postgres : "Data Persistence\n(資料持久化)"
+cndms --> redis : "Cache Layer\n(快取層)"
+vnfop --> apiserver : "Custom Resources\n(自定義資源)"
+intent --> policy : "Policy Enforcement\n(策略執行)"
+
+' Monitoring connections
+prometheus --> o2dms : "Metrics Collection\n(指標收集)"
+prometheus --> cndms : "Health Monitoring\n(健康監控)"
+grafana --> prometheus : "Data Query\n(資料查詢)"
+alertmgr --> prometheus : "Alert Rules\n(告警規則)"
+
+' Observability connections
+jaeger --> o2dms : "Trace Collection\n(追蹤收集)"
+loki --> vnfop : "Log Aggregation\n(日誌聚合)"
+tempo --> jaeger : "Trace Storage\n(追蹤儲存)"
+
+' Network Function connections
+cu --> du : "F1 Interface\n(F1介面)"
+du --> ru : "Open Fronthaul\n(開放前傳)"
+nonrtric --> cu : "Near-RT RIC\n(近即時RIC)"
+
+' Security enforcement
+rbac --> apiserver : "Access Control\n(存取控制)"
+netpol --> calico : "Traffic Policy\n(流量策略)"
+podsec --> scheduler : "Security Constraints\n(安全約束)"
+mesh --> nginx : "mTLS\n(雙向TLS)"
+
+' Resource management
+quotas --> oran_ns : "Resource Limits\n(資源限制)"
+limits --> mon_ns : "Container Limits\n(容器限制)"
+hpa --> vnfop : "Auto Scaling\n(自動縮放)"
+vpa --> o2dms : "Resource Optimization\n(資源最佳化)"
+
+' Storage connections
+postgres --> pvc : "Data Volume\n(資料卷)"
+redis --> pvc : "Cache Volume\n(快取卷)"
+prometheus --> pvc : "Metrics Storage\n(指標儲存)"
+
+note right of control
+  **Control Plane HA\n(控制平面高可用)**
+  - Multi-master setup
+  - etcd clustering
+  - Load balanced API
+  **控制平面高可用性**
+  - 多主節點設置
+  - etcd集群
+  - 負載平衡API
+end note
+
+note bottom of oran_ns
+  **Resource Allocation\n(資源分配)**
+  - CPU: 4-8 cores per component
+  - Memory: 2-8GB per component
+  - Storage: SSD-backed PVCs
+  **資源配置**
+  - CPU: 每組件4-8核心
+  - 記憶體: 每組件2-8GB
+  - 儲存: SSD支援的持久卷
+end note
+
+note left of mon_ns
+  **Monitoring Strategy\n(監控策略)**
+  - 15s scrape interval
+  - 30d retention policy
+  - Multi-dimensional metrics
+  **監控策略**
+  - 15秒抓取間隔
+  - 30天保留策略
+  - 多維度指標
+end note
+
+@enduml

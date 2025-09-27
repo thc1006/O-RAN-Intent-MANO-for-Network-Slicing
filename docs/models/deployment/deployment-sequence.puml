@@ -1,0 +1,280 @@
+@startuml Deployment-Sequence
+!theme plain
+title O-RAN MANO Deployment Sequence (O-RAN MANO部署序列)
+
+' Participants
+participant "CI/CD Pipeline\n(CI/CD流水線)" as cicd
+participant "Helm CLI\n(Helm命令列)" as helm
+participant "Kubernetes API\n(K8s API)" as k8s
+participant "etcd\n(狀態儲存)" as etcd
+participant "Controller Manager\n(控制器管理)" as controller
+participant "Scheduler\n(調度器)" as scheduler
+participant "Kubelet\n(節點代理)" as kubelet
+participant "Container Runtime\n(容器運行時)" as runtime
+participant "Pod\n(容器組)" as pod
+participant "Service\n(服務)" as service
+participant "Ingress\n(入口)" as ingress
+participant "Health Check\n(健康檢查)" as health
+
+== Preparation Phase (準備階段) ==
+
+cicd -> helm : **1. Package Validation\n(套件驗證)**\nHelm lint & template validation
+activate helm
+
+helm -> helm : **2. Dependency Resolution\n(依賴解析)**\nFetch sub-charts and dependencies
+
+helm -> k8s : **3. Cluster Connectivity\n(集群連接性)**\nValidate cluster access and permissions
+activate k8s
+
+k8s -> etcd : **3.1. Cluster State Check\n(集群狀態檢查)**
+activate etcd
+etcd --> k8s : Cluster health status
+deactivate etcd
+
+k8s --> helm : Connection established
+deactivate k8s
+deactivate helm
+
+== Pre-deployment Checks (部署前檢查) ==
+
+helm -> k8s : **4. Namespace Validation\n(命名空間驗證)**
+activate k8s
+
+k8s -> etcd : Check namespace existence
+activate etcd
+etcd --> k8s : Namespace status
+deactivate etcd
+
+alt Namespace doesn't exist (命名空間不存在)
+    k8s -> etcd : Create namespace
+    activate etcd
+    etcd --> k8s : Namespace created
+    deactivate etcd
+end
+
+k8s --> helm : Namespace ready
+
+helm -> k8s : **5. Resource Quota Check\n(資源配額檢查)**
+k8s -> etcd : Validate available resources
+activate etcd
+etcd --> k8s : Resource availability
+deactivate etcd
+
+alt Insufficient resources (資源不足)
+    k8s --> helm : **Error: Resource constraints\n(錯誤: 資源約束)**
+    helm -> cicd : **Deployment failed\n(部署失敗)**
+    note over cicd : Alert DevOps team\n(通知DevOps團隊)
+else Resources available (資源可用)
+    k8s --> helm : Resource validation passed\n(資源驗證通過)
+end
+
+deactivate k8s
+
+== Core Deployment Phase (核心部署階段) ==
+
+helm -> k8s : **6. Apply ConfigMaps\n(應用配置映射)**
+activate k8s
+
+k8s -> etcd : Store configuration data
+activate etcd
+etcd --> k8s : ConfigMaps stored
+deactivate etcd
+
+k8s --> helm : ConfigMaps ready
+
+helm -> k8s : **7. Apply Secrets\n(應用機密)**
+k8s -> etcd : Store encrypted secrets
+activate etcd
+etcd --> k8s : Secrets stored
+deactivate etcd
+
+k8s --> helm : Secrets ready
+
+helm -> k8s : **8. Apply PVCs\n(應用持久卷聲明)**
+k8s -> etcd : Create storage claims
+activate etcd
+etcd --> k8s : PVCs created
+deactivate etcd
+
+k8s --> helm : Storage ready
+
+helm -> k8s : **9. Deploy Core Components\n(部署核心組件)**
+
+loop For each component (O2 DMS, CN DMS, VNF Operator, Intent Service)
+
+    k8s -> etcd : Store deployment spec
+    activate etcd
+    etcd --> k8s : Spec stored
+    deactivate etcd
+
+    k8s -> controller : **9.1. Process Deployment\n(處理部署)**
+    activate controller
+
+    controller -> k8s : Create ReplicaSet
+    k8s -> etcd : Store ReplicaSet
+    activate etcd
+    etcd --> k8s : ReplicaSet stored
+    deactivate etcd
+
+    controller -> scheduler : **9.2. Schedule Pods\n(調度Pod)**
+    activate scheduler
+
+    scheduler -> k8s : Node selection algorithm
+    k8s -> etcd : Get node resources
+    activate etcd
+    etcd --> k8s : Node information
+    deactivate etcd
+
+    scheduler -> k8s : Assign pod to node
+    k8s -> etcd : Update pod binding
+    activate etcd
+    etcd --> k8s : Binding stored
+    deactivate etcd
+
+    deactivate scheduler
+
+    k8s -> kubelet : **9.3. Create Pod\n(創建Pod)**
+    activate kubelet
+
+    kubelet -> runtime : Pull container images
+    activate runtime
+    runtime --> kubelet : Images ready
+    deactivate runtime
+
+    kubelet -> runtime : Create containers
+    activate runtime
+    runtime -> pod : **9.4. Start Application\n(啟動應用)**
+    activate pod
+
+    pod -> pod : **9.5. Application Initialization\n(應用初始化)**
+    pod -> health : Readiness probe
+    activate health
+    health --> pod : Probe result
+    deactivate health
+
+    alt Readiness probe failed (就緒檢查失敗)
+        pod --> kubelet : Not ready
+        kubelet -> k8s : Pod not ready
+        note over k8s : Pod excluded from service\n(Pod從服務中排除)
+    else Readiness probe passed (就緒檢查通過)
+        pod --> kubelet : Pod ready
+        kubelet -> k8s : Pod ready
+        k8s -> etcd : Update pod status
+        activate etcd
+        etcd --> k8s : Status updated
+        deactivate etcd
+    end
+
+    deactivate pod
+    deactivate runtime
+    deactivate kubelet
+    deactivate controller
+
+end
+
+deactivate k8s
+
+== Service Discovery Phase (服務發現階段) ==
+
+helm -> k8s : **10. Create Services\n(創建服務)**
+activate k8s
+
+k8s -> etcd : Store service definitions
+activate etcd
+etcd --> k8s : Services stored
+deactivate etcd
+
+k8s -> service : **10.1. Service Endpoint Discovery\n(服務端點發現)**
+activate service
+
+service -> k8s : Query ready pods
+k8s -> etcd : Get pod endpoints
+activate etcd
+etcd --> k8s : Endpoint list
+deactivate etcd
+
+service -> service : Update endpoint list
+service --> k8s : Service ready
+deactivate service
+
+k8s --> helm : Services configured
+
+== Ingress Configuration (入口配置) ==
+
+helm -> k8s : **11. Configure Ingress\n(配置入口)**
+k8s -> ingress : **11.1. Setup Routing Rules\n(設置路由規則)**
+activate ingress
+
+ingress -> service : Validate backend services
+activate service
+service --> ingress : Service endpoints
+deactivate service
+
+ingress -> ingress : Configure load balancing
+ingress --> k8s : Ingress ready
+deactivate ingress
+
+k8s --> helm : Ingress configured
+deactivate k8s
+
+== Health Validation Phase (健康驗證階段) ==
+
+helm -> health : **12. End-to-End Health Check\n(端到端健康檢查)**
+activate health
+
+health -> ingress : HTTP health check
+activate ingress
+ingress -> service : Route health request
+activate service
+service -> pod : Forward to healthy pods
+activate pod
+pod --> service : Health response
+deactivate pod
+service --> ingress : Service response
+deactivate service
+ingress --> health : Health status
+deactivate ingress
+
+alt Health check failed (健康檢查失敗)
+    health --> helm : **Deployment unhealthy\n(部署不健康)**
+    helm -> cicd : **Initiate rollback\n(啟動回滾)**
+    note over cicd : Trigger rollback procedure\n(觸發回滾程序)
+else Health check passed (健康檢查通過)
+    health --> helm : **Deployment successful\n(部署成功)**
+    helm -> cicd : **Deployment completed\n(部署完成)**
+    note over cicd : Update deployment status\n(更新部署狀態)
+end
+
+deactivate health
+
+== Post-deployment Tasks (部署後任務) ==
+
+cicd -> helm : **13. Setup Monitoring\n(設置監控)**
+activate helm
+
+helm -> k8s : Deploy ServiceMonitors
+activate k8s
+k8s -> etcd : Store monitoring config
+activate etcd
+etcd --> k8s : Config stored
+deactivate etcd
+k8s --> helm : Monitoring enabled
+deactivate k8s
+
+helm -> cicd : **14. Register in Service Mesh\n(註冊到服務網格)**
+cicd -> cicd : Update service registry
+
+deactivate helm
+
+note over cicd
+  **Deployment Metrics\n(部署指標)**
+  - Total time: ~5-10 minutes
+  - Success rate: >95%
+  - Rollback time: <2 minutes
+  **部署指標**
+  - 總時間: 約5-10分鐘
+  - 成功率: >95%
+  - 回滾時間: <2分鐘
+end note
+
+@enduml

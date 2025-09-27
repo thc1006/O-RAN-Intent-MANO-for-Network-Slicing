@@ -1,0 +1,60 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: ran-dms-servicemonitor
+  namespace: oran-monitoring
+  labels:
+    app: ran-dms
+    component: dms
+    app.kubernetes.io/part-of: o-ran-mano
+    monitoring.oran.io/component: ran-dms
+spec:
+  selector:
+    matchLabels:
+      app: ran-dms
+      component: dms
+  namespaceSelector:
+    matchNames:
+    - oran-system
+  endpoints:
+  - port: metrics
+    interval: 30s
+    path: /metrics
+    scheme: http
+    scrapeTimeout: 10s
+    metricRelabelings:
+    - sourceLabels: [__name__]
+      regex: 'ran_cell_.*'
+      targetLabel: __tmp_ran_cell_metric
+      replacement: 'true'
+    - sourceLabels: [__name__]
+      regex: 'ran_handover_.*'
+      targetLabel: __tmp_ran_handover_metric
+      replacement: 'true'
+    - sourceLabels: [__name__]
+      regex: 'ran_interference_.*'
+      targetLabel: __tmp_ran_interference_metric
+      replacement: 'true'
+    - sourceLabels: [__name__]
+      regex: 'ran_throughput_.*'
+      targetLabel: __tmp_ran_throughput_metric
+      replacement: 'true'
+    - sourceLabels: [__name__]
+      regex: 'ran_latency_.*'
+      targetLabel: __tmp_ran_latency_metric
+      replacement: 'true'
+    relabelings:
+    - sourceLabels: [__meta_kubernetes_service_name]
+      targetLabel: service
+    - sourceLabels: [__meta_kubernetes_namespace]
+      targetLabel: namespace
+    - sourceLabels: [__meta_kubernetes_pod_name]
+      targetLabel: pod
+    - sourceLabels: [__meta_kubernetes_pod_node_name]
+      targetLabel: node
+    - targetLabel: component
+      replacement: ran-dms
+    - targetLabel: system
+      replacement: o-ran-mano
+    - targetLabel: domain
+      replacement: ran

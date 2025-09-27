@@ -1,0 +1,236 @@
+@startuml Grafana-Dashboard-Architecture
+!theme plain
+title Grafana Dashboard Architecture (Grafana儀表板架構)
+
+' Define styles
+skinparam componentStyle rectangle
+skinparam linetype ortho
+skinparam backgroundColor white
+
+' External access
+cloud "External Access\n(外部存取)" as external {
+  [Browser\n(瀏覽器)] as browser
+  [Mobile App\n(行動應用)] as mobile
+  [API Clients\n(API客戶端)] as api_clients
+}
+
+' Kubernetes cluster context
+package "Kubernetes Cluster\n(Kubernetes集群)" {
+
+  ' Ingress layer
+  package "Ingress Layer\n(入口層)" as ingress_layer {
+    [NGINX Ingress\n(NGINX入口控制器)] as nginx_ingress
+    [TLS Termination\n(TLS終止)] as tls
+    [Rate Limiting\n(速率限制)] as rate_limit
+  }
+
+  ' Grafana deployment
+  package "Grafana Deployment\n(Grafana部署)" as grafana_deploy {
+
+    package "Grafana Core\n(Grafana核心)" as grafana_core {
+      [Grafana Server\n(Grafana伺服器)] as grafana_server
+      [HTTP API\n(HTTP API)] as grafana_api
+      [WebSocket\n(WebSocket)] as websocket
+      [Alerting Engine\n(告警引擎)] as alerting_engine
+    }
+
+    package "Authentication\n(身份驗證)" as auth {
+      [OAuth2/OIDC\n(OAuth2/OIDC)] as oauth
+      [LDAP\n(LDAP)] as ldap
+      [Basic Auth\n(基本驗證)] as basic_auth
+      [API Keys\n(API金鑰)] as api_keys
+    }
+
+    package "Data Sources\n(資料來源)" as datasources {
+      [Prometheus DS\n(Prometheus資料來源)] as prom_ds
+      [Loki DS\n(Loki資料來源)] as loki_ds
+      [Jaeger DS\n(Jaeger資料來源)] as jaeger_ds
+      [PostgreSQL DS\n(PostgreSQL資料來源)] as postgres_ds
+    }
+
+    package "Dashboard Management\n(儀表板管理)" as dashboard_mgmt {
+      [Dashboard Provisioning\n(儀表板配置)] as provisioning
+      [Dashboard Store\n(儀表板儲存)] as dashboard_store
+      [Folder Management\n(資料夾管理)] as folder_mgmt
+      [Permission Control\n(權限控制)] as permissions
+    }
+
+    package "Plugin System\n(外掛系統)" as plugins {
+      [Panel Plugins\n(面板外掛)] as panel_plugins
+      [Datasource Plugins\n(資料來源外掛)] as ds_plugins
+      [App Plugins\n(應用外掛)] as app_plugins
+    }
+  }
+
+  ' Dashboard categories
+  package "O-RAN Dashboard Categories\n(O-RAN儀表板類別)" as dashboard_categories {
+
+    package "Infrastructure Dashboards\n(基礎設施儀表板)" as infra_dashboards {
+      [Kubernetes Overview\n(Kubernetes總覽)] as k8s_overview
+      [Node Monitoring\n(節點監控)] as node_monitoring
+      [Pod Resource Usage\n(Pod資源使用)] as pod_resources
+      [Network Performance\n(網路效能)] as network_perf
+    }
+
+    package "O-RAN Component Dashboards\n(O-RAN組件儀表板)" as oran_dashboards {
+      [O2 DMS Dashboard\n(O2 DMS儀表板)] as o2_dashboard
+      [CN DMS Dashboard\n(CN DMS儀表板)] as cn_dashboard
+      [VNF Operator Dashboard\n(VNF操作器儀表板)] as vnf_dashboard
+      [Intent Service Dashboard\n(意圖服務儀表板)] as intent_dashboard
+    }
+
+    package "Application Performance\n(應用效能)" as app_dashboards {
+      [API Response Times\n(API回應時間)] as api_response
+      [Database Performance\n(資料庫效能)] as db_performance
+      [Message Queue Metrics\n(訊息佇列指標)] as mq_metrics
+      [Cache Performance\n(快取效能)] as cache_perf
+    }
+
+    package "Business Metrics\n(業務指標)" as business_dashboards {
+      [Intent Processing\n(意圖處理)] as intent_processing
+      [Network Slicing KPIs\n(網路切片KPI)] as slicing_kpis
+      [QoS Compliance\n(QoS合規性)] as qos_compliance
+      [SLA Monitoring\n(SLA監控)] as sla_monitoring
+    }
+
+    package "Alerting Dashboards\n(告警儀表板)" as alert_dashboards {
+      [Alert Overview\n(告警總覽)] as alert_overview
+      [Alert History\n(告警歷史)] as alert_history
+      [Escalation Status\n(升級狀態)] as escalation_status
+    }
+  }
+
+  ' Configuration and storage
+  package "Configuration & Storage\n(配置和儲存)" as config_storage {
+    [ConfigMaps\n(配置映射)] as configmaps
+    [Secrets\n(機密)] as secrets
+    [SQLite Database\n(SQLite資料庫)] as sqlite_db
+    [PVC Storage\n(持久卷儲存)] as pvc_storage
+  }
+
+  ' External data sources
+  package "Data Source Targets\n(資料來源目標)" as targets {
+    [Prometheus\n(Prometheus)] as prometheus
+    [Loki\n(Loki)] as loki
+    [Jaeger\n(Jaeger)] as jaeger
+    [PostgreSQL\n(PostgreSQL)] as postgres
+    [InfluxDB\n(InfluxDB)] as influxdb
+  }
+}
+
+' External access flow
+external --> nginx_ingress : "HTTPS/443\n(HTTPS連接)"
+nginx_ingress --> tls : "SSL/TLS\n(SSL/TLS)"
+tls --> rate_limit : "Decrypted traffic\n(解密流量)"
+rate_limit --> grafana_server : "Rate-limited requests\n(速率限制請求)"
+
+' Authentication flow
+grafana_server --> auth : "Authentication request\n(身份驗證請求)"
+oauth --> grafana_server : "OAuth token\n(OAuth令牌)"
+ldap --> grafana_server : "LDAP validation\n(LDAP驗證)"
+basic_auth --> grafana_server : "Basic credentials\n(基本憑證)"
+api_keys --> grafana_api : "API authentication\n(API身份驗證)"
+
+' Core Grafana components
+grafana_server --> grafana_api : "REST API\n(REST API)"
+grafana_server --> websocket : "Real-time updates\n(即時更新)"
+grafana_server --> alerting_engine : "Alert evaluation\n(告警評估)"
+
+' Data source connections
+datasources --> targets : "Query execution\n(查詢執行)"
+prom_ds --> prometheus : "PromQL queries\n(PromQL查詢)"
+loki_ds --> loki : "LogQL queries\n(LogQL查詢)"
+jaeger_ds --> jaeger : "Trace queries\n(追蹤查詢)"
+postgres_ds --> postgres : "SQL queries\n(SQL查詢)"
+
+' Dashboard management
+grafana_server --> dashboard_mgmt : "Dashboard operations\n(儀表板操作)"
+provisioning --> configmaps : "Auto-provision\n(自動配置)"
+dashboard_store --> sqlite_db : "Dashboard metadata\n(儀表板元資料)"
+folder_mgmt --> permissions : "Access control\n(存取控制)"
+
+' Plugin system
+grafana_server --> plugins : "Plugin management\n(外掛管理)"
+panel_plugins --> dashboard_categories : "Custom panels\n(自定義面板)"
+ds_plugins --> datasources : "Data source types\n(資料來源類型)"
+
+' Dashboard categories to data sources
+infra_dashboards --> prom_ds : "Infrastructure metrics\n(基礎設施指標)"
+oran_dashboards --> prom_ds : "Component metrics\n(組件指標)"
+app_dashboards --> prom_ds : "Performance data\n(效能資料)"
+business_dashboards --> postgres_ds : "Business data\n(業務資料)"
+alert_dashboards --> prom_ds : "Alert data\n(告警資料)"
+
+' Specific dashboard connections
+k8s_overview --> prometheus : "Cluster metrics\n(集群指標)"
+o2_dashboard --> prometheus : "O2 DMS metrics\n(O2 DMS指標)"
+cn_dashboard --> prometheus : "CN DMS metrics\n(CN DMS指標)"
+vnf_dashboard --> prometheus : "VNF metrics\n(VNF指標)"
+intent_dashboard --> prometheus : "Intent metrics\n(意圖指標)"
+
+api_response --> loki : "Access logs\n(存取日誌)"
+db_performance --> postgres : "DB statistics\n(資料庫統計)"
+
+' Configuration and storage
+grafana_server --> config_storage : "Configuration\n(配置)"
+configmaps --> grafana_server : "Environment config\n(環境配置)"
+secrets --> grafana_server : "Sensitive data\n(敏感資料)"
+sqlite_db --> pvc_storage : "Persistent storage\n(持久儲存)"
+
+' Alerting flow
+alerting_engine --> prometheus : "Alert rules\n(告警規則)"
+alerting_engine --> grafana_api : "Notification API\n(通知API)"
+
+note top of grafana_core
+  **Grafana Configuration\n(Grafana配置)**
+  - Version: 9.x+
+  - High Availability: 3 replicas
+  - Session storage: Redis
+  - Database: PostgreSQL
+  **配置詳情**
+  - 版本: 9.x+
+  - 高可用性: 3個副本
+  - 會話儲存: Redis
+  - 資料庫: PostgreSQL
+end note
+
+note right of dashboard_categories
+  **Dashboard Organization\n(儀表板組織)**
+  - 50+ pre-built dashboards
+  - Folder-based categorization
+  - Role-based access control
+  - Auto-refresh intervals
+  **儀表板組織**
+  - 50+預建儀表板
+  - 基於資料夾分類
+  - 基於角色存取控制
+  - 自動刷新間隔
+end note
+
+note bottom of datasources
+  **Data Source Performance\n(資料來源效能)**
+  - Query timeout: 30s
+  - Connection pooling
+  - Cache TTL: 5 minutes
+  - Parallel query limit: 10
+  **資料來源效能**
+  - 查詢超時: 30秒
+  - 連接池
+  - 快取TTL: 5分鐘
+  - 並行查詢限制: 10
+end note
+
+note left of auth
+  **Security Features\n(安全功能)**
+  - OAuth2/OIDC integration
+  - Multi-factor authentication
+  - Session timeout: 24h
+  - API rate limiting
+  **安全功能**
+  - OAuth2/OIDC整合
+  - 多因子驗證
+  - 會話超時: 24小時
+  - API速率限制
+end note
+
+@enduml

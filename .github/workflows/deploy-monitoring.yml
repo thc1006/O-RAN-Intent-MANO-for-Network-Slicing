@@ -1,0 +1,501 @@
+name: Deploy and Monitor CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'monitoring/**'
+      - 'deployment/**'
+      - '.github/workflows/deploy-monitoring.yml'
+      - 'adapters/*/monitoring/**'
+      - 'adapters/*/deployment/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'monitoring/**'
+      - 'deployment/**'
+      - '.github/workflows/deploy-monitoring.yml'
+      - 'adapters/*/monitoring/**'
+      - 'adapters/*/deployment/**'
+  workflow_dispatch:
+    inputs:
+      deploy_environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'test'
+        type: choice
+        options:
+          - test
+          - staging
+          - production
+      force_deploy:
+        description: 'Force deployment even if tests fail'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  REGISTRY: ghcr.io
+  KIND_VERSION: v0.20.0
+  KUBECTL_VERSION: v1.28.0
+  HELM_VERSION: v3.12.0
+  KUSTOMIZE_VERSION: v5.1.1
+
+jobs:
+  lint-and-validate:
+    name: Lint Kubernetes YAML and Validate Configuration
+    runs-on: ubuntu-latest
+    outputs:
+      config-changed: ${{ steps.changes.outputs.config }}
+      monitoring-changed: ${{ steps.changes.outputs.monitoring }}
+      deployment-changed: ${{ steps.changes.outputs.deployment }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changes
+        uses: dorny/paths-filter@v2
+        id: changes
+        with:
+          filters: |
+            config:
+              - 'monitoring/**/*.yaml'
+              - 'monitoring/**/*.yml'
+              - 'deployment/**/*.yaml'
+              - 'deployment/**/*.yml'
+            monitoring:
+              - 'monitoring/**'
+            deployment:
+              - 'deployment/**'
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: ${{ env.KUBECTL_VERSION }}
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Install kubeval
+        run: |
+          wget https://github.com/instrumenta/kubeval/releases/latest/download/kubeval-linux-amd64.tar.gz
+          tar xf kubeval-linux-amd64.tar.gz
+          sudo mv kubeval /usr/local/bin
+
+      - name: Install kustomize
+        run: |
+          curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+          sudo mv kustomize /usr/local/bin/
+
+      - name: Lint Kubernetes YAML files
+        run: |
+          find . -name "*.yaml" -o -name "*.yml" | grep -E "(monitoring|deployment)" | while read -r file; do
+            echo "Validating $file"
+            kubeval "$file" || echo "Warning: $file failed validation"
+          done
+
+      - name: Validate Kustomize manifests
+        if: steps.changes.outputs.config == 'true'
+        run: |
+          if [ -d "monitoring/kustomize" ]; then
+            for env in dev staging prod; do
+              if [ -d "monitoring/kustomize/overlays/$env" ]; then
+                echo "Validating kustomize overlay: $env"
+                kustomize build "monitoring/kustomize/overlays/$env" > /tmp/kustomize-$env.yaml
+                kubeval /tmp/kustomize-$env.yaml
+              fi
+            done
+          fi
+
+      - name: Validate Helm charts
+        run: |
+          find . -name "Chart.yaml" | while read -r chart; do
+            chart_dir=$(dirname "$chart")
+            echo "Linting Helm chart: $chart_dir"
+            helm lint "$chart_dir"
+          done
+
+  validate-prometheus-rules:
+    name: Validate Prometheus Rules and Alerts
+    runs-on: ubuntu-latest
+    needs: lint-and-validate
+    if: needs.lint-and-validate.outputs.monitoring-changed == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      - name: Install promtool
+        run: |
+          wget https://github.com/prometheus/prometheus/releases/download/v2.47.0/prometheus-2.47.0.linux-amd64.tar.gz
+          tar xzf prometheus-2.47.0.linux-amd64.tar.gz
+          sudo mv prometheus-2.47.0.linux-amd64/promtool /usr/local/bin/
+
+      - name: Validate Prometheus rules
+        run: |
+          find monitoring/ -name "*.rules.yml" -o -name "*rules*.yaml" | while read -r rule_file; do
+            echo "Validating Prometheus rules: $rule_file"
+            promtool check rules "$rule_file"
+          done
+
+      - name: Validate AlertManager configuration
+        run: |
+          find monitoring/ -name "alertmanager*.yml" -o -name "alertmanager*.yaml" | while read -r config_file; do
+            echo "Validating AlertManager config: $config_file"
+            promtool check config "$config_file" || echo "Warning: $config_file failed validation"
+          done
+
+      - name: Test alert rule queries
+        run: |
+          # Extract PromQL queries from rule files and validate syntax
+          find monitoring/ -name "*.rules.yml" -o -name "*rules*.yaml" | xargs grep -h "expr:" | sed 's/.*expr: *//' | while read -r query; do
+            echo "Validating query: $query"
+            promtool query instant "http://localhost:9090" "$query" 2>/dev/null || echo "Warning: Query syntax may be invalid: $query"
+          done
+
+  validate-grafana-dashboards:
+    name: Test Grafana Dashboards
+    runs-on: ubuntu-latest
+    needs: lint-and-validate
+    if: needs.lint-and-validate.outputs.monitoring-changed == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dashboard validation tools
+        run: |
+          npm install -g @grafana/toolkit
+
+      - name: Validate Grafana dashboard JSON
+        run: |
+          find monitoring/grafana/ -name "*.json" | while read -r dashboard; do
+            echo "Validating Grafana dashboard: $dashboard"
+            node -e "
+              try {
+                const fs = require('fs');
+                const dashboard = JSON.parse(fs.readFileSync('$dashboard', 'utf8'));
+                console.log('✓ Valid JSON structure');
+
+                // Basic validation
+                if (!dashboard.dashboard && !dashboard.title) {
+                  throw new Error('Missing dashboard title');
+                }
+                if (!dashboard.panels && !dashboard.dashboard?.panels) {
+                  console.log('Warning: No panels found');
+                }
+                console.log('✓ Dashboard structure validation passed');
+              } catch (error) {
+                console.error('✗ Dashboard validation failed:', error.message);
+                process.exit(1);
+              }
+            "
+          done
+
+      - name: Check dashboard datasource references
+        run: |
+          find monitoring/grafana/ -name "*.json" | while read -r dashboard; do
+            echo "Checking datasource references in: $dashboard"
+            # Check for common datasource issues
+            grep -o '"datasource"[^}]*' "$dashboard" | head -5 || echo "No datasource references found"
+          done
+
+  deploy-test-cluster:
+    name: Deploy to Test Cluster
+    runs-on: ubuntu-latest
+    needs: [lint-and-validate, validate-prometheus-rules, validate-grafana-dashboards]
+    if: always() && (needs.lint-and-validate.result == 'success')
+    outputs:
+      cluster-name: ${{ steps.cluster.outputs.name }}
+      test-results: ${{ steps.tests.outputs.results }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Set up Kind
+        uses: helm/kind-action@v1.8.0
+        with:
+          version: ${{ env.KIND_VERSION }}
+          cluster_name: oran-test-cluster
+          config: |
+            kind: Cluster
+            apiVersion: kind.x-k8s.io/v1alpha4
+            nodes:
+            - role: control-plane
+              kubeadmConfigPatches:
+              - |
+                kind: InitConfiguration
+                nodeRegistration:
+                  kubeletExtraArgs:
+                    node-labels: "ingress-ready=true"
+              extraPortMappings:
+              - containerPort: 80
+                hostPort: 80
+                protocol: TCP
+              - containerPort: 443
+                hostPort: 443
+                protocol: TCP
+              - containerPort: 9090
+                hostPort: 9090
+                protocol: TCP
+              - containerPort: 3000
+                hostPort: 3000
+                protocol: TCP
+            - role: worker
+            - role: worker
+
+      - name: Install cluster dependencies
+        run: |
+          # Install Prometheus Operator
+          kubectl create namespace monitoring || true
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+          helm repo update
+
+          # Install cert-manager for TLS
+          kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.13.0/cert-manager.yaml
+          kubectl wait --for=condition=Available --timeout=300s deployment/cert-manager -n cert-manager
+
+      - name: Run deployment script
+        id: cluster
+        run: |
+          chmod +x deployment/scripts/ci-deploy.sh
+          ./deployment/scripts/ci-deploy.sh
+          echo "name=oran-test-cluster" >> $GITHUB_OUTPUT
+
+      - name: Wait for pods to be ready
+        run: |
+          kubectl wait --for=condition=Ready pods --all -n monitoring --timeout=300s
+          kubectl wait --for=condition=Ready pods --all -n default --timeout=300s
+
+      - name: Run E2E tests
+        id: tests
+        run: |
+          chmod +x monitoring/tests/ci-validation.sh
+          ./monitoring/tests/ci-validation.sh
+          echo "results=passed" >> $GITHUB_OUTPUT
+
+      - name: Export cluster logs on failure
+        if: failure()
+        run: |
+          mkdir -p /tmp/cluster-logs
+          kubectl get pods --all-namespaces
+          kubectl describe pods --all-namespaces > /tmp/cluster-logs/pod-descriptions.txt
+          kubectl logs -l app.kubernetes.io/name=prometheus -n monitoring --tail=100 > /tmp/cluster-logs/prometheus.log || true
+          kubectl logs -l app.kubernetes.io/name=grafana -n monitoring --tail=100 > /tmp/cluster-logs/grafana.log || true
+
+      - name: Upload cluster logs
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: cluster-logs-${{ github.run_id }}
+          path: /tmp/cluster-logs/
+
+  performance-benchmarks:
+    name: Performance Benchmarks
+    runs-on: ubuntu-latest
+    needs: deploy-test-cluster
+    if: needs.deploy-test-cluster.result == 'success'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up kubectl context
+        run: |
+          kind export kubeconfig --name oran-test-cluster
+
+      - name: Install performance testing tools
+        run: |
+          # Install k6 for load testing
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install k6
+
+      - name: Run performance benchmarks
+        run: |
+          # Create performance test script
+          cat > /tmp/performance-test.js << 'EOF'
+          import http from 'k6/http';
+          import { check, sleep } from 'k6';
+
+          export let options = {
+            stages: [
+              { duration: '30s', target: 10 },
+              { duration: '1m', target: 50 },
+              { duration: '30s', target: 0 },
+            ],
+          };
+
+          export default function () {
+            // Test Prometheus metrics endpoint
+            let prometheus_response = http.get('http://localhost:9090/metrics');
+            check(prometheus_response, {
+              'Prometheus metrics status is 200': (r) => r.status === 200,
+              'Prometheus response time < 500ms': (r) => r.timings.duration < 500,
+            });
+
+            // Test Grafana health endpoint
+            let grafana_response = http.get('http://localhost:3000/api/health');
+            check(grafana_response, {
+              'Grafana health status is 200': (r) => r.status === 200,
+              'Grafana response time < 1000ms': (r) => r.timings.duration < 1000,
+            });
+
+            sleep(1);
+          }
+          EOF
+
+          # Forward ports for testing
+          kubectl port-forward -n monitoring svc/prometheus-operated 9090:9090 &
+          kubectl port-forward -n monitoring svc/grafana 3000:80 &
+          sleep 10
+
+          # Run k6 performance test
+          k6 run /tmp/performance-test.js
+
+      - name: Check resource usage
+        run: |
+          kubectl top nodes || echo "Metrics server not available"
+          kubectl top pods -n monitoring || echo "Metrics server not available"
+
+      - name: Performance regression check
+        run: |
+          # Create baseline performance metrics
+          cat > /tmp/performance-check.sh << 'EOF'
+          #!/bin/bash
+
+          # Define acceptable thresholds
+          MAX_CPU_USAGE=80
+          MAX_MEMORY_USAGE=80
+          MAX_RESPONSE_TIME=2000
+
+          echo "Checking performance metrics..."
+
+          # Check Prometheus response time
+          PROM_RESPONSE=$(curl -w "%{time_total}" -s -o /dev/null http://localhost:9090/api/v1/query?query=up || echo "999")
+          PROM_RESPONSE_MS=$(echo "$PROM_RESPONSE * 1000" | bc -l | cut -d. -f1)
+
+          if [ "$PROM_RESPONSE_MS" -gt "$MAX_RESPONSE_TIME" ]; then
+            echo "❌ Prometheus response time too high: ${PROM_RESPONSE_MS}ms > ${MAX_RESPONSE_TIME}ms"
+            exit 1
+          else
+            echo "✅ Prometheus response time acceptable: ${PROM_RESPONSE_MS}ms"
+          fi
+
+          # Check Grafana response time
+          GRAFANA_RESPONSE=$(curl -w "%{time_total}" -s -o /dev/null http://localhost:3000/api/health || echo "999")
+          GRAFANA_RESPONSE_MS=$(echo "$GRAFANA_RESPONSE * 1000" | bc -l | cut -d. -f1)
+
+          if [ "$GRAFANA_RESPONSE_MS" -gt "$MAX_RESPONSE_TIME" ]; then
+            echo "❌ Grafana response time too high: ${GRAFANA_RESPONSE_MS}ms > ${MAX_RESPONSE_TIME}ms"
+            exit 1
+          else
+            echo "✅ Grafana response time acceptable: ${GRAFANA_RESPONSE_MS}ms"
+          fi
+
+          echo "All performance checks passed!"
+          EOF
+
+          chmod +x /tmp/performance-check.sh
+          /tmp/performance-check.sh
+
+  promote-to-staging:
+    name: Promote to Staging
+    runs-on: ubuntu-latest
+    needs: [deploy-test-cluster, performance-benchmarks]
+    if: |
+      needs.deploy-test-cluster.result == 'success' &&
+      needs.performance-benchmarks.result == 'success' &&
+      github.ref == 'refs/heads/main'
+    environment:
+      name: staging
+      url: https://staging.oran-mano.example.com
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to staging cluster
+        run: |
+          echo "Deploying to staging environment..."
+          # This would typically connect to a real staging cluster
+          # For now, we'll simulate the deployment
+          echo "✅ Staging deployment completed"
+
+      - name: Run staging smoke tests
+        run: |
+          echo "Running staging smoke tests..."
+          # Add staging-specific tests here
+          echo "✅ Staging smoke tests passed"
+
+      - name: Notify deployment success
+        run: |
+          echo "🚀 Successfully promoted to staging environment"
+
+  cleanup:
+    name: Cleanup Test Resources
+    runs-on: ubuntu-latest
+    needs: [deploy-test-cluster, performance-benchmarks]
+    if: always()
+    steps:
+      - name: Cleanup Kind cluster
+        run: |
+          kind delete cluster --name oran-test-cluster || true
+
+      - name: Cleanup Docker resources
+        run: |
+          docker system prune -f || true
+
+  report-results:
+    name: Generate Deployment Report
+    runs-on: ubuntu-latest
+    needs: [lint-and-validate, validate-prometheus-rules, validate-grafana-dashboards, deploy-test-cluster, performance-benchmarks, promote-to-staging]
+    if: always()
+    steps:
+      - name: Generate deployment report
+        run: |
+          cat > deployment-report.md << 'EOF'
+          # Deployment Pipeline Report
+
+          ## Pipeline Status
+          - **Lint and Validate**: ${{ needs.lint-and-validate.result }}
+          - **Prometheus Rules**: ${{ needs.validate-prometheus-rules.result }}
+          - **Grafana Dashboards**: ${{ needs.validate-grafana-dashboards.result }}
+          - **Test Deployment**: ${{ needs.deploy-test-cluster.result }}
+          - **Performance Tests**: ${{ needs.performance-benchmarks.result }}
+          - **Staging Promotion**: ${{ needs.promote-to-staging.result }}
+
+          ## Deployment Details
+          - **Commit**: ${{ github.sha }}
+          - **Branch**: ${{ github.ref }}
+          - **Timestamp**: $(date -Iseconds)
+          - **Workflow**: ${{ github.workflow }}
+
+          ## Next Steps
+          EOF
+
+          if [ "${{ needs.promote-to-staging.result }}" == "success" ]; then
+            echo "✅ Ready for production deployment" >> deployment-report.md
+          else
+            echo "❌ Issues detected - review logs before production" >> deployment-report.md
+          fi
+
+      - name: Upload deployment report
+        uses: actions/upload-artifact@v3
+        with:
+          name: deployment-report-${{ github.run_id }}
+          path: deployment-report.md

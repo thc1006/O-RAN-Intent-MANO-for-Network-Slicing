@@ -1,0 +1,241 @@
+# ServiceMonitor examples for O-RAN components
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: orchestrator-metrics
+  namespace: o-ran-mano
+  labels:
+    app.kubernetes.io/name: orchestrator
+    app.kubernetes.io/component: o-ran-mano
+    app.kubernetes.io/part-of: o-ran-platform
+    prometheus: o-ran
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: orchestrator
+  endpoints:
+    - port: metrics
+      path: /metrics
+      scheme: http
+      interval: 30s
+      scrapeTimeout: 10s
+      honorLabels: false
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_service_name]
+          targetLabel: service
+        - sourceLabels: [__meta_kubernetes_namespace]
+          targetLabel: namespace
+        - sourceLabels: [__meta_kubernetes_pod_name]
+          targetLabel: pod
+      metricRelabelings:
+        - sourceLabels: [__name__]
+          regex: 'go_.*'
+          action: drop
+  namespaceSelector:
+    matchNames:
+      - o-ran-mano
+
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: vnf-operator-metrics
+  namespace: o-ran-mano
+  labels:
+    app.kubernetes.io/name: vnf-operator
+    app.kubernetes.io/component: o-ran-mano
+    app.kubernetes.io/part-of: o-ran-platform
+    prometheus: o-ran
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: vnf-operator
+  endpoints:
+    - port: metrics
+      path: /metrics
+      scheme: https
+      interval: 15s
+      scrapeTimeout: 5s
+      tlsConfig:
+        insecureSkipVerify: false
+        serverName: vnf-operator.o-ran-mano.svc.cluster.local
+        cert:
+          secret:
+            name: vnf-operator-tls
+            key: tls.crt
+        keySecret:
+          name: vnf-operator-tls
+          key: tls.key
+        ca:
+          configMap:
+            name: o-ran-ca-bundle
+            key: ca.crt
+      bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_service_name]
+          targetLabel: service
+        - sourceLabels: [__meta_kubernetes_namespace]
+          targetLabel: namespace
+        - sourceLabels: [__meta_kubernetes_pod_name]
+          targetLabel: pod
+        - sourceLabels: [__meta_kubernetes_pod_label_vnf_type]
+          targetLabel: vnf_type
+        - sourceLabels: [__meta_kubernetes_pod_label_operator_mode]
+          targetLabel: operator_mode
+  namespaceSelector:
+    matchNames:
+      - o-ran-mano
+
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: dms-metrics
+  namespace: o-ran-mano
+  labels:
+    app.kubernetes.io/name: dms
+    app.kubernetes.io/component: o-ran-mano
+    app.kubernetes.io/part-of: o-ran-platform
+    prometheus: o-ran
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: dms
+    matchExpressions:
+      - key: environment
+        operator: NotIn
+        values:
+          - development
+      - key: app.kubernetes.io/version
+        operator: Exists
+  endpoints:
+    - port: metrics
+      path: /metrics
+      scheme: http
+      interval: 30s
+      scrapeTimeout: 10s
+      relabelings:
+        - sourceLabels: [__name__]
+          regex: 'go_.*'
+          action: drop
+        - sourceLabels: [__meta_kubernetes_pod_name]
+          targetLabel: pod
+        - sourceLabels: [__meta_kubernetes_pod_label_dms_role]
+          targetLabel: dms_role
+        - sourceLabels: [__meta_kubernetes_service_name]
+          targetLabel: service
+      metricRelabelings:
+        - sourceLabels: [__name__]
+          regex: 'o_ran_(.*)'
+          targetLabel: __name__
+          replacement: 'oran_${1}'
+        - sourceLabels: [component]
+          regex: 'dms'
+          targetLabel: component_type
+          replacement: 'data_management'
+  namespaceSelector:
+    matchNames:
+      - o-ran-mano
+
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: o-ran-infrastructure
+  namespace: o-ran-monitoring
+  labels:
+    app.kubernetes.io/name: o-ran-infrastructure
+    app.kubernetes.io/component: monitoring
+    prometheus: o-ran
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/part-of: o-ran-platform
+    matchExpressions:
+      - key: app.kubernetes.io/name
+        operator: In
+        values:
+          - prometheus
+          - grafana
+          - alertmanager
+  endpoints:
+    - port: web
+      path: /metrics
+      scheme: http
+      interval: 30s
+      scrapeTimeout: 10s
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_service_name]
+          targetLabel: service
+        - sourceLabels: [__meta_kubernetes_namespace]
+          targetLabel: namespace
+        - sourceLabels: [__meta_kubernetes_pod_name]
+          targetLabel: pod
+        - sourceLabels: [__meta_kubernetes_service_label_app_kubernetes_io_name]
+          targetLabel: component
+  namespaceSelector:
+    matchNames:
+      - o-ran-monitoring
+
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: o-ran-multi-port
+  namespace: o-ran-mano
+  labels:
+    app.kubernetes.io/name: o-ran-multi-port
+    prometheus: o-ran
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: multi-service
+  endpoints:
+    # HTTP metrics endpoint
+    - port: metrics-http
+      path: /metrics
+      scheme: http
+      interval: 30s
+      scrapeTimeout: 10s
+      relabelings:
+        - sourceLabels: [__address__]
+          targetLabel: __tmp_port
+          regex: '.*:(.+)'
+        - sourceLabels: [__tmp_port]
+          targetLabel: endpoint_type
+          replacement: 'http'
+    # HTTPS metrics endpoint
+    - port: metrics-https
+      path: /secure-metrics
+      scheme: https
+      interval: 30s
+      scrapeTimeout: 10s
+      tlsConfig:
+        insecureSkipVerify: false
+      bearerTokenSecret:
+        name: metrics-token
+        key: token
+      relabelings:
+        - sourceLabels: [__address__]
+          targetLabel: __tmp_port
+          regex: '.*:(.+)'
+        - sourceLabels: [__tmp_port]
+          targetLabel: endpoint_type
+          replacement: 'https'
+    # Management endpoint
+    - port: management
+      path: /management/prometheus
+      scheme: http
+      interval: 60s
+      scrapeTimeout: 15s
+      relabelings:
+        - sourceLabels: [__address__]
+          targetLabel: __tmp_port
+          regex: '.*:(.+)'
+        - sourceLabels: [__tmp_port]
+          targetLabel: endpoint_type
+          replacement: 'management'
+  namespaceSelector:
+    matchNames:
+      - o-ran-mano

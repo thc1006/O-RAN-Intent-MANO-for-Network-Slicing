@@ -1,0 +1,111 @@
+# OpenMetrics format examples for O-RAN components
+
+# TYPE o_ran_requests_total counter
+# HELP o_ran_requests_total Total number of HTTP requests processed by O-RAN components
+o_ran_requests_total{component="orchestrator",namespace="o-ran-mano",pod="orchestrator-abc123",slice_id="slice-001",method="GET",endpoint="/api/v1/network-slices",status="200"} 1542
+o_ran_requests_total{component="orchestrator",namespace="o-ran-mano",pod="orchestrator-abc123",slice_id="slice-001",method="POST",endpoint="/api/v1/network-slices",status="201"} 89
+o_ran_requests_total{component="orchestrator",namespace="o-ran-mano",pod="orchestrator-abc123",slice_id="slice-001",method="GET",endpoint="/api/v1/health",status="200"} 3456
+o_ran_requests_total{component="vnf-operator",namespace="o-ran-mano",pod="vnf-operator-xyz789",slice_id="slice-002",method="GET",endpoint="/metrics",status="200"} 2341
+o_ran_requests_total{component="vnf-operator",namespace="o-ran-mano",pod="vnf-operator-xyz789",slice_id="slice-002",method="POST",endpoint="/api/v1/vnf-deployments",status="202"} 45
+o_ran_requests_total{component="dms",namespace="o-ran-mano",pod="dms-def456",slice_id="slice-003",method="GET",endpoint="/api/v1/data-sources",status="200"} 567
+
+# TYPE o_ran_request_duration_seconds histogram
+# HELP o_ran_request_duration_seconds HTTP request duration in seconds
+o_ran_request_duration_seconds_bucket{component="orchestrator",namespace="o-ran-mano",pod="orchestrator-abc123",slice_id="slice-001",method="GET",endpoint="/api/v1/network-slices",le="0.001"} 23
+o_ran_request_duration_seconds_bucket{component="orchestrator",namespace="o-ran-mano",pod="orchestrator-abc123",slice_id="slice-001",method="GET",endpoint="/api/v1/network-slices",le="0.01"} 156
+o_ran_request_duration_seconds_bucket{component="orchestrator",namespace="o-ran-mano",pod="orchestrator-abc123",slice_id="slice-001",method="GET",endpoint="/api/v1/network-slices",le="0.1"} 1234
+o_ran_request_duration_seconds_bucket{component="orchestrator",namespace="o-ran-mano",pod="orchestrator-abc123",slice_id="slice-001",method="GET",endpoint="/api/v1/network-slices",le="1.0"} 1541
+o_ran_request_duration_seconds_bucket{component="orchestrator",namespace="o-ran-mano",pod="orchestrator-abc123",slice_id="slice-001",method="GET",endpoint="/api/v1/network-slices",le="+Inf"} 1542
+o_ran_request_duration_seconds_sum{component="orchestrator",namespace="o-ran-mano",pod="orchestrator-abc123",slice_id="slice-001",method="GET",endpoint="/api/v1/network-slices"} 45.67
+o_ran_request_duration_seconds_count{component="orchestrator",namespace="o-ran-mano",pod="orchestrator-abc123",slice_id="slice-001",method="GET",endpoint="/api/v1/network-slices"} 1542
+
+# TYPE o_ran_cpu_usage gauge
+# HELP o_ran_cpu_usage Current CPU usage percentage (0-1) of O-RAN components
+o_ran_cpu_usage{component="orchestrator",namespace="o-ran-mano",pod="orchestrator-abc123",slice_id="slice-001"} 0.25
+o_ran_cpu_usage{component="vnf-operator",namespace="o-ran-mano",pod="vnf-operator-xyz789",slice_id="slice-002",vnf_type="du",operator_mode="active"} 0.67
+o_ran_cpu_usage{component="dms",namespace="o-ran-mano",pod="dms-def456",slice_id="slice-003",dms_role="primary"} 0.12
+
+# TYPE o_ran_memory_usage gauge
+# HELP o_ran_memory_usage Current memory usage in bytes of O-RAN components
+o_ran_memory_usage{component="orchestrator",namespace="o-ran-mano",pod="orchestrator-abc123",slice_id="slice-001"} 536870912
+o_ran_memory_usage{component="vnf-operator",namespace="o-ran-mano",pod="vnf-operator-xyz789",slice_id="slice-002",vnf_type="du"} 1073741824
+o_ran_memory_usage{component="dms",namespace="o-ran-mano",pod="dms-def456",slice_id="slice-003",dms_role="primary"} 268435456
+
+# TYPE o_ran_memory_limit gauge
+# HELP o_ran_memory_limit Memory limit in bytes configured for O-RAN components
+o_ran_memory_limit{component="orchestrator",namespace="o-ran-mano",pod="orchestrator-abc123",slice_id="slice-001"} 1073741824
+o_ran_memory_limit{component="vnf-operator",namespace="o-ran-mano",pod="vnf-operator-xyz789",slice_id="slice-002",vnf_type="du"} 2147483648
+o_ran_memory_limit{component="dms",namespace="o-ran-mano",pod="dms-def456",slice_id="slice-003",dms_role="primary"} 536870912
+
+# TYPE o_ran_network_bytes_total counter
+# HELP o_ran_network_bytes_total Total network bytes transmitted/received by O-RAN components
+o_ran_network_bytes_total{component="orchestrator",namespace="o-ran-mano",pod="orchestrator-abc123",slice_id="slice-001",direction="rx"} 12345678
+o_ran_network_bytes_total{component="orchestrator",namespace="o-ran-mano",pod="orchestrator-abc123",slice_id="slice-001",direction="tx"} 9876543
+o_ran_network_bytes_total{component="vnf-operator",namespace="o-ran-mano",pod="vnf-operator-xyz789",slice_id="slice-002",direction="rx",vnf_type="du"} 23456789
+o_ran_network_bytes_total{component="vnf-operator",namespace="o-ran-mano",pod="vnf-operator-xyz789",slice_id="slice-002",direction="tx",vnf_type="du"} 18765432
+
+# TYPE o_ran_active_connections gauge
+# HELP o_ran_active_connections Number of active connections to O-RAN components
+o_ran_active_connections{component="orchestrator",namespace="o-ran-mano",pod="orchestrator-abc123",slice_id="slice-001"} 42
+o_ran_active_connections{component="vnf-operator",namespace="o-ran-mano",pod="vnf-operator-xyz789",slice_id="slice-002",vnf_type="du"} 18
+o_ran_active_connections{component="dms",namespace="o-ran-mano",pod="dms-def456",slice_id="slice-003",dms_role="primary"} 7
+
+# TYPE o_ran_vnf_deployments_total counter
+# HELP o_ran_vnf_deployments_total Total number of VNF deployments managed by VNF operator
+o_ran_vnf_deployments_total{component="vnf-operator",namespace="o-ran-mano",pod="vnf-operator-xyz789",slice_id="slice-002",vnf_type="du",status="successful"} 25
+o_ran_vnf_deployments_total{component="vnf-operator",namespace="o-ran-mano",pod="vnf-operator-xyz789",slice_id="slice-002",vnf_type="cu",status="successful"} 15
+o_ran_vnf_deployments_total{component="vnf-operator",namespace="o-ran-mano",pod="vnf-operator-xyz789",slice_id="slice-002",vnf_type="du",status="failed"} 2
+o_ran_vnf_deployments_total{component="vnf-operator",namespace="o-ran-mano",pod="vnf-operator-xyz789",slice_id="slice-002",vnf_type="cu",status="failed"} 1
+
+# TYPE o_ran_vnf_deployment_duration_seconds histogram
+# HELP o_ran_vnf_deployment_duration_seconds Time taken to deploy VNFs in seconds
+o_ran_vnf_deployment_duration_seconds_bucket{component="vnf-operator",namespace="o-ran-mano",pod="vnf-operator-xyz789",slice_id="slice-002",vnf_type="du",le="30"} 5
+o_ran_vnf_deployment_duration_seconds_bucket{component="vnf-operator",namespace="o-ran-mano",pod="vnf-operator-xyz789",slice_id="slice-002",vnf_type="du",le="60"} 15
+o_ran_vnf_deployment_duration_seconds_bucket{component="vnf-operator",namespace="o-ran-mano",pod="vnf-operator-xyz789",slice_id="slice-002",vnf_type="du",le="120"} 23
+o_ran_vnf_deployment_duration_seconds_bucket{component="vnf-operator",namespace="o-ran-mano",pod="vnf-operator-xyz789",slice_id="slice-002",vnf_type="du",le="300"} 25
+o_ran_vnf_deployment_duration_seconds_bucket{component="vnf-operator",namespace="o-ran-mano",pod="vnf-operator-xyz789",slice_id="slice-002",vnf_type="du",le="+Inf"} 25
+o_ran_vnf_deployment_duration_seconds_sum{component="vnf-operator",namespace="o-ran-mano",pod="vnf-operator-xyz789",slice_id="slice-002",vnf_type="du"} 1876.5
+o_ran_vnf_deployment_duration_seconds_count{component="vnf-operator",namespace="o-ran-mano",pod="vnf-operator-xyz789",slice_id="slice-002",vnf_type="du"} 25
+
+# TYPE o_ran_data_sources_total counter
+# HELP o_ran_data_sources_total Total number of data sources managed by DMS
+o_ran_data_sources_total{component="dms",namespace="o-ran-mano",pod="dms-def456",slice_id="slice-003",dms_role="primary",source_type="telemetry"} 134
+o_ran_data_sources_total{component="dms",namespace="o-ran-mano",pod="dms-def456",slice_id="slice-003",dms_role="primary",source_type="configuration"} 67
+o_ran_data_sources_total{component="dms",namespace="o-ran-mano",pod="dms-def456",slice_id="slice-003",dms_role="primary",source_type="performance"} 89
+
+# TYPE o_ran_data_ingestion_rate gauge
+# HELP o_ran_data_ingestion_rate Current data ingestion rate in bytes per second
+o_ran_data_ingestion_rate{component="dms",namespace="o-ran-mano",pod="dms-def456",slice_id="slice-003",dms_role="primary",source_type="telemetry"} 1048576
+o_ran_data_ingestion_rate{component="dms",namespace="o-ran-mano",pod="dms-def456",slice_id="slice-003",dms_role="primary",source_type="performance"} 524288
+
+# TYPE o_ran_slice_bandwidth_utilization gauge
+# HELP o_ran_slice_bandwidth_utilization Network slice bandwidth utilization percentage (0-1)
+o_ran_slice_bandwidth_utilization{component="orchestrator",namespace="o-ran-mano",pod="orchestrator-abc123",slice_id="slice-001",slice_type="embb"} 0.75
+o_ran_slice_bandwidth_utilization{component="orchestrator",namespace="o-ran-mano",pod="orchestrator-abc123",slice_id="slice-002",slice_type="urllc"} 0.45
+o_ran_slice_bandwidth_utilization{component="orchestrator",namespace="o-ran-mano",pod="orchestrator-abc123",slice_id="slice-003",slice_type="mmtc"} 0.23
+
+# TYPE o_ran_slice_latency_seconds gauge
+# HELP o_ran_slice_latency_seconds Current network slice latency in seconds
+o_ran_slice_latency_seconds{component="orchestrator",namespace="o-ran-mano",pod="orchestrator-abc123",slice_id="slice-001",slice_type="embb"} 0.010
+o_ran_slice_latency_seconds{component="orchestrator",namespace="o-ran-mano",pod="orchestrator-abc123",slice_id="slice-002",slice_type="urllc"} 0.001
+o_ran_slice_latency_seconds{component="orchestrator",namespace="o-ran-mano",pod="orchestrator-abc123",slice_id="slice-003",slice_type="mmtc"} 0.050
+
+# TYPE up gauge
+# HELP up Whether the O-RAN component is up and responding
+up{component="orchestrator",namespace="o-ran-mano",pod="orchestrator-abc123",slice_id="slice-001"} 1
+up{component="vnf-operator",namespace="o-ran-mano",pod="vnf-operator-xyz789",slice_id="slice-002"} 1
+up{component="dms",namespace="o-ran-mano",pod="dms-def456",slice_id="slice-003"} 1
+
+# TYPE scrape_duration_seconds gauge
+# HELP scrape_duration_seconds Duration of the last scrape in seconds
+scrape_duration_seconds{component="orchestrator",namespace="o-ran-mano",pod="orchestrator-abc123"} 0.045
+scrape_duration_seconds{component="vnf-operator",namespace="o-ran-mano",pod="vnf-operator-xyz789"} 0.032
+scrape_duration_seconds{component="dms",namespace="o-ran-mano",pod="dms-def456"} 0.028
+
+# TYPE scrape_samples_scraped gauge
+# HELP scrape_samples_scraped Number of samples scraped in the last scrape
+scrape_samples_scraped{component="orchestrator",namespace="o-ran-mano",pod="orchestrator-abc123"} 156
+scrape_samples_scraped{component="vnf-operator",namespace="o-ran-mano",pod="vnf-operator-xyz789"} 234
+scrape_samples_scraped{component="dms",namespace="o-ran-mano",pod="dms-def456"} 189
+
+# EOF

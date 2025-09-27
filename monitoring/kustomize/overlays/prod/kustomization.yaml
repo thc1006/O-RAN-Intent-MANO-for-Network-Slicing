@@ -1,0 +1,208 @@
+# Production environment overlay for O-RAN MANO monitoring
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: oran-monitoring-production
+  annotations:
+    config.kubernetes.io/local-config: "true"
+
+# Reference to base configuration
+bases:
+  - ../../base
+
+# Environment-specific namespace
+namespace: monitoring
+
+# Production-specific labels
+commonLabels:
+  oran.io/environment: prod
+  oran.io/tier: production
+  oran.io/criticality: high
+
+# Production-specific annotations
+commonAnnotations:
+  oran.io/deployment-date: "2024-01-01"
+  oran.io/environment-type: production
+  oran.io/auto-scaling: "enabled"
+  oran.io/backup-enabled: "true"
+  oran.io/monitoring-level: "comprehensive"
+  oran.io/sla-tier: "tier1"
+
+# Resource patches for production
+patchesStrategicMerge:
+  - patches/prometheus-prod.yaml
+  - patches/grafana-prod.yaml
+  - patches/alertmanager-prod.yaml
+  - patches/resources-prod.yaml
+  - patches/persistence-prod.yaml
+  - patches/security-prod.yaml
+
+# JSON patches for specific production modifications
+patchesJson6902:
+  - target:
+      group: monitoring.coreos.com
+      version: v1
+      kind: Prometheus
+      name: prometheus
+    path: patches/prometheus-prod-config.yaml
+
+  - target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: grafana
+    path: patches/grafana-prod-config.yaml
+
+  - target:
+      group: monitoring.coreos.com
+      version: v1
+      kind: Alertmanager
+      name: alertmanager
+    path: patches/alertmanager-prod-config.yaml
+
+# Production-specific ConfigMaps
+configMapGenerator:
+  - name: prometheus-prod-config
+    files:
+      - config/prometheus-prod.yml
+      - config/recording-rules-prod.yml
+    options:
+      labels:
+        app.kubernetes.io/component: prometheus
+        oran.io/environment: prod
+
+  - name: alertmanager-prod-config
+    files:
+      - config/alertmanager-prod.yml
+    options:
+      labels:
+        app.kubernetes.io/component: alertmanager
+        oran.io/environment: prod
+
+  - name: grafana-prod-dashboards
+    files:
+      - dashboards/prod-overview.json
+      - dashboards/sla-dashboard.json
+      - dashboards/capacity-planning.json
+      - dashboards/security-monitoring.json
+      - dashboards/business-metrics.json
+    options:
+      labels:
+        app.kubernetes.io/component: grafana
+        oran.io/environment: prod
+        grafana_dashboard: "1"
+
+  - name: prod-alerting-rules
+    files:
+      - rules/prod-critical-alerts.yml
+      - rules/prod-sla-alerts.yml
+      - rules/prod-capacity-alerts.yml
+    options:
+      labels:
+        app.kubernetes.io/component: prometheus
+        oran.io/environment: prod
+
+  - name: prod-recording-rules
+    files:
+      - rules/prod-recording-rules.yml
+      - rules/prod-aggregation-rules.yml
+    options:
+      labels:
+        app.kubernetes.io/component: prometheus
+        oran.io/environment: prod
+
+# Production-specific secrets
+secretGenerator:
+  - name: prod-monitoring-secrets
+    envs:
+      - secrets/prod.env
+    options:
+      labels:
+        oran.io/environment: prod
+
+  - name: prod-tls-certs
+    files:
+      - certs/prod-tls.crt
+      - certs/prod-tls.key
+    type: kubernetes.io/tls
+    options:
+      labels:
+        oran.io/environment: prod
+
+  - name: prod-alerting-secrets
+    envs:
+      - secrets/alerting-prod.env
+    options:
+      labels:
+        oran.io/environment: prod
+        app.kubernetes.io/component: alertmanager
+
+# Production image versions (pinned stable releases)
+images:
+  - name: quay.io/prometheus/prometheus
+    newTag: v2.47.0
+  - name: grafana/grafana
+    newTag: 10.1.0
+  - name: quay.io/prometheus/alertmanager
+    newTag: v0.26.0
+
+# Production replica counts (high availability)
+replicas:
+  - name: prometheus-prometheus
+    count: 3
+  - name: alertmanager-alertmanager
+    count: 3
+
+# Production-specific variables
+vars:
+  - name: PROD_RETENTION
+    objref:
+      kind: ConfigMap
+      name: prometheus-prod-config
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.retention
+
+  - name: PROD_STORAGE_SIZE
+    objref:
+      kind: ConfigMap
+      name: prometheus-prod-config
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.storage_size
+
+  - name: PROD_REPLICAS
+    objref:
+      kind: ConfigMap
+      name: prometheus-prod-config
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.replicas
+
+  - name: PROD_BACKUP_SCHEDULE
+    objref:
+      kind: ConfigMap
+      name: prometheus-prod-config
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.backup_schedule
+
+# Resources specific to production
+resources:
+  - resources/prod-servicemonitor.yaml
+  - resources/prod-ingress.yaml
+  - resources/prod-networkpolicy.yaml
+  - resources/prod-prometheusrule.yaml
+  - resources/prod-pdb.yaml
+  - resources/prod-hpa.yaml
+  - resources/prod-vpa.yaml
+  - resources/prod-backup.yaml
+  - resources/prod-monitoring-slo.yaml
+
+# Transformers for production
+transformers:
+  - transformers/prod-labels.yaml
+  - transformers/prod-resources.yaml
+  - transformers/prod-security.yaml
+  - transformers/prod-affinity.yaml

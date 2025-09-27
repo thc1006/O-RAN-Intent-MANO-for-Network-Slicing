@@ -1,0 +1,36 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: oran-components
+  namespace: monitoring
+  labels:
+    app: oran-components
+    oran.io/component: monitoring
+    prometheus: kube-prometheus
+spec:
+  selector:
+    matchLabels:
+      oran.io/monitoring: "enabled"
+  endpoints:
+  - port: metrics
+    interval: 30s
+    path: /metrics
+    scheme: http
+    scrapeTimeout: 10s
+  - port: http-metrics
+    interval: 30s
+    path: /metrics
+    scheme: http
+    scrapeTimeout: 10s
+  - port: prometheus
+    interval: 30s
+    path: /metrics
+    scheme: http
+    scrapeTimeout: 10s
+  namespaceSelector: {}
+  jobLabel: oran-component
+  targetLabels:
+  - pod
+  - service
+  - instance
+  - oran_component

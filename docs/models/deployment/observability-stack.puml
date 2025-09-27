@@ -1,0 +1,312 @@
+@startuml Observability-Stack
+!theme plain
+title Complete Observability Stack Architecture (完整可觀測性堆疊架構)
+
+' Define styles
+skinparam componentStyle rectangle
+skinparam linetype ortho
+skinparam backgroundColor white
+
+' Application layer
+package "O-RAN Application Layer\n(O-RAN應用程式層)" as app_layer {
+
+  package "Core O-RAN Services\n(核心O-RAN服務)" as core_services {
+    [O2 DMS\n(O2設備管理服務)] as o2dms
+    [CN DMS\n(雲原生設備管理服務)] as cndms
+    [VNF Operator\n(VNF操作器)] as vnfop
+    [Intent Service\n(意圖服務)] as intent_service
+  }
+
+  package "SMO Components\n(SMO組件)" as smo_components {
+    [Policy Framework\n(策略框架)] as policy
+    [Non-RT RIC\n(非即時RIC)] as nonrtric
+    [A1 Mediator\n(A1中介器)] as a1mediator
+  }
+
+  package "Network Functions\n(網路功能)" as network_functions {
+    [CU Function\n(CU功能)] as cu
+    [DU Function\n(DU功能)] as du
+    [RU Function\n(RU功能)] as ru
+  }
+}
+
+' Instrumentation layer
+package "Instrumentation Layer\n(檢測層)" as instrumentation {
+
+  package "Metrics Instrumentation\n(指標檢測)" as metrics_instr {
+    [Prometheus Client\n(Prometheus客戶端)] as prom_client
+    [Custom Metrics\n(自定義指標)] as custom_metrics
+    [Business Metrics\n(業務指標)] as business_metrics
+    [Performance Metrics\n(效能指標)] as perf_metrics
+  }
+
+  package "Logging Instrumentation\n(日誌檢測)" as logging_instr {
+    [Structured Logging\n(結構化日誌)] as structured_logging
+    [Log Levels\n(日誌級別)] as log_levels
+    [Correlation IDs\n(關聯ID)] as correlation_ids
+    [Context Propagation\n(上下文傳播)] as context_prop
+  }
+
+  package "Tracing Instrumentation\n(追蹤檢測)" as tracing_instr {
+    [OpenTelemetry\n(OpenTelemetry)] as opentelemetry
+    [Span Creation\n(Span創建)] as span_creation
+    [Trace Context\n(追蹤上下文)] as trace_context
+    [Sampling Strategy\n(取樣策略)] as sampling
+  }
+}
+
+' Collection layer
+package "Collection Layer\n(收集層)" as collection_layer {
+
+  package "Metrics Collection\n(指標收集)" as metrics_collection {
+    [Prometheus Server\n(Prometheus伺服器)] as prometheus
+    [ServiceMonitor\n(服務監控器)] as servicemonitor
+    [PodMonitor\n(Pod監控器)] as podmonitor
+    [Node Exporter\n(節點匯出器)] as node_exporter
+    [kube-state-metrics\n(K8s狀態指標)] as kube_state
+  }
+
+  package "Log Collection\n(日誌收集)" as log_collection {
+    [Fluent Bit\n(Fluent Bit)] as fluent_bit
+    [Vector\n(Vector)] as vector
+    [Promtail\n(Promtail)] as promtail
+    [Log Aggregation\n(日誌聚合)] as log_aggregation
+  }
+
+  package "Trace Collection\n(追蹤收集)" as trace_collection {
+    [OpenTelemetry Collector\n(OpenTelemetry收集器)] as otel_collector
+    [Jaeger Agent\n(Jaeger代理)] as jaeger_agent
+    [Tempo Agent\n(Tempo代理)] as tempo_agent
+    [Trace Processing\n(追蹤處理)] as trace_processing
+  }
+}
+
+' Storage layer
+package "Storage Layer\n(儲存層)" as storage_layer {
+
+  package "Metrics Storage\n(指標儲存)" as metrics_storage {
+    [Prometheus TSDB\n(Prometheus時序資料庫)] as prom_tsdb
+    [Thanos\n(Thanos)] as thanos
+    [Cortex\n(Cortex)] as cortex
+    [VictoriaMetrics\n(VictoriaMetrics)] as victoria_metrics
+  }
+
+  package "Log Storage\n(日誌儲存)" as log_storage {
+    [Loki\n(Loki)] as loki
+    [Elasticsearch\n(Elasticsearch)] as elasticsearch
+    [ClickHouse\n(ClickHouse)] as clickhouse
+    [Object Storage\n(物件儲存)] as object_storage
+  }
+
+  package "Trace Storage\n(追蹤儲存)" as trace_storage {
+    [Jaeger Backend\n(Jaeger後端)] as jaeger_backend
+    [Tempo\n(Tempo)] as tempo
+    [Zipkin\n(Zipkin)] as zipkin
+    [Trace Database\n(追蹤資料庫)] as trace_db
+  }
+
+  package "Persistent Storage\n(持久化儲存)" as persistent_storage {
+    [PVC Volumes\n(持久卷)] as pvc_volumes
+    [S3 Compatible\n(S3相容)] as s3_storage
+    [Local SSDs\n(本地SSD)] as local_ssd
+  }
+}
+
+' Query and analysis layer
+package "Query & Analysis Layer\n(查詢和分析層)" as query_layer {
+
+  package "Metrics Query\n(指標查詢)" as metrics_query {
+    [PromQL\n(PromQL)] as promql
+    [Query Federation\n(查詢聯邦)] as query_federation
+    [Recording Rules\n(記錄規則)] as recording_rules
+    [Alert Rules\n(告警規則)] as alert_rules
+  }
+
+  package "Log Query\n(日誌查詢)" as log_query {
+    [LogQL\n(LogQL)] as logql
+    [Lucene Query\n(Lucene查詢)] as lucene_query
+    [Full-text Search\n(全文搜尋)] as fulltext_search
+    [Log Parsing\n(日誌解析)] as log_parsing
+  }
+
+  package "Trace Query\n(追蹤查詢)" as trace_query {
+    [Trace Search\n(追蹤搜尋)] as trace_search
+    [Service Map\n(服務地圖)] as service_map
+    [Dependency Analysis\n(依賴分析)] as dependency_analysis
+    [Root Cause Analysis\n(根因分析)] as root_cause
+  }
+
+  package "Correlation Engine\n(關聯引擎)" as correlation {
+    [Cross-signal Correlation\n(跨信號關聯)] as cross_correlation
+    [Incident Detection\n(事件檢測)] as incident_detection
+    [Anomaly Detection\n(異常檢測)] as anomaly_detection
+    [Pattern Recognition\n(模式識別)] as pattern_recognition
+  }
+}
+
+' Visualization layer
+package "Visualization Layer\n(視覺化層)" as visualization_layer {
+
+  package "Dashboards\n(儀表板)" as dashboards {
+    [Grafana\n(Grafana)] as grafana
+    [Custom Dashboards\n(自定義儀表板)] as custom_dashboards
+    [Business Dashboards\n(業務儀表板)] as business_dashboards
+    [Technical Dashboards\n(技術儀表板)] as tech_dashboards
+  }
+
+  package "Log Visualization\n(日誌視覺化)" as log_viz {
+    [Kibana\n(Kibana)] as kibana
+    [Grafana Explore\n(Grafana探索)] as grafana_explore
+    [Log Analysis\n(日誌分析)] as log_analysis
+  }
+
+  package "Trace Visualization\n(追蹤視覺化)" as trace_viz {
+    [Jaeger UI\n(Jaeger使用者介面)] as jaeger_ui
+    [Tempo UI\n(Tempo使用者介面)] as tempo_ui
+    [Service Graph\n(服務圖)] as service_graph
+    [Flame Graphs\n(火焰圖)] as flame_graphs
+  }
+
+  package "Alerting\n(告警)" as alerting {
+    [AlertManager\n(告警管理器)] as alertmanager
+    [Grafana Alerts\n(Grafana告警)] as grafana_alerts
+    [Custom Alerts\n(自定義告警)] as custom_alerts
+    [Notification Channels\n(通知通道)] as notification_channels
+  }
+}
+
+' External integrations
+package "External Integrations\n(外部整合)" as external_integrations {
+  [Slack\n(Slack)] as slack
+  [PagerDuty\n(PagerDuty)] as pagerduty
+  [ServiceNow\n(ServiceNow)] as servicenow
+  [JIRA\n(JIRA)] as jira
+  [Webhook\n(網頁鉤子)] as webhook
+}
+
+' Application instrumentation
+core_services --> instrumentation : "Instrument applications\n(檢測應用程式)"
+smo_components --> instrumentation : "Add observability\n(添加可觀測性)"
+network_functions --> instrumentation : "Monitor functions\n(監控功能)"
+
+' Metrics flow
+metrics_instr --> metrics_collection : "Expose /metrics\n(暴露指標端點)"
+prom_client --> prometheus : "Scrape metrics\n(抓取指標)"
+custom_metrics --> servicemonitor : "Service discovery\n(服務發現)"
+business_metrics --> podmonitor : "Pod-level metrics\n(Pod級指標)"
+
+' Logging flow
+logging_instr --> log_collection : "Stream logs\n(串流日誌)"
+structured_logging --> fluent_bit : "Collect logs\n(收集日誌)"
+log_levels --> promtail : "Filter logs\n(過濾日誌)"
+correlation_ids --> vector : "Enrich logs\n(豐富日誌)"
+
+' Tracing flow
+tracing_instr --> trace_collection : "Send traces\n(發送追蹤)"
+opentelemetry --> otel_collector : "Collect traces\n(收集追蹤)"
+span_creation --> jaeger_agent : "Agent forwarding\n(代理轉發)"
+trace_context --> tempo_agent : "Context propagation\n(上下文傳播)"
+
+' Storage connections
+metrics_collection --> metrics_storage : "Store metrics\n(儲存指標)"
+prometheus --> prom_tsdb : "Local storage\n(本地儲存)"
+prometheus --> thanos : "Long-term storage\n(長期儲存)"
+
+log_collection --> log_storage : "Store logs\n(儲存日誌)"
+fluent_bit --> loki : "Push logs\n(推送日誌)"
+promtail --> loki : "Loki integration\n(Loki整合)"
+
+trace_collection --> trace_storage : "Store traces\n(儲存追蹤)"
+otel_collector --> jaeger_backend : "Jaeger storage\n(Jaeger儲存)"
+otel_collector --> tempo : "Tempo storage\n(Tempo儲存)"
+
+' Persistent storage
+storage_layer --> persistent_storage : "Persistent volumes\n(持久卷)"
+pvc_volumes --> local_ssd : "Fast storage\n(快速儲存)"
+s3_storage --> object_storage : "Cold storage\n(冷儲存)"
+
+' Query layer
+storage_layer --> query_layer : "Query interfaces\n(查詢介面)"
+metrics_storage --> promql : "PromQL queries\n(PromQL查詢)"
+log_storage --> logql : "LogQL queries\n(LogQL查詢)"
+trace_storage --> trace_search : "Trace queries\n(追蹤查詢)"
+
+' Correlation
+query_layer --> correlation : "Multi-signal analysis\n(多信號分析)"
+cross_correlation --> incident_detection : "Detect incidents\n(檢測事件)"
+anomaly_detection --> pattern_recognition : "Pattern analysis\n(模式分析)"
+
+' Visualization
+query_layer --> visualization_layer : "Visualization queries\n(視覺化查詢)"
+promql --> grafana : "Metrics dashboards\n(指標儀表板)"
+logql --> grafana_explore : "Log exploration\n(日誌探索)"
+trace_search --> jaeger_ui : "Trace visualization\n(追蹤視覺化)"
+
+' Alerting
+query_layer --> alerting : "Alert evaluation\n(告警評估)"
+alert_rules --> alertmanager : "Send alerts\n(發送告警)"
+grafana_alerts --> notification_channels : "Alert notifications\n(告警通知)"
+
+' External integrations
+alerting --> external_integrations : "External notifications\n(外部通知)"
+notification_channels --> slack : "Team notifications\n(團隊通知)"
+notification_channels --> pagerduty : "On-call alerts\n(值班告警)"
+
+' Cross-layer correlation
+correlation --> dashboards : "Correlated views\n(關聯視圖)"
+incident_detection --> alerting : "Automatic alerts\n(自動告警)"
+service_map --> dependency_analysis : "Service dependencies\n(服務依賴)"
+
+note top of instrumentation
+  **Instrumentation Strategy\n(檢測策略)**
+  - OpenTelemetry for standardization
+  - Automatic and manual instrumentation
+  - Consistent correlation IDs
+  - Context propagation across services
+  **檢測策略**
+  - OpenTelemetry標準化
+  - 自動和手動檢測
+  - 一致的關聯ID
+  - 跨服務上下文傳播
+end note
+
+note right of collection_layer
+  **Collection Configuration\n(收集配置)**
+  - Metrics: 15s scrape interval
+  - Logs: Real-time streaming
+  - Traces: 10% sampling rate
+  - Compression and batching
+  **收集配置**
+  - 指標: 15秒抓取間隔
+  - 日誌: 即時串流
+  - 追蹤: 10%取樣率
+  - 壓縮和批處理
+end note
+
+note bottom of storage_layer
+  **Storage Strategy\n(儲存策略)**
+  - Metrics: 30d local, unlimited remote
+  - Logs: 7d hot, 90d warm, archive
+  - Traces: 7d storage, sampling
+  - Cost optimization with tiering
+  **儲存策略**
+  - 指標: 本地30天，遠端無限
+  - 日誌: 熱7天，溫90天，歸檔
+  - 追蹤: 7天儲存，取樣
+  - 分層成本最佳化
+end note
+
+note left of visualization_layer
+  **Visualization Features\n(視覺化功能)**
+  - 50+ pre-built dashboards
+  - Real-time monitoring
+  - Custom alerting rules
+  - Multi-tenant access control
+  **視覺化功能**
+  - 50+預建儀表板
+  - 即時監控
+  - 自定義告警規則
+  - 多租戶存取控制
+end note
+
+@enduml

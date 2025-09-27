@@ -2,13 +2,20 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
+	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/orchestrator/pkg/placement"
 	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security"
 )
@@ -17,6 +24,50 @@ const (
 	appName = "orchestrator"
 	version = "v0.1.0"
 )
+
+var (
+	// Prometheus metrics for O-RAN orchestrator
+	intentProcessingDuration = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name: "oran_intent_processing_duration_seconds",
+			Help: "Time taken to process intent-based requests",
+			Buckets: prometheus.DefBuckets,
+		},
+		[]string{"intent_type", "status"},
+	)
+
+	sliceDeploymentsTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "oran_slice_deployments_total",
+			Help: "Total number of network slice deployments",
+		},
+		[]string{"slice_type", "status"},
+	)
+
+	activeSlicesGauge = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "oran_active_slices",
+			Help: "Number of currently active network slices",
+		},
+		[]string{"slice_type"},
+	)
+
+	placementDecisionsTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "oran_placement_decisions_total",
+			Help: "Total number of placement decisions made",
+		},
+		[]string{"placement_type", "result"},
+	)
+)
+
+func init() {
+	// Register metrics with Prometheus
+	prometheus.MustRegister(intentProcessingDuration)
+	prometheus.MustRegister(sliceDeploymentsTotal)
+	prometheus.MustRegister(activeSlicesGauge)
+	prometheus.MustRegister(placementDecisionsTotal)
+}
 
 // QoSIntent represents a parsed intent with QoS parameters
 type QoSIntent struct {
@@ -46,12 +97,15 @@ type ResourceAllocation struct {
 
 // Config holds orchestrator configuration
 type Config struct {
-	PlanMode   bool
-	ApplyMode  bool
-	InputFile  string
-	OutputFile string
-	Verbose    bool
-	DryRun     bool
+	PlanMode     bool
+	ApplyMode    bool
+	ServerMode   bool
+	InputFile    string
+	OutputFile   string
+	Verbose      bool
+	DryRun       bool
+	ServerPort   string
+	MetricsPort  string
 }
 
 func main() {
@@ -59,6 +113,12 @@ func main() {
 
 	if config.Verbose {
 		log.Printf("%s %s starting", appName, version)
+	}
+
+	// Server mode for Kubernetes deployment
+	if config.ServerMode {
+		startServer(config)
+		return
 	}
 
 	// Load QoS intents from input file
@@ -77,7 +137,7 @@ func main() {
 	} else if config.ApplyMode {
 		err = applySliceOrchestration(intents, config)
 	} else {
-		log.Fatal("Must specify either --plan or --apply mode")
+		log.Fatal("Must specify either --plan, --apply, or --server mode")
 	}
 
 	if err != nil {
@@ -94,10 +154,13 @@ func parseFlags() Config {
 
 	flag.BoolVar(&config.PlanMode, "plan", false, "Generate orchestration plan (dry-run)")
 	flag.BoolVar(&config.ApplyMode, "apply", false, "Apply orchestration to deploy slices")
+	flag.BoolVar(&config.ServerMode, "server", false, "Run as HTTP server for Kubernetes deployment")
 	flag.StringVar(&config.InputFile, "input", "", "Input file with QoS intents (JSONL format)")
 	flag.StringVar(&config.OutputFile, "output", "", "Output file for orchestration results")
 	flag.BoolVar(&config.Verbose, "verbose", false, "Enable verbose logging")
 	flag.BoolVar(&config.DryRun, "dry-run", false, "Show what would be done without executing")
+	flag.StringVar(&config.ServerPort, "port", "8080", "HTTP server port")
+	flag.StringVar(&config.MetricsPort, "metrics-port", "9090", "Metrics server port")
 
 	help := flag.Bool("help", false, "Show help message")
 	versionFlag := flag.Bool("version", false, "Show version")
@@ -123,19 +186,22 @@ func parseFlags() Config {
 	}
 
 	// Validation
-	if !config.PlanMode && !config.ApplyMode {
-		log.Fatal("Must specify either --plan or --apply mode")
+	if !config.PlanMode && !config.ApplyMode && !config.ServerMode {
+		log.Fatal("Must specify either --plan, --apply, or --server mode")
 	}
 
-	if config.PlanMode && config.ApplyMode {
-		log.Fatal("Cannot specify both --plan and --apply modes")
+	if (config.PlanMode && config.ApplyMode) || (config.PlanMode && config.ServerMode) || (config.ApplyMode && config.ServerMode) {
+		log.Fatal("Cannot specify multiple modes simultaneously")
 	}
 
-	if config.InputFile == "" {
-		if len(flag.Args()) > 0 {
-			config.InputFile = flag.Args()[0]
-		} else {
-			log.Fatal("Input file is required")
+	// Server mode doesn't need input file
+	if !config.ServerMode {
+		if config.InputFile == "" {
+			if len(flag.Args()) > 0 {
+				config.InputFile = flag.Args()[0]
+			} else {
+				log.Fatal("Input file is required for plan/apply modes")
+			}
 		}
 	}
 
@@ -558,4 +624,248 @@ func generateMockSites() []*placement.Site {
 			Available: true,
 		},
 	}
+}
+
+// startServer starts the HTTP server for Kubernetes deployment
+func startServer(config Config) {
+	log.Printf("Starting %s %s server on port %s", appName, version, config.ServerPort)
+
+	// Create HTTP server mux
+	mux := http.NewServeMux()
+
+	// Health check endpoints
+	mux.HandleFunc("/health", healthHandler)
+	mux.HandleFunc("/ready", readinessHandler)
+
+	// Intent processing endpoints
+	mux.HandleFunc("/api/v1/intents", intentsHandler)
+	mux.HandleFunc("/api/v1/slices", slicesHandler)
+	mux.HandleFunc("/api/v1/status", statusHandler)
+
+	// Create main HTTP server
+	server := &http.Server{
+		Addr:    ":" + config.ServerPort,
+		Handler: mux,
+	}
+
+	// Create metrics server
+	metricsServer := &http.Server{
+		Addr:    ":" + config.MetricsPort,
+		Handler: promhttp.Handler(),
+	}
+
+	// Start metrics server in goroutine
+	go func() {
+		log.Printf("Starting metrics server on port %s", config.MetricsPort)
+		if err := metricsServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Metrics server failed: %v", err)
+		}
+	}()
+
+	// Start main server in goroutine
+	go func() {
+		log.Printf("Starting HTTP server on port %s", config.ServerPort)
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("HTTP server failed: %v", err)
+		}
+	}()
+
+	// Initialize some mock active slices for demonstration
+	activeSlicesGauge.WithLabelValues("embb").Set(2)
+	activeSlicesGauge.WithLabelValues("urllc").Set(1)
+	activeSlicesGauge.WithLabelValues("mmtc").Set(3)
+
+	// Wait for interrupt signal
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	<-sigChan
+
+	log.Println("Shutting down servers...")
+
+	// Graceful shutdown
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := server.Shutdown(ctx); err != nil {
+		log.Printf("HTTP server shutdown error: %v", err)
+	}
+
+	if err := metricsServer.Shutdown(ctx); err != nil {
+		log.Printf("Metrics server shutdown error: %v", err)
+	}
+
+	log.Println("Servers stopped")
+}
+
+// healthHandler responds to health check requests
+func healthHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":    "healthy",
+		"timestamp": time.Now().Unix(),
+		"version":   version,
+	})
+}
+
+// readinessHandler responds to readiness check requests
+func readinessHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":    "ready",
+		"timestamp": time.Now().Unix(),
+		"version":   version,
+	})
+}
+
+// intentsHandler handles intent processing requests
+func intentsHandler(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
+	var status string = "success"
+
+	defer func() {
+		duration := time.Since(start).Seconds()
+		intentProcessingDuration.WithLabelValues("api", status).Observe(duration)
+	}()
+
+	switch r.Method {
+	case http.MethodPost:
+		handleIntentCreation(w, r)
+	case http.MethodGet:
+		handleIntentList(w, r)
+	default:
+		status = "error"
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+// handleIntentCreation processes new intent creation requests
+func handleIntentCreation(w http.ResponseWriter, r *http.Request) {
+	var intent QoSIntent
+	if err := json.NewDecoder(r.Body).Decode(&intent); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	// Simulate intent processing
+	sliceID := fmt.Sprintf("slice-%s-%d", intent.SliceType, time.Now().Unix())
+
+	// Update metrics
+	sliceDeploymentsTotal.WithLabelValues(intent.SliceType, "success").Inc()
+	placementDecisionsTotal.WithLabelValues("edge", "success").Inc()
+
+	// Increment active slices
+	activeSlicesGauge.WithLabelValues(intent.SliceType).Inc()
+
+	response := map[string]interface{}{
+		"slice_id": sliceID,
+		"status":   "created",
+		"qos":      intent,
+		"timestamp": time.Now().Unix(),
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(response)
+}
+
+// handleIntentList returns list of active intents
+func handleIntentList(w http.ResponseWriter, r *http.Request) {
+	// Mock response with current active slices
+	slices := []map[string]interface{}{
+		{
+			"slice_id":   "slice-embb-001",
+			"slice_type": "embb",
+			"status":     "active",
+			"qos": map[string]interface{}{
+				"bandwidth": 100.0,
+				"latency":   20.0,
+			},
+		},
+		{
+			"slice_id":   "slice-urllc-001",
+			"slice_type": "urllc",
+			"status":     "active",
+			"qos": map[string]interface{}{
+				"bandwidth": 10.0,
+				"latency":   1.0,
+			},
+		},
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"slices": slices,
+		"total":  len(slices),
+	})
+}
+
+// slicesHandler handles slice management requests
+func slicesHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		handleSliceList(w, r)
+	case http.MethodDelete:
+		handleSliceDelete(w, r)
+	default:
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+// handleSliceList returns list of all slices
+func handleSliceList(w http.ResponseWriter, r *http.Request) {
+	// This would query actual slice deployments in real implementation
+	slices := []map[string]interface{}{
+		{
+			"slice_id":   "slice-embb-001",
+			"slice_type": "embb",
+			"status":     "active",
+			"deployment_time": time.Now().Add(-1 * time.Hour).Unix(),
+		},
+		{
+			"slice_id":   "slice-urllc-001",
+			"slice_type": "urllc",
+			"status":     "active",
+			"deployment_time": time.Now().Add(-30 * time.Minute).Unix(),
+		},
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"slices": slices,
+		"total":  len(slices),
+	})
+}
+
+// handleSliceDelete handles slice deletion
+func handleSliceDelete(w http.ResponseWriter, r *http.Request) {
+	sliceID := r.URL.Query().Get("slice_id")
+	if sliceID == "" {
+		http.Error(w, "slice_id parameter required", http.StatusBadRequest)
+		return
+	}
+
+	// Mock deletion - would interact with actual slice management in real implementation
+	// For demo, just decrement the gauge for a random slice type
+	activeSlicesGauge.WithLabelValues("embb").Dec()
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"slice_id": sliceID,
+		"status":   "deleted",
+		"timestamp": time.Now().Unix(),
+	})
+}
+
+// statusHandler returns overall system status
+func statusHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"service":   appName,
+		"version":   version,
+		"status":    "running",
+		"timestamp": time.Now().Unix(),
+		"uptime":    time.Since(time.Now()).Seconds(), // Mock uptime
+	})
 }

@@ -1,0 +1,594 @@
+name: Validate Metrics and Monitoring Health
+
+on:
+  schedule:
+    # Run nightly at 2 AM UTC
+    - cron: '0 2 * * *'
+    # Run every 6 hours for critical monitoring
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to validate'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+          - all
+      deep_validation:
+        description: 'Run deep validation including historical data'
+        required: false
+        default: false
+        type: boolean
+      alert_on_failure:
+        description: 'Send alerts on validation failure'
+        required: false
+        default: true
+        type: boolean
+
+env:
+  PROMETHEUS_URL: ${{ secrets.PROMETHEUS_URL || 'http://localhost:9090' }}
+  GRAFANA_URL: ${{ secrets.GRAFANA_URL || 'http://localhost:3000' }}
+  GRAFANA_TOKEN: ${{ secrets.GRAFANA_TOKEN }}
+  SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+  TEAMS_WEBHOOK: ${{ secrets.TEAMS_WEBHOOK }}
+
+jobs:
+  validate-prometheus-targets:
+    name: Validate Prometheus Targets
+    runs-on: ubuntu-latest
+    outputs:
+      targets-status: ${{ steps.targets.outputs.status }}
+      failed-targets: ${{ steps.targets.outputs.failed }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install requests pyyaml jq prometheus-client
+
+      - name: Check Prometheus targets
+        id: targets
+        run: |
+          cat > check_targets.py << 'EOF'
+          import requests
+          import json
+          import sys
+          import os
+          from datetime import datetime
+
+          prometheus_url = os.getenv('PROMETHEUS_URL', 'http://localhost:9090')
+
+          def check_prometheus_targets():
+              try:
+                  # Get all targets
+                  response = requests.get(f"{prometheus_url}/api/v1/targets", timeout=30)
+                  response.raise_for_status()
+
+                  data = response.json()
+                  if data['status'] != 'success':
+                      print(f"❌ Prometheus API error: {data.get('error', 'Unknown error')}")
+                      return False
+
+                  targets = data['data']['activeTargets']
+                  total_targets = len(targets)
+                  healthy_targets = sum(1 for t in targets if t['health'] == 'up')
+                  failed_targets = [t for t in targets if t['health'] != 'up']
+
+                  print(f"📊 Target Health Summary:")
+                  print(f"   Total targets: {total_targets}")
+                  print(f"   Healthy targets: {healthy_targets}")
+                  print(f"   Failed targets: {len(failed_targets)}")
+                  print(f"   Health ratio: {(healthy_targets/total_targets)*100:.1f}%")
+
+                  # Check critical thresholds
+                  health_ratio = (healthy_targets / total_targets) * 100 if total_targets > 0 else 0
+
+                  if health_ratio < 90:
+                      print(f"❌ CRITICAL: Target health ratio below 90%: {health_ratio:.1f}%")
+
+                  if failed_targets:
+                      print("\n❌ Failed Targets:")
+                      for target in failed_targets:
+                          job = target.get('labels', {}).get('job', 'unknown')
+                          instance = target.get('labels', {}).get('instance', 'unknown')
+                          error = target.get('lastError', 'Unknown error')
+                          last_scrape = target.get('lastScrape', 'Never')
+                          print(f"   - Job: {job}, Instance: {instance}")
+                          print(f"     Error: {error}")
+                          print(f"     Last scrape: {last_scrape}")
+
+                      # Output for GitHub Actions
+                      failed_list = [f"{t.get('labels', {}).get('job', 'unknown')}:{t.get('labels', {}).get('instance', 'unknown')}" for t in failed_targets]
+                      print(f"::set-output name=failed::{','.join(failed_list)}")
+
+                  # Set status output
+                  status = "healthy" if health_ratio >= 95 else "degraded" if health_ratio >= 90 else "critical"
+                  print(f"::set-output name=status::{status}")
+
+                  return health_ratio >= 90
+
+              except requests.exceptions.RequestException as e:
+                  print(f"❌ Failed to connect to Prometheus: {e}")
+                  print(f"::set-output name=status::unreachable")
+                  return False
+              except Exception as e:
+                  print(f"❌ Unexpected error: {e}")
+                  print(f"::set-output name=status::error")
+                  return False
+
+          if __name__ == "__main__":
+              success = check_prometheus_targets()
+              sys.exit(0 if success else 1)
+          EOF
+
+          python check_targets.py
+
+      - name: Upload target validation report
+        if: always()
+        run: |
+          echo "Target validation completed at $(date)" > target-report.txt
+          echo "Status: ${{ steps.targets.outputs.status }}" >> target-report.txt
+          if [ -n "${{ steps.targets.outputs.failed }}" ]; then
+            echo "Failed targets: ${{ steps.targets.outputs.failed }}" >> target-report.txt
+          fi
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: target-validation-${{ github.run_id }}
+          path: target-report.txt
+
+  validate-metric-format:
+    name: Validate Metric Format and Cardinality
+    runs-on: ubuntu-latest
+    needs: validate-prometheus-targets
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install requests prometheus-client pandas
+
+      - name: Check metric cardinality
+        run: |
+          cat > check_cardinality.py << 'EOF'
+          import requests
+          import json
+          import sys
+          import os
+          from collections import defaultdict
+          import re
+
+          prometheus_url = os.getenv('PROMETHEUS_URL', 'http://localhost:9090')
+
+          def check_metric_cardinality():
+              try:
+                  # Get metric metadata
+                  response = requests.get(f"{prometheus_url}/api/v1/label/__name__/values", timeout=30)
+                  response.raise_for_status()
+
+                  data = response.json()
+                  if data['status'] != 'success':
+                      print(f"❌ Failed to get metrics: {data.get('error', 'Unknown error')}")
+                      return False
+
+                  metrics = data['data']
+                  print(f"📊 Found {len(metrics)} unique metrics")
+
+                  # Check cardinality for each metric
+                  high_cardinality_metrics = []
+                  cardinality_threshold = 10000  # Configurable threshold
+
+                  for metric in metrics[:50]:  # Check first 50 metrics to avoid timeout
+                      try:
+                          query = f"group by (__name__)({{{metric}}})"
+                          response = requests.get(f"{prometheus_url}/api/v1/query",
+                                                params={'query': query}, timeout=10)
+
+                          if response.status_code == 200:
+                              result = response.json()
+                              if result['status'] == 'success':
+                                  cardinality = len(result['data']['result'])
+                                  if cardinality > cardinality_threshold:
+                                      high_cardinality_metrics.append((metric, cardinality))
+                                      print(f"⚠️  High cardinality metric: {metric} ({cardinality} series)")
+                      except Exception as e:
+                          print(f"Warning: Could not check cardinality for {metric}: {e}")
+
+                  # Check for problematic metric patterns
+                  problematic_patterns = [
+                      r'.*_total_total$',  # Double total suffix
+                      r'.*user_id.*',      # User-specific metrics (potentially high cardinality)
+                      r'.*request_id.*',   # Request-specific metrics
+                      r'.*session_id.*',   # Session-specific metrics
+                  ]
+
+                  pattern_matches = []
+                  for metric in metrics:
+                      for pattern in problematic_patterns:
+                          if re.match(pattern, metric):
+                              pattern_matches.append(metric)
+                              break
+
+                  if pattern_matches:
+                      print(f"⚠️  Found {len(pattern_matches)} metrics with potentially problematic patterns:")
+                      for metric in pattern_matches[:10]:  # Show first 10
+                          print(f"   - {metric}")
+
+                  # Check metric naming conventions
+                  naming_violations = []
+                  for metric in metrics:
+                      if not re.match(r'^[a-zA-Z_:][a-zA-Z0-9_:]*$', metric):
+                          naming_violations.append(metric)
+
+                  if naming_violations:
+                      print(f"❌ Found {len(naming_violations)} metrics with naming violations:")
+                      for metric in naming_violations[:5]:  # Show first 5
+                          print(f"   - {metric}")
+
+                  # Summary
+                  print(f"\n📋 Cardinality Check Summary:")
+                  print(f"   Total metrics: {len(metrics)}")
+                  print(f"   High cardinality metrics: {len(high_cardinality_metrics)}")
+                  print(f"   Pattern violations: {len(pattern_matches)}")
+                  print(f"   Naming violations: {len(naming_violations)}")
+
+                  # Fail if too many issues
+                  total_issues = len(high_cardinality_metrics) + len(naming_violations)
+                  return total_issues < 10  # Configurable threshold
+
+              except Exception as e:
+                  print(f"❌ Error checking metric cardinality: {e}")
+                  return False
+
+          if __name__ == "__main__":
+              success = check_metric_cardinality()
+              sys.exit(0 if success else 1)
+          EOF
+
+          python check_cardinality.py
+
+  validate-grafana-datasources:
+    name: Validate Grafana Datasources
+    runs-on: ubuntu-latest
+    if: env.GRAFANA_TOKEN != ''
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check Grafana datasources
+        run: |
+          cat > check_grafana.py << 'EOF'
+          import requests
+          import json
+          import sys
+          import os
+
+          grafana_url = os.getenv('GRAFANA_URL', 'http://localhost:3000')
+          grafana_token = os.getenv('GRAFANA_TOKEN', '')
+
+          def check_grafana_datasources():
+              if not grafana_token:
+                  print("⚠️  GRAFANA_TOKEN not set, skipping datasource validation")
+                  return True
+
+              headers = {'Authorization': f'Bearer {grafana_token}'}
+
+              try:
+                  # Check Grafana health
+                  response = requests.get(f"{grafana_url}/api/health", timeout=30)
+                  if response.status_code != 200:
+                      print(f"❌ Grafana health check failed: {response.status_code}")
+                      return False
+
+                  print("✅ Grafana is healthy")
+
+                  # Get datasources
+                  response = requests.get(f"{grafana_url}/api/datasources",
+                                        headers=headers, timeout=30)
+                  if response.status_code != 200:
+                      print(f"❌ Failed to get datasources: {response.status_code}")
+                      return False
+
+                  datasources = response.json()
+                  print(f"📊 Found {len(datasources)} datasources")
+
+                  failed_datasources = []
+                  for ds in datasources:
+                      name = ds.get('name', 'unknown')
+                      ds_type = ds.get('type', 'unknown')
+
+                      # Test datasource connection
+                      ds_id = ds.get('id')
+                      test_response = requests.get(f"{grafana_url}/api/datasources/{ds_id}/health",
+                                                 headers=headers, timeout=30)
+
+                      if test_response.status_code == 200:
+                          test_result = test_response.json()
+                          if test_result.get('status') == 'OK':
+                              print(f"✅ Datasource '{name}' ({ds_type}) is healthy")
+                          else:
+                              print(f"❌ Datasource '{name}' ({ds_type}) health check failed")
+                              failed_datasources.append(name)
+                      else:
+                          print(f"❌ Could not test datasource '{name}' ({ds_type})")
+                          failed_datasources.append(name)
+
+                  return len(failed_datasources) == 0
+
+              except Exception as e:
+                  print(f"❌ Error checking Grafana: {e}")
+                  return False
+
+          if __name__ == "__main__":
+              success = check_grafana_datasources()
+              sys.exit(0 if success else 1)
+          EOF
+
+          python check_grafana.py
+
+  detect-metric-drift:
+    name: Detect Metric Drift and Anomalies
+    runs-on: ubuntu-latest
+    if: github.event.inputs.deep_validation == 'true' || github.event_name == 'schedule'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install requests numpy pandas scikit-learn
+
+      - name: Check metric drift
+        run: |
+          cat > check_drift.py << 'EOF'
+          import requests
+          import json
+          import sys
+          import os
+          import numpy as np
+          from datetime import datetime, timedelta
+
+          prometheus_url = os.getenv('PROMETHEUS_URL', 'http://localhost:9090')
+
+          def detect_metric_drift():
+              try:
+                  # Define time windows
+                  end_time = datetime.now()
+                  start_time = end_time - timedelta(hours=24)
+
+                  # Key metrics to monitor for drift
+                  key_metrics = [
+                      'up',
+                      'prometheus_tsdb_symbol_table_size_bytes',
+                      'prometheus_tsdb_head_series',
+                      'prometheus_config_last_reload_successful',
+                      'rate(prometheus_tsdb_head_samples_appended_total[5m])',
+                  ]
+
+                  anomalies = []
+
+                  for metric in key_metrics:
+                      try:
+                          # Query metric values over time
+                          query = f"{metric}[24h:1h]"
+                          params = {
+                              'query': query,
+                              'time': end_time.isoformat() + 'Z'
+                          }
+
+                          response = requests.get(f"{prometheus_url}/api/v1/query",
+                                                params=params, timeout=30)
+
+                          if response.status_code == 200:
+                              result = response.json()
+                              if result['status'] == 'success' and result['data']['result']:
+                                  # Analyze the time series data
+                                  series = result['data']['result'][0]
+                                  values = [float(val[1]) for val in series.get('values', [])]
+
+                                  if len(values) > 5:  # Need enough data points
+                                      # Basic statistical analysis
+                                      mean_val = np.mean(values)
+                                      std_val = np.std(values)
+                                      recent_val = values[-1] if values else 0
+
+                                      # Check for anomalies (simple z-score)
+                                      if std_val > 0:
+                                          z_score = abs((recent_val - mean_val) / std_val)
+                                          if z_score > 3:  # 3 sigma threshold
+                                              anomalies.append({
+                                                  'metric': metric,
+                                                  'z_score': z_score,
+                                                  'current_value': recent_val,
+                                                  'mean_value': mean_val,
+                                                  'std_dev': std_val
+                                              })
+                                              print(f"⚠️  Anomaly detected in {metric}:")
+                                              print(f"   Current: {recent_val:.2f}")
+                                              print(f"   Mean: {mean_val:.2f}")
+                                              print(f"   Z-score: {z_score:.2f}")
+
+                                  print(f"✅ Analyzed {metric}: {len(values)} data points")
+                              else:
+                                  print(f"⚠️  No data found for {metric}")
+                          else:
+                              print(f"❌ Failed to query {metric}: {response.status_code}")
+
+                      except Exception as e:
+                          print(f"Warning: Error analyzing {metric}: {e}")
+
+                  print(f"\n📊 Drift Analysis Summary:")
+                  print(f"   Metrics analyzed: {len(key_metrics)}")
+                  print(f"   Anomalies detected: {len(anomalies)}")
+
+                  return len(anomalies) < 3  # Allow some anomalies but not too many
+
+              except Exception as e:
+                  print(f"❌ Error in drift detection: {e}")
+                  return False
+
+          if __name__ == "__main__":
+              success = detect_metric_drift()
+              sys.exit(0 if success else 1)
+          EOF
+
+          python check_drift.py
+
+  generate-health-report:
+    name: Generate Monitoring Health Report
+    runs-on: ubuntu-latest
+    needs: [validate-prometheus-targets, validate-metric-format, validate-grafana-datasources, detect-metric-drift]
+    if: always()
+    steps:
+      - name: Generate comprehensive report
+        run: |
+          cat > monitoring-health-report.md << 'EOF'
+          # Monitoring Health Report
+
+          **Generated**: $(date -Iseconds)
+          **Environment**: ${{ github.event.inputs.environment || 'all' }}
+          **Validation Type**: ${{ github.event.inputs.deep_validation == 'true' && 'Deep' || 'Standard' }}
+
+          ## Health Summary
+
+          | Component | Status | Details |
+          |-----------|--------|---------|
+          | Prometheus Targets | ${{ needs.validate-prometheus-targets.result }} | Health: ${{ needs.validate-prometheus-targets.outputs.targets-status }} |
+          | Metric Format | ${{ needs.validate-metric-format.result }} | Cardinality validation completed |
+          | Grafana Datasources | ${{ needs.validate-grafana-datasources.result }} | Connection tests completed |
+          | Metric Drift | ${{ needs.detect-metric-drift.result }} | Anomaly detection completed |
+
+          ## Failed Targets
+          EOF
+
+          if [ -n "${{ needs.validate-prometheus-targets.outputs.failed-targets }}" ]; then
+            echo "**Failed Targets**: ${{ needs.validate-prometheus-targets.outputs.failed-targets }}" >> monitoring-health-report.md
+          else
+            echo "**Failed Targets**: None" >> monitoring-health-report.md
+          fi
+
+          cat >> monitoring-health-report.md << 'EOF'
+
+          ## Recommendations
+
+          EOF
+
+          # Add recommendations based on results
+          if [ "${{ needs.validate-prometheus-targets.result }}" != "success" ]; then
+            echo "- ❌ **Critical**: Fix failed Prometheus targets immediately" >> monitoring-health-report.md
+          fi
+
+          if [ "${{ needs.validate-metric-format.result }}" != "success" ]; then
+            echo "- ⚠️  **Warning**: Review metric cardinality and naming conventions" >> monitoring-health-report.md
+          fi
+
+          if [ "${{ needs.validate-grafana-datasources.result }}" != "success" ]; then
+            echo "- ⚠️  **Warning**: Check Grafana datasource configurations" >> monitoring-health-report.md
+          fi
+
+          echo "" >> monitoring-health-report.md
+          echo "## Next Actions" >> monitoring-health-report.md
+          echo "1. Review detailed logs in workflow artifacts" >> monitoring-health-report.md
+          echo "2. Address any critical issues immediately" >> monitoring-health-report.md
+          echo "3. Schedule follow-up validation if needed" >> monitoring-health-report.md
+
+      - name: Upload health report
+        uses: actions/upload-artifact@v3
+        with:
+          name: monitoring-health-report-${{ github.run_id }}
+          path: monitoring-health-report.md
+
+  send-notifications:
+    name: Send Failure Notifications
+    runs-on: ubuntu-latest
+    needs: [validate-prometheus-targets, validate-metric-format, validate-grafana-datasources, detect-metric-drift]
+    if: |
+      always() &&
+      github.event.inputs.alert_on_failure != 'false' &&
+      (needs.validate-prometheus-targets.result == 'failure' ||
+       needs.validate-metric-format.result == 'failure' ||
+       needs.validate-grafana-datasources.result == 'failure' ||
+       needs.detect-metric-drift.result == 'failure')
+    steps:
+      - name: Send Slack notification
+        if: env.SLACK_WEBHOOK != ''
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+            --data '{
+              "text": "🚨 Monitoring Health Check Failed",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Monitoring validation failed for O-RAN MANO*\n\n• Prometheus Targets: ${{ needs.validate-prometheus-targets.result }}\n• Metric Format: ${{ needs.validate-metric-format.result }}\n• Grafana Datasources: ${{ needs.validate-grafana-datasources.result }}\n• Drift Detection: ${{ needs.detect-metric-drift.result }}\n\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Details>"
+                  }
+                }
+              ]
+            }' \
+            ${{ env.SLACK_WEBHOOK }}
+
+      - name: Send Teams notification
+        if: env.TEAMS_WEBHOOK != ''
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+            --data '{
+              "@type": "MessageCard",
+              "@context": "http://schema.org/extensions",
+              "themeColor": "FF0000",
+              "summary": "Monitoring Health Check Failed",
+              "sections": [{
+                "activityTitle": "🚨 O-RAN MANO Monitoring Validation Failed",
+                "activitySubtitle": "Environment: ${{ github.event.inputs.environment || 'all' }}",
+                "facts": [
+                  {
+                    "name": "Prometheus Targets",
+                    "value": "${{ needs.validate-prometheus-targets.result }}"
+                  },
+                  {
+                    "name": "Metric Format",
+                    "value": "${{ needs.validate-metric-format.result }}"
+                  },
+                  {
+                    "name": "Grafana Datasources",
+                    "value": "${{ needs.validate-grafana-datasources.result }}"
+                  },
+                  {
+                    "name": "Drift Detection",
+                    "value": "${{ needs.detect-metric-drift.result }}"
+                  }
+                ],
+                "markdown": true
+              }],
+              "potentialAction": [{
+                "@type": "OpenUri",
+                "name": "View Workflow",
+                "targets": [{
+                  "os": "default",
+                  "uri": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                }]
+              }]
+            }' \
+            ${{ env.TEAMS_WEBHOOK }}

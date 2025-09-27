@@ -1,0 +1,283 @@
+# AlertManager configuration for O-RAN platform
+global:
+  smtp_smarthost: 'smtp.o-ran.company.com:587'
+  smtp_from: 'alerts@o-ran.company.com'
+  smtp_auth_username: 'alerts@o-ran.company.com'
+  smtp_auth_password: 'smtp-password'
+  slack_api_url: 'https://PLACEHOLDER_SLACK_WEBHOOK_URL'
+  resolve_timeout: 5m
+  http_config:
+    tls_config:
+      insecure_skip_verify: false
+
+# Routing tree for alerts
+route:
+  group_by: ['alertname', 'component', 'severity']
+  group_wait: 10s
+  group_interval: 5m
+  repeat_interval: 12h
+  receiver: 'o-ran-default'
+  routes:
+    # Critical alerts - immediate notification
+    - match:
+        severity: critical
+      receiver: 'o-ran-critical'
+      group_wait: 0s
+      group_interval: 1m
+      repeat_interval: 30m
+      continue: true
+      routes:
+        # Component-specific critical routing
+        - match:
+            component: orchestrator
+          receiver: 'orchestrator-critical'
+        - match:
+            component: vnf-operator
+          receiver: 'vnf-operator-critical'
+        - match:
+            component: dms
+          receiver: 'dms-critical'
+
+    # Warning alerts - grouped notifications
+    - match:
+        severity: warning
+      receiver: 'o-ran-warning'
+      group_wait: 5m
+      group_interval: 30m
+      repeat_interval: 24h
+      routes:
+        # Component-specific warning routing
+        - match:
+            component: orchestrator
+          receiver: 'orchestrator-team'
+        - match:
+            component: vnf-operator
+          receiver: 'vnf-operator-team'
+        - match:
+            component: dms
+          receiver: 'dms-team'
+
+    # Info/maintenance alerts
+    - match:
+        severity: info
+      receiver: 'o-ran-info'
+      group_wait: 10m
+      group_interval: 1h
+      repeat_interval: 24h
+
+    # Watchdog alerts (ignore)
+    - match:
+        alertname: Watchdog
+      receiver: 'null'
+
+# Notification receivers
+receivers:
+  # Default catch-all receiver
+  - name: 'o-ran-default'
+    email_configs:
+      - to: 'o-ran-team@company.com'
+        subject: '[O-RAN {{ .Status | toUpper }}] {{ .GroupLabels.alertname }}'
+        body: |
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Component: {{ .Labels.component }}
+          Severity: {{ .Labels.severity }}
+          Instance: {{ .Labels.instance }}
+          Namespace: {{ .Labels.namespace }}
+          {{ end }}
+        html: |
+          <h2>O-RAN Alert Notification</h2>
+          <table border="1">
+            <tr><th>Alert</th><th>Component</th><th>Severity</th><th>Description</th></tr>
+            {{ range .Alerts }}
+            <tr>
+              <td>{{ .Annotations.summary }}</td>
+              <td>{{ .Labels.component }}</td>
+              <td>{{ .Labels.severity }}</td>
+              <td>{{ .Annotations.description }}</td>
+            </tr>
+            {{ end }}
+          </table>
+
+  # Critical alerts - multi-channel notification
+  - name: 'o-ran-critical'
+    slack_configs:
+      - channel: '#o-ran-critical'
+        username: 'O-RAN AlertManager'
+        color: 'danger'
+        title: '🚨 Critical O-RAN Alert'
+        title_link: '{{ (index .Alerts 0).GeneratorURL }}'
+        text: |
+          {{ range .Alerts }}
+          *{{ .Labels.component }}*: {{ .Annotations.summary }}
+          {{ end }}
+        fields:
+          - title: 'Component'
+            value: '{{ .GroupLabels.component }}'
+            short: true
+          - title: 'Severity'
+            value: '{{ .GroupLabels.severity }}'
+            short: true
+          - title: 'Namespace'
+            value: '{{ .GroupLabels.namespace }}'
+            short: true
+          - title: 'Instance'
+            value: '{{ .GroupLabels.instance }}'
+            short: true
+        footer: 'O-RAN MANO Platform'
+        icon_emoji: ':fire:'
+    pagerduty_configs:
+      - service_key: 'YOUR_PAGERDUTY_SERVICE_KEY'
+        description: 'Critical O-RAN Alert: {{ .GroupLabels.alertname }}'
+        severity: 'critical'
+        class: 'o-ran'
+        component: '{{ .GroupLabels.component }}'
+        group: '{{ .GroupLabels.namespace }}'
+        details:
+          summary: '{{ (index .Alerts 0).Annotations.summary }}'
+          description: '{{ (index .Alerts 0).Annotations.description }}'
+          runbook_url: '{{ (index .Alerts 0).Annotations.runbook_url }}'
+    email_configs:
+      - to: 'o-ran-oncall@company.com'
+        subject: '🚨 [CRITICAL] O-RAN {{ .GroupLabels.alertname }}'
+        body: |
+          CRITICAL ALERT TRIGGERED
+
+          Component: {{ .GroupLabels.component }}
+          Namespace: {{ .GroupLabels.namespace }}
+
+          {{ range .Alerts }}
+          Summary: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Runbook: {{ .Annotations.runbook_url }}
+          Generator URL: {{ .GeneratorURL }}
+          {{ end }}
+
+  # Warning alerts - team notifications
+  - name: 'o-ran-warning'
+    slack_configs:
+      - channel: '#o-ran-alerts'
+        username: 'O-RAN AlertManager'
+        color: 'warning'
+        title: '⚠️ O-RAN Warning Alert'
+        text: |
+          {{ range .Alerts }}
+          *{{ .Labels.component }}*: {{ .Annotations.summary }}
+          {{ end }}
+        icon_emoji: ':warning:'
+    email_configs:
+      - to: 'o-ran-team@company.com'
+        subject: '[WARNING] O-RAN {{ .GroupLabels.alertname }}'
+        body: |
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Component: {{ .Labels.component }}
+          Description: {{ .Annotations.description }}
+          {{ end }}
+
+  # Info alerts - low priority
+  - name: 'o-ran-info'
+    slack_configs:
+      - channel: '#o-ran-info'
+        username: 'O-RAN AlertManager'
+        color: 'good'
+        title: 'ℹ️ O-RAN Information'
+        text: |
+          {{ range .Alerts }}
+          {{ .Annotations.summary }}
+          {{ end }}
+        icon_emoji: ':information_source:'
+
+  # Component-specific receivers
+  - name: 'orchestrator-critical'
+    slack_configs:
+      - channel: '#o-ran-orchestrator'
+        username: 'Orchestrator AlertManager'
+        color: 'danger'
+        title: '🚨 Orchestrator Critical Alert'
+        text: '{{ (index .Alerts 0).Annotations.summary }}'
+    webhook_configs:
+      - url: 'https://webhook.orchestrator.o-ran.company.com/alerts'
+        http_config:
+          tls_config:
+            insecure_skip_verify: false
+            cert_file: '/etc/ssl/certs/webhook.crt'
+            key_file: '/etc/ssl/private/webhook.key'
+
+  - name: 'orchestrator-team'
+    email_configs:
+      - to: 'orchestrator-team@company.com'
+        subject: '[O-RAN Orchestrator] {{ .GroupLabels.alertname }}'
+        body: |
+          {{ range .Alerts }}
+          Orchestrator Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Instance: {{ .Labels.instance }}
+          {{ end }}
+
+  - name: 'vnf-operator-critical'
+    slack_configs:
+      - channel: '#vnf-operator-alerts'
+        username: 'VNF Operator AlertManager'
+        color: 'danger'
+        title: '🚨 VNF Operator Critical Alert'
+        text: '{{ (index .Alerts 0).Annotations.summary }}'
+    pagerduty_configs:
+      - service_key: 'VNF_OPERATOR_PAGERDUTY_KEY'
+        description: 'Critical VNF Operator Alert: {{ .GroupLabels.alertname }}'
+
+  - name: 'vnf-operator-team'
+    email_configs:
+      - to: 'vnf-operator-team@company.com'
+        subject: '[VNF Operator] {{ .GroupLabels.alertname }}'
+
+  - name: 'dms-critical'
+    slack_configs:
+      - channel: '#dms-alerts'
+        username: 'DMS AlertManager'
+        color: 'danger'
+        title: '🚨 DMS Critical Alert'
+        text: '{{ (index .Alerts 0).Annotations.summary }}'
+
+  - name: 'dms-team'
+    email_configs:
+      - to: 'dms-team@company.com'
+        subject: '[DMS] {{ .GroupLabels.alertname }}'
+
+  # Null receiver for ignored alerts
+  - name: 'null'
+
+# Alert inhibition rules
+inhibit_rules:
+  # Critical alerts inhibit warning alerts for the same component
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['component', 'instance', 'namespace']
+
+  # Component down inhibits other alerts for the same component
+  - source_match:
+      alertname: 'O_RANComponentDown'
+    target_match_re:
+      alertname: 'O_RAN(HighLatency|LowThroughput|HighCPU|HighMemory)'
+    equal: ['component', 'instance']
+
+  # Node down inhibits all pod alerts on that node
+  - source_match:
+      alertname: 'NodeDown'
+    target_match_re:
+      alertname: 'O_RAN.*'
+    equal: ['node']
+
+  # Namespace down inhibits all alerts in that namespace
+  - source_match:
+      alertname: 'NamespaceDown'
+    target_match_re:
+      alertname: 'O_RAN.*'
+    equal: ['namespace']
+
+# Templates for custom notifications
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'

@@ -1,0 +1,354 @@
+# Default values for oran-mano.
+# This is a YAML-formatted file.
+
+# Global configuration
+global:
+  imageRegistry: ""
+  imagePullSecrets: []
+  storageClass: "fast-ssd"
+  domain: "oran-mano.local"
+
+# Orchestrator configuration
+orchestrator:
+  enabled: true
+  replicaCount: 3
+  image:
+    repository: oran-mano/orchestrator
+    tag: "latest"
+    pullPolicy: IfNotPresent
+
+  config:
+    server:
+      port: 8080
+      metricsPort: 9090
+    logging:
+      level: info
+      format: json
+    intent:
+      processingTimeout: 30s
+      maxConcurrent: 10
+    placement:
+      algorithm: load_aware
+      metricsInterval: 30s
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+  service:
+    type: ClusterIP
+    port: 80
+    metricsPort: 9090
+
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: orchestrator.oran-mano.local
+        paths:
+          - path: /
+            pathType: Prefix
+    tls: []
+
+  autoscaling:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+
+# VNF Operator configuration
+vnfOperator:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: oran-mano/vnf-operator
+    tag: "latest"
+    pullPolicy: IfNotPresent
+
+  config:
+    operator:
+      reconcileInterval: 30s
+      maxConcurrentReconciles: 10
+      leaderElection: true
+    webhook:
+      port: 9443
+      certDir: /tmp/k8s-webhook-server/serving-certs
+    metrics:
+      bindAddress: ":8080"
+    logging:
+      level: info
+      format: json
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  rbac:
+    create: true
+
+  webhook:
+    enabled: true
+    failurePolicy: Fail
+    certManager:
+      enabled: true
+
+# RAN DMS configuration
+ranDms:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: oran-mano/ran-dms
+    tag: "latest"
+    pullPolicy: IfNotPresent
+
+  config:
+    server:
+      port: 8080
+      metricsPort: 9090
+    ran:
+      cellManagement: true
+      handoverOptimization: true
+      interferenceCoordination: true
+    metrics:
+      collectionInterval: 30s
+      exportInterval: 60s
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 300m
+      memory: 256Mi
+
+  service:
+    type: ClusterIP
+    port: 80
+    metricsPort: 9090
+
+# CN DMS configuration
+cnDms:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: oran-mano/cn-dms
+    tag: "latest"
+    pullPolicy: IfNotPresent
+
+  config:
+    server:
+      port: 8080
+      metricsPort: 9090
+    coreNetwork:
+      amfManagement: true
+      smfManagement: true
+      upfManagement: true
+    sliceManagement:
+      autoScaling: true
+      slaMonitoring: true
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 300m
+      memory: 256Mi
+
+  service:
+    type: ClusterIP
+    port: 80
+    metricsPort: 9090
+
+# TN Manager configuration
+tnManager:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: oran-mano/tn-manager
+    tag: "latest"
+    pullPolicy: IfNotPresent
+
+  config:
+    server:
+      port: 8080
+      metricsPort: 9090
+    transportNetwork:
+      sdnController: true
+      pathOptimization: true
+      qosEnforcement: true
+    monitoring:
+      bandwidthTracking: true
+      latencyMonitoring: true
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 300m
+      memory: 256Mi
+
+  service:
+    type: ClusterIP
+    port: 80
+    metricsPort: 9090
+
+# Monitoring configuration
+monitoring:
+  enabled: true
+
+  prometheus:
+    enabled: true
+    namespace: oran-monitoring
+    storageSize: 50Gi
+    retention: 15d
+    scrapeInterval: 30s
+    resources:
+      requests:
+        memory: 400Mi
+        cpu: 100m
+      limits:
+        memory: 2Gi
+        cpu: 1000m
+
+  grafana:
+    enabled: true
+    namespace: oran-monitoring
+    adminPassword: oran-admin-2024
+    persistence:
+      enabled: true
+      size: 10Gi
+    resources:
+      requests:
+        memory: 100Mi
+        cpu: 50m
+      limits:
+        memory: 300Mi
+        cpu: 200m
+
+  alertmanager:
+    enabled: true
+    namespace: oran-monitoring
+    storage:
+      size: 10Gi
+    config:
+      global:
+        smtpSmarthost: 'localhost:587'
+        smtpFrom: 'oran-mano-alerts@example.com'
+      route:
+        groupBy: ['namespace', 'component', 'alertname']
+        groupWait: 30s
+        groupInterval: 5m
+        repeatInterval: 12h
+      receivers:
+        - name: 'default-receiver'
+          emailConfigs:
+            - to: 'oran-ops@example.com'
+
+# Namespaces
+namespaces:
+  system:
+    name: oran-system
+    create: true
+    labels:
+      name: oran-system
+      purpose: o-ran-mano-system
+  monitoring:
+    name: oran-monitoring
+    create: true
+    labels:
+      name: oran-monitoring
+      purpose: o-ran-monitoring
+  observability:
+    name: oran-observability
+    create: true
+    labels:
+      name: oran-observability
+      purpose: o-ran-observability
+
+# Resource quotas
+resourceQuotas:
+  enabled: true
+  system:
+    requestsCpu: "4"
+    requestsMemory: 8Gi
+    limitsCpu: "8"
+    limitsMemory: 16Gi
+    pods: "20"
+    persistentvolumeclaims: "10"
+  monitoring:
+    requestsCpu: "2"
+    requestsMemory: 4Gi
+    limitsCpu: "4"
+    limitsMemory: 8Gi
+    pods: "10"
+    persistentvolumeclaims: "5"
+  observability:
+    requestsCpu: "1"
+    requestsMemory: 2Gi
+    limitsCpu: "2"
+    limitsMemory: 4Gi
+    pods: "5"
+    persistentvolumeclaims: "3"
+
+# Network policies
+networkPolicies:
+  enabled: true
+
+# Pod Disruption Budgets
+podDisruptionBudgets:
+  enabled: true
+  orchestrator:
+    minAvailable: 2
+  ranDms:
+    minAvailable: 1
+  cnDms:
+    minAvailable: 1
+  tnManager:
+    minAvailable: 1
+
+# Security context
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 65534
+  fsGroup: 65534
+
+# Service accounts
+serviceAccount:
+  create: true
+  annotations: {}
+
+# RBAC
+rbac:
+  create: true
+
+# Cert Manager
+certManager:
+  enabled: true
+  issuer:
+    name: selfsigned-issuer
+    kind: ClusterIssuer
+
+# Custom Resource Definitions
+customResourceDefinitions:
+  create: true
+
+# Webhooks
+webhooks:
+  enabled: true
+  failurePolicy: Fail

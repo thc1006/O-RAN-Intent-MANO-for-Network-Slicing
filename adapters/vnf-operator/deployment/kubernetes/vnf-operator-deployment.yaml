@@ -1,0 +1,258 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vnf-operator
+  namespace: oran-system
+  labels:
+    app: vnf-operator
+    component: o-ran-mano
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: vnf-operator
+  labels:
+    app: vnf-operator
+    component: o-ran-mano
+rules:
+- apiGroups: [""]
+  resources: ["pods", "services", "configmaps", "secrets", "persistentvolumeclaims"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets", "statefulsets"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["networking.k8s.io"]
+  resources: ["networkpolicies", "ingresses"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["mano.oran.io"]
+  resources: ["vnfdeployments", "networkslices", "qosprofiles"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["mano.oran.io"]
+  resources: ["vnfdeployments/status", "networkslices/status", "qosprofiles/status"]
+  verbs: ["get", "update", "patch"]
+- apiGroups: ["admissionregistration.k8s.io"]
+  resources: ["mutatingwebhookconfigurations", "validatingwebhookconfigurations"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["metrics.k8s.io"]
+  resources: ["pods", "nodes"]
+  verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: vnf-operator
+  labels:
+    app: vnf-operator
+    component: o-ran-mano
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: vnf-operator
+subjects:
+- kind: ServiceAccount
+  name: vnf-operator
+  namespace: oran-system
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vnf-operator-config
+  namespace: oran-system
+  labels:
+    app: vnf-operator
+    component: o-ran-mano
+data:
+  config.yaml: |
+    operator:
+      reconcile_interval: 30s
+      max_concurrent_reconciles: 10
+      leader_election: true
+    webhook:
+      port: 9443
+      cert_dir: /tmp/k8s-webhook-server/serving-certs
+    metrics:
+      bind_address: ":8080"
+    logging:
+      level: info
+      format: json
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: vnf-operator
+  namespace: oran-system
+  labels:
+    app: vnf-operator
+    component: o-ran-mano
+    version: v1.0.0
+spec:
+  serviceName: vnf-operator
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vnf-operator
+  template:
+    metadata:
+      labels:
+        app: vnf-operator
+        component: o-ran-mano
+        version: v1.0.0
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: vnf-operator
+      containers:
+      - name: manager
+        image: oran-mano/vnf-operator:latest
+        imagePullPolicy: IfNotPresent
+        command:
+        - /manager
+        args:
+        - --config=/etc/operator/config.yaml
+        - --metrics-bind-addr=:8080
+        - --leader-elect
+        - --health-probe-bind-address=:8081
+        ports:
+        - name: webhook-server
+          containerPort: 9443
+          protocol: TCP
+        - name: metrics
+          containerPort: 8080
+          protocol: TCP
+        - name: health
+          containerPort: 8081
+          protocol: TCP
+        env:
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        volumeMounts:
+        - name: config
+          mountPath: /etc/operator
+          readOnly: true
+        - name: cert
+          mountPath: /tmp/k8s-webhook-server/serving-certs
+          readOnly: true
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: health
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: health
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 65534
+          capabilities:
+            drop:
+            - ALL
+      volumes:
+      - name: config
+        configMap:
+          name: vnf-operator-config
+      - name: cert
+        secret:
+          secretName: vnf-operator-webhook-certs
+          defaultMode: 420
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        fsGroup: 65534
+      terminationGracePeriodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vnf-operator-webhook-service
+  namespace: oran-system
+  labels:
+    app: vnf-operator
+    component: o-ran-mano
+spec:
+  ports:
+  - name: webhook-server
+    port: 443
+    targetPort: webhook-server
+    protocol: TCP
+  selector:
+    app: vnf-operator
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vnf-operator-metrics-service
+  namespace: oran-system
+  labels:
+    app: vnf-operator
+    component: o-ran-mano
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8080"
+    prometheus.io/path: "/metrics"
+spec:
+  ports:
+  - name: metrics
+    port: 8080
+    targetPort: metrics
+    protocol: TCP
+  selector:
+    app: vnf-operator
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionWebhook
+metadata:
+  name: vnf-operator-validating-webhook
+  labels:
+    app: vnf-operator
+    component: o-ran-mano
+webhooks:
+- name: vnfdeployment.mano.oran.io
+  clientConfig:
+    service:
+      name: vnf-operator-webhook-service
+      namespace: oran-system
+      path: /validate-mano-oran-io-v1-vnfdeployment
+  rules:
+  - operations: ["CREATE", "UPDATE"]
+    apiGroups: ["mano.oran.io"]
+    apiVersions: ["v1"]
+    resources: ["vnfdeployments"]
+  admissionReviewVersions: ["v1", "v1beta1"]
+  sideEffects: None
+  failurePolicy: Fail
+- name: networkslice.mano.oran.io
+  clientConfig:
+    service:
+      name: vnf-operator-webhook-service
+      namespace: oran-system
+      path: /validate-mano-oran-io-v1-networkslice
+  rules:
+  - operations: ["CREATE", "UPDATE"]
+    apiGroups: ["mano.oran.io"]
+    apiVersions: ["v1"]
+    resources: ["networkslices"]
+  admissionReviewVersions: ["v1", "v1beta1"]
+  sideEffects: None
+  failurePolicy: Fail

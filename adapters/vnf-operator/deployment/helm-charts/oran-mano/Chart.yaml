@@ -1,0 +1,63 @@
+apiVersion: v2
+name: oran-mano
+description: A Helm chart for O-RAN MANO (Management and Orchestration) system
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+home: https://github.com/oran-alliance/oran-mano
+sources:
+- https://github.com/oran-alliance/oran-mano
+maintainers:
+- name: O-RAN MANO Team
+  email: mano-team@oran.org
+keywords:
+- o-ran
+- mano
+- orchestration
+- network-slicing
+- 5g
+- intent-driven
+
+dependencies:
+- name: prometheus
+  version: "25.8.0"
+  repository: https://prometheus-community.github.io/helm-charts
+  condition: monitoring.prometheus.enabled
+- name: grafana
+  version: "7.0.8"
+  repository: https://grafana.github.io/helm-charts
+  condition: monitoring.grafana.enabled
+- name: cert-manager
+  version: "1.13.3"
+  repository: https://charts.jetstack.io
+  condition: certManager.enabled
+
+annotations:
+  category: Infrastructure
+  licenses: Apache-2.0
+  artifacthub.io/changes: |
+    - kind: added
+      description: Initial release of O-RAN MANO Helm chart
+    - kind: added
+      description: Support for intent-driven orchestration
+    - kind: added
+      description: Network slice management capabilities
+    - kind: added
+      description: Comprehensive monitoring and alerting
+  artifacthub.io/containsSecurityUpdates: "false"
+  artifacthub.io/images: |
+    - name: orchestrator
+      image: oran-mano/orchestrator:latest
+    - name: vnf-operator
+      image: oran-mano/vnf-operator:latest
+    - name: ran-dms
+      image: oran-mano/ran-dms:latest
+    - name: cn-dms
+      image: oran-mano/cn-dms:latest
+    - name: tn-manager
+      image: oran-mano/tn-manager:latest
+  artifacthub.io/links: |
+    - name: Documentation
+      url: https://docs.oran-mano.io
+    - name: O-RAN Alliance
+      url: https://www.o-ran.org

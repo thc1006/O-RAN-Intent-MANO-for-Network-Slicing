@@ -1,0 +1,15 @@
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: oran-mano
+  labels:
+    name: oran-mano
+    oran.io/component: application
+    oran.io/managed-by: kustomize
+    oran.io/monitoring: "enabled"
+  annotations:
+    oran.io/description: "O-RAN MANO application namespace"
+    oran.io/version: "1.0.0"
+    oran.io/maintainer: "oran-mano-team"

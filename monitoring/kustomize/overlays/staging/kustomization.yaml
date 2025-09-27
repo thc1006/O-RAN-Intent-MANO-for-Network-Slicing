@@ -1,0 +1,163 @@
+# Staging environment overlay for O-RAN MANO monitoring
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: oran-monitoring-staging
+  annotations:
+    config.kubernetes.io/local-config: "true"
+
+# Reference to base configuration
+bases:
+  - ../../base
+
+# Environment-specific namespace
+namespace: monitoring
+
+# Staging-specific labels
+commonLabels:
+  oran.io/environment: staging
+  oran.io/tier: staging
+
+# Staging-specific annotations
+commonAnnotations:
+  oran.io/deployment-date: "2024-01-01"
+  oran.io/environment-type: staging
+  oran.io/auto-scaling: "enabled"
+  oran.io/backup-enabled: "true"
+
+# Resource patches for staging
+patchesStrategicMerge:
+  - patches/prometheus-staging.yaml
+  - patches/grafana-staging.yaml
+  - patches/alertmanager-staging.yaml
+  - patches/resources-staging.yaml
+  - patches/persistence-staging.yaml
+
+# JSON patches for specific staging modifications
+patchesJson6902:
+  - target:
+      group: monitoring.coreos.com
+      version: v1
+      kind: Prometheus
+      name: prometheus
+    path: patches/prometheus-staging-config.yaml
+
+  - target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: grafana
+    path: patches/grafana-staging-config.yaml
+
+# Staging-specific ConfigMaps
+configMapGenerator:
+  - name: prometheus-staging-config
+    files:
+      - config/prometheus-staging.yml
+    options:
+      labels:
+        app.kubernetes.io/component: prometheus
+        oran.io/environment: staging
+
+  - name: alertmanager-staging-config
+    files:
+      - config/alertmanager-staging.yml
+    options:
+      labels:
+        app.kubernetes.io/component: alertmanager
+        oran.io/environment: staging
+
+  - name: grafana-staging-dashboards
+    files:
+      - dashboards/staging-overview.json
+      - dashboards/performance-monitoring.json
+      - dashboards/sla-monitoring.json
+    options:
+      labels:
+        app.kubernetes.io/component: grafana
+        oran.io/environment: staging
+        grafana_dashboard: "1"
+
+  - name: staging-recording-rules
+    files:
+      - rules/staging-recording-rules.yml
+    options:
+      labels:
+        app.kubernetes.io/component: prometheus
+        oran.io/environment: staging
+
+# Staging-specific secrets
+secretGenerator:
+  - name: staging-monitoring-secrets
+    envs:
+      - secrets/staging.env
+    options:
+      labels:
+        oran.io/environment: staging
+
+  - name: staging-tls-certs
+    files:
+      - certs/staging-tls.crt
+      - certs/staging-tls.key
+    type: kubernetes.io/tls
+    options:
+      labels:
+        oran.io/environment: staging
+
+# Staging image versions (stable releases)
+images:
+  - name: quay.io/prometheus/prometheus
+    newTag: v2.47.0
+  - name: grafana/grafana
+    newTag: 10.1.0
+  - name: quay.io/prometheus/alertmanager
+    newTag: v0.26.0
+
+# Staging replica counts (production-like)
+replicas:
+  - name: prometheus-prometheus
+    count: 2
+  - name: alertmanager-alertmanager
+    count: 2
+
+# Staging-specific variables
+vars:
+  - name: STAGING_RETENTION
+    objref:
+      kind: ConfigMap
+      name: prometheus-staging-config
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.retention
+
+  - name: STAGING_STORAGE_SIZE
+    objref:
+      kind: ConfigMap
+      name: prometheus-staging-config
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.storage_size
+
+  - name: STAGING_REPLICAS
+    objref:
+      kind: ConfigMap
+      name: prometheus-staging-config
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.replicas
+
+# Resources specific to staging
+resources:
+  - resources/staging-servicemonitor.yaml
+  - resources/staging-ingress.yaml
+  - resources/staging-networkpolicy.yaml
+  - resources/staging-prometheusrule.yaml
+  - resources/staging-pdb.yaml
+  - resources/staging-hpa.yaml
+
+# Transformers for staging
+transformers:
+  - transformers/staging-labels.yaml
+  - transformers/staging-resources.yaml
+  - transformers/staging-security.yaml

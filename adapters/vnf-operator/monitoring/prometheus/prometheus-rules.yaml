@@ -1,0 +1,204 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: oran-mano-rules
+  namespace: oran-monitoring
+  labels:
+    app.kubernetes.io/part-of: o-ran-mano
+    monitoring.oran.io/rules: o-ran-alerts
+spec:
+  groups:
+  - name: o-ran-mano.recording-rules
+    interval: 30s
+    rules:
+    # Intent Processing Recording Rules
+    - record: oran:intent_processing_rate_5m
+      expr: rate(oran_intent_processing_duration_seconds_count[5m])
+
+    - record: oran:intent_processing_latency_p99_5m
+      expr: histogram_quantile(0.99, rate(oran_intent_processing_duration_seconds_bucket[5m]))
+
+    - record: oran:intent_processing_latency_p95_5m
+      expr: histogram_quantile(0.95, rate(oran_intent_processing_duration_seconds_bucket[5m]))
+
+    - record: oran:intent_processing_latency_p50_5m
+      expr: histogram_quantile(0.50, rate(oran_intent_processing_duration_seconds_bucket[5m]))
+
+    # Slice Deployment Recording Rules
+    - record: oran:slice_deployment_rate_5m
+      expr: rate(oran_slice_deployments_total[5m])
+
+    - record: oran:slice_deployment_success_rate_5m
+      expr: rate(oran_slice_deployments_total{status="success"}[5m]) / rate(oran_slice_deployments_total[5m])
+
+    - record: oran:slice_deployment_error_rate_5m
+      expr: rate(oran_slice_deployments_total{status="error"}[5m]) / rate(oran_slice_deployments_total[5m])
+
+    # VNF Reconciliation Recording Rules
+    - record: oran:vnf_reconciliation_rate_5m
+      expr: rate(vnf_reconciliation_duration_seconds_count[5m])
+
+    - record: oran:vnf_reconciliation_latency_p99_5m
+      expr: histogram_quantile(0.99, rate(vnf_reconciliation_duration_seconds_bucket[5m]))
+
+    - record: oran:vnf_error_rate_5m
+      expr: rate(vnf_deployment_errors_total[5m])
+
+    # Network Slice Performance Recording Rules
+    - record: oran:slice_throughput_avg_5m
+      expr: avg by (slice_id) (ran_throughput_mbps)
+
+    - record: oran:slice_latency_avg_5m
+      expr: avg by (slice_id) (ran_latency_milliseconds)
+
+    - record: oran:slice_availability_5m
+      expr: avg by (slice_id) (up{job=~".*dms.*"})
+
+    # Resource Utilization Recording Rules
+    - record: oran:cpu_utilization_avg_5m
+      expr: avg by (namespace, pod) (rate(container_cpu_usage_seconds_total{namespace=~"oran-.*"}[5m]))
+
+    - record: oran:memory_utilization_avg_5m
+      expr: avg by (namespace, pod) (container_memory_working_set_bytes{namespace=~"oran-.*"} / container_spec_memory_limit_bytes{namespace=~"oran-.*"})
+
+  - name: o-ran-mano.alert-rules
+    interval: 30s
+    rules:
+    # High Latency Alerts
+    - alert: HighLatency
+      expr: oran:intent_processing_latency_p95_5m > 0.010
+      for: 2m
+      labels:
+        severity: warning
+        component: orchestrator
+        domain: intent-processing
+      annotations:
+        summary: "High intent processing latency detected"
+        description: "Intent processing P95 latency is {{ $value }}s, which exceeds 10ms threshold"
+        runbook_url: "https://docs.oran-mano.io/runbooks/high-latency"
+
+    - alert: HighNetworkLatency
+      expr: oran:slice_latency_avg_5m > 10
+      for: 1m
+      labels:
+        severity: critical
+        component: ran-dms
+        domain: network-slice
+      annotations:
+        summary: "High network slice latency detected"
+        description: "Network slice {{ $labels.slice_id }} latency is {{ $value }}ms, exceeding 10ms threshold"
+        runbook_url: "https://docs.oran-mano.io/runbooks/network-latency"
+
+    # Low Throughput Alerts
+    - alert: LowThroughput
+      expr: oran:slice_throughput_avg_5m < 1
+      for: 3m
+      labels:
+        severity: warning
+        component: ran-dms
+        domain: network-slice
+      annotations:
+        summary: "Low network slice throughput detected"
+        description: "Network slice {{ $labels.slice_id }} throughput is {{ $value }}Mbps, below 1Mbps threshold"
+        runbook_url: "https://docs.oran-mano.io/runbooks/low-throughput"
+
+    # Pod CrashLooping Alerts
+    - alert: PodCrashLooping
+      expr: rate(kube_pod_container_status_restarts_total{namespace=~"oran-.*"}[5m]) * 60 * 5 > 0
+      for: 5m
+      labels:
+        severity: critical
+        component: kubernetes
+        domain: infrastructure
+      annotations:
+        summary: "Pod {{ $labels.pod }} is crash looping"
+        description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} has restarted {{ $value }} times in the last 5 minutes"
+        runbook_url: "https://docs.oran-mano.io/runbooks/pod-crashloop"
+
+    # High Error Rate Alerts
+    - alert: HighErrorRate
+      expr: oran:slice_deployment_error_rate_5m > 0.05
+      for: 2m
+      labels:
+        severity: warning
+        component: orchestrator
+        domain: slice-deployment
+      annotations:
+        summary: "High slice deployment error rate"
+        description: "Slice deployment error rate is {{ $value | humanizePercentage }}, exceeding 5% threshold"
+        runbook_url: "https://docs.oran-mano.io/runbooks/high-error-rate"
+
+    - alert: VNFDeploymentErrors
+      expr: oran:vnf_error_rate_5m > 0.1
+      for: 2m
+      labels:
+        severity: critical
+        component: vnf-operator
+        domain: vnf-management
+      annotations:
+        summary: "High VNF deployment error rate"
+        description: "VNF deployment error rate is {{ $value }}/min, exceeding threshold"
+        runbook_url: "https://docs.oran-mano.io/runbooks/vnf-errors"
+
+    # Deployment Replicas Mismatch
+    - alert: DeploymentReplicasMismatch
+      expr: kube_deployment_spec_replicas{namespace=~"oran-.*"} != kube_deployment_status_replicas_available{namespace=~"oran-.*"}
+      for: 5m
+      labels:
+        severity: warning
+        component: kubernetes
+        domain: infrastructure
+      annotations:
+        summary: "Deployment {{ $labels.deployment }} has mismatched replicas"
+        description: "Deployment {{ $labels.deployment }} in namespace {{ $labels.namespace }} has {{ $labels.spec_replicas }} desired but {{ $labels.available_replicas }} available"
+        runbook_url: "https://docs.oran-mano.io/runbooks/replica-mismatch"
+
+    # Resource Utilization Alerts
+    - alert: HighCPUUtilization
+      expr: oran:cpu_utilization_avg_5m > 0.8
+      for: 5m
+      labels:
+        severity: warning
+        component: kubernetes
+        domain: resource-management
+      annotations:
+        summary: "High CPU utilization in {{ $labels.pod }}"
+        description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} has {{ $value | humanizePercentage }} CPU utilization"
+        runbook_url: "https://docs.oran-mano.io/runbooks/high-cpu"
+
+    - alert: HighMemoryUtilization
+      expr: oran:memory_utilization_avg_5m > 0.9
+      for: 5m
+      labels:
+        severity: critical
+        component: kubernetes
+        domain: resource-management
+      annotations:
+        summary: "High memory utilization in {{ $labels.pod }}"
+        description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} has {{ $value | humanizePercentage }} memory utilization"
+        runbook_url: "https://docs.oran-mano.io/runbooks/high-memory"
+
+    # Service Availability Alerts
+    - alert: ServiceDown
+      expr: up{job=~".*oran.*"} == 0
+      for: 1m
+      labels:
+        severity: critical
+        component: service-discovery
+        domain: infrastructure
+      annotations:
+        summary: "Service {{ $labels.job }} is down"
+        description: "Service {{ $labels.job }} has been down for more than 1 minute"
+        runbook_url: "https://docs.oran-mano.io/runbooks/service-down"
+
+    - alert: SliceUnavailable
+      expr: oran:slice_availability_5m < 0.99
+      for: 2m
+      labels:
+        severity: critical
+        component: dms
+        domain: network-slice
+      annotations:
+        summary: "Network slice {{ $labels.slice_id }} availability degraded"
+        description: "Network slice {{ $labels.slice_id }} availability is {{ $value | humanizePercentage }}, below 99% SLA"
+        runbook_url: "https://docs.oran-mano.io/runbooks/slice-unavailable"

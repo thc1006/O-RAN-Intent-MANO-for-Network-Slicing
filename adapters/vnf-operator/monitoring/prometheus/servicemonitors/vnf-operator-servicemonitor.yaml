@@ -1,0 +1,54 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: vnf-operator-servicemonitor
+  namespace: oran-monitoring
+  labels:
+    app: vnf-operator
+    component: o-ran-mano
+    app.kubernetes.io/part-of: o-ran-mano
+    monitoring.oran.io/component: vnf-operator
+spec:
+  selector:
+    matchLabels:
+      app: vnf-operator
+      component: o-ran-mano
+  namespaceSelector:
+    matchNames:
+    - oran-system
+  endpoints:
+  - port: metrics
+    interval: 30s
+    path: /metrics
+    scheme: http
+    scrapeTimeout: 10s
+    metricRelabelings:
+    - sourceLabels: [__name__]
+      regex: 'vnf_reconciliation_duration_seconds.*'
+      targetLabel: __tmp_vnf_reconcile_metric
+      replacement: 'true'
+    - sourceLabels: [__name__]
+      regex: 'vnf_deployment_errors_total.*'
+      targetLabel: __tmp_vnf_error_metric
+      replacement: 'true'
+    - sourceLabels: [__name__]
+      regex: 'vnf_active_deployments.*'
+      targetLabel: __tmp_vnf_active_metric
+      replacement: 'true'
+    - sourceLabels: [__name__]
+      regex: 'controller_runtime_.*'
+      targetLabel: __tmp_controller_metric
+      replacement: 'true'
+    relabelings:
+    - sourceLabels: [__meta_kubernetes_service_name]
+      targetLabel: service
+    - sourceLabels: [__meta_kubernetes_namespace]
+      targetLabel: namespace
+    - sourceLabels: [__meta_kubernetes_pod_name]
+      targetLabel: pod
+    - sourceLabels: [__meta_kubernetes_pod_node_name]
+      targetLabel: node
+    - targetLabel: component
+      replacement: vnf-operator
+    - targetLabel: system
+      replacement: o-ran-mano

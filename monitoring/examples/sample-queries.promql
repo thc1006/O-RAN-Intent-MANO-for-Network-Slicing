@@ -1,0 +1,450 @@
+# O-RAN Monitoring Stack - Sample PromQL Queries
+# This file contains useful PromQL queries for O-RAN Intent MANO monitoring
+
+# =============================================================================
+# BASIC INFRASTRUCTURE QUERIES
+# =============================================================================
+
+# Node availability
+up{job="kubernetes-nodes"}
+
+# Node CPU utilization
+1 - avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m]))
+
+# Node memory utilization
+1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)
+
+# Node disk utilization
+1 - (node_filesystem_avail_bytes / node_filesystem_size_bytes)
+
+# Pod CPU usage
+rate(container_cpu_usage_seconds_total{container!="POD",container!=""}[5m])
+
+# Pod memory usage
+container_memory_working_set_bytes{container!="POD",container!=""}
+
+# =============================================================================
+# KUBERNETES CLUSTER QUERIES
+# =============================================================================
+
+# Number of running pods per namespace
+count by (namespace) (kube_pod_info{phase="Running"})
+
+# Pod restart rate
+rate(kube_pod_container_status_restarts_total[5m])
+
+# Pending pods
+kube_pod_status_phase{phase="Pending"}
+
+# Failed pods
+kube_pod_status_phase{phase="Failed"}
+
+# Node capacity vs allocation
+(kube_node_status_allocatable{resource="cpu"} - kube_node_status_capacity{resource="cpu"}) / kube_node_status_capacity{resource="cpu"}
+
+# PVC usage
+(kubelet_volume_stats_used_bytes / kubelet_volume_stats_capacity_bytes) * 100
+
+# =============================================================================
+# PROMETHEUS MONITORING QUERIES
+# =============================================================================
+
+# Prometheus ingestion rate
+rate(prometheus_tsdb_head_samples_appended_total[5m])
+
+# Number of active time series
+prometheus_tsdb_head_series
+
+# Prometheus query duration 95th percentile
+histogram_quantile(0.95, rate(prometheus_http_request_duration_seconds_bucket[5m]))
+
+# Prometheus storage size
+prometheus_tsdb_size_bytes
+
+# Failed scrapes
+rate(prometheus_target_scrapes_exceeded_sample_limit_total[5m])
+
+# Scrape duration
+prometheus_target_interval_length_seconds{quantile="0.99"}
+
+# =============================================================================
+# GRAFANA MONITORING QUERIES
+# =============================================================================
+
+# Grafana active sessions
+grafana_stat_active_sessions
+
+# Dashboard view rate
+rate(grafana_page_response_status_total[5m])
+
+# Grafana API response time
+histogram_quantile(0.95, rate(grafana_http_request_duration_seconds_bucket[5m]))
+
+# Grafana database connections
+grafana_database_connections_open
+
+# =============================================================================
+# ALERTMANAGER MONITORING QUERIES
+# =============================================================================
+
+# AlertManager notifications sent
+rate(alertmanager_notifications_total[5m])
+
+# AlertManager notification failures
+rate(alertmanager_notifications_failed_total[5m])
+
+# Number of active alerts
+alertmanager_alerts{state="active"}
+
+# AlertManager cluster size
+alertmanager_cluster_peers
+
+# =============================================================================
+# O-RAN SPECIFIC QUERIES
+# =============================================================================
+
+# O-RAN Intent Processing Metrics
+# --------------------------------
+
+# Intent processing rate
+rate(oran_intent_processing_total[5m])
+
+# Intent processing duration (average)
+rate(oran_intent_processing_duration_seconds_sum[5m]) / rate(oran_intent_processing_duration_seconds_count[5m])
+
+# Intent processing duration (95th percentile)
+histogram_quantile(0.95, rate(oran_intent_processing_duration_seconds_bucket[5m]))
+
+# Intent processing success rate
+rate(oran_intent_processing_total{status="success"}[5m]) / rate(oran_intent_processing_total[5m])
+
+# Intent processing error rate
+rate(oran_intent_processing_total{status="error"}[5m]) / rate(oran_intent_processing_total[5m])
+
+# Active intent sessions
+oran_intent_active_sessions
+
+# Intent queue depth
+oran_intent_queue_depth
+
+# O-RAN Network Slice Metrics
+# ----------------------------
+
+# Slice deployment rate
+rate(oran_slice_deployment_total[5m])
+
+# Slice deployment duration
+rate(oran_slice_deployment_duration_seconds_sum[5m]) / rate(oran_slice_deployment_duration_seconds_count[5m])
+
+# Slice deployment success rate
+rate(oran_slice_deployment_total{status="success"}[5m]) / rate(oran_slice_deployment_total[5m])
+
+# Active network slices
+oran_active_network_slices
+
+# Slice throughput (Mbps)
+rate(oran_network_slice_bytes_total[5m]) * 8 / 1000000
+
+# Slice latency (average RTT)
+avg_over_time(oran_ping_rtt_milliseconds[5m])
+
+# O-RAN VNF Placement Metrics
+# ----------------------------
+
+# VNF placement rate
+rate(oran_vnf_placement_total[5m])
+
+# VNF placement success rate
+rate(oran_vnf_placement_total{status="success"}[5m]) / rate(oran_vnf_placement_total[5m])
+
+# VNF placement duration
+rate(oran_vnf_placement_duration_seconds_sum[5m]) / rate(oran_vnf_placement_duration_seconds_count[5m])
+
+# Active VNF instances
+oran_active_vnf_instances
+
+# VNF resource utilization
+oran_vnf_cpu_utilization_percent
+
+# VNF memory utilization
+oran_vnf_memory_utilization_percent
+
+# O-RAN Component Health
+# ----------------------
+
+# NLP service availability
+up{job="oran-nlp"}
+
+# Orchestrator service availability
+up{job="oran-orchestrator"}
+
+# RAN component availability
+up{job="oran-ran"}
+
+# Core Network availability
+up{job="oran-cn"}
+
+# Transport Network availability
+up{job="oran-tn"}
+
+# VNF Operator availability
+up{job="oran-vnf-operator"}
+
+# =============================================================================
+# O-RAN PERFORMANCE QUERIES
+# =============================================================================
+
+# E2E Intent to Slice Deployment Time
+# Calculate end-to-end latency from intent submission to slice deployment
+(
+  avg_over_time(oran_slice_deployment_duration_seconds[5m]) +
+  avg_over_time(oran_intent_processing_duration_seconds[5m]) +
+  avg_over_time(oran_vnf_placement_duration_seconds[5m])
+)
+
+# O-RAN System Throughput
+# Total requests processed per second across all components
+(
+  rate(oran_intent_processing_total[5m]) +
+  rate(oran_slice_deployment_total[5m]) +
+  rate(oran_vnf_placement_total[5m])
+)
+
+# O-RAN Error Budget Consumption
+# Percentage of error budget used (assuming 99.9% SLA = 0.1% error budget)
+(
+  rate(oran_intent_processing_total{status="error"}[5m]) +
+  rate(oran_slice_deployment_total{status="error"}[5m]) +
+  rate(oran_vnf_placement_total{status="error"}[5m])
+) / (
+  rate(oran_intent_processing_total[5m]) +
+  rate(oran_slice_deployment_total[5m]) +
+  rate(oran_vnf_placement_total[5m])
+) * 100
+
+# Network Slice SLA Compliance
+# Percentage of slices meeting latency SLA (<10ms)
+(
+  count(oran_ping_rtt_milliseconds < 10) /
+  count(oran_ping_rtt_milliseconds)
+) * 100
+
+# Resource Efficiency
+# CPU efficiency across O-RAN components
+avg by (component) (
+  rate(container_cpu_usage_seconds_total{namespace=~"oran-.*"}[5m]) /
+  (container_spec_cpu_quota / container_spec_cpu_period)
+) * 100
+
+# =============================================================================
+# AGGREGATED DASHBOARD QUERIES
+# =============================================================================
+
+# Top 10 Highest CPU Usage Pods
+topk(10, rate(container_cpu_usage_seconds_total{container!="POD",container!=""}[5m]))
+
+# Top 10 Highest Memory Usage Pods
+topk(10, container_memory_working_set_bytes{container!="POD",container!=""})
+
+# Slowest O-RAN Operations (95th percentile)
+topk(10, histogram_quantile(0.95, rate(oran_intent_processing_duration_seconds_bucket[5m])))
+
+# Most Active O-RAN Services
+topk(10, rate(oran_intent_processing_total[5m]) by (service))
+
+# Error Rate by Service
+topk(10,
+  rate(oran_intent_processing_total{status="error"}[5m]) by (service) /
+  rate(oran_intent_processing_total[5m]) by (service)
+)
+
+# =============================================================================
+# ALERTING QUERIES (CONDITIONS THAT TRIGGER ALERTS)
+# =============================================================================
+
+# Critical: O-RAN Service Down
+up{job=~"oran-.*"} == 0
+
+# Critical: High Error Rate (>5%)
+(
+  rate(oran_intent_processing_total{status="error"}[5m]) /
+  rate(oran_intent_processing_total[5m])
+) > 0.05
+
+# Warning: High Latency (>2s for intent processing)
+histogram_quantile(0.95, rate(oran_intent_processing_duration_seconds_bucket[5m])) > 2
+
+# Warning: Low Success Rate (<95%)
+(
+  rate(oran_intent_processing_total{status="success"}[5m]) /
+  rate(oran_intent_processing_total[5m])
+) < 0.95
+
+# Critical: Memory Usage High (>90%)
+(
+  container_memory_working_set_bytes{namespace=~"oran-.*"} /
+  container_spec_memory_limit_bytes
+) > 0.90
+
+# Warning: CPU Usage High (>80%)
+(
+  rate(container_cpu_usage_seconds_total{namespace=~"oran-.*"}[5m]) /
+  (container_spec_cpu_quota / container_spec_cpu_period)
+) > 0.80
+
+# Critical: Disk Usage High (>85%)
+(
+  (node_filesystem_size_bytes - node_filesystem_avail_bytes) /
+  node_filesystem_size_bytes
+) > 0.85
+
+# Warning: Network Slice Latency High (>10ms)
+avg_over_time(oran_ping_rtt_milliseconds[5m]) > 10
+
+# Critical: Prometheus Target Down
+up{job="prometheus"} == 0
+
+# Warning: Scrape Duration High (>10s)
+prometheus_target_interval_length_seconds{quantile="0.99"} > 10
+
+# =============================================================================
+# CAPACITY PLANNING QUERIES
+# =============================================================================
+
+# CPU Capacity Remaining
+(
+  sum(node_cpu_seconds_total{mode="idle"}) /
+  sum(node_cpu_seconds_total)
+) * 100
+
+# Memory Capacity Remaining
+(
+  sum(node_memory_MemAvailable_bytes) /
+  sum(node_memory_MemTotal_bytes)
+) * 100
+
+# Storage Growth Rate (bytes per day)
+predict_linear(node_filesystem_size_bytes[7d], 86400)
+
+# Intent Processing Growth Trend
+predict_linear(rate(oran_intent_processing_total[5m])[7d], 86400)
+
+# Time Series Growth Rate
+predict_linear(prometheus_tsdb_head_series[7d], 86400)
+
+# =============================================================================
+# TROUBLESHOOTING QUERIES
+# =============================================================================
+
+# Pods with High Restart Count
+kube_pod_container_status_restarts_total > 5
+
+# Nodes with High Load
+node_load15 > 0.8
+
+# Services with No Healthy Endpoints
+up == 0
+
+# Recent Pod Events
+changes(kube_pod_info[5m])
+
+# Services Missing SLI/SLO Data
+absent(up{job=~"oran-.*"})
+
+# Prometheus Rules Evaluation Failures
+increase(prometheus_rule_evaluation_failures_total[5m]) > 0
+
+# =============================================================================
+# COST OPTIMIZATION QUERIES
+# =============================================================================
+
+# Resource Waste (Allocated but not used)
+(
+  (
+    kube_pod_container_resource_requests{resource="cpu"} -
+    rate(container_cpu_usage_seconds_total{container!="POD"}[5m])
+  ) / kube_pod_container_resource_requests{resource="cpu"}
+) * 100
+
+# Memory Waste
+(
+  (
+    kube_pod_container_resource_requests{resource="memory"} -
+    container_memory_working_set_bytes{container!="POD"}
+  ) / kube_pod_container_resource_requests{resource="memory"}
+) * 100
+
+# Underutilized Nodes (CPU < 30%)
+avg by (instance) (1 - rate(node_cpu_seconds_total{mode="idle"}[5m])) < 0.30
+
+# =============================================================================
+# BUSINESS METRICS QUERIES
+# =============================================================================
+
+# Intent Success Rate SLA (Target: 99.9%)
+(
+  sum(rate(oran_intent_processing_total{status="success"}[5m])) /
+  sum(rate(oran_intent_processing_total[5m]))
+) * 100
+
+# Average Intent Processing Time SLA (Target: <2s)
+(
+  sum(rate(oran_intent_processing_duration_seconds_sum[5m])) /
+  sum(rate(oran_intent_processing_duration_seconds_count[5m]))
+)
+
+# Network Slice Deployment Time SLA (Target: <5 minutes)
+(
+  sum(rate(oran_slice_deployment_duration_seconds_sum[5m])) /
+  sum(rate(oran_slice_deployment_duration_seconds_count[5m]))
+) / 60
+
+# Daily Intent Volume
+sum(increase(oran_intent_processing_total[24h]))
+
+# Peak Hour Intent Rate
+max_over_time(rate(oran_intent_processing_total[5m])[1h])
+
+# =============================================================================
+# RECORDING RULES (FOR DASHBOARD PERFORMANCE)
+# =============================================================================
+
+# These queries should be converted to recording rules for better dashboard performance
+
+# Rule: oran:cpu_utilization_by_component
+avg by (component) (
+  rate(container_cpu_usage_seconds_total{namespace=~"oran-.*"}[5m])
+)
+
+# Rule: oran:memory_utilization_by_component
+avg by (component) (
+  container_memory_working_set_bytes{namespace=~"oran-.*"}
+)
+
+# Rule: oran:request_rate_by_service
+sum by (service) (
+  rate(oran_intent_processing_total[5m])
+)
+
+# Rule: oran:error_rate_by_service
+sum by (service) (
+  rate(oran_intent_processing_total{status="error"}[5m])
+) / sum by (service) (
+  rate(oran_intent_processing_total[5m])
+)
+
+# Rule: oran:latency_p95_by_service
+histogram_quantile(0.95,
+  sum by (service, le) (
+    rate(oran_intent_processing_duration_seconds_bucket[5m])
+  )
+)
+
+# =============================================================================
+# NOTES:
+# - Replace metric names with actual metrics exposed by your O-RAN components
+# - Adjust time ranges ([5m], [1h], etc.) based on your needs
+# - Add proper labels and filters based on your deployment
+# - Test queries in Prometheus before using in dashboards
+# - Consider creating recording rules for complex queries used in dashboards
+# =============================================================================
