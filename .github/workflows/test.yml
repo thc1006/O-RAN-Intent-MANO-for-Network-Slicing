@@ -103,11 +103,10 @@ jobs:
             {"name": "orchestrator", "path": "orchestrator", "type": "go", "requires_k8s": false, "timeout": "10m"},
             {"name": "vnf-operator", "path": "adapters/vnf-operator", "type": "go", "requires_k8s": true, "timeout": "15m"},
             {"name": "o2-client", "path": "o2-client", "type": "go", "requires_k8s": false, "timeout": "10m"},
-            {"name": "tn-manager", "path": "tn/manager", "type": "go", "requires_k8s": true, "timeout": "12m"},
-            {"name": "tn-agent", "path": "tn/agent", "type": "go", "requires_k8s": false, "timeout": "10m"},
+            {"name": "tn", "path": "tn", "type": "go", "requires_k8s": true, "timeout": "12m"},
             {"name": "cn-dms", "path": "cn-dms", "type": "go", "requires_k8s": true, "timeout": "10m"},
             {"name": "ran-dms", "path": "ran-dms", "type": "go", "requires_k8s": true, "timeout": "10m"},
-            {"name": "nephio-generator", "path": "nephio-generator", "type": "go", "requires_k8s": false, "timeout": "8m"},
+            {"name": "pkg-security", "path": "pkg/security", "type": "go", "requires_k8s": false, "timeout": "8m"},
             {"name": "nlp", "path": "nlp", "type": "python", "requires_k8s": false, "timeout": "8m"}
           ]'
         else
