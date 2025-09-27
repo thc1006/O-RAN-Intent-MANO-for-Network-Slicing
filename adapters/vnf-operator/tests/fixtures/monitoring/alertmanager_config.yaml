@@ -4,7 +4,7 @@ global:
   smtp_from: 'alerts@o-ran.company.com'
   smtp_auth_username: 'alerts@o-ran.company.com'
   smtp_auth_password: 'smtp-password'
-  slack_api_url: 'https://PLACEHOLDER_SLACK_WEBHOOK_URL'
+  slack_api_url: 'https://hooks.example.com/services/YOUR_TEAM_ID/YOUR_WEBHOOK_ID/YOUR_TOKEN_HERE'
   resolve_timeout: 5m
   http_config:
     tls_config:
