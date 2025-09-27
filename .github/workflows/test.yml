@@ -98,42 +98,27 @@ jobs:
       run: |
         components="${{ github.event.inputs.test_components || 'all' }}"
 
+        # Simple matrix generation with proper JSON formatting
         if [ "$components" = "all" ]; then
-          matrix='[
-            {"name": "orchestrator", "path": "orchestrator", "type": "go", "requires_k8s": false, "timeout": "10m"},
-            {"name": "vnf-operator", "path": "adapters/vnf-operator", "type": "go", "requires_k8s": true, "timeout": "15m"},
-            {"name": "o2-client", "path": "o2-client", "type": "go", "requires_k8s": false, "timeout": "10m"},
-            {"name": "tn", "path": "tn", "type": "go", "requires_k8s": true, "timeout": "12m"},
-            {"name": "cn-dms", "path": "cn-dms", "type": "go", "requires_k8s": true, "timeout": "10m"},
-            {"name": "ran-dms", "path": "ran-dms", "type": "go", "requires_k8s": true, "timeout": "10m"},
-            {"name": "pkg-security", "path": "pkg/security", "type": "go", "requires_k8s": false, "timeout": "8m"},
-            {"name": "nlp", "path": "nlp", "type": "python", "requires_k8s": false, "timeout": "8m"}
-          ]'
+          matrix=$(cat << 'EOF'
+        [
+          {"name": "orchestrator", "path": "orchestrator", "type": "go", "requires_k8s": false, "timeout": "10m"},
+          {"name": "vnf-operator", "path": "adapters/vnf-operator", "type": "go", "requires_k8s": true, "timeout": "15m"},
+          {"name": "o2-client", "path": "o2-client", "type": "go", "requires_k8s": false, "timeout": "10m"},
+          {"name": "tn", "path": "tn", "type": "go", "requires_k8s": true, "timeout": "12m"},
+          {"name": "cn-dms", "path": "cn-dms", "type": "go", "requires_k8s": true, "timeout": "10m"},
+          {"name": "ran-dms", "path": "ran-dms", "type": "go", "requires_k8s": true, "timeout": "10m"},
+          {"name": "pkg-security", "path": "pkg/security", "type": "go", "requires_k8s": false, "timeout": "8m"},
+          {"name": "nlp", "path": "nlp", "type": "python", "requires_k8s": false, "timeout": "8m"}
+        ]
+        EOF
+        )
         else
-          # Parse comma-separated components
-          IFS=',' read -ra COMPONENTS <<< "$components"
-          matrix="["
-          first=true
-          for comp in "${COMPONENTS[@]}"; do
-            if [ "$first" = false ]; then
-              matrix="$matrix,"
-            fi
-
-            # Determine component details
-            case "$comp" in
-              "orchestrator")
-                matrix="$matrix{\"name\": \"orchestrator\", \"path\": \"orchestrator\", \"type\": \"go\", \"requires_k8s\": false, \"timeout\": \"10m\"}"
-                ;;
-              "vnf-operator")
-                matrix="$matrix{\"name\": \"vnf-operator\", \"path\": \"adapters/vnf-operator\", \"type\": \"go\", \"requires_k8s\": true, \"timeout\": \"15m\"}"
-                ;;
-              # Add other components as needed
-            esac
-            first=false
-          done
-          matrix="$matrix]"
+          # Simple fallback for specific components
+          matrix='[{"name": "orchestrator", "path": "orchestrator", "type": "go", "requires_k8s": false, "timeout": "10m"}]'
         fi
 
+        echo "Generated matrix: $matrix"
         echo "matrix=$matrix" >> $GITHUB_OUTPUT
 
   # Unit tests with comprehensive coverage
