@@ -114,3 +114,71 @@ claude-flow
 claude-flow.bat
 claude-flow.ps1
 hive-mind-prompt-*.txt
+
+# Large files (>100MB)
+*.bin
+*.iso
+*.img
+*.qcow2
+*.vmdk
+
+# Build artifacts and binaries
+*.o
+*.a
+*.so
+*.dylib
+*.exe
+*.dll
+
+# Docker and container images
+*.tar
+*.tar.gz
+*.tgz
+docker-images/
+
+# Kubernetes and deployment artifacts
+*.kubeconfig
+*.pem
+*.key
+!**/testdata/**/*.key
+
+# Log files
+*.log
+logs/
+*.out
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Temporary files
+tmp/
+temp/
+.tmp/
+
+# Node modules and dependencies
+node_modules/
+vendor/
+.vendor/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test coverage
+coverage/
+*.coverage
+*.coverprofile
+
+# Performance and profiling
+*.prof
+*.pprof
+*.trace

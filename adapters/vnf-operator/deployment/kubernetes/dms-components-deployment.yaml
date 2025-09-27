@@ -49,6 +49,8 @@ spec:
       - name: ran-dms
         image: oran-mano/ran-dms:latest
         imagePullPolicy: IfNotPresent
+        command: ["/app/ran-dms"]
+        args: ["--config", "/etc/ran-dms/config.yaml"]
         ports:
         - name: http
           containerPort: 8080
@@ -161,6 +163,8 @@ spec:
       - name: cn-dms
         image: oran-mano/cn-dms:latest
         imagePullPolicy: IfNotPresent
+        command: ["/app/cn-dms"]
+        args: ["--config", "/etc/cn-dms/config.yaml"]
         ports:
         - name: http
           containerPort: 8080
