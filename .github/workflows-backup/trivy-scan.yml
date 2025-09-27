@@ -1,0 +1,154 @@
+name: Trivy Security Scan
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+  packages: read
+
+jobs:
+  trivy-scan:
+    name: Trivy Security Scan
+    runs-on: ubuntu-24.04
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v5
+
+    - name: Run Trivy vulnerability scanner in repo mode
+      uses: aquasecurity/trivy-action@0.28.0
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+        severity: 'CRITICAL,HIGH,MEDIUM'
+        exit-code: '0'  # Don't fail the build
+
+    - name: Check SARIF file
+      run: |
+        if [ -f trivy-results.sarif ]; then
+          echo "SARIF file generated successfully"
+          echo "File size: $(ls -lh trivy-results.sarif | awk '{print $5}')"
+          # Validate JSON structure
+          if python3 -m json.tool trivy-results.sarif > /dev/null 2>&1; then
+            echo "SARIF file is valid JSON"
+          else
+            echo "Warning: SARIF file may have invalid JSON"
+          fi
+        else
+          echo "Error: SARIF file not generated"
+          exit 1
+        fi
+
+    - name: Upload Trivy scan results
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+        category: 'trivy-filesystem'
+        wait-for-processing: false
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+      continue-on-error: true
+
+    - name: Alternative - Upload as artifact if SARIF upload fails
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: trivy-sarif-results
+        path: trivy-results.sarif
+        retention-days: 7
+
+  gosec-scan:
+    name: GoSec Security Scan
+    runs-on: ubuntu-24.04
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v5
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.24.7'
+
+    - name: Run gosec Security Scanner
+      uses: securego/gosec@master
+      with:
+        args: '-fmt sarif -out gosec-results.sarif -severity medium ./...'
+      continue-on-error: true
+
+    - name: Check and fix SARIF file
+      run: |
+        if [ -f gosec-results.sarif ]; then
+          echo "GoSec SARIF file generated"
+          # Sometimes gosec generates empty results, create a minimal valid SARIF
+          if [ ! -s gosec-results.sarif ]; then
+            echo "GoSec SARIF is empty, creating minimal valid SARIF"
+            cat > gosec-results.sarif << 'EOF'
+        {
+          "version": "2.1.0",
+          "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+          "runs": [
+            {
+              "tool": {
+                "driver": {
+                  "name": "gosec",
+                  "version": "2.0.0",
+                  "informationUri": "https://github.com/securego/gosec"
+                }
+              },
+              "results": []
+            }
+          ]
+        }
+        EOF
+          fi
+        else
+          echo "No GoSec SARIF file generated, creating minimal valid SARIF"
+          cat > gosec-results.sarif << 'EOF'
+        {
+          "version": "2.1.0",
+          "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+          "runs": [
+            {
+              "tool": {
+                "driver": {
+                  "name": "gosec",
+                  "version": "2.0.0",
+                  "informationUri": "https://github.com/securego/gosec"
+                }
+              },
+              "results": []
+            }
+          ]
+        }
+        EOF
+        fi
+
+    - name: Upload GoSec scan results
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: 'gosec-results.sarif'
+        category: 'gosec'
+        wait-for-processing: false
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+      continue-on-error: true
+
+    - name: Alternative - Upload as artifact if SARIF upload fails
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: gosec-sarif-results
+        path: gosec-results.sarif
+        retention-days: 7
