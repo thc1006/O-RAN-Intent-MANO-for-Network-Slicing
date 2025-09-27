@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/O-RAN-Intent-MANO-for-Network-Slicing/tests/fixtures"
-	"github.com/O-RAN-Intent-MANO-for-Network-Slicing/tests/mocks"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tests/fixtures"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tests/mocks"
 )
 
 // HTTPClient interface for dependency injection

@@ -1,6 +1,7 @@
 package pkg
 
 import (
+	"log"
 	"sync"
 	"time"
 
@@ -416,4 +417,36 @@ type NodeDiscoveryInfo struct {
 	Status       string                 `json:"status"`
 	Resources    *NodeResources         `json:"resources,omitempty"`
 	Metadata     map[string]interface{} `json:"metadata,omitempty"`
+}
+// TopologyDiscovery manages network topology discovery
+type TopologyDiscovery struct {
+	logger *log.Logger
+	mutex  sync.RWMutex
+}
+
+// NewTopologyDiscovery creates a new topology discovery instance
+func NewTopologyDiscovery(logger *log.Logger) *TopologyDiscovery {
+	return &TopologyDiscovery{
+		logger: logger,
+	}
+}
+
+// NewFaultDetector creates a new fault detector instance
+func NewFaultDetector(logger *log.Logger) *FaultDetector {
+	return &FaultDetector{
+		logger:         logger,
+		activeFaults:   make(map[string]*NetworkFault),
+		faultHistory:   make([]*NetworkFault, 0),
+		detectionRules: make([]FaultDetectionRule, 0),
+	}
+}
+
+// NewNetworkState creates a new network state instance
+func NewNetworkState() *NetworkState {
+	return &NetworkState{
+		topology:      &NetworkTopology{},
+		sliceConfigs:  make(map[string]*DynamicVXLANConfig),
+		qosStrategies: make(map[string]*QoSStrategy),
+		activeSlices:  make(map[string]*SliceState),
+	}
 }

@@ -3,7 +3,7 @@ package o2dms
 import (
 	"context"
 	"fmt"
-	"io"
+
 	"log"
 	"math"
 	"math/rand"
@@ -537,11 +537,6 @@ func (c *EnhancedClient) calculateBackoffDelay(attempt int) time.Duration {
 
 // isRetryableError determines if an error should trigger a retry
 func (c *EnhancedClient) isRetryableError(err error) bool {
-	// Check for context cancellation
-	if ctx.Err() != nil {
-		return false
-	}
-
 	// In a real implementation, you would check specific error types
 	// For now, retry on most errors
 	return true

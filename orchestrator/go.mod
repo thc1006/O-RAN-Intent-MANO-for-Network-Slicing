@@ -7,6 +7,7 @@ toolchain go1.22.10
 require (
 	github.com/stretchr/testify v1.11.1
 	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security v0.0.0-00010101000000-000000000000
+	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tests v0.0.0
 )
 
 require (
@@ -19,3 +20,6 @@ require (
 )
 
 replace github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security => ../pkg/security
+
+replace github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tests => ../tests
+replace github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tests => ../tests

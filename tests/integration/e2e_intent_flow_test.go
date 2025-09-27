@@ -14,8 +14,8 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/O-RAN-Intent-MANO-for-Network-Slicing/tests/fixtures"
-	"github.com/O-RAN-Intent-MANO-for-Network-Slicing/tests/mocks"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tests/fixtures"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tests/mocks"
 )
 
 // E2EIntentFlowTestSuite tests the complete flow from intent to deployment

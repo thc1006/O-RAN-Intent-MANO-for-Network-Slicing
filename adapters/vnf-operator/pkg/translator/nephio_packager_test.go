@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/O-RAN-Intent-MANO-for-Network-Slicing/tests/fixtures"
-	"github.com/O-RAN-Intent-MANO-for-Network-Slicing/tests/mocks"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tests/fixtures"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tests/mocks"
 )
 
 // PorchClient interface for Nephio package operations

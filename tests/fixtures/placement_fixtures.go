@@ -3,7 +3,7 @@ package fixtures
 import (
 	"time"
 
-	"github.com/O-RAN-Intent-MANO-for-Network-Slicing/tests/mocks"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tests/mocks"
 )
 
 // PlacementRequest represents a request for optimal resource placement

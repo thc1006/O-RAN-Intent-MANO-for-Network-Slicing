@@ -6,7 +6,6 @@ import (
 	"log"
 	"math"
 	"math/rand"
-	"sync"
 	"time"
 )
 

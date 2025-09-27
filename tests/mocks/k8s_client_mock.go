@@ -3,6 +3,7 @@ package mocks
 import (
 	"context"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
@@ -100,11 +101,15 @@ func (m *MockK8sClient) Scheme() *runtime.Scheme {
 	return runtime.NewScheme()
 }
 
-func (m *MockK8sClient) RESTMapper() client.RESTMapper {
+func (m *MockK8sClient) RESTMapper() meta.RESTMapper {
 	return nil
 }
 
 type MockStatusWriter struct{}
+
+func (m *MockStatusWriter) Create(ctx context.Context, obj client.Object, subResource client.Object, opts ...client.SubResourceCreateOption) error {
+	return nil
+}
 
 func (m *MockStatusWriter) Update(ctx context.Context, obj client.Object, opts ...client.SubResourceUpdateOption) error {
 	return nil

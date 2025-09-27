@@ -5,7 +5,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	"github.com/O-RAN-Intent-MANO-for-Network-Slicing/tests/mocks"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tests/mocks"
 )
 
 // VNF Package Templates
