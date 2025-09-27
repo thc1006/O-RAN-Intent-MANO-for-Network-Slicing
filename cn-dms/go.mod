@@ -4,13 +4,18 @@ go 1.24.0
 
 toolchain go1.24.7
 
-replace github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security => ../pkg/security
+replace (
+	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/errors => ../pkg/errors
+	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security => ../pkg/security
+)
 
 require (
 	github.com/gin-gonic/gin v1.11.0
+	github.com/google/uuid v1.6.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/viper v1.19.0
+	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/errors v0.0.0-00010101000000-000000000000
 	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security v0.0.0-00010101000000-000000000000
 	golang.org/x/time v0.13.0
 )

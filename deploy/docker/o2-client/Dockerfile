@@ -25,14 +25,14 @@ RUN --mount=type=cache,target=/var/cache/apk \
 # Set working directory
 WORKDIR /workspace
 
-# Copy go mod files from project root for layer caching
-COPY go.mod go.sum ./
-
-# Copy required source code for o2-client
+# Copy required source code maintaining relative path structure
 COPY pkg/ pkg/
 COPY o2-client/ o2-client/
 COPY adapters/ adapters/
 COPY orchestrator/ orchestrator/
+
+# Set working directory to o2-client for build
+WORKDIR /workspace/o2-client
 
 # Set Go environment for reproducible builds
 ENV GO111MODULE=on \
@@ -52,7 +52,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     -trimpath \
     -ldflags="-s -w -extldflags '-static'" \
     -a -installsuffix cgo \
-    -o /workspace/o2-client ./o2-client/cmd/client/main.go
+    -o /workspace/o2-client ./cmd/client/main.go
 
 # Stage 2: Minimal runtime (scratch-based)
 FROM scratch AS runtime

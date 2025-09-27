@@ -25,12 +25,12 @@ RUN --mount=type=cache,target=/var/cache/apk \
 # Set working directory
 WORKDIR /workspace
 
-# Copy go mod files from project root for layer caching
-COPY go.mod go.sum ./
-
-# Copy required source code for tn module
+# Copy required source code maintaining relative path structure
 COPY pkg/ pkg/
 COPY tn/ tn/
+
+# Set working directory to tn for build
+WORKDIR /workspace/tn
 
 # Set Go environment for reproducible builds
 ENV GO111MODULE=on \
@@ -50,7 +50,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     -trimpath \
     -ldflags="-s -w -extldflags '-static'" \
     -a -installsuffix cgo \
-    -o /workspace/tn-manager ./tn/cmd/manager/main.go
+    -o /workspace/tn-manager ./cmd/manager/main.go
 
 # Stage 2: Minimal runtime (scratch-based)
 FROM scratch AS runtime

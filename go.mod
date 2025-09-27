@@ -11,6 +11,7 @@ replace (
 	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/orchestrator => ./orchestrator
 	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security => ./pkg/security
 	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/ran-dms => ./ran-dms
+	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tests => ./tests
 	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tn => ./tn
 	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tn/manager/api/v1alpha1 => ./tn/manager/api/v1alpha1
 )

@@ -32,14 +32,11 @@ RUN apk add --no-cache \
 # Set working directory to project root
 WORKDIR /workspace
 
-# Copy go.mod and go.sum from project root for dependency layer caching
-COPY go.mod go.sum ./
-
-# Download dependencies first for better layer caching
-RUN go mod download
-
 # Copy entire source code (build context should be project root)
 COPY . .
+
+# Download dependencies after copying source code
+RUN go mod download
 
 # Build the VNF operator manager binary with optimization flags
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \

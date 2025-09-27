@@ -25,8 +25,8 @@ RUN --mount=type=cache,target=/var/cache/apk \
 # Set working directory
 WORKDIR /workspace
 
-# Copy go mod files from project root for layer caching
-COPY go.mod go.sum ./
+# Copy go mod files from ran-dms component for layer caching
+COPY ran-dms/go.mod ran-dms/go.sum ./
 
 # Copy required source code for ran-dms
 COPY pkg/ pkg/
