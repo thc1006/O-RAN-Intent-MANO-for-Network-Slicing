@@ -1,0 +1,32 @@
+name: Minimal Test
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  minimal-test:
+    name: Minimal Test
+    runs-on: ubuntu-24.04
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v5
+      
+    - name: Test basic functionality
+      run: |
+        echo "Testing basic shell commands..."
+        ls -la
+        echo "Current directory: $(pwd)"
+        echo "Git status:"
+        git status --short || true
+        
+    - name: Test simple matrix generation
+      run: |
+        echo "Testing matrix generation..."
+        matrix='[{"name": "test", "path": ".", "type": "basic"}]'
+        echo "Generated matrix: $matrix"
+        echo "$matrix" | jq .
+        
+    - name: Success
+      run: echo "✅ Minimal test passed!"
