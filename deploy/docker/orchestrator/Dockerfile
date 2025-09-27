@@ -3,7 +3,7 @@
 # Build context: orchestrator directory (./orchestrator) with minimal dependencies
 
 # Stage 1: Build
-FROM golang:1.22.10-alpine AS builder
+FROM golang:1.24-alpine AS builder
 
 # Security and build metadata
 LABEL org.opencontainers.image.title="O-RAN Orchestrator"

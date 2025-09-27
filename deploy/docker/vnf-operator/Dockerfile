@@ -1,6 +1,6 @@
 # VNF Operator Multi-stage Dockerfile
 # Stage 1: Build with Go 1.22.10-alpine (match workflow requirements)
-FROM golang:1.22.10-alpine AS builder
+FROM golang:1.24-alpine AS builder
 
 # Set Go environment variables
 ENV CGO_ENABLED=0

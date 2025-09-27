@@ -1,6 +1,6 @@
 # TN Manager Multi-stage Dockerfile (2025 Best Practices)
 # Stage 1: Build
-FROM golang:1.22.10-alpine AS builder
+FROM golang:1.24-alpine AS builder
 
 # Security and metadata labels
 LABEL maintainer="O-RAN MANO Team"

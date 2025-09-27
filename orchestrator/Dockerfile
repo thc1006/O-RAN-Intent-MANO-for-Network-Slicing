@@ -23,6 +23,9 @@ WORKDIR /app
 # Copy the binary from builder
 COPY --from=builder /build/orchestrator .
 
+# Copy Web UI static files
+COPY web/static /app/web/static
+
 # Expose ports
 EXPOSE 8080 9090
 
