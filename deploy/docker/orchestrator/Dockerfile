@@ -1,6 +1,7 @@
 # Orchestrator Multi-stage Dockerfile
 # 2025 Docker Best Practices - Optimized for O-RAN Intent-MANO Orchestrator
-# Build context: orchestrator directory (./orchestrator) with minimal dependencies
+# Build context: PROJECT ROOT directory with minimal dependencies
+# Fixed for GitHub Actions CI/CD which builds from root
 
 # Stage 1: Build
 FROM golang:1.24-alpine AS builder
