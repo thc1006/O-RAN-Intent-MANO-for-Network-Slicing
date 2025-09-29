@@ -1,0 +1,343 @@
+name: Dependency Review
+
+# Concurrency control
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+  push:
+    branches: [ main ]
+  schedule:
+    # Weekly dependency scans on Saturdays at 2 AM UTC
+    - cron: '0 2 * * 6'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+  security-events: write
+  actions: read
+
+jobs:
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+        persist-credentials: false
+
+    - name: Dependency Review
+      uses: actions/dependency-review-action@v4
+      with:
+        # Fail the build on critical vulnerabilities
+        fail-on-severity: critical
+        # Allow moderate and low vulnerabilities but warn
+        warn-on-severity: moderate
+        # Scan all manifest files
+        config-file: '.github/dependency-review-config.yml'
+        # Comment on PR with results
+        comment-summary-in-pr: true
+        # Deny specific licenses
+        deny-licenses: GPL-2.0, GPL-3.0, AGPL-1.0, AGPL-3.0
+        # Allow specific licenses
+        allow-licenses: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC
+        # Enable vulnerability database check
+        vulnerability-check: true
+        # Enable license check
+        license-check: true
+
+  go-mod-scan:
+    name: Go Modules Security Scan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+        persist-credentials: false
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.22.10'
+        cache: true
+
+    - name: Install govulncheck
+      run: go install golang.org/x/vuln/cmd/govulncheck@latest
+
+    - name: Run Go vulnerability check
+      run: |
+        echo "## Go Vulnerability Scan Results" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+
+        # Find all Go modules and scan them
+        module_count=0
+        vulnerable_modules=0
+
+        find . -name "go.mod" -type f | while read -r modfile; do
+          moddir=$(dirname "$modfile")
+          module_name=$(basename "$moddir")
+          module_count=$((module_count + 1))
+
+          echo "### Scanning module: $module_name" >> $GITHUB_STEP_SUMMARY
+
+          cd "$moddir"
+
+          # Run govulncheck
+          if govulncheck ./... 2>&1 | tee "$GITHUB_WORKSPACE/vuln-$module_name.txt"; then
+            echo "✅ No vulnerabilities found in $module_name" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Vulnerabilities found in $module_name" >> $GITHUB_STEP_SUMMARY
+            vulnerable_modules=$((vulnerable_modules + 1))
+
+            # Add vulnerability details to summary
+            echo "<details>" >> $GITHUB_STEP_SUMMARY
+            echo "<summary>Vulnerability details for $module_name</summary>" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            cat "$GITHUB_WORKSPACE/vuln-$module_name.txt" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            echo "</details>" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          cd - > /dev/null
+        done
+
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Summary**: Scanned $module_count modules, found vulnerabilities in $vulnerable_modules modules" >> $GITHUB_STEP_SUMMARY
+
+    - name: Upload vulnerability reports
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: go-vulnerability-reports
+        path: vuln-*.txt
+        retention-days: 30
+
+  npm-audit:
+    name: NPM Security Audit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+        persist-credentials: false
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Find and audit NPM packages
+      run: |
+        echo "## NPM Security Audit Results" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+
+        # Find all package.json files
+        package_files=$(find . -name "package.json" -type f | grep -v node_modules || true)
+
+        if [ -z "$package_files" ]; then
+          echo "No package.json files found in this repository." >> $GITHUB_STEP_SUMMARY
+          exit 0
+        fi
+
+        echo "$package_files" | while read -r pkgfile; do
+          pkgdir=$(dirname "$pkgfile")
+          pkg_name=$(basename "$pkgdir")
+
+          echo "### Auditing package: $pkg_name" >> $GITHUB_STEP_SUMMARY
+
+          cd "$pkgdir"
+
+          # Install dependencies first
+          npm ci --ignore-scripts 2>/dev/null || npm install --ignore-scripts 2>/dev/null || {
+            echo "❌ Failed to install dependencies for $pkg_name" >> $GITHUB_STEP_SUMMARY
+            cd - > /dev/null
+            continue
+          }
+
+          # Run npm audit
+          if npm audit --audit-level=moderate 2>&1 | tee "$GITHUB_WORKSPACE/npm-audit-$pkg_name.json"; then
+            echo "✅ No moderate+ vulnerabilities found in $pkg_name" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ Vulnerabilities found in $pkg_name" >> $GITHUB_STEP_SUMMARY
+
+            # Try to get a summary
+            npm audit --json > "$GITHUB_WORKSPACE/npm-audit-$pkg_name.json" 2>/dev/null || true
+          fi
+
+          cd - > /dev/null
+        done
+
+    - name: Upload NPM audit results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: npm-audit-reports
+        path: npm-audit-*.json
+        retention-days: 30
+
+  python-safety-check:
+    name: Python Safety Check
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+        persist-credentials: false
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: 'pip'
+
+    - name: Install safety
+      run: pip install safety
+
+    - name: Find and check Python requirements
+      run: |
+        echo "## Python Safety Check Results" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+
+        # Find all requirements files
+        req_files=$(find . -name "requirements*.txt" -o -name "Pipfile*" -o -name "pyproject.toml" | grep -v .venv || true)
+
+        if [ -z "$req_files" ]; then
+          echo "No Python dependency files found in this repository." >> $GITHUB_STEP_SUMMARY
+          exit 0
+        fi
+
+        echo "$req_files" | while read -r reqfile; do
+          req_name=$(basename "$reqfile")
+          req_dir=$(dirname "$reqfile")
+
+          echo "### Checking file: $req_name" >> $GITHUB_STEP_SUMMARY
+
+          cd "$req_dir"
+
+          case "$req_name" in
+            requirements*.txt)
+              # For requirements.txt files
+              if safety check -r "$req_name" --json 2>&1 | tee "$GITHUB_WORKSPACE/safety-$(basename $req_dir)-$req_name.json"; then
+                echo "✅ No vulnerabilities found in $req_name" >> $GITHUB_STEP_SUMMARY
+              else
+                echo "⚠️ Vulnerabilities found in $req_name" >> $GITHUB_STEP_SUMMARY
+              fi
+              ;;
+            pyproject.toml)
+              # For pyproject.toml files, try to extract dependencies
+              if command -v pip-audit >/dev/null 2>&1; then
+                pip-audit --format=json --output="$GITHUB_WORKSPACE/pip-audit-$(basename $req_dir).json" . || {
+                  echo "⚠️ Could not audit $req_name" >> $GITHUB_STEP_SUMMARY
+                }
+              else
+                echo "ℹ️ pip-audit not available for $req_name" >> $GITHUB_STEP_SUMMARY
+              fi
+              ;;
+          esac
+
+          cd - > /dev/null
+        done
+
+    - name: Upload Python safety results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: python-safety-reports
+        path: |
+          safety-*.json
+          pip-audit-*.json
+        retention-days: 30
+
+  # Summary job that aggregates all dependency scan results
+  dependency-summary:
+    name: Dependency Scan Summary
+    runs-on: ubuntu-24.04
+    needs: [dependency-review, go-mod-scan, npm-audit, python-safety-check]
+    if: always()
+    timeout-minutes: 10
+
+    steps:
+    - name: Generate summary report
+      run: |
+        echo "# 🔍 Dependency Security Scan Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "| Scanner | Status | Notes |" >> $GITHUB_STEP_SUMMARY
+        echo "|---------|--------|-------|" >> $GITHUB_STEP_SUMMARY
+
+        # Dependency Review status
+        if [[ "${{ needs.dependency-review.result }}" == "success" ]]; then
+          echo "| Dependency Review | ✅ Passed | No critical vulnerabilities found |" >> $GITHUB_STEP_SUMMARY
+        elif [[ "${{ needs.dependency-review.result }}" == "failure" ]]; then
+          echo "| Dependency Review | ❌ Failed | Critical vulnerabilities detected |" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "| Dependency Review | ⏭️ Skipped | Not applicable for this event |" >> $GITHUB_STEP_SUMMARY
+        fi
+
+        # Go vulnerability check status
+        if [[ "${{ needs.go-mod-scan.result }}" == "success" ]]; then
+          echo "| Go Vulnerability Check | ✅ Passed | No Go vulnerabilities found |" >> $GITHUB_STEP_SUMMARY
+        elif [[ "${{ needs.go-mod-scan.result }}" == "failure" ]]; then
+          echo "| Go Vulnerability Check | ⚠️ Issues | Go vulnerabilities detected |" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "| Go Vulnerability Check | ➖ N/A | No Go modules found |" >> $GITHUB_STEP_SUMMARY
+        fi
+
+        # NPM audit status
+        if [[ "${{ needs.npm-audit.result }}" == "success" ]]; then
+          echo "| NPM Security Audit | ✅ Passed | No NPM vulnerabilities found |" >> $GITHUB_STEP_SUMMARY
+        elif [[ "${{ needs.npm-audit.result }}" == "failure" ]]; then
+          echo "| NPM Security Audit | ⚠️ Issues | NPM vulnerabilities detected |" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "| NPM Security Audit | ➖ N/A | No NPM packages found |" >> $GITHUB_STEP_SUMMARY
+        fi
+
+        # Python safety check status
+        if [[ "${{ needs.python-safety-check.result }}" == "success" ]]; then
+          echo "| Python Safety Check | ✅ Passed | No Python vulnerabilities found |" >> $GITHUB_STEP_SUMMARY
+        elif [[ "${{ needs.python-safety-check.result }}" == "failure" ]]; then
+          echo "| Python Safety Check | ⚠️ Issues | Python vulnerabilities detected |" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "| Python Safety Check | ➖ N/A | No Python packages found |" >> $GITHUB_STEP_SUMMARY
+        fi
+
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## 📊 Overall Status" >> $GITHUB_STEP_SUMMARY
+
+        # Determine overall status
+        if [[ "${{ needs.dependency-review.result }}" == "failure" ]]; then
+          echo "❌ **CRITICAL**: Dependency review failed - immediate action required" >> $GITHUB_STEP_SUMMARY
+        elif [[ "${{ needs.go-mod-scan.result }}" == "failure" || "${{ needs.npm-audit.result }}" == "failure" || "${{ needs.python-safety-check.result }}" == "failure" ]]; then
+          echo "⚠️ **WARNING**: Some dependency scans found issues - review recommended" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "✅ **PASSED**: All dependency scans completed successfully" >> $GITHUB_STEP_SUMMARY
+        fi
+
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## 🛠️ Next Steps" >> $GITHUB_STEP_SUMMARY
+        echo "1. Review detailed scan results in job logs" >> $GITHUB_STEP_SUMMARY
+        echo "2. Update vulnerable dependencies to secure versions" >> $GITHUB_STEP_SUMMARY
+        echo "3. Consider adding dependency pinning for critical packages" >> $GITHUB_STEP_SUMMARY
+        echo "4. Set up automated dependency updates with Dependabot" >> $GITHUB_STEP_SUMMARY

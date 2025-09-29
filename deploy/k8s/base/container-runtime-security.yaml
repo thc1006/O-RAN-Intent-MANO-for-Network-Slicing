@@ -81,8 +81,8 @@ spec:
         app.kubernetes.io/name: oran-runtime-security-monitor
         app.kubernetes.io/component: security-monitor
       annotations:
-        seccomp.security.alpha.kubernetes.io/pod: runtime/default
-        container.apparmor.security.beta.kubernetes.io/monitor: runtime/default
+        # seccomp.security.alpha.kubernetes.io/pod: runtime/default  # Deprecated - using securityContext.seccompProfile
+        # container.apparmor.security.beta.kubernetes.io/monitor: runtime/default  # Deprecated - using securityContext
     spec:
       serviceAccountName: oran-runtime-security-monitor
       automountServiceAccountToken: false

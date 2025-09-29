@@ -1,5 +1,11 @@
+# syntax=docker/dockerfile:1.4
 # Test Framework Multi-stage Dockerfile
-FROM golang:1.24-alpine AS go-builder
+
+# Build arguments for customization
+ARG GO_VERSION=1.23
+ARG DEBIAN_VERSION=12.9
+
+FROM golang:${GO_VERSION}-alpine AS go-builder
 
 # Security labels and metadata
 LABEL maintainer="O-RAN MANO Team"
@@ -21,7 +27,7 @@ RUN apk update && apk upgrade && apk add --no-cache \
 
 WORKDIR /workspace
 # Download dependencies with explicit toolchain
-ENV GOTOOLCHAIN=go1.24.7
+ENV GOTOOLCHAIN=go1.23.3
 ENV GOPROXY=https://proxy.golang.org,direct
 ENV GOSUMDB=sum.golang.org
 
@@ -75,11 +81,13 @@ func main() {
 }
 EOF
 
-# Build the test runner
-RUN go mod tidy && go build -o test-runner main.go
+# Build the test runner with BuildKit cache mount
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=cache,target=/go/pkg/mod \
+    go mod tidy && go build -trimpath -ldflags="-s -w" -o test-runner main.go
 
-# Final stage - Using Debian slim instead of Ubuntu for better security
-FROM debian:12.9-slim
+# Final stage - Using Debian slim with version from ARG
+FROM debian:${DEBIAN_VERSION}-slim
 
 # Security labels
 LABEL org.opencontainers.image.title="Test Framework Runtime"
@@ -87,7 +95,7 @@ LABEL security.scan="trivy,grype,snyk"
 LABEL security.user="non-root"
 LABEL security.distroless="false"
 LABEL security.base.image="debian:12.9-slim"
-LABEL security.go.version="1.22.10"
+LABEL security.go.version="1.23.3"
 LABEL security.scan.date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 LABEL security.risk="high-testing-tools"
 
@@ -143,8 +151,8 @@ RUN echo "pytest==7.4.3\npytest-html==4.1.1\npytest-json-report==1.5.0\nrequests
     pip3 install --no-cache-dir -r /tmp/requirements.txt && \
     rm /tmp/requirements.txt
 
-# Copy test binaries and scripts
-COPY --from=go-builder /workspace/test-runner /usr/local/bin/test-runner
+# Copy test binaries and scripts with proper ownership
+COPY --from=go-builder --chown=tester:tester /workspace/test-runner /usr/local/bin/test-runner
 
 # Create test directories with basic structure
 RUN mkdir -p /tests /experiments /tests/framework /tests/integration /tests/e2e

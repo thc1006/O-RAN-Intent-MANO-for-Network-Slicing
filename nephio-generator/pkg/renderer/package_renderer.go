@@ -170,9 +170,7 @@ func (r *PackageRenderer) RenderPackage(ctx context.Context, packagePath string,
 
 	// Read Kptfile to get function pipeline
 	// TODO: implement readKptfile method
-	var kptfile interface{} = nil
-	var err error = nil
-	_ = kptfile // silence unused variable warning
+	var err error
 	// kptfile, err := r.readKptfile(packagePath)
 	if err != nil {
 		result.Errors = append(result.Errors, fmt.Sprintf("Failed to read Kptfile: %v", err))

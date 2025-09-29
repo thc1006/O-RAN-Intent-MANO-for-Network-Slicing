@@ -1,23 +1,50 @@
+# syntax=docker/dockerfile:1.4
 # Multi-stage build for CN DMS
-FROM golang:1.24-alpine AS builder
+
+# Build arguments for customization
+ARG GO_VERSION=1.23
+ARG ALPINE_VERSION=3.19
+
+FROM golang:${GO_VERSION}-alpine AS builder
 
 WORKDIR /build
 
 COPY go.mod go.sum* ./
-RUN go mod download 2>/dev/null || true
+# Download dependencies with BuildKit cache mount
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download 2>/dev/null || true
 
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o dms ./cn-dms/cmd/dms/
+# Build the binary with BuildKit cache mount and security flags
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=cache,target=/go/pkg/mod \
+    CGO_ENABLED=0 GOOS=linux go build \
+    -trimpath \
+    -ldflags="-s -w -buildid= -extldflags=-static" \
+    -tags=netgo \
+    -a -installsuffix cgo \
+    -o dms ./cn-dms/cmd/dms/
 
-FROM alpine:latest
+# Final stage - use distroless for better security
+FROM gcr.io/distroless/static-debian12:nonroot AS runtime
 
-RUN apk --no-cache add ca-certificates
+# Metadata
+LABEL org.opencontainers.image.title="O-RAN CN DMS"
+LABEL org.opencontainers.image.description="O-RAN Core Network Domain Management Service"
+LABEL org.opencontainers.image.version="1.0.0"
+LABEL org.opencontainers.image.vendor="O-RAN Alliance"
+LABEL org.opencontainers.image.licenses="Apache-2.0"
 
-WORKDIR /app
-
-COPY --from=builder /build/dms ./cn-dms
+# Copy the binary from builder with proper ownership
+COPY --from=builder --chown=nonroot:nonroot /build/dms /usr/local/bin/cn-dms
 
 EXPOSE 8082 9092
 
-CMD ["./cn-dms"]
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD ["/usr/local/bin/cn-dms", "--version"] || exit 1
+
+# Run the CN DMS
+ENTRYPOINT ["/usr/local/bin/cn-dms"]
+CMD ["--config=/config/cn-dms.yaml"]

@@ -1,17 +1,34 @@
 name: Minimal Test
 
+# Concurrency control
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     branches: [ main ]
+  pull_request:
+    branches: [ main ]
   workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
 
 jobs:
   minimal-test:
     name: Minimal Test
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
     steps:
     - name: Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+        token: ${{ secrets.GITHUB_TOKEN }}
+        persist-credentials: false
       
     - name: Test basic functionality
       run: |
@@ -29,4 +46,10 @@ jobs:
         echo "$matrix" | jq .
         
     - name: Success
-      run: echo "✅ Minimal test passed!"
+      run: |
+        echo "✅ Minimal test passed!"
+        echo "## ✅ Minimal Test Results" >> $GITHUB_STEP_SUMMARY
+        echo "All basic functionality tests completed successfully." >> $GITHUB_STEP_SUMMARY
+        echo "- Shell commands: ✅ Working" >> $GITHUB_STEP_SUMMARY
+        echo "- Git operations: ✅ Working" >> $GITHUB_STEP_SUMMARY
+        echo "- JSON parsing: ✅ Working" >> $GITHUB_STEP_SUMMARY

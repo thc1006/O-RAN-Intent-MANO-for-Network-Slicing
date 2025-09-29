@@ -11,8 +11,8 @@ metadata:
     pod-security.kubernetes.io/audit: restricted
     pod-security.kubernetes.io/warn: restricted
   annotations:
-    # Legacy seccomp annotation (deprecated) - using securityContext.seccompProfile instead
-    container.apparmor.security.beta.kubernetes.io/orchestrator: runtime/default
+    # Modern security annotations
+    # container.apparmor.security.beta.kubernetes.io/orchestrator: runtime/default  # Moved to securityContext
     security.kubernetes.io/compliance-scan-date: "2025-09-24"
     security.kubernetes.io/security-review: "approved"
     security.kubernetes.io/serviceaccount-token-exception: "CKV_K8S_38-approved"
@@ -33,8 +33,8 @@ spec:
         prometheus.io/scrape: "true"
         prometheus.io/port: "9090"
         prometheus.io/path: "/metrics"
-        # Legacy seccomp annotation (deprecated) - using securityContext.seccompProfile instead
-        container.apparmor.security.beta.kubernetes.io/orchestrator: runtime/default
+        # Modern security configuration in securityContext
+        # container.apparmor.security.beta.kubernetes.io/orchestrator: runtime/default  # Moved to securityContext
         security.kubernetes.io/network-policy: "oran-orchestrator-network-policy"
         security.kubernetes.io/pod-security-standard: "restricted"
         # Security exception for CKV_K8S_38 - Service account token required for orchestrator functionality

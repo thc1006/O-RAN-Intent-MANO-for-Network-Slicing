@@ -1,4 +1,14 @@
-version: '3.8'
+# O-RAN Observability Dashboard Docker Compose Configuration
+# Modern Compose specification with enhanced security and performance
+version: '3.9'
+
+secrets:
+  nginx_config:
+    file: ./secrets/nginx.conf
+  ssl_cert:
+    file: ./secrets/ssl.crt
+  ssl_key:
+    file: ./secrets/ssl.key
 
 services:
   dashboard:
@@ -6,6 +16,10 @@ services:
       context: .
       dockerfile: Dockerfile
       target: production
+      args:
+        - NODE_VERSION=20
+        - ALPINE_VERSION=3.19
+        - NGINX_VERSION=1.25-alpine
     ports:
       - "3000:3000"
     environment:
@@ -14,6 +28,10 @@ services:
       - oran-network
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    secrets:
+      - nginx_config
+      - ssl_cert
+      - ssl_key
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
@@ -21,6 +39,18 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.dashboard.rule=Host(`dashboard.oran.local`)"
@@ -33,6 +63,8 @@ services:
       context: .
       dockerfile: Dockerfile
       target: builder
+      args:
+        - NODE_VERSION=20
     ports:
       - "3000:3000"
     environment:
@@ -42,13 +74,26 @@ services:
       - VITE_PROMETHEUS_URL=http://localhost:9090
     volumes:
       - .:/app
-      - /app/node_modules
+      - node_modules_cache:/app/node_modules
     command: npm run dev
     networks:
       - oran-network
     profiles:
       - dev
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1G
+        reservations:
+          cpus: '0.2'
+          memory: 128M
+
+volumes:
+  node_modules_cache:
+    driver: local
 
 networks:
   oran-network:
     external: true
+    name: o-ran-intent-mano_oran-network

@@ -22,10 +22,11 @@ This document provides comprehensive testing procedures for the O-RAN Intent-MAN
 
 1. **Unit Tests** - Individual component testing
 2. **Integration Tests** - Service-to-service interaction
-3. **End-to-End Tests** - Complete workflow validation
-4. **Performance Tests** - Throughput, latency, scalability
-5. **Security Tests** - Vulnerability and compliance
-6. **Chaos Tests** - Resilience and fault tolerance
+3. **WebSocket Tests** - Real-time NLP processing validation
+4. **E2E Orchestration Tests** - Complete ArgoCD deployment flow
+5. **Performance Tests** - Throughput, latency, scalability
+6. **Security Tests** - Vulnerability and compliance
+7. **Chaos Tests** - Resilience and fault tolerance
 
 ## Prerequisites
 
@@ -34,14 +35,20 @@ This document provides comprehensive testing procedures for the O-RAN Intent-MAN
 ```bash
 # Install testing dependencies
 sudo apt-get update
-sudo apt-get install -y curl jq iperf3 netcat-openbsd bc
+sudo apt-get install -y curl jq iperf3 netcat-openbsd bc tmux
 
 # Python testing tools
-pip3 install pytest requests pyyaml numpy pandas
+pip3 install pytest requests pyyaml numpy pandas websocket-client
 
-# Go testing tools (if running Go tests directly)
+# Go testing tools (with Go 1.24+)
 go install github.com/onsi/ginkgo/v2/ginkgo@latest
 go install github.com/onsi/gomega/...@latest
+
+# WebSocket testing tools
+npm install -g wscat
+
+# Claude CLI (if available)
+# Follow Anthropic's installation guide
 ```
 
 ### Environment Preparation
@@ -89,6 +96,15 @@ go test -v ./controllers/...
 # TN Manager tests
 cd tn/manager
 go test -v ./pkg/...
+
+# WebSocket server tests
+go test -v ./test/websocket/...
+
+# Claude integration tests
+go test -v ./test/claude/...
+
+# E2E orchestration tests
+go test -v ./test/e2e/...
 ```
 
 #### Example Unit Test Execution
@@ -97,6 +113,117 @@ go test -v ./pkg/...
 # Test orchestrator intent processing
 cd orchestrator
 go test -v ./pkg/intents -run TestIntentProcessing
+
+## WebSocket Testing
+
+### Real-time NLP Processing Tests
+
+#### Automated WebSocket Tests
+
+```bash
+# Run WebSocket E2E tests
+go test ./test/websocket -v
+
+# Expected output:
+# === RUN   TestWebSocketServerE2E
+#     --- PASS: TestWebSocketServerE2E/Health_endpoint (0.00s)
+#     --- PASS: TestWebSocketServerE2E/WebSocket_connection_and_intent_processing (9.27s)
+#     --- PASS: TestWebSocketServerE2E/Multiple_concurrent_clients (23.86s)
+#     --- PASS: TestWebSocketServerE2E/Connection_cleanup (0.27s)
+# PASS
+```
+
+#### Manual WebSocket Testing
+
+```bash
+# Start WebSocket server
+./scripts/run-websocket-demo.sh
+
+# In another terminal, test with wscat
+wscat -c ws://localhost:8080/ws
+
+# Send test intents
+{"type":"intent","sessionId":"test-123","intent":"Deploy an eMBB slice for video streaming"}
+{"type":"e2e_intent","sessionId":"test-456","intent":"Create URLLC slice for autonomous vehicles","e2e":true}
+
+# Expected responses
+{"type":"intent_response","sessionId":"test-123","sliceType":"eMBB",...}
+{"type":"e2e_progress","sessionId":"test-456","progress_percent":10,...}
+```
+
+#### WebSocket Health Check
+
+```bash
+# Test WebSocket server health
+curl -s http://localhost:8080/health | jq
+# Expected: {"status":"healthy","activeSessions":0,"timestamp":...}
+```
+
+## E2E Orchestration Testing
+
+### Complete Flow Validation
+
+#### E2E Test Suite
+
+```bash
+# Run complete E2E orchestration tests
+E2E_FULL_TEST=true go test ./test/e2e -v -timeout=30m
+
+# Run benchmark tests
+E2E_BENCHMARK=true go test ./test/e2e -bench=. -timeout=10m
+```
+
+#### Manual E2E Flow Testing
+
+```bash
+# 1. Start WebSocket server with E2E orchestration
+./scripts/run-websocket-demo.sh
+
+# 2. Open web interface
+open http://localhost:8080
+
+# 3. Send E2E intent through UI or programmatically
+curl -X POST http://localhost:8080/api/v1/e2e/intent \
+  -H "Content-Type: application/json" \
+  -d '{"intent":"Deploy URLLC slice for industrial automation","sessionId":"test-e2e"}'
+
+# 4. Monitor progress through WebSocket or API
+wscat -c ws://localhost:8080/ws
+# Send: {"type":"e2e_status","sessionId":"test-e2e"}
+```
+
+#### E2E Flow Components Validation
+
+```bash
+# Test individual E2E components
+go test ./pkg/e2e -v -run TestNephioPackageGeneration
+go test ./pkg/e2e -v -run TestGitOperations
+go test ./pkg/e2e -v -run TestArgoCDIntegration
+go test ./pkg/e2e -v -run TestMetricsCollection
+```
+
+### Claude AI Integration Testing
+
+#### Claude CLI Tests
+
+```bash
+# Test Claude client integration
+go test ./test/claude -v -run TestTmuxIntegration
+go test ./test/claude -v -run TestClaudeCliExecution
+
+# Test fallback mode (when Claude CLI unavailable)
+CLAUDE_FALLBACK_MODE=true go test ./test/claude -v
+```
+
+#### tmux Session Testing
+
+```bash
+# Test tmux session management
+go test ./pkg/claude -v -run TestTmuxManager
+
+# Manual tmux session testing
+./examples/claude_cli_demo.go
+```
 
 # Expected output:
 # === RUN   TestIntentProcessing

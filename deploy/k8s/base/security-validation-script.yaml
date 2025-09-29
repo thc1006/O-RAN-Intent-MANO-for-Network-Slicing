@@ -339,8 +339,8 @@ spec:
   template:
     metadata:
       annotations:
-        seccomp.security.alpha.kubernetes.io/pod: runtime/default
-        container.apparmor.security.beta.kubernetes.io/validator: runtime/default
+        # seccomp.security.alpha.kubernetes.io/pod: runtime/default  # Deprecated - using securityContext.seccompProfile
+        # container.apparmor.security.beta.kubernetes.io/validator: runtime/default  # Deprecated - using securityContext
     spec:
       serviceAccountName: oran-security-validator
       automountServiceAccountToken: false

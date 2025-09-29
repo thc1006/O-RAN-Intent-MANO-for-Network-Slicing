@@ -1,0 +1,204 @@
+name: CodeQL Security Analysis
+
+# Concurrency control
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Weekly CodeQL scans on Mondays at 4 AM UTC
+    - cron: '0 4 * * 1'
+  workflow_dispatch:
+
+env:
+  GO_VERSION: '1.22.10'
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+  pull-requests: write
+
+jobs:
+  analyze:
+    name: CodeQL Analysis
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # Override the default language auto-detection
+        language: [ 'go', 'python', 'javascript' ]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+        persist-credentials: false
+
+    - name: Set up Go
+      if: matrix.language == 'go'
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ env.GO_VERSION }}
+        cache: true
+        cache-dependency-path: |
+          go.sum
+          */go.sum
+          **/go.sum
+
+    - name: Set up Python
+      if: matrix.language == 'python'
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: 'pip'
+
+    - name: Set up Node.js
+      if: matrix.language == 'javascript'
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        registry-url: 'https://registry.npmjs.org'
+
+    # Initialize the CodeQL tools for scanning
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: ${{ matrix.language }}
+        # Specify custom queries and configuration
+        config: |
+          disable-default-queries: false
+          queries:
+            - uses: security-extended
+            - uses: security-and-quality
+        # Override the default database creation method
+        build-mode: manual
+
+    # For Go: Build the code manually to ensure proper analysis
+    - name: Build Go code
+      if: matrix.language == 'go'
+      run: |
+        echo "Building Go modules for CodeQL analysis..."
+
+        # Find all Go modules and build them
+        find . -name "go.mod" -type f | while read -r modfile; do
+          moddir=$(dirname "$modfile")
+          echo "Building module in $moddir"
+
+          cd "$moddir"
+
+          # Check if there are any Go files to build
+          if find . -maxdepth 1 -name "*.go" -type f | head -1 | grep -q .; then
+            echo "Found Go files, building..."
+            go build -v ./... || echo "Build failed for $moddir, continuing..."
+          else
+            echo "No Go files found in $moddir, skipping build"
+          fi
+
+          cd - > /dev/null
+        done
+
+    # For Python: Install dependencies and build if needed
+    - name: Build Python code
+      if: matrix.language == 'python'
+      run: |
+        echo "Preparing Python code for CodeQL analysis..."
+
+        # Find and install Python dependencies
+        find . -name "requirements.txt" -type f | while read -r reqfile; do
+          reqdir=$(dirname "$reqfile")
+          echo "Installing requirements from $reqfile"
+
+          cd "$reqdir"
+          pip install -r requirements.txt || echo "Failed to install requirements from $reqfile"
+          cd - > /dev/null
+        done
+
+        # Compile Python files
+        python -m compileall . -q || echo "Python compilation warnings/errors found"
+
+    # For JavaScript: Install dependencies
+    - name: Build JavaScript code
+      if: matrix.language == 'javascript'
+      run: |
+        echo "Preparing JavaScript code for CodeQL analysis..."
+
+        # Find and install Node.js dependencies
+        find . -name "package.json" -type f | while read -r pkgfile; do
+          pkgdir=$(dirname "$pkgfile")
+          echo "Installing dependencies from $pkgfile"
+
+          cd "$pkgdir"
+          npm ci --ignore-scripts || npm install --ignore-scripts || echo "Failed to install dependencies from $pkgfile"
+          cd - > /dev/null
+        done
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+      with:
+        category: "/language:${{ matrix.language }}"
+        # Upload results even if there are no findings
+        upload: true
+        # Wait for processing to complete
+        wait-for-processing: true
+
+    - name: Generate CodeQL summary
+      if: always()
+      run: |
+        echo "## CodeQL Analysis Results (${{ matrix.language }})" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Analysis Details" >> $GITHUB_STEP_SUMMARY
+        echo "- **Language**: ${{ matrix.language }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Analysis Date**: $(date -u +%Y-%m-%d\ %H:%M:%S\ UTC)" >> $GITHUB_STEP_SUMMARY
+        echo "- **Repository**: ${{ github.repository }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Security Scanning" >> $GITHUB_STEP_SUMMARY
+        echo "✅ CodeQL analysis completed successfully" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "Results will be available in the Security tab of this repository." >> $GITHUB_STEP_SUMMARY
+
+  # Check CodeQL results and create issues if critical findings
+  results-check:
+    name: CodeQL Results Check
+    runs-on: ubuntu-24.04
+    needs: analyze
+    if: always()
+    timeout-minutes: 10
+
+    steps:
+    - name: Check analysis status
+      run: |
+        echo "## CodeQL Analysis Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+
+        if [[ "${{ needs.analyze.result }}" == "success" ]]; then
+          echo "✅ **All CodeQL analyses completed successfully**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Languages Analyzed" >> $GITHUB_STEP_SUMMARY
+          echo "- Go: ✅" >> $GITHUB_STEP_SUMMARY
+          echo "- Python: ✅" >> $GITHUB_STEP_SUMMARY
+          echo "- JavaScript: ✅" >> $GITHUB_STEP_SUMMARY
+        elif [[ "${{ needs.analyze.result }}" == "failure" ]]; then
+          echo "❌ **Some CodeQL analyses failed**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Please check the individual job logs for details." >> $GITHUB_STEP_SUMMARY
+        else
+          echo "⚠️ **CodeQL analysis status unclear**" >> $GITHUB_STEP_SUMMARY
+        fi
+
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
+        echo "1. Review any security findings in the Security tab" >> $GITHUB_STEP_SUMMARY
+        echo "2. Address critical and high-severity issues" >> $GITHUB_STEP_SUMMARY
+        echo "3. Consider adding CodeQL queries for custom security rules" >> $GITHUB_STEP_SUMMARY

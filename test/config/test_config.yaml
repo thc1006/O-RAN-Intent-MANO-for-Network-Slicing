@@ -1,0 +1,204 @@
+# Test Configuration for O-RAN Intent MANO Project
+# This file defines test execution parameters and modernization standards
+
+# Test execution settings
+execution:
+  timeout: 300s              # Global test timeout
+  parallel_workers: 8        # Number of parallel test workers
+  short_mode: true           # Default to short tests for CI
+  race_detection: true       # Enable race condition detection
+  coverage_required: true    # Require coverage collection
+
+# Coverage requirements
+coverage:
+  minimum_threshold: 80.0    # Minimum required coverage percentage
+  target_threshold: 90.0     # Target coverage percentage
+  exclude_patterns:          # Patterns to exclude from coverage
+    - "*/mock_*.go"
+    - "*/testdata/*"
+    - "*/vendor/*"
+    - "*_generated.go"
+  critical_packages:         # Packages requiring higher coverage
+    - "pkg/security"
+    - "orchestrator/pkg/intent"
+    - "orchestrator/pkg/placement"
+
+# Test categories and their settings
+categories:
+  unit:
+    timeout: 30s
+    parallel: true
+    required: true
+
+  integration:
+    timeout: 120s
+    parallel: false
+    required: true
+
+  e2e:
+    timeout: 300s
+    parallel: false
+    required: false  # Optional for local development
+
+  performance:
+    timeout: 180s
+    parallel: true
+    required: false
+    benchmark_time: "1s"
+
+  security:
+    timeout: 60s
+    parallel: true
+    required: true
+    fuzz_duration: "30s"
+
+# Modernization standards compliance
+modernization:
+  required_patterns:
+    - "t.Parallel()"          # Parallel execution
+    - "t.Cleanup()"           # Proper cleanup
+    - "testify/assert"        # Modern assertions
+    - "testify/require"       # Requirements checking
+    - "testify/suite"         # Test suites (optional)
+    - "table_driven_tests"    # Table-driven patterns
+
+  optional_patterns:
+    - "testify/mock"          # Mocking framework
+    - "fuzz_testing"          # Fuzz testing
+    - "benchmark_tests"       # Performance testing
+    - "property_testing"      # Property-based testing
+
+# Test environment settings
+environment:
+  temp_dir_pattern: "o-ran-test-*"
+  cleanup_on_exit: true
+  preserve_artifacts: false
+  log_level: "info"
+
+  # Environment variables for tests
+  variables:
+    TEST_TIMEOUT: "300s"
+    TEST_VERBOSE: "false"
+    TEST_RACE: "true"
+    TEST_COVERAGE: "true"
+
+# Package-specific test settings
+packages:
+  "pkg/security":
+    coverage_threshold: 95.0  # Higher requirement for security
+    fuzz_required: true
+    race_detection: true
+
+  "orchestrator/*":
+    integration_tests: true
+    performance_tests: true
+
+  "adapters/*":
+    integration_tests: true
+    mock_external_deps: true
+
+  "tn/*":
+    network_tests: true
+    requires_privileges: true  # Some network tests need privileges
+
+# CI/CD integration settings
+ci_cd:
+  fail_on_coverage_drop: true
+  generate_html_reports: true
+  upload_coverage: true
+  notification_threshold: 85.0  # Notify if coverage drops below this
+
+  # Artifacts to preserve
+  artifacts:
+    - "test-reports/*.html"
+    - "test-reports/*.xml"
+    - "test-reports/coverage.out"
+    - "test-reports/*_summary.txt"
+
+# Test data and fixtures
+fixtures:
+  location: "testdata/"
+  auto_generate: false
+  cleanup_after_test: true
+
+  # Golden file testing
+  golden_files:
+    enabled: true
+    update_flag: "-update"
+    directory: "testdata/golden/"
+
+# Mock and stub configuration
+mocking:
+  auto_generate: false
+  interface_discovery: true
+  mock_package_suffix: "_mock"
+
+  # External dependencies to mock
+  mock_targets:
+    - "database connections"
+    - "HTTP clients"
+    - "Kubernetes clients"
+    - "external APIs"
+
+# Reporting and analytics
+reporting:
+  formats:
+    - "junit"     # JUnit XML format
+    - "coverage"  # Go coverage format
+    - "json"      # JSON format for tools
+    - "html"      # Human-readable HTML
+
+  output_directory: "test-reports"
+  include_benchmarks: true
+  include_fuzz_results: true
+
+  # Metrics to track
+  metrics:
+    - "test_count"
+    - "coverage_percentage"
+    - "execution_time"
+    - "memory_usage"
+    - "failure_rate"
+
+# Performance testing configuration
+performance:
+  baseline_file: "test/benchmarks/baseline.json"
+  regression_threshold: 10.0  # Percentage increase that triggers warning
+  memory_limit: "1GB"         # Maximum memory usage for tests
+
+  # Benchmark settings
+  benchmarks:
+    min_time: "1s"
+    max_time: "10s"
+    count: 3              # Number of runs
+    cpu_prof: false       # CPU profiling
+    mem_prof: false       # Memory profiling
+
+# Security testing configuration
+security:
+  fuzz_testing:
+    enabled: true
+    duration: "60s"
+    minimize_time: "1m"
+
+  # Input validation testing
+  input_validation:
+    test_malicious_inputs: true
+    test_boundary_conditions: true
+    test_unicode_handling: true
+
+  # Vulnerability scanning
+  vulnerability_checks:
+    gosec: true           # Static security analyzer
+    nancy: true           # Dependency vulnerability checker
+
+# Development and debugging
+development:
+  verbose_failures: true
+  preserve_temp_files: false
+  debug_mode: false
+
+  # IDE integration
+  ide_support:
+    vscode_settings: true
+    goland_settings: true

@@ -44,9 +44,10 @@ This guide provides comprehensive instructions for deploying the O-RAN Intent-MA
 
 #### Kubernetes Deployment
 - Docker 24.0+
-- kubectl 1.28+
-- Kind 0.20+
-- Helm 3.12+
+- kubectl 1.34+
+- Kind 0.23+
+- Helm 3.16+
+- tmux (for Claude CLI integration)
 
 ## Quick Start
 
@@ -210,7 +211,7 @@ The Kind cluster is configured with:
 
 ```bash
 # Install Kind
-curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64
+curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.23.0/kind-linux-amd64
 chmod +x ./kind
 sudo mv ./kind /usr/local/bin/kind
 
@@ -547,11 +548,16 @@ After successful deployment:
    - Grafana: http://localhost:3000
    - Prometheus: http://localhost:9090
 
-4. **Deploy Intents**: Submit network slice intents via API
+4. **Deploy Intents**: Submit network slice intents via WebSocket or API
    ```bash
+   # Via traditional API
    curl -X POST http://localhost:8080/api/v1/intents \
      -H "Content-Type: application/json" \
      -d '{"intent": {"type": "network-slice", "requirements": {...}}}'
+
+   # Via WebSocket (recommended - includes Claude NLP)
+   ./scripts/run-websocket-demo.sh
+   # Then open http://localhost:8080 for real-time NLP processing
    ```
 
 For detailed testing procedures, see [TESTING_PROCEDURES.md](TESTING_PROCEDURES.md).

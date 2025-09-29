@@ -49,6 +49,11 @@ jobs:
       uses: actions/setup-go@v5
       with:
         go-version: ${{ env.GO_VERSION }}
+        cache: true
+        cache-dependency-path: |
+          go.sum
+          */go.sum
+          **/go.sum
 
     - name: Clean Go module cache before restore
       run: |
@@ -194,6 +199,7 @@ jobs:
       uses: actions/setup-go@v5
       with:
         go-version: ${{ env.GO_VERSION }}
+        cache: true
 
     - name: Setup Kubebuilder
       run: |
@@ -464,6 +470,7 @@ jobs:
       uses: actions/setup-go@v5
       with:
         go-version: ${{ env.GO_VERSION }}
+        cache: true
 
     - name: Install Kind
       run: |

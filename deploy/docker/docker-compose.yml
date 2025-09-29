@@ -1,6 +1,7 @@
 # O-RAN Intent-MANO Docker Compose Configuration
 # Local development and testing environment
-version: '3.8'
+# Using latest Compose specification format
+version: '3.9'
 
 networks:
   mano-net:
@@ -21,14 +22,39 @@ networks:
 
 volumes:
   orchestrator-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/orchestrator
   vnf-operator-data:
+    driver: local
   o2-client-data:
+    driver: local
   tn-manager-data:
+    driver: local
   tn-agent-data:
+    driver: local
   ran-dms-data:
+    driver: local
   cn-dms-data:
+    driver: local
   prometheus-data:
+    driver: local
   grafana-data:
+    driver: local
+
+secrets:
+  orchestrator_config:
+    file: ./secrets/orchestrator.yaml
+  database_password:
+    file: ./secrets/db_password.txt
+  api_key:
+    file: ./secrets/api_key.txt
+  tls_cert:
+    file: ./secrets/tls.crt
+  tls_key:
+    file: ./secrets/tls.key
 
 services:
   # Core Orchestrator Service
@@ -36,6 +62,9 @@ services:
     build:
       context: ../../
       dockerfile: deploy/docker/orchestrator/Dockerfile
+      args:
+        - GO_VERSION=1.23
+        - ALPINE_VERSION=3.19
     container_name: oran-orchestrator
     restart: unless-stopped
     networks:
@@ -51,21 +80,44 @@ services:
     volumes:
       - orchestrator-data:/data
       - ./configs/orchestrator:/config:ro
+    secrets:
+      - orchestrator_config
+      - api_key
+      - tls_cert
+      - tls_key
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
     depends_on:
-      - ran-dms
-      - cn-dms
+      ran-dms:
+        condition: service_healthy
+      cn-dms:
+        condition: service_healthy
 
   # VNF Operator
   vnf-operator:
     build:
       context: ../../
       dockerfile: deploy/docker/vnf-operator/Dockerfile
+      args:
+        - GO_VERSION=1.23
+        - ALPINE_VERSION=3.19
     container_name: oran-vnf-operator
     restart: unless-stopped
     networks:
@@ -80,12 +132,24 @@ services:
     volumes:
       - vnf-operator-data:/data
       - ./configs/vnf-operator:/config:ro
+    secrets:
+      - api_key
+      - tls_cert
+      - tls_key
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8081/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 768M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
 
   # O2 Client
   o2-client:
@@ -213,6 +277,9 @@ services:
     build:
       context: ../../
       dockerfile: deploy/docker/ran-dms/Dockerfile
+      args:
+        - GO_VERSION=1.23
+        - ALPINE_VERSION=3.19
     container_name: oran-ran-dms
     restart: unless-stopped
     networks:
@@ -227,18 +294,33 @@ services:
     volumes:
       - ran-dms-data:/var/lib/ran-dms
       - ./configs/ran-dms:/config:ro
+    secrets:
+      - database_password
+      - tls_cert
+      - tls_key
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
 
   # CN DMS
   cn-dms:
     build:
       context: ../../
       dockerfile: deploy/docker/cn-dms/Dockerfile
+      args:
+        - GO_VERSION=1.23
+        - ALPINE_VERSION=3.19
     container_name: oran-cn-dms
     restart: unless-stopped
     networks:
@@ -253,12 +335,24 @@ services:
     volumes:
       - cn-dms-data:/var/lib/cn-dms
       - ./configs/cn-dms:/config:ro
+    secrets:
+      - database_password
+      - tls_cert
+      - tls_key
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
 
   # Monitoring: Prometheus
   prometheus:

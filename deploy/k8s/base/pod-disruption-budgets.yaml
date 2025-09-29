@@ -1,0 +1,112 @@
+---
+# Pod Disruption Budget for ORAN Orchestrator
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: oran-orchestrator-pdb
+  namespace: oran-mano
+  labels:
+    app.kubernetes.io/name: oran-orchestrator
+    app.kubernetes.io/component: orchestrator
+    app.kubernetes.io/part-of: oran-intent-mano
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: oran-orchestrator
+---
+# Pod Disruption Budget for VNF Operator
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: oran-vnf-operator-pdb
+  namespace: oran-mano
+  labels:
+    app.kubernetes.io/name: oran-vnf-operator
+    app.kubernetes.io/component: vnf-operator
+    app.kubernetes.io/part-of: oran-intent-mano
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: oran-vnf-operator
+---
+# Pod Disruption Budget for Secrets Manager
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: oran-secrets-manager-pdb
+  namespace: oran-mano
+  labels:
+    app.kubernetes.io/name: oran-secrets-manager
+    app.kubernetes.io/component: secrets-management
+    app.kubernetes.io/part-of: oran-intent-mano
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: oran-secrets-manager
+---
+# Pod Disruption Budget for Security Scanner
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: oran-security-scanner-pdb
+  namespace: oran-mano
+  labels:
+    app.kubernetes.io/name: oran-security-scanner
+    app.kubernetes.io/component: security-validation
+    app.kubernetes.io/part-of: oran-intent-mano
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: oran-security-scanner
+---
+# Pod Disruption Budget for CIS Compliance Webhook
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: cis-compliance-webhook-pdb
+  namespace: oran-mano
+  labels:
+    app.kubernetes.io/name: cis-compliance-webhook
+    app.kubernetes.io/component: security-compliance
+    app.kubernetes.io/part-of: oran-intent-mano
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: cis-compliance-webhook
+---
+# Pod Disruption Budget for Pod Security Webhook
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: pod-security-webhook-pdb
+  namespace: oran-mano
+  labels:
+    app.kubernetes.io/name: pod-security-webhook
+    app.kubernetes.io/component: security-webhook
+    app.kubernetes.io/part-of: oran-intent-mano
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pod-security-webhook
+---
+# Pod Disruption Budget for Monitoring Components
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: oran-monitoring-pdb
+  namespace: oran-monitoring
+  labels:
+    app.kubernetes.io/name: oran-monitoring
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/part-of: oran-intent-mano
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: monitoring

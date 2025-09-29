@@ -22,8 +22,8 @@ spec:
         app.kubernetes.io/name: cis-compliance-webhook
         app.kubernetes.io/component: security-compliance
       annotations:
-        seccomp.security.alpha.kubernetes.io/pod: runtime/default
-        container.apparmor.security.beta.kubernetes.io/webhook: runtime/default
+        # seccomp.security.alpha.kubernetes.io/pod: runtime/default  # Deprecated - using securityContext.seccompProfile
+        # container.apparmor.security.beta.kubernetes.io/webhook: runtime/default  # Deprecated - using securityContext
     spec:
       serviceAccountName: cis-compliance-webhook
       automountServiceAccountToken: false

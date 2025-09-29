@@ -7,15 +7,16 @@ The O-RAN Intent-MANO API provides comprehensive orchestration capabilities for 
 ## Table of Contents
 
 1. [Authentication](#authentication)
-2. [Rate Limiting](#rate-limiting)
-3. [Error Handling](#error-handling)
-4. [Orchestrator API](#orchestrator-api)
-5. [VNF Operator API](#vnf-operator-api)
-6. [TN Manager API](#tn-manager-api)
-7. [O2 Client API](#o2-client-api)
-8. [Monitoring API](#monitoring-api)
-9. [Webhooks](#webhooks)
-10. [SDK Examples](#sdk-examples)
+2. [WebSocket API](#websocket-api) **NEW**
+3. [Rate Limiting](#rate-limiting)
+4. [Error Handling](#error-handling)
+5. [Orchestrator API](#orchestrator-api)
+6. [VNF Operator API](#vnf-operator-api)
+7. [TN Manager API](#tn-manager-api)
+8. [O2 Client API](#o2-client-api)
+9. [Monitoring API](#monitoring-api)
+10. [Webhooks](#webhooks)
+11. [SDK Examples](#sdk-examples)
 
 ## Authentication
 
@@ -59,6 +60,59 @@ Content-Type: application/json
 
 {
   "refresh_token": "def50200e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}
+```
+
+## WebSocket API
+
+The WebSocket API provides real-time natural language processing for network slice creation using Claude AI integration.
+
+### Connection
+
+```javascript
+// Connect to WebSocket server
+const ws = new WebSocket('ws://localhost:8080/ws');
+
+// Connection opened
+ws.onopen = function(event) {
+    console.log('Connected to O-RAN MANO WebSocket');
+};
+```
+
+### Natural Language Intent Processing
+
+Send natural language intents for real-time processing:
+
+```javascript
+// Send natural language intent
+const intentMessage = {
+    "type": "intent",
+    "sessionId": "unique-session-id",
+    "intent": "Deploy an eMBB slice for 4K video streaming with 1 Gbps throughput"
+};
+
+ws.send(JSON.stringify(intentMessage));
+```
+
+#### Response Format
+
+```json
+{
+  "type": "intent_response",
+  "sessionId": "uuid-session-id",
+  "intent": "Deploy an eMBB slice for 4K video streaming with 1 Gbps throughput",
+  "sliceType": "eMBB",
+  "action": "create",
+  "requirements": {
+    "throughput": 1000,
+    "latency": 20,
+    "reliability": 99.9,
+    "jitter": 2.0,
+    "packet_loss": 0.1
+  },
+  "rawResponse": "I'll help you deploy an eMBB network slice...",
+  "status": "success",
+  "timestamp": 1640995200
 }
 ```
 
@@ -1269,4 +1323,4 @@ curl -X GET "https://api.oran-mano.io/v1/monitoring/slices/slice-uRLLC-001/metri
   -H "Authorization: Bearer $TOKEN"
 ```
 
-This completes the comprehensive API reference documentation for the O-RAN Intent-MANO system, providing detailed information about all endpoints, request/response formats, and practical usage examples in multiple programming languages.
+This completes the comprehensive API reference documentation for the O-RAN Intent-MANO system, providing detailed information about all endpoints including the new WebSocket API for real-time natural language processing, request/response formats, and practical usage examples in multiple programming languages.

@@ -22,8 +22,8 @@ spec:
         app.kubernetes.io/name: oran-security-scanner
         app.kubernetes.io/component: security-validation
       annotations:
-        seccomp.security.alpha.kubernetes.io/pod: runtime/default
-        container.apparmor.security.beta.kubernetes.io/scanner: runtime/default
+        # seccomp.security.alpha.kubernetes.io/pod: runtime/default  # Deprecated - using securityContext.seccompProfile
+        # container.apparmor.security.beta.kubernetes.io/scanner: runtime/default  # Deprecated - using securityContext
     spec:
       serviceAccountName: oran-security-scanner
       automountServiceAccountToken: false

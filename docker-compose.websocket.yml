@@ -1,10 +1,15 @@
-version: '3.8'
+# WebSocket Service Docker Compose Configuration
+# Modern Compose specification with security and performance optimizations
+version: '3.9'
 
 services:
   websocket-server:
     build:
       context: .
       dockerfile: Dockerfile.websocket
+      args:
+        - GO_VERSION=1.23
+        - ALPINE_VERSION=3.19
     ports:
       - "8080:8080"
     environment:
@@ -24,10 +29,22 @@ services:
       start_period: 40s
     networks:
       - oran-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+      restart_policy:
+        condition: on-failure
+        delay: 3s
+        max_attempts: 5
 
   # Optional: Add a reverse proxy for production
   nginx:
-    image: nginx:alpine
+    image: nginx:1.25-alpine
     ports:
       - "80:80"
       - "443:443"
@@ -35,52 +52,90 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/ssl:/etc/nginx/ssl:ro
     depends_on:
-      - websocket-server
+      websocket-server:
+        condition: service_healthy
     networks:
       - oran-network
     profiles:
       - production
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 32M
 
   # Optional: Monitoring with Prometheus
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v2.47.2
     ports:
       - "9090:9090"
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
       - '--web.console.libraries=/etc/prometheus/console_libraries'
       - '--web.console.templates=/etc/prometheus/consoles'
       - '--web.enable-lifecycle'
+      - '--storage.tsdb.retention.time=30d'
     networks:
       - oran-network
     profiles:
       - monitoring
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.2'
+          memory: 256M
 
   # Optional: Grafana for visualization
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:10.2.0
     ports:
       - "3000:3000"
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_SECURITY_ADMIN_PASSWORD_FILE=/run/secrets/grafana_password
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SECURITY_DISABLE_GRAVATAR=true
     volumes:
       - grafana_data:/var/lib/grafana
       - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
       - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    secrets:
+      - grafana_password
     depends_on:
-      - prometheus
+      prometheus:
+        condition: service_started
     networks:
       - oran-network
     profiles:
       - monitoring
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+
+secrets:
+  grafana_password:
+    file: ./secrets/grafana_password.txt
 
 volumes:
   tmux_sessions:
     driver: local
   grafana_data:
+    driver: local
+  prometheus_data:
     driver: local
 
 networks:

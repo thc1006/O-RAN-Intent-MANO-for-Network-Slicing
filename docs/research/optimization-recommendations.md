@@ -1132,9 +1132,9 @@ func (w *Worker) start(ctx context.Context) {
 // Kubernetes環境最佳化
 func getCgroupCPULimit() float64 {
     // 讀取Kubernetes CPU限制
-    if data, err := ioutil.ReadFile("/sys/fs/cgroup/cpu/cpu.cfs_quota_us"); err == nil {
+    if data, err := os.ReadFile("/sys/fs/cgroup/cpu/cpu.cfs_quota_us"); err == nil {
         if quota, err := strconv.Atoi(strings.TrimSpace(string(data))); err == nil && quota > 0 {
-            if data, err := ioutil.ReadFile("/sys/fs/cgroup/cpu/cpu.cfs_period_us"); err == nil {
+            if data, err := os.ReadFile("/sys/fs/cgroup/cpu/cpu.cfs_period_us"); err == nil {
                 if period, err := strconv.Atoi(strings.TrimSpace(string(data))); err == nil && period > 0 {
                     return float64(quota) / float64(period)
                 }

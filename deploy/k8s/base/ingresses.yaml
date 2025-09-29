@@ -1,0 +1,216 @@
+---
+# Ingress for ORAN Orchestrator API
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: oran-orchestrator-ingress
+  namespace: oran-mano
+  labels:
+    app.kubernetes.io/name: oran-orchestrator
+    app.kubernetes.io/component: orchestrator
+    app.kubernetes.io/part-of: oran-intent-mano
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+    nginx.ingress.kubernetes.io/rate-limit-connections: "10"
+    nginx.ingress.kubernetes.io/rate-limit-rps: "5"
+    nginx.ingress.kubernetes.io/client-body-buffer-size: "1m"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    # Security headers
+    nginx.ingress.kubernetes.io/server-snippet: |
+      add_header X-Frame-Options "SAMEORIGIN" always;
+      add_header X-Content-Type-Options "nosniff" always;
+      add_header X-XSS-Protection "1; mode=block" always;
+      add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+      add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';" always;
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - orchestrator.oran.local
+    secretName: oran-orchestrator-tls
+  rules:
+  - host: orchestrator.oran.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: oran-orchestrator
+            port:
+              number: 8080
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: oran-orchestrator
+            port:
+              number: 8080
+      - path: /metrics
+        pathType: Exact
+        backend:
+          service:
+            name: oran-orchestrator
+            port:
+              number: 9090
+---
+# Ingress for VNF Operator Webhook (internal only)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: oran-vnf-operator-webhook-ingress
+  namespace: oran-mano
+  labels:
+    app.kubernetes.io/name: oran-vnf-operator
+    app.kubernetes.io/component: webhook
+    app.kubernetes.io/part-of: oran-intent-mano
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+    nginx.ingress.kubernetes.io/whitelist-source-range: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+    nginx.ingress.kubernetes.io/rate-limit-connections: "5"
+    # Internal cluster access only
+    kubernetes.io/ingress.class: "nginx-internal"
+spec:
+  ingressClassName: nginx-internal
+  tls:
+  - hosts:
+    - vnf-operator-webhook.oran.internal
+    secretName: oran-vnf-operator-webhook-tls
+  rules:
+  - host: vnf-operator-webhook.oran.internal
+    http:
+      paths:
+      - path: /webhook
+        pathType: Prefix
+        backend:
+          service:
+            name: oran-vnf-operator-webhook
+            port:
+              number: 443
+---
+# Ingress for Monitoring Services
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: oran-monitoring-ingress
+  namespace: oran-monitoring
+  labels:
+    app.kubernetes.io/name: oran-monitoring
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/part-of: oran-intent-mano
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/auth-type: basic
+    nginx.ingress.kubernetes.io/auth-secret: monitoring-basic-auth
+    nginx.ingress.kubernetes.io/auth-realm: 'Authentication Required - ORAN Monitoring'
+    nginx.ingress.kubernetes.io/rate-limit-connections: "20"
+    nginx.ingress.kubernetes.io/rate-limit-rps: "10"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - monitoring.oran.local
+    - grafana.oran.local
+    - prometheus.oran.local
+    secretName: oran-monitoring-tls
+  rules:
+  - host: monitoring.oran.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: oran-monitoring-dashboard
+            port:
+              number: 3000
+  - host: grafana.oran.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: grafana
+            port:
+              number: 3000
+  - host: prometheus.oran.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: prometheus
+            port:
+              number: 9090
+---
+# Ingress for Security Services Dashboard
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: oran-security-dashboard-ingress
+  namespace: oran-mano
+  labels:
+    app.kubernetes.io/name: oran-security-dashboard
+    app.kubernetes.io/component: security-dashboard
+    app.kubernetes.io/part-of: oran-intent-mano
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/auth-type: basic
+    nginx.ingress.kubernetes.io/auth-secret: security-basic-auth
+    nginx.ingress.kubernetes.io/auth-realm: 'Authentication Required - ORAN Security'
+    nginx.ingress.kubernetes.io/whitelist-source-range: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+    nginx.ingress.kubernetes.io/rate-limit-connections: "5"
+    nginx.ingress.kubernetes.io/rate-limit-rps: "2"
+    # Enhanced security headers for security dashboard
+    nginx.ingress.kubernetes.io/server-snippet: |
+      add_header X-Frame-Options "DENY" always;
+      add_header X-Content-Type-Options "nosniff" always;
+      add_header X-XSS-Protection "1; mode=block" always;
+      add_header Referrer-Policy "no-referrer" always;
+      add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+      add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self';" always;
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - security.oran.local
+    secretName: oran-security-dashboard-tls
+  rules:
+  - host: security.oran.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: oran-security-dashboard
+            port:
+              number: 8080
+      - path: /scanner
+        pathType: Prefix
+        backend:
+          service:
+            name: oran-security-scanner
+            port:
+              number: 8080
+      - path: /compliance
+        pathType: Prefix
+        backend:
+          service:
+            name: cis-compliance-webhook
+            port:
+              number: 8080

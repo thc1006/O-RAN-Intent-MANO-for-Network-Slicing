@@ -47,8 +47,8 @@ spec:
         app.kubernetes.io/name: pod-security-webhook
         app.kubernetes.io/component: security-webhook
       annotations:
-        seccomp.security.alpha.kubernetes.io/pod: runtime/default
-        container.apparmor.security.beta.kubernetes.io/webhook: runtime/default
+        # seccomp.security.alpha.kubernetes.io/pod: runtime/default  # Deprecated - using securityContext.seccompProfile
+        # container.apparmor.security.beta.kubernetes.io/webhook: runtime/default  # Deprecated - using securityContext
     spec:
       serviceAccountName: pod-security-webhook
       automountServiceAccountToken: false

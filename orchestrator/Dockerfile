@@ -1,33 +1,56 @@
+# syntax=docker/dockerfile:1.4
 # Multi-stage build for O-RAN Orchestrator
-FROM golang:1.24-alpine AS builder
+
+# Build arguments for customization
+ARG GO_VERSION=1.23
+ARG ALPINE_VERSION=3.19
+
+FROM golang:${GO_VERSION}-alpine AS builder
 
 WORKDIR /build
 
 # Copy go mod files
 COPY go.mod go.sum* ./
-RUN go mod download 2>/dev/null || true
+# Download dependencies with BuildKit cache mount
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download 2>/dev/null || true
 
 # Copy source code
 COPY . .
 
-# Build the binary
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o orchestrator ./orchestrator/cmd/orchestrator/
+# Build the binary with BuildKit cache mount and security flags
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=cache,target=/go/pkg/mod \
+    CGO_ENABLED=0 GOOS=linux go build \
+    -trimpath \
+    -ldflags="-s -w -buildid= -extldflags=-static" \
+    -tags=netgo \
+    -a -installsuffix cgo \
+    -o orchestrator ./orchestrator/cmd/orchestrator/
 
-# Final stage
-FROM alpine:latest
+# Final stage - use distroless for better security
+FROM gcr.io/distroless/static-debian12:nonroot AS runtime
 
-RUN apk --no-cache add ca-certificates
+# Metadata
+LABEL org.opencontainers.image.title="O-RAN Orchestrator"
+LABEL org.opencontainers.image.description="O-RAN Intent-based MANO Orchestrator"
+LABEL org.opencontainers.image.version="1.0.0"
+LABEL org.opencontainers.image.vendor="O-RAN Alliance"
+LABEL org.opencontainers.image.licenses="Apache-2.0"
 
-WORKDIR /app
+# Copy the binary from builder with proper ownership
+COPY --from=builder --chown=nonroot:nonroot /build/orchestrator /usr/local/bin/orchestrator
 
-# Copy the binary from builder
-COPY --from=builder /build/orchestrator .
-
-# Copy Web UI static files
-COPY web/static /app/web/static
+# Copy Web UI static files with proper ownership
+COPY --from=builder --chown=nonroot:nonroot /build/web/static /app/web/static
 
 # Expose ports
 EXPOSE 8080 9090
 
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD ["/usr/local/bin/orchestrator", "--version"] || exit 1
+
 # Run the orchestrator
-CMD ["./orchestrator"]
+ENTRYPOINT ["/usr/local/bin/orchestrator"]
+CMD ["--config=/config/orchestrator.yaml"]

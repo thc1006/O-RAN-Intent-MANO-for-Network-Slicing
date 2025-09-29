@@ -1,0 +1,202 @@
+name: Reusable Security Scan
+
+on:
+  workflow_call:
+    inputs:
+      scan-type:
+        description: 'Type of security scan to run'
+        required: true
+        type: string
+        # Options: trivy, gosec, codeql, dependency
+      target:
+        description: 'Target to scan (path, image, etc.)'
+        required: false
+        type: string
+        default: '.'
+      severity:
+        description: 'Minimum severity level'
+        required: false
+        type: string
+        default: 'CRITICAL,HIGH,MEDIUM'
+      go-version:
+        description: 'Go version to use'
+        required: false
+        type: string
+        default: '1.22.10'
+      upload-sarif:
+        description: 'Upload SARIF results'
+        required: false
+        type: boolean
+        default: true
+    outputs:
+      scan-result:
+        description: 'Result of the security scan'
+        value: ${{ jobs.security-scan.outputs.result }}
+      findings-count:
+        description: 'Number of security findings'
+        value: ${{ jobs.security-scan.outputs.findings }}
+
+env:
+  GO_VERSION: ${{ inputs.go-version }}
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+jobs:
+  security-scan:
+    name: Security Scan (${{ inputs.scan-type }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    outputs:
+      result: ${{ steps.scan-result.outputs.result }}
+      findings: ${{ steps.scan-result.outputs.findings }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+        persist-credentials: false
+
+    - name: Set up Go
+      if: inputs.scan-type == 'gosec' || inputs.scan-type == 'dependency'
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ env.GO_VERSION }}
+        cache: true
+
+    - name: Run Trivy scan
+      if: inputs.scan-type == 'trivy'
+      uses: aquasecurity/trivy-action@0.28.0
+      with:
+        scan-type: 'fs'
+        scan-ref: ${{ inputs.target }}
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+        severity: ${{ inputs.severity }}
+        exit-code: '0'
+        scanners: 'vuln,secret,config,license'
+        timeout: '15m'
+
+    - name: Run GoSec scan
+      if: inputs.scan-type == 'gosec'
+      uses: securego/gosec@master
+      with:
+        args: '-fmt sarif -out gosec-results.sarif -severity medium -confidence medium ./...'
+      continue-on-error: true
+
+    - name: Run dependency scan
+      if: inputs.scan-type == 'dependency'
+      run: |
+        echo "Running dependency vulnerability scan..."
+
+        # Install govulncheck
+        go install golang.org/x/vuln/cmd/govulncheck@latest
+
+        # Create SARIF template
+        cat > dependency-results.sarif << 'EOF'
+        {
+          "version": "2.1.0",
+          "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+          "runs": [
+            {
+              "tool": {
+                "driver": {
+                  "name": "govulncheck",
+                  "version": "latest",
+                  "informationUri": "https://golang.org/x/vuln/cmd/govulncheck"
+                }
+              },
+              "results": []
+            }
+          ]
+        }
+        EOF
+
+        # Run vulnerability check
+        find . -name "go.mod" -type f | while read -r modfile; do
+          moddir=$(dirname "$modfile")
+          echo "Scanning module in $moddir"
+
+          cd "$moddir"
+          govulncheck ./... > "$GITHUB_WORKSPACE/vulns-$(basename $moddir).txt" 2>&1 || true
+          cd - > /dev/null
+        done
+
+    - name: Upload SARIF results
+      if: inputs.upload-sarif && always()
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: |
+          trivy-results.sarif
+          gosec-results.sarif
+          dependency-results.sarif
+        category: 'reusable-${{ inputs.scan-type }}'
+        wait-for-processing: false
+      continue-on-error: true
+
+    - name: Process scan results
+      id: scan-result
+      run: |
+        echo "Processing scan results for ${{ inputs.scan-type }}..."
+
+        result="success"
+        findings=0
+
+        case "${{ inputs.scan-type }}" in
+          "trivy")
+            if [ -f "trivy-results.sarif" ]; then
+              findings=$(jq '[.runs[]?.results[]?] | length' trivy-results.sarif 2>/dev/null || echo "0")
+              if [ "$findings" -gt "0" ]; then
+                result="findings"
+              fi
+            fi
+            ;;
+          "gosec")
+            if [ -f "gosec-results.sarif" ]; then
+              findings=$(jq '[.runs[]?.results[]?] | length' gosec-results.sarif 2>/dev/null || echo "0")
+              if [ "$findings" -gt "0" ]; then
+                result="findings"
+              fi
+            fi
+            ;;
+          "dependency")
+            vuln_files=$(find . -name "vulns-*.txt" | wc -l)
+            if [ "$vuln_files" -gt "0" ]; then
+              # Count actual vulnerabilities found
+              findings=$(grep -c "Vulnerability" vulns-*.txt 2>/dev/null || echo "0")
+              if [ "$findings" -gt "0" ]; then
+                result="findings"
+              fi
+            fi
+            ;;
+        esac
+
+        echo "result=$result" >> $GITHUB_OUTPUT
+        echo "findings=$findings" >> $GITHUB_OUTPUT
+
+        # Create step summary
+        echo "## Security Scan Results (${{ inputs.scan-type }})" >> $GITHUB_STEP_SUMMARY
+        echo "- **Target**: ${{ inputs.target }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Findings**: $findings" >> $GITHUB_STEP_SUMMARY
+        echo "- **Status**: $result" >> $GITHUB_STEP_SUMMARY
+
+        if [ "$result" = "success" ]; then
+          echo "✅ **No security issues found**" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "⚠️ **Security findings detected - review required**" >> $GITHUB_STEP_SUMMARY
+        fi
+
+    - name: Upload scan artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: security-scan-results-${{ inputs.scan-type }}
+        path: |
+          *.sarif
+          vulns-*.txt
+        retention-days: 30

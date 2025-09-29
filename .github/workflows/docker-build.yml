@@ -263,6 +263,8 @@ jobs:
     needs: docker-build
     if: github.event_name != 'pull_request'
 
+    timeout-minutes: 30
+
     strategy:
       matrix:
         component: [orchestrator, vnf-operator, o2-client, tn-manager, tn-agent, cn-dms, ran-dms]
@@ -294,14 +296,31 @@ jobs:
         echo "Critical vulnerabilities: $critical_count"
         echo "High vulnerabilities: $high_count"
 
+        # Create GitHub step summary
+        echo "## Security Scan Results for ${{ matrix.component }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Critical**: $critical_count" >> $GITHUB_STEP_SUMMARY
+        echo "- **High**: $high_count" >> $GITHUB_STEP_SUMMARY
+
         if [ "$critical_count" -gt "5" ]; then
           echo "ERROR: Too many critical vulnerabilities ($critical_count > 5)"
+          echo "❌ **FAILED**: Too many critical vulnerabilities" >> $GITHUB_STEP_SUMMARY
           exit 1
         fi
 
         if [ "$high_count" -gt "20" ]; then
           echo "WARNING: High number of high-severity vulnerabilities: $high_count"
+          echo "⚠️ **WARNING**: High number of vulnerabilities" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "✅ **PASSED**: Security scan within acceptable limits" >> $GITHUB_STEP_SUMMARY
         fi
+
+    - name: Generate security attestation
+      if: github.event_name != 'pull_request'
+      uses: actions/attest-build-provenance@v1
+      with:
+        subject-name: ${{ env.IMAGE_PREFIX }}/oran-${{ matrix.component }}
+        subject-digest: ${{ needs.docker-build.outputs.image-digest }}
+        push-to-registry: true
 
   # Multi-arch manifest creation
   manifest:

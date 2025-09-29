@@ -1,6 +1,12 @@
+# syntax=docker/dockerfile:1.4
 # VNF Operator Multi-stage Dockerfile
-# Stage 1: Build with Go 1.22.10-alpine (match workflow requirements)
-FROM golang:1.24-alpine AS builder
+
+# Build arguments for customization
+ARG GO_VERSION=1.23
+ARG ALPINE_VERSION=3.19
+
+# Stage 1: Build with Go 1.23-alpine
+FROM golang:${GO_VERSION}-alpine AS builder
 
 # Set Go environment variables
 ENV CGO_ENABLED=0
@@ -35,11 +41,14 @@ WORKDIR /workspace
 # Copy entire source code (build context should be project root)
 COPY . .
 
-# Download dependencies after copying source code
-RUN go mod download
+# Download dependencies with BuildKit cache mount
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download
 
-# Build the VNF operator manager binary with optimization flags
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+# Build the VNF operator manager binary with BuildKit cache mount and optimization flags
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=cache,target=/go/pkg/mod \
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -trimpath \
     -ldflags="-s -w -extldflags '-static'" \
     -a -installsuffix cgo \
@@ -48,7 +57,9 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
 # Build optimized health check binary
 RUN printf 'package main\nimport ("fmt";"net/http";"os";"time")\nfunc main() {\nclient := &http.Client{Timeout: 3 * time.Second}\nresp, err := client.Get("http://localhost:8081/healthz")\nif err != nil { fmt.Printf("Health check failed: %%v\\n", err); os.Exit(1) }\ndefer resp.Body.Close()\nif resp.StatusCode != 200 { fmt.Printf("Health check failed with status: %%d\\n", resp.StatusCode); os.Exit(1) }\nfmt.Println("Health check passed")\n}' > healthcheck.go
 
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=cache,target=/go/pkg/mod \
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -trimpath \
     -ldflags="-s -w -extldflags '-static'" \
     -a -installsuffix cgo \
@@ -66,7 +77,7 @@ LABEL security.scan="trivy,grype,snyk"
 LABEL security.user="non-root"
 LABEL security.distroless="true"
 LABEL security.base.image="scratch"
-LABEL security.go.version="1.22.10"
+LABEL security.go.version="1.23.3"
 LABEL security.binary="static"
 
 # Copy CA certificates for HTTPS calls

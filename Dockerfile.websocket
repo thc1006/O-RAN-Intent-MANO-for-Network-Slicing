@@ -1,8 +1,15 @@
+# syntax=docker/dockerfile:1.4
 # Multi-stage build for O-RAN WebSocket Server
-FROM golang:1.21-alpine AS builder
+
+# Build arguments for customization
+ARG GO_VERSION=1.23
+ARG ALPINE_VERSION=3.19
+
+FROM golang:${GO_VERSION}-alpine AS builder
 
 # Install build dependencies
-RUN apk add --no-cache git ca-certificates tzdata
+RUN apk add --no-cache git ca-certificates tzdata && \
+    rm -rf /var/cache/apk/*
 
 # Set working directory
 WORKDIR /build
@@ -10,17 +17,32 @@ WORKDIR /build
 # Copy go mod files
 COPY go.mod go.sum ./
 
-# Download dependencies
-RUN go mod download
+# Download dependencies with BuildKit cache mount
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download
 
 # Copy source code
 COPY . .
 
-# Build the WebSocket server
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o websocket-server ./cmd/websocket-server
+# Build the WebSocket server with BuildKit cache mount and security flags
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=cache,target=/go/pkg/mod \
+    CGO_ENABLED=0 GOOS=linux go build \
+    -trimpath \
+    -ldflags="-s -w -buildid= -extldflags=-static" \
+    -tags=netgo \
+    -a -installsuffix cgo \
+    -o websocket-server ./cmd/websocket-server
 
-# Runtime stage
-FROM alpine:latest
+# Runtime stage with metadata
+FROM alpine:${ALPINE_VERSION} AS runtime
+
+# Metadata
+LABEL org.opencontainers.image.title="O-RAN WebSocket Server"
+LABEL org.opencontainers.image.description="O-RAN WebSocket Server for Real-time Communication"
+LABEL org.opencontainers.image.version="1.0.0"
+LABEL org.opencontainers.image.vendor="O-RAN Alliance"
+LABEL org.opencontainers.image.licenses="Apache-2.0"
 
 # Install runtime dependencies
 RUN apk add --no-cache \
@@ -36,11 +58,11 @@ RUN adduser -D -s /bin/bash claude
 # Set working directory
 WORKDIR /app
 
-# Copy binary from builder
-COPY --from=builder /build/websocket-server .
+# Copy binary from builder with proper ownership
+COPY --from=builder --chown=claude:claude /build/websocket-server .
 
-# Copy web files
-COPY --from=builder /build/web ./web
+# Copy web files with proper ownership
+COPY --from=builder --chown=claude:claude /build/web ./web
 
 # Create necessary directories
 RUN mkdir -p /home/claude/.config /tmp/claude \
