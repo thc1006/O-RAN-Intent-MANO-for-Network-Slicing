@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>O-RAN Network Slicing with Claude AI</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            height: 100vh;
+            gap: 20px;
+            padding: 20px;
+        }
+
+        .main-panel {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .status-bar {
+            padding: 10px 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #dc3545;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.connected {
+            background: #28a745;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            padding: 12px 16px;
+            border-radius: 12px;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+
+        .message.user {
+            background: #667eea;
+            color: white;
+            margin-left: auto;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.claude {
+            background: white;
+            border: 1px solid #e9ecef;
+            border-bottom-left-radius: 4px;
+        }
+
+        .message.system {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            text-align: center;
+            margin: 0 auto;
+            max-width: 60%;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+
+        .message-meta {
+            font-size: 12px;
+            opacity: 0.7;
+            margin-top: 5px;
+        }
+
+        .input-container {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .input-field {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 25px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .input-field:focus {
+            border-color: #667eea;
+        }
+
+        .send-btn {
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+
+        .send-btn:hover:not(:disabled) {
+            background: #5a6fd8;
+        }
+
+        .send-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .side-panel {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .side-header {
+            background: #343a40;
+            color: white;
+            padding: 15px 20px;
+            font-weight: 600;
+        }
+
+        .slice-info {
+            padding: 20px;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .slice-card {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .slice-card h3 {
+            color: #495057;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .slice-type {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .slice-type.embb {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .slice-type.urllc {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .slice-type.miot {
+            background: #ffeaa7;
+            color: #856404;
+        }
+
+        .requirements {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .requirement {
+            text-align: center;
+            padding: 8px;
+            background: white;
+            border-radius: 6px;
+            border: 1px solid #e9ecef;
+        }
+
+        .requirement-value {
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .requirement-label {
+            font-size: 12px;
+            opacity: 0.7;
+            margin-top: 2px;
+        }
+
+        .examples {
+            padding: 20px;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .example-btn {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 8px;
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            cursor: pointer;
+            text-align: left;
+            font-size: 13px;
+            transition: background 0.3s;
+        }
+
+        .example-btn:hover {
+            background: #e9ecef;
+        }
+
+        .typing-indicator {
+            display: none;
+            padding: 12px 16px;
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 12px;
+            border-bottom-left-radius: 4px;
+            max-width: 80%;
+            margin-bottom: 15px;
+        }
+
+        .typing-dots {
+            display: flex;
+            gap: 4px;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #6c757d;
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+            0%, 60%, 100% {
+                transform: translateY(0);
+            }
+            30% {
+                transform: translateY(-10px);
+            }
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            background: #28a745;
+            color: white;
+            border-radius: 6px;
+            transform: translateX(100%);
+            transition: transform 0.3s;
+            z-index: 1000;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.error {
+            background: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="main-panel">
+            <div class="header">
+                <h1>🚀 O-RAN Network Slicing</h1>
+                <p>Powered by Claude AI + tmux Integration</p>
+            </div>
+
+            <div class="status-bar">
+                <div class="status-indicator">
+                    <div class="status-dot" id="statusDot"></div>
+                    <span id="statusText">Disconnected</span>
+                </div>
+                <div id="sessionInfo">Session: Not Started</div>
+            </div>
+
+            <div class="chat-container">
+                <div class="messages" id="messages">
+                    <div class="message system">
+                        Welcome to O-RAN Network Slicing! Type your network slice requirements in natural language.
+                    </div>
+                </div>
+                <div class="typing-indicator" id="typingIndicator">
+                    <div class="typing-dots">
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="input-container">
+                <div class="input-group">
+                    <input type="text" id="messageInput" class="input-field"
+                           placeholder="e.g., Create an eMBB slice for 4K video streaming with 1Gbps throughput..."
+                           disabled>
+                    <button id="sendBtn" class="send-btn" disabled>Send</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="side-panel">
+            <div class="side-header">Network Slice Status</div>
+            <div class="slice-info" id="sliceInfo">
+                <div class="slice-card">
+                    <h3>💡 How to Use</h3>
+                    <p style="font-size: 14px; line-height: 1.5; color: #6c757d;">
+                        Describe your network slice requirements in natural language.
+                        Claude AI will parse and configure the appropriate slice type:
+                    </p>
+                    <div style="margin-top: 10px;">
+                        <div class="slice-type embb">eMBB</div> Enhanced Mobile Broadband<br>
+                        <div class="slice-type urllc">URLLC</div> Ultra-Reliable Low Latency<br>
+                        <div class="slice-type miot">mIoT</div> Massive IoT
+                    </div>
+                </div>
+            </div>
+
+            <div class="examples">
+                <h4 style="margin-bottom: 10px; color: #495057;">💬 Example Requests</h4>
+                <button class="example-btn" onclick="sendExample('Deploy an eMBB slice for 4K video streaming with 1 Gbps throughput')">
+                    🎥 4K Video Streaming (eMBB)
+                </button>
+                <button class="example-btn" onclick="sendExample('Create a URLLC slice for autonomous vehicle control with 1ms latency')">
+                    🚗 Autonomous Vehicles (URLLC)
+                </button>
+                <button class="example-btn" onclick="sendExample('Setup mIoT slice for smart city sensors supporting 1M devices')">
+                    🏙️ Smart City IoT (mIoT)
+                </button>
+                <button class="example-btn" onclick="sendExample('Modify the video slice to increase throughput to 2 Gbps')">
+                    ⚙️ Modify Existing Slice
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="notification" id="notification"></div>
+
+    <script>
+        class NetworkSlicingClient {
+            constructor() {
+                this.ws = null;
+                this.sessionId = null;
+                this.isConnected = false;
+                this.messageQueue = [];
+
+                this.initializeElements();
+                this.connect();
+            }
+
+            initializeElements() {
+                this.statusDot = document.getElementById('statusDot');
+                this.statusText = document.getElementById('statusText');
+                this.sessionInfo = document.getElementById('sessionInfo');
+                this.messages = document.getElementById('messages');
+                this.messageInput = document.getElementById('messageInput');
+                this.sendBtn = document.getElementById('sendBtn');
+                this.sliceInfo = document.getElementById('sliceInfo');
+                this.typingIndicator = document.getElementById('typingIndicator');
+                this.notification = document.getElementById('notification');
+
+                this.messageInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        this.sendMessage();
+                    }
+                });
+
+                this.sendBtn.addEventListener('click', () => this.sendMessage());
+            }
+
+            connect() {
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const wsUrl = `${protocol}//${window.location.host}/ws`;
+
+                try {
+                    this.ws = new WebSocket(wsUrl);
+
+                    this.ws.onopen = () => this.onConnected();
+                    this.ws.onmessage = (event) => this.onMessage(event);
+                    this.ws.onclose = () => this.onDisconnected();
+                    this.ws.onerror = (error) => this.onError(error);
+                } catch (error) {
+                    console.error('WebSocket connection failed:', error);
+                    this.showNotification('Connection failed. Please try again.', 'error');
+                }
+            }
+
+            onConnected() {
+                this.isConnected = true;
+                this.statusDot.classList.add('connected');
+                this.statusText.textContent = 'Connected';
+                this.messageInput.disabled = false;
+                this.sendBtn.disabled = false;
+                this.showNotification('Connected to O-RAN Network Slicing Service!');
+
+                // Process any queued messages
+                while (this.messageQueue.length > 0) {
+                    const message = this.messageQueue.shift();
+                    this.ws.send(JSON.stringify(message));
+                }
+            }
+
+            onDisconnected() {
+                this.isConnected = false;
+                this.statusDot.classList.remove('connected');
+                this.statusText.textContent = 'Disconnected';
+                this.messageInput.disabled = true;
+                this.sendBtn.disabled = true;
+                this.hideTypingIndicator();
+
+                this.showNotification('Connection lost. Reconnecting...', 'error');
+
+                // Attempt to reconnect after 3 seconds
+                setTimeout(() => this.connect(), 3000);
+            }
+
+            onError(error) {
+                console.error('WebSocket error:', error);
+                this.showNotification('Connection error occurred.', 'error');
+            }
+
+            onMessage(event) {
+                try {
+                    const message = JSON.parse(event.data);
+                    this.handleMessage(message);
+                } catch (error) {
+                    console.error('Failed to parse message:', error);
+                }
+            }
+
+            handleMessage(message) {
+                switch (message.type) {
+                    case 'connected':
+                        this.sessionId = message.sessionId;
+                        this.sessionInfo.textContent = `Session: ${this.sessionId.substr(0, 8)}...`;
+                        this.addMessage('system', message.message);
+                        break;
+
+                    case 'processing':
+                        this.showTypingIndicator();
+                        this.addMessage('system', message.message);
+                        break;
+
+                    case 'intent_response':
+                        this.hideTypingIndicator();
+                        this.handleIntentResponse(message);
+                        break;
+
+                    case 'stream_chunk':
+                        this.handleStreamChunk(message);
+                        break;
+
+                    case 'error':
+                        this.hideTypingIndicator();
+                        this.addMessage('error', `Error: ${message.message}`);
+                        break;
+
+                    default:
+                        console.log('Unknown message type:', message.type);
+                }
+            }
+
+            handleIntentResponse(message) {
+                let responseText = `✅ Network slice processed successfully!\n\n`;
+
+                if (message.sliceType) {
+                    responseText += `**Slice Type:** ${message.sliceType}\n`;
+                }
+
+                if (message.action) {
+                    responseText += `**Action:** ${message.action}\n`;
+                }
+
+                if (message.requirements) {
+                    responseText += `**Requirements:**\n`;
+                    if (message.requirements.throughput) {
+                        responseText += `• Throughput: ${message.requirements.throughput} Mbps\n`;
+                    }
+                    if (message.requirements.latency) {
+                        responseText += `• Latency: ${message.requirements.latency} ms\n`;
+                    }
+                    if (message.requirements.reliability) {
+                        responseText += `• Reliability: ${message.requirements.reliability}%\n`;
+                    }
+                }
+
+                if (message.rawResponse) {
+                    responseText += `\n**Claude Response:** ${message.rawResponse}`;
+                }
+
+                this.addMessage('claude', responseText);
+                this.updateSliceVisualization(message);
+            }
+
+            handleStreamChunk(message) {
+                // Handle streaming responses if implemented
+                if (message.done) {
+                    this.hideTypingIndicator();
+                } else {
+                    this.showTypingIndicator();
+                }
+            }
+
+            updateSliceVisualization(intentResponse) {
+                if (!intentResponse.sliceType || !intentResponse.requirements) return;
+
+                const sliceCard = document.createElement('div');
+                sliceCard.className = 'slice-card';
+
+                const timestamp = new Date().toLocaleTimeString();
+                const sliceTypeClass = intentResponse.sliceType.toLowerCase().replace('embb', 'embb');
+
+                sliceCard.innerHTML = `
+                    <h3>🎯 ${intentResponse.sliceType} Slice</h3>
+                    <div class="slice-type ${sliceTypeClass}">${intentResponse.sliceType}</div>
+                    <div class="requirements">
+                        ${intentResponse.requirements.throughput ?
+                            `<div class="requirement">
+                                <div class="requirement-value">${intentResponse.requirements.throughput}</div>
+                                <div class="requirement-label">Mbps</div>
+                            </div>` : ''}
+                        ${intentResponse.requirements.latency ?
+                            `<div class="requirement">
+                                <div class="requirement-value">${intentResponse.requirements.latency}</div>
+                                <div class="requirement-label">ms latency</div>
+                            </div>` : ''}
+                        ${intentResponse.requirements.reliability ?
+                            `<div class="requirement">
+                                <div class="requirement-value">${intentResponse.requirements.reliability}</div>
+                                <div class="requirement-label">% reliability</div>
+                            </div>` : ''}
+                    </div>
+                    <div style="margin-top: 10px; font-size: 12px; opacity: 0.7;">
+                        Created at ${timestamp}
+                    </div>
+                `;
+
+                // Add to the top of slice info (after the how-to-use card)
+                const firstCard = this.sliceInfo.querySelector('.slice-card');
+                if (firstCard.textContent.includes('How to Use')) {
+                    firstCard.insertAdjacentElement('afterend', sliceCard);
+                } else {
+                    this.sliceInfo.insertBefore(sliceCard, this.sliceInfo.firstChild);
+                }
+            }
+
+            sendMessage() {
+                const text = this.messageInput.value.trim();
+                if (!text || !this.isConnected) return;
+
+                const message = {
+                    type: 'intent',
+                    intent: text,
+                    sessionId: this.sessionId
+                };
+
+                this.addMessage('user', text);
+                this.messageInput.value = '';
+
+                if (this.isConnected) {
+                    this.ws.send(JSON.stringify(message));
+                } else {
+                    this.messageQueue.push(message);
+                    this.showNotification('Message queued. Waiting for connection...', 'error');
+                }
+            }
+
+            addMessage(type, content) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${type}`;
+
+                // Convert markdown-like formatting to HTML
+                const formattedContent = content
+                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                    .replace(/\n/g, '<br>');
+
+                messageDiv.innerHTML = formattedContent;
+
+                if (type === 'user' || type === 'claude') {
+                    const meta = document.createElement('div');
+                    meta.className = 'message-meta';
+                    meta.textContent = new Date().toLocaleTimeString();
+                    messageDiv.appendChild(meta);
+                }
+
+                this.messages.appendChild(messageDiv);
+                this.messages.scrollTop = this.messages.scrollHeight;
+            }
+
+            showTypingIndicator() {
+                this.typingIndicator.style.display = 'block';
+                this.messages.scrollTop = this.messages.scrollHeight;
+            }
+
+            hideTypingIndicator() {
+                this.typingIndicator.style.display = 'none';
+            }
+
+            showNotification(message, type = 'success') {
+                this.notification.textContent = message;
+                this.notification.className = `notification ${type} show`;
+
+                setTimeout(() => {
+                    this.notification.classList.remove('show');
+                }, 3000);
+            }
+        }
+
+        // Global function for example buttons
+        function sendExample(text) {
+            if (window.client && window.client.isConnected) {
+                window.client.messageInput.value = text;
+                window.client.sendMessage();
+            }
+        }
+
+        // Initialize the client when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            window.client = new NetworkSlicingClient();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,70 @@
+# Multi-stage build for O-RAN WebSocket Server
+FROM golang:1.21-alpine AS builder
+
+# Install build dependencies
+RUN apk add --no-cache git ca-certificates tzdata
+
+# Set working directory
+WORKDIR /build
+
+# Copy go mod files
+COPY go.mod go.sum ./
+
+# Download dependencies
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Build the WebSocket server
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o websocket-server ./cmd/websocket-server
+
+# Runtime stage
+FROM alpine:latest
+
+# Install runtime dependencies
+RUN apk add --no-cache \
+    ca-certificates \
+    tmux \
+    bash \
+    curl \
+    && rm -rf /var/cache/apk/*
+
+# Add non-root user
+RUN adduser -D -s /bin/bash claude
+
+# Set working directory
+WORKDIR /app
+
+# Copy binary from builder
+COPY --from=builder /build/websocket-server .
+
+# Copy web files
+COPY --from=builder /build/web ./web
+
+# Create necessary directories
+RUN mkdir -p /home/claude/.config /tmp/claude \
+    && chown -R claude:claude /app /home/claude /tmp/claude
+
+# Switch to non-root user
+USER claude
+
+# Create tmux config for optimal session management
+RUN echo "set -g default-terminal \"screen-256color\"" > /home/claude/.tmux.conf && \
+    echo "set -g history-limit 10000" >> /home/claude/.tmux.conf && \
+    echo "set -g mouse on" >> /home/claude/.tmux.conf
+
+# Expose port
+EXPOSE 8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+# Set environment variables
+ENV TMPDIR=/tmp/claude \
+    HOME=/home/claude
+
+# Start the server
+ENTRYPOINT ["./websocket-server"]
+CMD ["-addr", ":8080"]
