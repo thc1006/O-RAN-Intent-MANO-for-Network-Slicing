@@ -425,7 +425,7 @@ jobs:
         retention-days: 30
 
     - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v6
+      uses: codecov/codecov-action@v4
       with:
         file: ${{ matrix.component.path }}/test-results/coverage.out,${{ matrix.component.path }}/test-results/coverage.xml
         flags: ${{ matrix.component.name }}

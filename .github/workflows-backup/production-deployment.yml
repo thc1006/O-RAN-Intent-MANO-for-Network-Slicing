@@ -206,7 +206,7 @@ jobs:
           fi
 
       - name: Upload coverage reports
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@v4
         if: env.COMPONENT_PATH != ''
         with:
           file: ${{ env.COMPONENT_PATH }}/coverage.out
