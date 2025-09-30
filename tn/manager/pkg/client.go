@@ -292,3 +292,35 @@ func (client *TNAgentClient) DiscoverNode() (interface{}, error) {
 	// For now, return nil as stub implementation
 	return nil, nil
 }
+
+// RestartVXLAN restarts VXLAN tunnels on the agent
+func (client *TNAgentClient) RestartVXLAN(configs map[string]interface{}) error {
+	if !client.connected {
+		return fmt.Errorf("client not connected")
+	}
+
+	security.SafeLogf(client.logger, "Restarting VXLAN tunnels on agent %s", security.SanitizeForLog(client.baseURL))
+
+	data, err := json.Marshal(configs)
+	if err != nil {
+		return fmt.Errorf("failed to marshal VXLAN configs: %w", err)
+	}
+
+	resp, err := client.httpClient.Post(
+		client.baseURL+"/api/v1/vxlan/restart",
+		"application/json",
+		bytes.NewBuffer(data),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to send restart request: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("VXLAN restart failed: status %d, body: %s", resp.StatusCode, string(body))
+	}
+
+	security.SafeLogf(client.logger, "Successfully restarted VXLAN tunnels on agent")
+	return nil
+}

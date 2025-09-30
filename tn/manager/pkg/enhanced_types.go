@@ -442,6 +442,47 @@ func NewTopologyDiscovery(logger *log.Logger) *TopologyDiscovery {
 	}
 }
 
+// CompareAndNotifyChanges compares old and new topology and notifies of changes
+func (td *TopologyDiscovery) CompareAndNotifyChanges(oldTopology, newTopology *NetworkTopology, callback func(changeType string, details map[string]interface{})) {
+	td.mutex.Lock()
+	defer td.mutex.Unlock()
+
+	if oldTopology == nil {
+		// First discovery - all nodes are new
+		for nodeID := range newTopology.Nodes {
+			callback("node_added", map[string]interface{}{
+				"node_id": nodeID,
+			})
+		}
+		return
+	}
+
+	// Check for new or updated nodes
+	for nodeID, newNode := range newTopology.Nodes {
+		if oldNode, exists := oldTopology.Nodes[nodeID]; !exists {
+			callback("node_added", map[string]interface{}{
+				"node_id": nodeID,
+				"node":    newNode,
+			})
+		} else if oldNode.Status != newNode.Status {
+			callback("node_status_changed", map[string]interface{}{
+				"node_id":    nodeID,
+				"old_status": oldNode.Status,
+				"new_status": newNode.Status,
+			})
+		}
+	}
+
+	// Check for removed nodes
+	for nodeID := range oldTopology.Nodes {
+		if _, exists := newTopology.Nodes[nodeID]; !exists {
+			callback("node_removed", map[string]interface{}{
+				"node_id": nodeID,
+			})
+		}
+	}
+}
+
 // NewFaultDetector creates a new fault detector instance
 func NewFaultDetector(logger *log.Logger) *FaultDetector {
 	return &FaultDetector{
@@ -450,6 +491,45 @@ func NewFaultDetector(logger *log.Logger) *FaultDetector {
 		faultHistory:   make([]*NetworkFault, 0),
 		detectionRules: make([]FaultDetectionRule, 0),
 	}
+}
+
+// StartMonitoring starts the fault monitoring process
+func (fd *FaultDetector) StartMonitoring(topology *NetworkTopology, checkInterval time.Duration, faultCallback func(*NetworkFault)) {
+	fd.mutex.Lock()
+	defer fd.mutex.Unlock()
+
+	// Start background monitoring
+	go func() {
+		ticker := time.NewTicker(checkInterval)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			fd.mutex.Lock()
+			// Check each node in topology
+			for nodeID, node := range topology.Nodes {
+				if node.Status == "degraded" || node.Status == "failed" {
+					faultID := fmt.Sprintf("fault-%s-%d", nodeID, time.Now().Unix())
+					fault := &NetworkFault{
+						ID:            faultID,
+						Type:          FaultTypeNodeFailure,
+						Severity:      "high",
+						AffectedNodes: []string{nodeID},
+						DetectedAt:    time.Now(),
+						Status:        "active",
+						Description:   fmt.Sprintf("Node %s is in %s state", nodeID, node.Status),
+					}
+
+					fd.activeFaults[faultID] = fault
+					fd.faultHistory = append(fd.faultHistory, fault)
+
+					if faultCallback != nil {
+						faultCallback(fault)
+					}
+				}
+			}
+			fd.mutex.Unlock()
+		}
+	}()
 }
 
 // NewNetworkState creates a new network state instance
@@ -506,4 +586,59 @@ func (ns *NetworkState) UpdateTopology(topology *NetworkTopology) error {
 	defer ns.mutex.Unlock()
 	ns.topology = topology
 	return nil
+}
+
+// GetSliceVXLANConfigs returns VXLAN configurations for all slices on a specific node
+func (ns *NetworkState) GetSliceVXLANConfigs(nodeID string) map[string]*DynamicVXLANConfig {
+	ns.mutex.RLock()
+	defer ns.mutex.RUnlock()
+
+	configs := make(map[string]*DynamicVXLANConfig)
+	for sliceID, config := range ns.sliceConfigs {
+		// Check if this slice uses the specified node
+		for _, endpoint := range config.Endpoints {
+			if endpoint.NodeID == nodeID {
+				configs[sliceID] = config
+				break
+			}
+		}
+	}
+	return configs
+}
+
+// GetSliceQoSStrategies returns QoS strategies for all slices on a specific node
+func (ns *NetworkState) GetSliceQoSStrategies(nodeID string) map[string]*QoSStrategy {
+	ns.mutex.RLock()
+	defer ns.mutex.RUnlock()
+
+	strategies := make(map[string]*QoSStrategy)
+	for sliceID, strategy := range ns.qosStrategies {
+		// Check if this slice uses the specified node
+		if config, exists := ns.sliceConfigs[sliceID]; exists {
+			for _, endpoint := range config.Endpoints {
+				if endpoint.NodeID == nodeID {
+					strategies[sliceID] = strategy
+					break
+				}
+			}
+		}
+	}
+	return strategies
+}
+
+// GetSlicesUsingNode returns all slice IDs that use a specific node
+func (ns *NetworkState) GetSlicesUsingNode(nodeID string) []string {
+	ns.mutex.RLock()
+	defer ns.mutex.RUnlock()
+
+	slices := make([]string, 0)
+	for sliceID, config := range ns.sliceConfigs {
+		for _, endpoint := range config.Endpoints {
+			if endpoint.NodeID == nodeID {
+				slices = append(slices, sliceID)
+				break
+			}
+		}
+	}
+	return slices
 }

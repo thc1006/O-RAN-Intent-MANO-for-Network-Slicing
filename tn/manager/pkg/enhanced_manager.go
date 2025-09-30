@@ -340,7 +340,7 @@ func (etm *EnhancedTNManager) StartFaultDetection(ctx context.Context) {
 // handleNetworkFault handles detected network faults
 func (etm *EnhancedTNManager) handleNetworkFault(ctx context.Context, fault *NetworkFault) {
 	security.SafeLogf(etm.logger, "Detected network fault: %s on %s",
-		security.SanitizeForLog(fault.Type), security.SanitizeForLog(fault.NodeName))
+		security.SanitizeForLog(string(fault.Type)), security.SanitizeForLog(fault.NodeName))
 
 	etm.publishEvent(TNEvent{
 		Type:      EventTypeFaultDetected,
@@ -365,7 +365,7 @@ func (etm *EnhancedTNManager) handleNetworkFault(ctx context.Context, fault *Net
 		etm.recoverLatencyFault(ctx, fault)
 	default:
 		security.SafeLogf(etm.logger, "No automated recovery available for fault type: %s",
-			security.SanitizeForLog(fault.Type))
+			security.SanitizeForLog(string(fault.Type)))
 	}
 }
 
@@ -498,7 +498,7 @@ func (etm *EnhancedTNManager) publishEvent(event TNEvent) {
 	select {
 	case etm.eventChan <- event:
 	default:
-		security.SafeLogf(etm.logger, "Event channel full, dropping event: %s", security.SanitizeForLog(event.Type))
+		security.SafeLogf(etm.logger, "Event channel full, dropping event: %s", security.SanitizeForLog(string(event.Type)))
 	}
 }
 
