@@ -89,7 +89,7 @@ func (m *MockK8sClient) Patch(ctx context.Context, obj client.Object, patch clie
 	return nil
 }
 
-func (m *MockK8sClient) Apply(ctx context.Context, obj client.Object, opts ...client.PatchOption) error {
+func (m *MockK8sClient) Apply(ctx context.Context, obj runtime.ApplyConfiguration, opts ...client.ApplyOption) error {
 	return nil
 }
 

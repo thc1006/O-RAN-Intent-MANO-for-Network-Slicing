@@ -191,6 +191,14 @@ type Notification struct {
 	SentAt      time.Time
 }
 
+// StackValidation represents validation results
+type StackValidation struct {
+	ComponentsRunning []string
+	HealthStatus      map[string]string
+	ValidationErrors  []string
+	Timestamp         time.Time
+}
+
 // NotificationResult represents notification delivery result
 type NotificationResult struct {
 	Receiver    string

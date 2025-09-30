@@ -2,6 +2,7 @@ package translator
 
 import (
 	"context"
+	"log/slog"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -130,9 +131,9 @@ func TestNephioPackager_CreateVNFPackage(t *testing.T) {
 
 			// Create packager
 			packager := &NephioPackager{
-				PorchClient: mockPorch,
-				Repository:  "test-repo",
-				Namespace:   "oran-system",
+				logger:     slog.Default(),
+				workingDir: "/tmp/nephio-packages",
+				registry:   "test-registry",
 			}
 
 			// Execute test
