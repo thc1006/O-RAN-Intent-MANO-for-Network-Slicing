@@ -30,6 +30,66 @@ type MockServiceMonitorClient struct {
 	mock.Mock
 }
 
+// CreateServiceMonitor mocks the CreateServiceMonitor method
+func (m *MockServiceMonitorClient) CreateServiceMonitor(ctx context.Context, serviceMonitor *monitoringv1.ServiceMonitor) error {
+	args := m.Called(ctx, serviceMonitor)
+	return args.Error(0)
+}
+
+// UpdateServiceMonitor mocks the UpdateServiceMonitor method
+func (m *MockServiceMonitorClient) UpdateServiceMonitor(ctx context.Context, serviceMonitor *monitoringv1.ServiceMonitor) error {
+	args := m.Called(ctx, serviceMonitor)
+	return args.Error(0)
+}
+
+// DeleteServiceMonitor mocks the DeleteServiceMonitor method
+func (m *MockServiceMonitorClient) DeleteServiceMonitor(ctx context.Context, namespace, name string) error {
+	args := m.Called(ctx, namespace, name)
+	return args.Error(0)
+}
+
+// GetServiceMonitor mocks the GetServiceMonitor method
+func (m *MockServiceMonitorClient) GetServiceMonitor(ctx context.Context, namespace, name string) (*monitoringv1.ServiceMonitor, error) {
+	args := m.Called(ctx, namespace, name)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*monitoringv1.ServiceMonitor), args.Error(1)
+}
+
+// ListServiceMonitors mocks the ListServiceMonitors method
+func (m *MockServiceMonitorClient) ListServiceMonitors(ctx context.Context, namespace string) ([]monitoringv1.ServiceMonitor, error) {
+	args := m.Called(ctx, namespace)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]monitoringv1.ServiceMonitor), args.Error(1)
+}
+
+// ValidateServiceMonitor mocks the ValidateServiceMonitor method
+func (m *MockServiceMonitorClient) ValidateServiceMonitor(serviceMonitor *monitoringv1.ServiceMonitor) error {
+	args := m.Called(serviceMonitor)
+	return args.Error(0)
+}
+
+// TestEndpointConnectivity mocks the TestEndpointConnectivity method
+func (m *MockServiceMonitorClient) TestEndpointConnectivity(ctx context.Context, endpoint *monitoringv1.Endpoint, selector *metav1.LabelSelector) error {
+	args := m.Called(ctx, endpoint, selector)
+	return args.Error(0)
+}
+
+// ValidateTLSConfig mocks the ValidateTLSConfig method
+func (m *MockServiceMonitorClient) ValidateTLSConfig(tlsConfig *monitoringv1.TLSConfig) error {
+	args := m.Called(tlsConfig)
+	return args.Error(0)
+}
+
+// TestAuthentication mocks the TestAuthentication method
+func (m *MockServiceMonitorClient) TestAuthentication(ctx context.Context, authConfig *AuthenticationConfig) error {
+	args := m.Called(ctx, authConfig)
+	return args.Error(0)
+}
+
 // ServiceMonitorManager handles ServiceMonitor CRD operations
 type ServiceMonitorManager struct {
 	client ServiceMonitorClientInterface
@@ -198,7 +258,7 @@ func TestServiceMonitorCreation(t *testing.T) {
 							Scheme:   "http",
 							Interval: "30s",
 							ScrapeTimeout: "10s",
-							Relabelings: []*monitoringv1.RelabelConfig{
+							RelabelConfigs: []*monitoringv1.RelabelConfig{
 								{
 									SourceLabels: []monitoringv1.LabelName{"__name__"},
 									Regex:        "go_.*",
@@ -213,7 +273,7 @@ func TestServiceMonitorCreation(t *testing.T) {
 									TargetLabel:  "dms_role",
 								},
 							},
-							MetricRelabelings: []*monitoringv1.RelabelConfig{
+							MetricRelabelConfigs: []*monitoringv1.RelabelConfig{
 								{
 									SourceLabels: []monitoringv1.LabelName{"__name__"},
 									Regex:        "o_ran_(.*)",
@@ -422,7 +482,7 @@ func TestTLSConfiguration(t *testing.T) {
 			tlsConfig: &monitoringv1.TLSConfig{
 				SafeTLSConfig: monitoringv1.SafeTLSConfig{
 					InsecureSkipVerify: boolPtr(false),
-					ServerName:         "orchestrator.o-ran-mano.svc.cluster.local",
+					ServerName:         stringPtr("orchestrator.o-ran-mano.svc.cluster.local"),
 				},
 				CertFile: "/etc/ssl/certs/client.crt",
 				KeyFile:  "/etc/ssl/private/client.key",
@@ -451,7 +511,7 @@ func TestTLSConfiguration(t *testing.T) {
 			tlsConfig: &monitoringv1.TLSConfig{
 				SafeTLSConfig: monitoringv1.SafeTLSConfig{
 					InsecureSkipVerify: boolPtr(false),
-					ServerName:         "dms.o-ran-mano.svc.cluster.local",
+					ServerName:         stringPtr("dms.o-ran-mano.svc.cluster.local"),
 					Cert: monitoringv1.SecretOrConfigMap{
 						Secret: &v1.SecretKeySelector{
 							LocalObjectReference: v1.LocalObjectReference{
@@ -486,7 +546,7 @@ func TestTLSConfiguration(t *testing.T) {
 			tlsConfig: &monitoringv1.TLSConfig{
 				SafeTLSConfig: monitoringv1.SafeTLSConfig{
 					InsecureSkipVerify: boolPtr(false),
-					ServerName:         "secure-service.o-ran-mano.svc.cluster.local",
+					ServerName:         stringPtr("secure-service.o-ran-mano.svc.cluster.local"),
 				},
 				// Missing certificate configuration
 			},
@@ -501,7 +561,7 @@ func TestTLSConfiguration(t *testing.T) {
 			tlsConfig: &monitoringv1.TLSConfig{
 				SafeTLSConfig: monitoringv1.SafeTLSConfig{
 					InsecureSkipVerify: boolPtr(false),
-					ServerName:         "wrong-hostname", // Doesn't match actual service
+					ServerName:         stringPtr("wrong-hostname"), // Doesn't match actual service
 				},
 				CertFile: "/etc/ssl/certs/client.crt",
 				KeyFile:  "/etc/ssl/private/client.key",
@@ -596,7 +656,7 @@ func TestAuthentication(t *testing.T) {
 				TLSConfig: &monitoringv1.TLSConfig{
 					SafeTLSConfig: monitoringv1.SafeTLSConfig{
 						InsecureSkipVerify: boolPtr(false),
-						ServerName:         "secure-metrics.o-ran-mano.svc.cluster.local",
+						ServerName:         stringPtr("secure-metrics.o-ran-mano.svc.cluster.local"),
 					},
 					CAFile: "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt",
 				},
