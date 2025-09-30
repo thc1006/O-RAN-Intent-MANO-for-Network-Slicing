@@ -1,0 +1,8 @@
+Benchmark: orch_urllc
+Timestamp: 20251001_010408
+Requests: 50
+Concurrency: 5 (simulated)
+Completed: 0/50
+Success rate: 0.00%
+Average response time: 123ms
+Total time: 6185ms

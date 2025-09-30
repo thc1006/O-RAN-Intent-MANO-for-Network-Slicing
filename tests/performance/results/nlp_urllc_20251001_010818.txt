@@ -1,0 +1,8 @@
+Benchmark: nlp_urllc
+Timestamp: 20251001_010818
+Requests: 100
+Concurrency: 10 (simulated)
+Completed: 100/100
+Success rate: 100.00%
+Average response time: 303ms
+Total time: 30383ms

@@ -541,6 +541,29 @@
                         this.addMessage('system', message.message);
                         break;
 
+                    case 'advisory_thinking':
+                        // Show thinking indicator for Claude AI reasoning
+                        this.showTypingIndicator();
+                        this.addMessage('system', message.message);
+                        break;
+
+                    case 'advisory_response':
+                        // Handle advisory/consultative responses with AI reasoning
+                        this.hideTypingIndicator();
+                        this.handleAdvisoryResponse(message);
+                        break;
+
+                    case 'step_update':
+                        // Real-time deployment step visualization
+                        this.handleStepUpdate(message);
+                        break;
+
+                    case 'conversation_response':
+                        // Handle conversational responses
+                        this.hideTypingIndicator();
+                        this.addMessage('claude', message.message);
+                        break;
+
                     case 'intent_response':
                         this.hideTypingIndicator();
                         this.handleIntentResponse(message);
@@ -557,6 +580,54 @@
 
                     default:
                         console.log('Unknown message type:', message.type);
+                }
+            }
+
+            handleStepUpdate(message) {
+                const stepData = message.data;
+                const stepName = stepData.step;
+                const status = stepData.status;
+                const details = stepData.details;
+
+                let statusEmoji = '';
+                let statusColor = '';
+
+                if (status === 'in_progress') {
+                    statusEmoji = '⏳';
+                    statusColor = '#ffc107';
+                } else if (status === 'completed') {
+                    statusEmoji = '✅';
+                    statusColor = '#28a745';
+                } else if (status === 'failed') {
+                    statusEmoji = '❌';
+                    statusColor = '#dc3545';
+                }
+
+                const stepMessage = `${statusEmoji} **${stepName}**: ${status}\n${details}`;
+
+                // Add step message to chat
+                this.addMessage('system', stepMessage);
+            }
+
+            handleAdvisoryResponse(message) {
+                // Handle advisory responses with AI reasoning
+                let responseText = '';
+
+                if (message.fallback) {
+                    // Fallback response (Claude CLI unavailable)
+                    responseText = `🤖 **諮詢建議** (使用基本分析框架)\n\n${message.message}`;
+                } else {
+                    // Real Claude AI reasoning
+                    responseText = `🧠 **Claude AI 專家分析**\n\n${message.message}`;
+                }
+
+                this.addMessage('claude', responseText);
+
+                // Optionally show a follow-up hint
+                if (message.reasoning) {
+                    setTimeout(() => {
+                        this.addMessage('system', '💡 如需部署，請使用明確的指令，例如："部署一個 mMTC 切片"');
+                    }, 500);
                 }
             }
 

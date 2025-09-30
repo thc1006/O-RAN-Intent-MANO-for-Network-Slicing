@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Slice Monitor - O-RAN MANO</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 10px;
+            padding: 20px 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 28px;
+        }
+
+        .header .status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #dc3545;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.connected {
+            background: #28a745;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-card h3 {
+            color: #6c757d;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        .stat-card .value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-card .subtitle {
+            color: #6c757d;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .slices-container {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .slices-container h2 {
+            color: #495057;
+            margin-bottom: 20px;
+        }
+
+        .slice-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .slice-table thead {
+            background: #f8f9fa;
+        }
+
+        .slice-table th,
+        .slice-table td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .slice-table th {
+            color: #495057;
+            font-weight: 600;
+        }
+
+        .slice-type-badge {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .slice-type-badge.embb {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .slice-type-badge.urllc {
+            background: #f3e5f5;
+            color: #7b1fa2;
+        }
+
+        .slice-type-badge.mmtc {
+            background: #e8f5e9;
+            color: #388e3c;
+        }
+
+        .slice-type-badge.redcap {
+            background: #fff3e0;
+            color: #f57c00;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .status-badge.active {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-badge.inactive {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        .refresh-info {
+            text-align: center;
+            color: #6c757d;
+            font-size: 12px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>📊 Network Slice Monitor</h1>
+            </div>
+            <div class="status">
+                <div class="status-dot" id="statusDot"></div>
+                <span id="statusText">Disconnected</span>
+                <div class="nav-buttons">
+                    <a href="index.html" class="btn btn-primary">💬 Chat Interface</a>
+                    <button class="btn btn-primary" onclick="location.reload()">🔄 Refresh</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="errorContainer"></div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>Total Slices</h3>
+                <div class="value" id="totalSlices">-</div>
+                <div class="subtitle">Active deployments</div>
+            </div>
+            <div class="stat-card">
+                <h3>eMBB Slices</h3>
+                <div class="value" id="embbCount">-</div>
+                <div class="subtitle">Enhanced Mobile Broadband</div>
+            </div>
+            <div class="stat-card">
+                <h3>URLLC Slices</h3>
+                <div class="value" id="urllcCount">-</div>
+                <div class="subtitle">Ultra-Reliable Low-Latency</div>
+            </div>
+            <div class="stat-card">
+                <h3>mMTC Slices</h3>
+                <div class="value" id="mmtcCount">-</div>
+                <div class="subtitle">Massive Machine Type</div>
+            </div>
+        </div>
+
+        <div class="slices-container">
+            <h2>Active Network Slices</h2>
+            <div id="slicesContent">
+                <div class="loading">Loading slice data...</div>
+            </div>
+            <div class="refresh-info">
+                Auto-refresh every 5 seconds
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class MonitorDashboard {
+            constructor() {
+                this.statusDot = document.getElementById('statusDot');
+                this.statusText = document.getElementById('statusText');
+                this.slicesContent = document.getElementById('slicesContent');
+                this.errorContainer = document.getElementById('errorContainer');
+
+                this.totalSlicesEl = document.getElementById('totalSlices');
+                this.embbCountEl = document.getElementById('embbCount');
+                this.urllcCountEl = document.getElementById('urllcCount');
+                this.mmtcCountEl = document.getElementById('mmtcCount');
+
+                this.init();
+            }
+
+            init() {
+                this.loadSlices();
+                // Auto-refresh every 5 seconds
+                setInterval(() => this.loadSlices(), 5000);
+            }
+
+            setConnected(connected) {
+                if (connected) {
+                    this.statusDot.classList.add('connected');
+                    this.statusText.textContent = 'Connected';
+                } else {
+                    this.statusDot.classList.remove('connected');
+                    this.statusText.textContent = 'Disconnected';
+                }
+            }
+
+            showError(message) {
+                this.errorContainer.innerHTML = `
+                    <div class="error">
+                        ❌ Error: ${message}
+                    </div>
+                `;
+            }
+
+            clearError() {
+                this.errorContainer.innerHTML = '';
+            }
+
+            async loadSlices() {
+                try {
+                    const response = await fetch('/api/v1/slices');
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                    const data = await response.json();
+                    this.setConnected(true);
+                    this.clearError();
+                    this.renderSlices(data.slices || []);
+                    this.updateStats(data.slices || []);
+                } catch (error) {
+                    console.error('Failed to load slices:', error);
+                    this.setConnected(false);
+                    this.showError(`Failed to load slice data: ${error.message}`);
+                }
+            }
+
+            updateStats(slices) {
+                this.totalSlicesEl.textContent = slices.length;
+
+                const embbCount = slices.filter(s => s.slice_type.toLowerCase().includes('embb')).length;
+                const urllcCount = slices.filter(s => s.slice_type.toLowerCase().includes('urllc')).length;
+                const mmtcCount = slices.filter(s => s.slice_type.toLowerCase().includes('mmtc') || s.slice_type.toLowerCase().includes('redcap')).length;
+
+                this.embbCountEl.textContent = embbCount;
+                this.urllcCountEl.textContent = urllcCount;
+                this.mmtcCountEl.textContent = mmtcCount;
+            }
+
+            renderSlices(slices) {
+                if (slices.length === 0) {
+                    this.slicesContent.innerHTML = `
+                        <div class="loading">No active slices found. Deploy a slice from the chat interface.</div>
+                    `;
+                    return;
+                }
+
+                const rows = slices.map(slice => {
+                    const sliceType = slice.slice_type.toLowerCase();
+                    const deployTime = new Date(slice.deployment_time * 1000).toLocaleString('zh-TW');
+
+                    let badgeClass = 'embb';
+                    if (sliceType.includes('urllc')) badgeClass = 'urllc';
+                    else if (sliceType.includes('mmtc') || sliceType.includes('redcap')) badgeClass = 'mmtc';
+
+                    return `
+                        <tr>
+                            <td>${slice.slice_id}</td>
+                            <td>
+                                <span class="slice-type-badge ${badgeClass}">
+                                    ${slice.slice_type.toUpperCase()}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="status-badge ${slice.status}">
+                                    ${slice.status.toUpperCase()}
+                                </span>
+                            </td>
+                            <td>${deployTime}</td>
+                        </tr>
+                    `;
+                }).join('');
+
+                this.slicesContent.innerHTML = `
+                    <table class="slice-table">
+                        <thead>
+                            <tr>
+                                <th>Slice ID</th>
+                                <th>Type</th>
+                                <th>Status</th>
+                                <th>Deployment Time</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rows}
+                        </tbody>
+                    </table>
+                `;
+            }
+        }
+
+        // Initialize dashboard
+        const dashboard = new MonitorDashboard();
+    </script>
+</body>
+</html>
