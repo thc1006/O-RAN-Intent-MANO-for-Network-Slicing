@@ -178,9 +178,10 @@ jobs:
         echo "Setting up Kubernetes test environment for ${{ matrix.component.name }}"
 
         # Download and extract kubebuilder binaries
-        curl -sSLo envtest-bins.tar.gz "https://go.kubebuilder.io/test-tools/${{ env.K8S_VERSION }}/linux/amd64"
+        # Use direct GCS URL to avoid redirect issues
+        curl -sSLo envtest-bins.tar.gz "https://storage.googleapis.com/kubebuilder-tools/kubebuilder-tools-${{ env.K8S_VERSION }}-linux-amd64.tar.gz"
         mkdir -p /tmp/kubebuilder/bin
-        tar -C /tmp/kubebuilder --strip-components=1 -xvf envtest-bins.tar.gz
+        tar -C /tmp/kubebuilder --strip-components=1 -xzf envtest-bins.tar.gz
 
         # Set environment variables
         echo "KUBEBUILDER_ASSETS=/tmp/kubebuilder/bin" >> $GITHUB_ENV
