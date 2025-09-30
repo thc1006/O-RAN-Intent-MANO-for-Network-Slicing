@@ -258,7 +258,7 @@ func TestServiceMonitorCreation(t *testing.T) {
 							Scheme:   "http",
 							Interval: "30s",
 							ScrapeTimeout: "10s",
-							RelabelConfigs: []*monitoringv1.RelabelConfig{
+							RelabelConfigs: []monitoringv1.RelabelConfig{
 								{
 									SourceLabels: []monitoringv1.LabelName{"__name__"},
 									Regex:        "go_.*",
@@ -273,7 +273,7 @@ func TestServiceMonitorCreation(t *testing.T) {
 									TargetLabel:  "dms_role",
 								},
 							},
-							MetricRelabelConfigs: []*monitoringv1.RelabelConfig{
+							MetricRelabelConfigs: []monitoringv1.RelabelConfig{
 								{
 									SourceLabels: []monitoringv1.LabelName{"__name__"},
 									Regex:        "o_ran_(.*)",
