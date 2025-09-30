@@ -208,21 +208,42 @@ jobs:
         os=$(go env GOOS)
         arch=$(go env GOARCH)
 
-        # Download with fail-on-error flag - new format doesn't include version in filename
+        # Download kubebuilder binary
         echo "Downloading Kubebuilder ${KUBEBUILDER_VERSION} for ${os}_${arch}..."
-        curl -fL -o /tmp/kubebuilder https://github.com/kubernetes-sigs/kubebuilder/releases/download/v${KUBEBUILDER_VERSION}/kubebuilder_${os}_${arch}
+
+        # Try downloading with the standard filename format
+        DOWNLOAD_URL="https://github.com/kubernetes-sigs/kubebuilder/releases/download/v${KUBEBUILDER_VERSION}/kubebuilder_${os}_${arch}"
+        echo "Attempting to download from: ${DOWNLOAD_URL}"
+
+        if ! curl -fL -o /tmp/kubebuilder "${DOWNLOAD_URL}"; then
+          echo "ERROR: Failed to download Kubebuilder from ${DOWNLOAD_URL}"
+          echo "Trying alternative download location..."
+
+          # Try alternative format with tar.gz
+          DOWNLOAD_URL="https://github.com/kubernetes-sigs/kubebuilder/releases/download/v${KUBEBUILDER_VERSION}/kubebuilder_${os}_${arch}.tar.gz"
+          if curl -fL -o /tmp/kubebuilder.tar.gz "${DOWNLOAD_URL}"; then
+            cd /tmp
+            tar -xzf kubebuilder.tar.gz
+            mv kubebuilder_${KUBEBUILDER_VERSION}_${os}_${arch}/bin/kubebuilder /tmp/kubebuilder
+            rm -rf kubebuilder.tar.gz kubebuilder_${KUBEBUILDER_VERSION}_${os}_${arch}
+          else
+            echo "ERROR: Failed to download Kubebuilder from alternative location"
+            exit 1
+          fi
+        fi
 
         # Verify the downloaded binary is valid
         FILE_SIZE=$(stat -c%s /tmp/kubebuilder 2>/dev/null || stat -f%z /tmp/kubebuilder 2>/dev/null || echo "0")
         if [ "$FILE_SIZE" -lt 1000 ]; then
           echo "ERROR: Downloaded file is too small (${FILE_SIZE} bytes). Download may have failed."
-          echo "File contents:"
-          head -n 20 /tmp/kubebuilder
+          echo "File info:"
+          ls -lh /tmp/kubebuilder
+          echo "File type: $(file /tmp/kubebuilder)"
           exit 1
         fi
 
-        # Check if it's a valid binary
-        if ! file /tmp/kubebuilder | grep -q "executable"; then
+        # Verify it's a valid executable
+        if ! file /tmp/kubebuilder | grep -qE "executable|ELF"; then
           echo "ERROR: Downloaded file is not a valid executable"
           echo "File type: $(file /tmp/kubebuilder)"
           exit 1
@@ -233,6 +254,9 @@ jobs:
         sudo mkdir -p /usr/local/kubebuilder/bin
         sudo mv /tmp/kubebuilder /usr/local/kubebuilder/bin/kubebuilder
         echo "/usr/local/kubebuilder/bin" >> $GITHUB_PATH
+
+        # Verify installation
+        /usr/local/kubebuilder/bin/kubebuilder version || echo "Kubebuilder installed but version command not available"
 
     - name: Validate component directory
       run: |

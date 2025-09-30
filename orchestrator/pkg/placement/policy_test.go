@@ -508,17 +508,34 @@ func TestBatchPlacement(t *testing.T) {
 		t.Errorf("Expected %d decisions, got %d", len(nfs), len(decisions))
 	}
 
-	// Verify each NF was placed
+	// The PlaceMultiple function reorders NFs by dependency groups:
+	// - Core NFs (AMF, SMF) are placed first
+	// - Edge NFs (UPF) are placed second
+	// So expected order is: amf-001, smf-001, upf-001
+	expectedOrder := []string{"amf-001", "smf-001", "upf-001"}
+
+	// Verify each NF was placed in the correct dependency order
 	for i, decision := range decisions {
-		if decision.NetworkFunction.ID != nfs[i].ID {
-			t.Errorf("Decision %d: expected NF %s, got %s",
-				i, nfs[i].ID, decision.NetworkFunction.ID)
+		if decision.NetworkFunction.ID != expectedOrder[i] {
+			t.Errorf("Decision %d: expected NF %s (dependency-ordered), got %s",
+				i, expectedOrder[i], decision.NetworkFunction.ID)
 		}
 		t.Logf("Placed %s on %s (type: %s) with score %.2f",
 			decision.NetworkFunction.ID,
 			decision.Site.Name,
 			decision.Site.Type,
 			decision.Score)
+	}
+
+	// Verify all input NFs were placed
+	placedIDs := make(map[string]bool)
+	for _, decision := range decisions {
+		placedIDs[decision.NetworkFunction.ID] = true
+	}
+	for _, nf := range nfs {
+		if !placedIDs[nf.ID] {
+			t.Errorf("NF %s was not placed", nf.ID)
+		}
 	}
 }
 

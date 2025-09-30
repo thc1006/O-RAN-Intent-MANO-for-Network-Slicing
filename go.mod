@@ -25,6 +25,7 @@ require (
 	github.com/stretchr/testify v1.11.1
 	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/adapters/vnf-operator/api/v1alpha1 v0.0.0-20250929093917-d0c5cf96e165
 	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/orchestrator v0.0.0-20250929093917-d0c5cf96e165
+	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/o2client v0.0.0-20250930101752-d24c04f58cb2
 	github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security v0.0.0-20250929093917-d0c5cf96e165
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/api v0.34.1

@@ -2,10 +2,10 @@
 # VNF Operator Multi-stage Dockerfile
 
 # Build arguments for customization
-ARG GO_VERSION=1.23
+ARG GO_VERSION=1.24.7
 ARG ALPINE_VERSION=3.19
 
-# Stage 1: Build with Go 1.23-alpine
+# Stage 1: Build with Go 1.24.7-alpine
 FROM golang:${GO_VERSION}-alpine AS builder
 
 # Set Go environment variables

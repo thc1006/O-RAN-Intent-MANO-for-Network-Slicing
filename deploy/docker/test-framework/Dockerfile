@@ -2,7 +2,7 @@
 # Test Framework Multi-stage Dockerfile
 
 # Build arguments for customization
-ARG GO_VERSION=1.23
+ARG GO_VERSION=1.24.7
 ARG DEBIAN_VERSION=12.9
 
 FROM golang:${GO_VERSION}-alpine AS go-builder

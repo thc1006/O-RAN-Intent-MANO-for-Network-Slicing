@@ -2,7 +2,7 @@
 # Multi-stage build for O-RAN Orchestrator
 
 # Build arguments for customization
-ARG GO_VERSION=1.23
+ARG GO_VERSION=1.24.7
 ARG ALPINE_VERSION=3.19
 
 FROM golang:${GO_VERSION}-alpine AS builder
