@@ -79,7 +79,7 @@ LABEL security.scan="trivy,grype,snyk"
 LABEL security.user="non-root"
 LABEL security.distroless="true"
 LABEL security.base.image="scratch"
-LABEL security.go.version="1.23.3"
+LABEL security.go.version="1.24.7"
 LABEL security.binary="static"
 
 # Copy CA certificates for HTTPS calls
