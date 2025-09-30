@@ -19,6 +19,45 @@ type MockPrometheusOperatorClient struct {
 	mock.Mock
 }
 
+// Implement PrometheusOperatorClientInterface methods
+func (m *MockPrometheusOperatorClient) InstallOperator(ctx context.Context, namespace string) error {
+	args := m.Called(ctx, namespace)
+	return args.Error(0)
+}
+
+func (m *MockPrometheusOperatorClient) CreatePrometheusInstance(ctx context.Context, config *PrometheusConfig) error {
+	args := m.Called(ctx, config)
+	return args.Error(0)
+}
+
+func (m *MockPrometheusOperatorClient) CreateServiceMonitor(ctx context.Context, monitor *monitoringv1.ServiceMonitor) error {
+	args := m.Called(ctx, monitor)
+	return args.Error(0)
+}
+
+func (m *MockPrometheusOperatorClient) ValidateScrapeConfig(config *ScrapeConfig) error {
+	args := m.Called(config)
+	return args.Error(0)
+}
+
+func (m *MockPrometheusOperatorClient) ConfigureStorage(ctx context.Context, storageConfig *StorageConfig) error {
+	args := m.Called(ctx, storageConfig)
+	return args.Error(0)
+}
+
+func (m *MockPrometheusOperatorClient) SetRetentionPolicy(ctx context.Context, policy *RetentionPolicy) error {
+	args := m.Called(ctx, policy)
+	return args.Error(0)
+}
+
+func (m *MockPrometheusOperatorClient) GetOperatorStatus(ctx context.Context, namespace string) (*OperatorStatus, error) {
+	args := m.Called(ctx, namespace)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*OperatorStatus), args.Error(1)
+}
+
 // PrometheusDeployer handles Prometheus deployment and configuration
 type PrometheusDeployer struct {
 	client PrometheusOperatorClientInterface
