@@ -20,6 +20,4 @@ use (
 	./tn
 	./tn/agent/pkg/watcher
 	./tn/manager/api/v1alpha1
-	./work_dir/security
-	./work_dir/tests
 )
