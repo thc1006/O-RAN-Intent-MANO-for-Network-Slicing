@@ -8,10 +8,11 @@ ARG ALPINE_VERSION=3.19
 # Stage 1: Build with Go 1.24.7-alpine
 FROM golang:${GO_VERSION}-alpine AS builder
 
-# Set Go environment variables
+# Set Go environment variables with multi-arch support
+ARG TARGETARCH
 ENV CGO_ENABLED=0
 ENV GOOS=linux
-ENV GOARCH=amd64
+ENV GOARCH=${TARGETARCH}
 ENV GOPROXY=https://proxy.golang.org,direct
 ENV GOSUMDB=sum.golang.org
 
@@ -48,7 +49,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 # Build the VNF operator manager binary with BuildKit cache mount and optimization flags
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg/mod \
-    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+    CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} go build \
     -trimpath \
     -ldflags="-s -w -extldflags '-static'" \
     -a -installsuffix cgo \
@@ -59,7 +60,7 @@ RUN printf 'package main\nimport ("fmt";"net/http";"os";"time")\nfunc main() {\n
 
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg/mod \
-    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+    CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} go build \
     -trimpath \
     -ldflags="-s -w -extldflags '-static'" \
     -a -installsuffix cgo \

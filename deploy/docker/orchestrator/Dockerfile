@@ -33,10 +33,11 @@ COPY orchestrator/go.mod orchestrator/go.sum ./
 # Copy only required security dependency
 COPY pkg/security/ ../pkg/security/
 
-# Set Go environment for optimized builds
+# Set Go environment for optimized builds with multi-arch support
+ARG TARGETARCH
 ENV CGO_ENABLED=0
 ENV GOOS=linux
-ENV GOARCH=amd64
+ENV GOARCH=${TARGETARCH}
 ENV GOPROXY=https://proxy.golang.org,direct
 ENV GOSUMDB=sum.golang.org
 ENV GOWORK=off

@@ -14,45 +14,50 @@ LABEL security.scan="trivy,grype,snyk"
 LABEL security.distroless="true"
 LABEL security.user="non-root"
 
-# Install build dependencies with cache mount
+# Install build dependencies with cache mount and create passwd file
 RUN --mount=type=cache,target=/var/cache/apk \
     apk add --no-cache \
     git \
     ca-certificates \
     tzdata && \
-    update-ca-certificates
+    update-ca-certificates && \
+    echo "nobody:x:65534:65534:nobody:/:/sbin/nologin" > /etc/passwd && \
+    echo "nobody:x:65534:" > /etc/group
 
 # Set working directory
 WORKDIR /workspace
 
-# Copy required source code maintaining relative path structure
+# Copy workspace configuration and root module files
+COPY go.work go.work.sum* ./
+COPY go.mod go.sum ./
+
+# Copy required source code maintaining workspace structure
 COPY pkg/ pkg/
 COPY o2-client/ o2-client/
 COPY adapters/ adapters/
 COPY orchestrator/ orchestrator/
 
-# Set working directory to o2-client for build
-WORKDIR /workspace/o2-client
-
-# Set Go environment for reproducible builds
+# Set Go environment for workspace builds
 ENV GO111MODULE=on \
     GOPROXY=https://proxy.golang.org,direct \
-    GOSUMDB=sum.golang.org \
-    GOWORK=off
+    GOSUMDB=sum.golang.org
 
-# Download dependencies with cache mount
+# Download dependencies for workspace with cache mount
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    go mod download
+    go work sync && \
+    cd o2-client && go mod download
 
-# Build static binary with optimizations and trimpath
+# Build static binary from workspace root
+ARG TARGETARCH
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+    CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} go build \
     -trimpath \
     -ldflags="-s -w -extldflags '-static'" \
     -a -installsuffix cgo \
-    -o /workspace/o2-client ./cmd/client/main.go
+    -o /usr/local/bin/o2-client \
+    ./o2-client/cmd/client/main.go
 
 # Stage 2: Minimal runtime (scratch-based)
 FROM scratch AS runtime
@@ -70,11 +75,12 @@ COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 # Copy timezone data
 COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
 
-# Copy passwd for nobody user
+# Copy passwd and group for nobody user
 COPY --from=builder /etc/passwd /etc/passwd
+COPY --from=builder /etc/group /etc/group
 
 # Copy the static binary
-COPY --from=builder /workspace/o2-client /usr/local/bin/o2-client
+COPY --from=builder /usr/local/bin/o2-client /usr/local/bin/o2-client
 
 # Use nobody user for security
 USER nobody:nobody
