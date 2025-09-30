@@ -1,6 +1,7 @@
 package pkg
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"sync"
@@ -159,6 +160,28 @@ func NewNetworkTopology() *NetworkTopology {
 		LastUpdated: time.Now(),
 		Version:     "1.0.0",
 	}
+}
+
+// GetNodes returns a slice of all topology nodes
+func (nt *NetworkTopology) GetNodes() []*TopologyNode {
+	nt.mutex.RLock()
+	defer nt.mutex.RUnlock()
+
+	nodes := make([]*TopologyNode, 0, len(nt.Nodes))
+	for _, node := range nt.Nodes {
+		nodes = append(nodes, node)
+	}
+	return nodes
+}
+
+// AddLink adds a link to the topology
+func (nt *NetworkTopology) AddLink(link *TopologyLink) {
+	nt.mutex.Lock()
+	defer nt.mutex.Unlock()
+
+	linkID := fmt.Sprintf("%s-%s", link.SourceNode, link.TargetNode)
+	nt.Links[linkID] = link
+	nt.LastUpdated = time.Now()
 }
 
 // TopologyNode represents a node in the network
@@ -485,13 +508,13 @@ func (fd *FaultDetector) StartMonitoring(ctx context.Context, agents map[string]
 					if !agent.IsConnected() {
 						faultID := fmt.Sprintf("fault-%s-%d", nodeID, time.Now().Unix())
 						fault := &NetworkFault{
-							ID:            faultID,
-							Type:          FaultTypeNodeFailure,
-							Severity:      "high",
-							AffectedNodes: []string{nodeID},
-							DetectedAt:    time.Now(),
-							Status:        "active",
-							Description:   fmt.Sprintf("Agent %s is disconnected", nodeID),
+							ID:          faultID,
+							Type:        FaultTypeNodeUnreachable,
+							Severity:    FaultSeverityHigh,
+							NodeName:    nodeID,
+							DetectedAt:  time.Now(),
+							Description: fmt.Sprintf("Agent %s is disconnected", nodeID),
+							Details:     map[string]interface{}{"reason": "agent_disconnected"},
 						}
 
 						fd.activeFaults[faultID] = fault
@@ -509,14 +532,36 @@ func (fd *FaultDetector) StartMonitoring(ctx context.Context, agents map[string]
 }
 
 // GetFaultsSummary returns a summary of active and recent faults
-func (fd *FaultDetector) GetFaultsSummary() map[string]interface{} {
+func (fd *FaultDetector) GetFaultsSummary() *FaultsSummary {
 	fd.mutex.RLock()
 	defer fd.mutex.RUnlock()
 
-	return map[string]interface{}{
-		"active_count":   len(fd.activeFaults),
-		"history_count":  len(fd.faultHistory),
-		"active_faults":  fd.activeFaults,
+	faultsByType := make(map[FaultType]int)
+	criticalCount := 0
+	activeCount := len(fd.activeFaults)
+	resolvedCount := 0
+
+	recentFaults := make([]*NetworkFault, 0)
+	for _, fault := range fd.faultHistory {
+		faultsByType[fault.Type]++
+		if fault.Severity == FaultSeverityCritical {
+			criticalCount++
+		}
+		if fault.ResolvedAt != nil {
+			resolvedCount++
+		}
+		if len(recentFaults) < 10 {
+			recentFaults = append(recentFaults, fault)
+		}
+	}
+
+	return &FaultsSummary{
+		TotalFaults:    len(fd.faultHistory),
+		CriticalFaults: criticalCount,
+		ActiveFaults:   activeCount,
+		ResolvedFaults: resolvedCount,
+		FaultsByType:   faultsByType,
+		RecentFaults:   recentFaults,
 	}
 }
 
@@ -639,29 +684,38 @@ func (ns *NetworkState) GetTopology() *NetworkTopology {
 }
 
 // GetActiveSlices returns the list of active slices
-func (ns *NetworkState) GetActiveSlices() []string {
+func (ns *NetworkState) GetActiveSlices() map[string]*SliceState {
 	ns.mutex.RLock()
 	defer ns.mutex.RUnlock()
 
-	slices := make([]string, 0, len(ns.activeSlices))
-	for sliceID := range ns.activeSlices {
-		slices = append(slices, sliceID)
+	// Return a copy to avoid concurrent modification
+	slices := make(map[string]*SliceState, len(ns.activeSlices))
+	for sliceID, state := range ns.activeSlices {
+		slices[sliceID] = state
 	}
 	return slices
 }
 
 // GetVXLANStatus returns VXLAN status for all slices
-func (ns *NetworkState) GetVXLANStatus() map[string]interface{} {
+func (ns *NetworkState) GetVXLANStatus() *VXLANStatusSummary {
 	ns.mutex.RLock()
 	defer ns.mutex.RUnlock()
 
-	status := make(map[string]interface{})
+	totalTunnels := len(ns.sliceConfigs)
+	activeTunnels := 0
+	failedTunnels := 0
+	tunnelsBySlice := make(map[string]int)
+
 	for sliceID, config := range ns.sliceConfigs {
-		status[sliceID] = map[string]interface{}{
-			"vxlan_id":       config.VxlanID,
-			"endpoint_count": len(config.Endpoints),
-			"mtu":            config.MTU,
-		}
+		tunnelsBySlice[sliceID] = len(config.Endpoints)
+		// Assume active if config exists (proper status tracking would be more complex)
+		activeTunnels++
 	}
-	return status
+
+	return &VXLANStatusSummary{
+		TotalTunnels:   totalTunnels,
+		ActiveTunnels:  activeTunnels,
+		FailedTunnels:  failedTunnels,
+		TunnelsBySlice: tunnelsBySlice,
+	}
 }

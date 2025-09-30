@@ -394,11 +394,12 @@ func (etm *EnhancedTNManager) recoverVXLANFault(ctx context.Context, fault *Netw
 
 		etm.publishEvent(TNEvent{
 			Type:      EventTypeVXLANRecovered,
-			SliceID:   sliceID,
+			SliceID:   fault.SliceID,
 			Timestamp: time.Now(),
 			Data: map[string]interface{}{
-				"node":         fault.NodeName,
+				"node":            fault.NodeName,
 				"recovery_action": "vxlan_restart",
+				"slices_count":    len(configsMap),
 			},
 		})
 	}
@@ -558,7 +559,13 @@ func (etm *EnhancedTNManager) validateVXLANConfig(config *DynamicVXLANConfig) er
 		return fmt.Errorf("at least 2 endpoints required for VXLAN tunnel")
 	}
 
-	return etm.vxlanOrchestrator.ValidateEndpoints(config.Endpoints)
+	// Convert TNEndpoint to v1alpha1.Endpoint
+	endpoints := make([]tnv1alpha1.Endpoint, len(config.Endpoints))
+	for i, ep := range config.Endpoints {
+		endpoints[i] = ep.Endpoint
+	}
+
+	return etm.vxlanOrchestrator.ValidateEndpoints(endpoints)
 }
 
 func (etm *EnhancedTNManager) applyVXLANUpdates(current *DynamicVXLANConfig, updates *VXLANUpdateConfig) *DynamicVXLANConfig {
