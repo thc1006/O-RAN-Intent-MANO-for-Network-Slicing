@@ -16,6 +16,57 @@ type MockAlertManagerClient struct {
 	mock.Mock
 }
 
+func (m *MockAlertManagerClient) DeployAlertManager(ctx context.Context, config *AlertManagerConfig) error {
+	args := m.Called(ctx, config)
+	return args.Error(0)
+}
+
+func (m *MockAlertManagerClient) ConfigureRouting(ctx context.Context, routes []Route) error {
+	args := m.Called(ctx, routes)
+	return args.Error(0)
+}
+
+func (m *MockAlertManagerClient) ConfigureReceivers(ctx context.Context, receivers []Receiver) error {
+	args := m.Called(ctx, receivers)
+	return args.Error(0)
+}
+
+func (m *MockAlertManagerClient) SetInhibitionRules(ctx context.Context, rules []InhibitionRule) error {
+	args := m.Called(ctx, rules)
+	return args.Error(0)
+}
+
+func (m *MockAlertManagerClient) CreateSilence(ctx context.Context, silence *Silence) (*SilenceResponse, error) {
+	args := m.Called(ctx, silence)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*SilenceResponse), args.Error(1)
+}
+
+func (m *MockAlertManagerClient) DeleteSilence(ctx context.Context, silenceID string) error {
+	args := m.Called(ctx, silenceID)
+	return args.Error(0)
+}
+
+func (m *MockAlertManagerClient) GetActiveAlerts(ctx context.Context) ([]Alert, error) {
+	args := m.Called(ctx)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]Alert), args.Error(1)
+}
+
+func (m *MockAlertManagerClient) ValidateConfiguration(config *AlertManagerConfig) error {
+	args := m.Called(config)
+	return args.Error(0)
+}
+
+func (m *MockAlertManagerClient) ReloadConfiguration(ctx context.Context) error {
+	args := m.Called(ctx)
+	return args.Error(0)
+}
+
 // AlertManagerDeployer handles AlertManager deployment and configuration
 type AlertManagerDeployer struct {
 	client AlertManagerClientInterface

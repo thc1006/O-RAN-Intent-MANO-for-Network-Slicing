@@ -81,7 +81,7 @@ func TestNephioPackager_CreateVNFPackage(t *testing.T) {
 		},
 		{
 			name:    "create_cucp_mmtc_package",
-			vnfSpec: fixtures.mMTCVNFDeployment(),
+			vnfSpec: fixtures.MMTCVNFDeployment(),
 			mockSetup: func(mockPorch *mocks.MockPorchClient) {
 				mockPorch.CreatePackageFunc = func(ctx context.Context, pkg *mocks.NephioPackage) error {
 					return nil
