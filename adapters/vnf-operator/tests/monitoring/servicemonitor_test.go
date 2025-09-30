@@ -20,6 +20,11 @@ func boolPtr(b bool) *bool {
 	return &b
 }
 
+// Helper function to create string pointer
+func stringPtr(s string) *string {
+	return &s
+}
+
 // MockServiceMonitorClient mocks the ServiceMonitor client interface
 type MockServiceMonitorClient struct {
 	mock.Mock
@@ -148,7 +153,7 @@ func TestServiceMonitorCreation(t *testing.T) {
 							TLSConfig: &monitoringv1.TLSConfig{
 								SafeTLSConfig: monitoringv1.SafeTLSConfig{
 									InsecureSkipVerify: boolPtr(false),
-									ServerName:         "vnf-operator.o-ran-mano.svc.cluster.local",
+									ServerName:         stringPtr("vnf-operator.o-ran-mano.svc.cluster.local"),
 								},
 								CertFile: "/etc/ssl/certs/client.crt",
 								KeyFile:  "/etc/ssl/private/client.key",
@@ -432,8 +437,8 @@ func TestTLSConfiguration(t *testing.T) {
 			name: "TLS with insecure skip verify",
 			tlsConfig: &monitoringv1.TLSConfig{
 				SafeTLSConfig: monitoringv1.SafeTLSConfig{
-					InsecureSkipVerify: true,
-					ServerName:         "vnf-operator.o-ran-mano.svc.cluster.local",
+					InsecureSkipVerify: boolPtr(true),
+					ServerName:         stringPtr("vnf-operator.o-ran-mano.svc.cluster.local"),
 				},
 			},
 			expectedError: false,
