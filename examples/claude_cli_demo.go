@@ -21,7 +21,8 @@ func main() {
 	ctx := context.Background()
 
 	fmt.Println("🚀 O-RAN Network Slicing with Claude CLI Integration")
-	fmt.Println("====================================================\n")
+	fmt.Println("====================================================")
+	fmt.Println() // Add blank line explicitly
 
 	// Create Claude client with tmux integration
 	config := &claude.ClientConfig{

@@ -121,6 +121,7 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	// Create new session
 	sessionID := uuid.New().String()
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel() // Ensure cancel is called on all paths
 
 	// Create Claude client for this session
 	claudeConfig := &claude.ClientConfig{

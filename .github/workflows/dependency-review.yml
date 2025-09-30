@@ -42,12 +42,10 @@ jobs:
         fail-on-severity: critical
         # Comment on PR with results
         comment-summary-in-pr: true
-        # Deny specific licenses
+        # Deny specific licenses (cannot use both allow and deny)
         deny-licenses: GPL-2.0, GPL-3.0, AGPL-1.0, AGPL-3.0
         # Allow all other vulnerabilities but warn
         warn-only: true
-        # Allow specific licenses
-        allow-licenses: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC
         # Enable vulnerability database check
         vulnerability-check: true
         # Enable license check
