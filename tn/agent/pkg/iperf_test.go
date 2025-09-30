@@ -44,9 +44,7 @@ func (s *IperfTestSuite) TearDownTest() {
 	if s.manager != nil {
 		servers := s.manager.GetActiveServers()
 		for _, server := range servers {
-			if port, ok := server["port"].(int); ok {
-				s.manager.StopServer(port)
-			}
+			s.manager.StopServer(server.Port)
 		}
 	}
 

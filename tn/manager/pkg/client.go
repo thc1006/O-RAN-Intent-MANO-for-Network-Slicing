@@ -269,3 +269,26 @@ func (client *TNAgentClient) Ping() error {
 
 	return nil
 }
+// ConfigureVXLAN configures VXLAN tunnel on the agent
+func (client *TNAgentClient) ConfigureVXLAN(sliceID string, config interface{}) error {
+	security.SafeLogf(client.logger, "Configuring VXLAN for slice %s", security.SanitizeForLog(sliceID))
+	// TODO: Implement actual VXLAN configuration via HTTP API
+	// For now, return nil as stub implementation
+	return nil
+}
+
+// ConfigureQoS configures QoS settings on the agent
+func (client *TNAgentClient) ConfigureQoS(sliceID string, config interface{}) error {
+	security.SafeLogf(client.logger, "Configuring QoS for slice %s", security.SanitizeForLog(sliceID))
+	// TODO: Implement actual QoS configuration via HTTP API
+	// For now, return nil as stub implementation
+	return nil
+}
+
+// DiscoverNode performs node discovery on the agent
+func (client *TNAgentClient) DiscoverNode() (interface{}, error) {
+	security.SafeLog(client.logger, "Performing node discovery")
+	// TODO: Implement actual node discovery via HTTP API
+	// For now, return nil as stub implementation
+	return nil, nil
+}

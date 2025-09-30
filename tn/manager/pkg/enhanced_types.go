@@ -1,6 +1,7 @@
 package pkg
 
 import (
+	"fmt"
 	"log"
 	"sync"
 	"time"
@@ -148,6 +149,16 @@ type NetworkTopology struct {
 	LastUpdated time.Time                `json:"lastUpdated"`
 	Version     string                   `json:"version"`
 	mutex       sync.RWMutex
+}
+
+// NewNetworkTopology creates a new NetworkTopology instance
+func NewNetworkTopology() *NetworkTopology {
+	return &NetworkTopology{
+		Nodes:       make(map[string]*TopologyNode),
+		Links:       make(map[string]*TopologyLink),
+		LastUpdated: time.Now(),
+		Version:     "1.0.0",
+	}
 }
 
 // TopologyNode represents a node in the network
@@ -449,4 +460,50 @@ func NewNetworkState() *NetworkState {
 		qosStrategies: make(map[string]*QoSStrategy),
 		activeSlices:  make(map[string]*SliceState),
 	}
+}
+
+// UpdateVXLANConfig updates VXLAN configuration for a slice
+func (ns *NetworkState) UpdateVXLANConfig(sliceID string, config *DynamicVXLANConfig) error {
+	ns.mutex.Lock()
+	defer ns.mutex.Unlock()
+	ns.sliceConfigs[sliceID] = config
+	return nil
+}
+
+// GetVXLANConfig retrieves VXLAN configuration for a slice
+func (ns *NetworkState) GetVXLANConfig(sliceID string) (*DynamicVXLANConfig, error) {
+	ns.mutex.RLock()
+	defer ns.mutex.RUnlock()
+	config, exists := ns.sliceConfigs[sliceID]
+	if !exists {
+		return nil, fmt.Errorf("VXLAN config not found for slice %s", sliceID)
+	}
+	return config, nil
+}
+
+// UpdateQoSStrategy updates QoS strategy for a slice
+func (ns *NetworkState) UpdateQoSStrategy(sliceID string, strategy *QoSStrategy) error {
+	ns.mutex.Lock()
+	defer ns.mutex.Unlock()
+	ns.qosStrategies[sliceID] = strategy
+	return nil
+}
+
+// GetQoSStrategy retrieves QoS strategy for a slice
+func (ns *NetworkState) GetQoSStrategy(sliceID string) (*QoSStrategy, error) {
+	ns.mutex.RLock()
+	defer ns.mutex.RUnlock()
+	strategy, exists := ns.qosStrategies[sliceID]
+	if !exists {
+		return nil, fmt.Errorf("QoS strategy not found for slice %s", sliceID)
+	}
+	return strategy, nil
+}
+
+// UpdateTopology updates the network topology
+func (ns *NetworkState) UpdateTopology(topology *NetworkTopology) error {
+	ns.mutex.Lock()
+	defer ns.mutex.Unlock()
+	ns.topology = topology
+	return nil
 }

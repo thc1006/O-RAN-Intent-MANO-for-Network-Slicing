@@ -51,8 +51,14 @@ func (etm *EnhancedTNManager) ConfigureVXLANDynamic(ctx context.Context, sliceID
 		return fmt.Errorf("invalid VXLAN configuration: %w", err)
 	}
 
+	// Convert TNEndpoint to tnv1alpha1.Endpoint
+	endpoints := make([]tnv1alpha1.Endpoint, len(config.Endpoints))
+	for i, ep := range config.Endpoints {
+		endpoints[i] = ep.Endpoint
+	}
+
 	// Generate tunnel configurations
-	tunnelConfigs := etm.vxlanOrchestrator.GenerateTunnelConfigs(config.VxlanID, config.Endpoints)
+	tunnelConfigs := etm.vxlanOrchestrator.GenerateTunnelConfigs(config.VxlanID, endpoints)
 
 	// Deploy configurations to agents
 	etm.mu.RLock()

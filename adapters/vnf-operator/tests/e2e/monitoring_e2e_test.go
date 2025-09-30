@@ -296,7 +296,7 @@ var _ = Describe("O-RAN Monitoring Stack E2E Tests", func() {
 
 		It("should handle test alerts properly", func() {
 			// Create test alert by triggering a known condition
-			testQuery := "vector(1) > 0" // Always true condition
+			_ = "vector(1) > 0" // Test query for always true condition
 
 			// Wait a bit for alert evaluation
 			time.Sleep(30 * time.Second)
