@@ -17,6 +17,45 @@ type MockMetricsCollector struct {
 	mock.Mock
 }
 
+// Implement MetricsCollectorInterface methods
+func (m *MockMetricsCollector) ExposeMetrics(format MetricFormat) (string, error) {
+	args := m.Called(format)
+	return args.String(0), args.Error(1)
+}
+
+func (m *MockMetricsCollector) ValidateMetricLabels(labels map[string]string) error {
+	args := m.Called(labels)
+	return args.Error(0)
+}
+
+func (m *MockMetricsCollector) ValidateMetricTypes(metrics []Metric) error {
+	args := m.Called(metrics)
+	return args.Error(0)
+}
+
+func (m *MockMetricsCollector) CheckCardinalityLimits(metrics []Metric) error {
+	args := m.Called(metrics)
+	return args.Error(0)
+}
+
+func (m *MockMetricsCollector) ConfigureScrapeSettings(interval, timeout time.Duration) error {
+	args := m.Called(interval, timeout)
+	return args.Error(0)
+}
+
+func (m *MockMetricsCollector) ApplyRelabelingRules(rules []RelabelingRule) error {
+	args := m.Called(rules)
+	return args.Error(0)
+}
+
+func (m *MockMetricsCollector) CollectComponentMetrics(component string) ([]Metric, error) {
+	args := m.Called(component)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]Metric), args.Error(1)
+}
+
 // MetricsCollector handles metrics collection and exposition
 type MetricsCollector struct {
 	collector MetricsCollectorInterface
