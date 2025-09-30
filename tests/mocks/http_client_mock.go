@@ -27,6 +27,11 @@ func (m *MockHTTPClient) Do(req *http.Request) (*http.Response, error) {
 	}, nil
 }
 
+// RoundTrip implements the http.RoundTripper interface
+func (m *MockHTTPClient) RoundTrip(req *http.Request) (*http.Response, error) {
+	return m.Do(req)
+}
+
 // Helper function to create HTTP responses
 func CreateHTTPResponse(statusCode int, body string, headers map[string]string) *http.Response {
 	header := make(http.Header)
