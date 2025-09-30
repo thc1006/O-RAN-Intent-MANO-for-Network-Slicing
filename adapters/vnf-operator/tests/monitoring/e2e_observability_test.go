@@ -69,8 +69,8 @@ func (m *MockObservabilityStack) HandleAlert(alert *Alert) (*Notification, error
 	return args.Get(0).(*Notification), args.Error(1)
 }
 
-func (m *MockObservabilityStack) EvaluateAlerts() ([]Alert, error) {
-	args := m.Called()
+func (m *MockObservabilityStack) EvaluateAlerts(rules []AlertRule) ([]Alert, error) {
+	args := m.Called(rules)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

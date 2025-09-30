@@ -238,7 +238,7 @@ func TestNephioPackager_GenerateConfigMaps(t *testing.T) {
 				assert.Len(t, configMaps, 3)
 				// Verify specific ConfigMaps are generated
 				names := make([]string, len(configMaps))
-				for i, cm := range configMaps {
+				for i := range configMaps {
 					// Type assertion would be done in real implementation
 					names[i] = "placeholder" // Would extract actual name
 				}

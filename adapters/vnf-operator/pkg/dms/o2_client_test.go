@@ -125,8 +125,8 @@ func TestO2DMSClient_GetInventory(t *testing.T) {
 				retryDelay: time.Second,
 			}
 
-			// Execute test
-			result, err := client.GetInventory(context.Background())
+			// Execute test - GetInventory doesn't exist, use GetDeploymentStatus
+			result, err := client.GetDeploymentStatus(context.Background(), "test-deployment-id")
 
 			// Verify results
 			if tt.expectedError {
