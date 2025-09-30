@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security"
+	tnv1alpha1 "github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tn/manager/api/v1alpha1"
 	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tn/manager/pkg/vxlan"
 )
 
@@ -127,8 +128,8 @@ func (etm *EnhancedTNManager) ConfigureVXLANDynamic(ctx context.Context, sliceID
 func (etm *EnhancedTNManager) ReconfigureVXLAN(ctx context.Context, sliceID string, updates *VXLANUpdateConfig) error {
 	security.SafeLogf(etm.logger, "Reconfiguring VXLAN for slice %s", security.SanitizeForLog(sliceID))
 
-	currentConfig := etm.networkState.GetVXLANConfig(sliceID)
-	if currentConfig == nil {
+	currentConfig, err := etm.networkState.GetVXLANConfig(sliceID)
+	if err != nil || currentConfig == nil {
 		return fmt.Errorf("no existing VXLAN configuration found for slice %s", sliceID)
 	}
 
@@ -209,8 +210,8 @@ func (etm *EnhancedTNManager) ConfigureQoSStrategy(ctx context.Context, sliceID 
 func (etm *EnhancedTNManager) UpdateQoSStrategy(ctx context.Context, sliceID string, updates *QoSUpdates) error {
 	security.SafeLogf(etm.logger, "Updating QoS strategy for slice %s", security.SanitizeForLog(sliceID))
 
-	currentStrategy := etm.networkState.GetQoSStrategy(sliceID)
-	if currentStrategy == nil {
+	currentStrategy, err := etm.networkState.GetQoSStrategy(sliceID)
+	if err != nil || currentStrategy == nil {
 		return fmt.Errorf("no existing QoS strategy found for slice %s", sliceID)
 	}
 
@@ -252,14 +253,19 @@ func (etm *EnhancedTNManager) DiscoverNetworkTopology(ctx context.Context) (*Net
 				return
 			}
 
+			// Skip if no node info returned (stub implementation)
+			if nodeInfo == nil {
+				return
+			}
+
+			// Type assert to TopologyNode if needed
+			// For now, create a basic node with available info
 			node := &TopologyNode{
-				Name:         cluster,
-				Type:         nodeInfo.Type,
-				Capabilities: nodeInfo.Capabilities,
-				Interfaces:   nodeInfo.Interfaces,
-				Status:       nodeInfo.Status,
-				Metadata:     nodeInfo.Metadata,
-				LastUpdated:  time.Now(),
+				Name:        cluster,
+				Type:        "discovered",
+				Status:      "active",
+				Metadata:    make(map[string]interface{}),
+				LastUpdated: time.Now(),
 			}
 
 			nodeChan <- node
@@ -271,7 +277,7 @@ func (etm *EnhancedTNManager) DiscoverNetworkTopology(ctx context.Context) (*Net
 
 	// Collect discovered nodes
 	for node := range nodeChan {
-		topology.AddNode(node)
+		topology.Nodes[node.Name] = node
 	}
 
 	// Discover links between nodes

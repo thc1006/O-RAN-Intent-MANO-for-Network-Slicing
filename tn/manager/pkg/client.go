@@ -287,7 +287,7 @@ func (client *TNAgentClient) ConfigureQoS(sliceID string, config interface{}) er
 
 // DiscoverNode performs node discovery on the agent
 func (client *TNAgentClient) DiscoverNode() (interface{}, error) {
-	security.SafeLog(client.logger, "Performing node discovery")
+	security.SafeLogf(client.logger, "%s", "Performing node discovery")
 	// TODO: Implement actual node discovery via HTTP API
 	// For now, return nil as stub implementation
 	return nil, nil
