@@ -21,7 +21,7 @@ class WebSocketServer:
     def __init__(self):
         self.clients = {}
 
-    async def handle_client(self, websocket, path):
+    async def handle_client(self, websocket):
         """Handle WebSocket client connection"""
         session_id = f"session-{datetime.now().strftime('%Y%m%d%H%M%S')}"
         self.clients[session_id] = websocket
@@ -239,7 +239,11 @@ async def main():
     logger.info("📡 WebSocket endpoint: ws://localhost:8081/ws")
     logger.info("🌐 Frontend: http://localhost:8080")
 
-    async with websockets.serve(server.handle_client, "localhost", 8081):
+    async with websockets.serve(
+        lambda ws: server.handle_client(ws),
+        "localhost",
+        8081
+    ):
         logger.info("✅ WebSocket server running on port 8081")
         await asyncio.Future()  # run forever
 

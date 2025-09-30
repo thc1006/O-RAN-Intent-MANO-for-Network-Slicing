@@ -470,7 +470,8 @@
 
             connect() {
                 const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-                const wsUrl = `${protocol}//${window.location.host}/ws`;
+                // WebSocket server runs on port 8081
+                const wsUrl = `${protocol}//localhost:8081/ws`;
 
                 try {
                     this.ws = new WebSocket(wsUrl);

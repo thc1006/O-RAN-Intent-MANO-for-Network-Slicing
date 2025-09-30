@@ -1,0 +1,54 @@
+╔════════════════════════════════════════════════════════════════╗
+║              🎯 O-RAN 自然語言切片 - 快速參考                   ║
+╚════════════════════════════════════════════════════════════════╝
+
+💬 發送自然語言請求
+────────────────────────────────────────────────────────────────
+curl -X POST http://localhost:8080/api/v1/intents/natural \
+  -H "Content-Type: application/json" \
+  -d '{"intent":"你的需求描述","session_id":"test-001"}' | jq .
+
+📊 查看響應中的關鍵信息
+────────────────────────────────────────────────────────────────
+{
+  "slice_id": "...",           ← 切片唯一 ID
+  "intent": {
+    "parsed_as": "eMBB",       ← 識別的切片類型
+    "confidence": 0.836        ← 信心度（越高越好）
+  },
+  "qos_profile": {             ← QoS 參數
+    "throughput_mbps": 50,     ← 帶寬
+    "latency_ms": 10,          ← 延遲
+    "packet_loss": 0.001       ← 丟包率
+  },
+  "deployment": {              ← 部署狀態
+    "status": "success"        ← 成功/失敗
+  },
+  "processing_time_ms": 75     ← 處理時間
+}
+
+🔍 監控部署
+────────────────────────────────────────────────────────────────
+# 查看日誌
+tail -f orchestrator/orchestrator.log
+
+# 查看 Kubernetes 資源
+kubectl get applications -n argocd
+kubectl get all -n oran-slice-embb
+
+# NLP 服務統計
+curl http://localhost:8082/health | jq .
+
+📖 服務端點
+────────────────────────────────────────────────────────────────
+NLP 服務:       http://localhost:8082
+Orchestrator:   http://localhost:8080
+Web UI:         http://localhost:8000/index.html
+Monitor:        http://localhost:8000/monitor.html
+
+🎨 支援的切片類型
+────────────────────────────────────────────────────────────────
+eMBB:   高帶寬 (video, streaming, broadband, 4K, 8K)
+URLLC:  低延遲 (low-latency, real-time, autonomous, surgery)
+mMTC:   大規模 IoT (IoT, sensor, smart city, monitoring)
+
