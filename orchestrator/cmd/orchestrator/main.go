@@ -19,6 +19,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/orchestrator/pkg/argocd"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/orchestrator/pkg/nlp"
 	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/orchestrator/pkg/placement"
 	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/orchestrator/pkg/slices"
 	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security"
@@ -33,6 +34,9 @@ var (
 	// Argo CD client for managing applications
 	argoCDClient *argocd.Client
 	argoCDMutex  sync.RWMutex
+
+	// NLP client for natural language processing
+	nlpClient *nlp.Client
 
 	// Deployed slices tracking
 	deployedSlices = make(map[string]*slices.SliceConfiguration)
@@ -652,6 +656,14 @@ func startServer(config Config) {
 		log.Println("Argo CD client initialized successfully")
 	}
 
+	// Initialize NLP client
+	nlpServiceURL := os.Getenv("NLP_SERVICE_URL")
+	if nlpServiceURL == "" {
+		nlpServiceURL = "http://localhost:8082"
+	}
+	nlpClient = nlp.NewClient(nlpServiceURL)
+	log.Printf("NLP client initialized (service: %s)", nlpServiceURL)
+
 	// Create HTTP server mux
 	mux := http.NewServeMux()
 
@@ -678,6 +690,7 @@ func startServer(config Config) {
 
 	// Intent processing endpoints
 	mux.HandleFunc("/api/v1/intents", intentsHandler)
+	mux.HandleFunc("/api/v1/intents/natural", naturalIntentHandler)
 	mux.HandleFunc("/api/v1/slices", slicesHandler)
 	mux.HandleFunc("/api/v1/status", statusHandler)
 
@@ -789,6 +802,164 @@ func intentsHandler(w http.ResponseWriter, r *http.Request) {
 		status = "error"
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
+}
+
+// naturalIntentHandler handles natural language intent processing requests
+func naturalIntentHandler(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
+	var status string = "success"
+
+	defer func() {
+		duration := time.Since(start).Seconds()
+		intentProcessingDuration.WithLabelValues("natural", status).Observe(duration)
+	}()
+
+	if r.Method != http.MethodPost {
+		status = "error"
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Parse request
+	var req struct {
+		Intent    string `json:"intent"`
+		SessionID string `json:"session_id,omitempty"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		status = "error"
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	if req.Intent == "" {
+		status = "error"
+		http.Error(w, "Intent cannot be empty", http.StatusBadRequest)
+		return
+	}
+
+	log.Printf("Processing natural language intent: %s", req.Intent[:min(50, len(req.Intent))])
+
+	// Call NLP service
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	nlpResponse, err := nlpClient.ParseIntent(ctx, req.Intent, req.SessionID)
+	if err != nil {
+		status = "error"
+		log.Printf("NLP service error: %v", err)
+		http.Error(w, fmt.Sprintf("Failed to parse intent: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("✓ NLP parsed as %s (%.2f Mbps, %.1f ms latency)",
+		nlpResponse.SliceType, nlpResponse.QoSProfile.ThroughputMbps, nlpResponse.QoSProfile.LatencyMs)
+
+	// Generate slice configuration from NLP response
+	sliceID := fmt.Sprintf("slice-%s-%d", strings.ToLower(nlpResponse.SliceType), time.Now().Unix())
+	namespace := fmt.Sprintf("oran-slice-%s", strings.ToLower(nlpResponse.SliceType))
+
+	sliceConfig := slices.SliceConfiguration{
+		SliceID:   sliceID,
+		SliceType: nlpResponse.SliceType,
+		Namespace: namespace,
+		QoS: slices.QoSProfile{
+			Throughput:  int(nlpResponse.QoSProfile.ThroughputMbps),
+			Latency:     int(nlpResponse.QoSProfile.LatencyMs),
+			Reliability: (1.0 - nlpResponse.QoSProfile.PacketLossRate) * 100.0, // Convert to reliability percentage
+		},
+	}
+
+	// Deploy using Argo CD if available
+	var errMsg string
+	if argoCDClient != nil {
+		// Generate manifests
+		manifests, err := slices.GenerateSliceManifests(sliceConfig)
+		if err != nil {
+			status = "error"
+			log.Printf("Failed to generate manifests: %v", err)
+			http.Error(w, fmt.Sprintf("Failed to generate manifests: %v", err), http.StatusInternalServerError)
+			return
+		}
+
+		// Serialize to YAML
+		yamlData, err := manifests.ToYAML()
+		if err != nil {
+			status = "error"
+			log.Printf("Failed to serialize manifests: %v", err)
+			http.Error(w, fmt.Sprintf("Failed to serialize manifests: %v", err), http.StatusInternalServerError)
+			return
+		}
+
+		// Create Argo CD Application
+		appConfig := argocd.ApplicationConfig{
+			Name:          sliceID,
+			Namespace:     namespace,
+			SliceType:     nlpResponse.SliceType,
+			ManifestsYAML: string(yamlData),
+		}
+
+		app, err := argoCDClient.CreateApplication(ctx, appConfig)
+		if err != nil {
+			status = "failed"
+			errMsg = fmt.Sprintf("Argo CD deployment failed: %v", err)
+			log.Printf("✗ %s", errMsg)
+		} else {
+			log.Printf("✓ Argo CD Application created: %s", app.Name)
+
+			// Track deployed slice
+			slicesMutex.Lock()
+			deployedSlices[sliceID] = &sliceConfig
+			slicesMutex.Unlock()
+
+			// Update metrics
+			sliceDeploymentsTotal.WithLabelValues(nlpResponse.SliceType, "success").Inc()
+			activeSlicesGauge.WithLabelValues(nlpResponse.SliceType).Inc()
+		}
+	}
+
+	// Build response
+	response := map[string]interface{}{
+		"success":  status == "success",
+		"slice_id": sliceID,
+		"intent": map[string]interface{}{
+			"raw_text":   req.Intent,
+			"parsed_as":  nlpResponse.SliceType,
+			"confidence": nlpResponse.ProcessingTimeMs,
+		},
+		"qos_profile": map[string]interface{}{
+			"slice_type":      nlpResponse.SliceType,
+			"throughput_mbps": nlpResponse.QoSProfile.ThroughputMbps,
+			"latency_ms":      nlpResponse.QoSProfile.LatencyMs,
+			"packet_loss":     nlpResponse.QoSProfile.PacketLossRate,
+			"priority":        nlpResponse.QoSProfile.Priority,
+		},
+		"deployment": map[string]interface{}{
+			"namespace": namespace,
+			"status":    status,
+		},
+		"processing_time_ms": time.Since(start).Milliseconds(),
+	}
+
+	if errMsg != "" {
+		response["error"] = errMsg
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if status == "failed" || status == "error" {
+		w.WriteHeader(http.StatusInternalServerError)
+	} else {
+		w.WriteHeader(http.StatusCreated)
+	}
+	json.NewEncoder(w).Encode(response)
+}
+
+// min returns the minimum of two integers
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 // handleIntentCreation processes new intent creation requests
