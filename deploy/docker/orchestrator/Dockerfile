@@ -4,8 +4,8 @@
 # Fixed for GitHub Actions CI/CD which builds from root
 
 # Stage 1: Build
-# Using Alpine 3.20 (stable) to fix CVE-2025-46394 and CVE-2024-58251
-FROM golang:1.24.7-alpine3.20 AS builder
+# Using Alpine 3.21 (stable) to fix CVE-2025-46394 and CVE-2024-58251
+FROM golang:1.24.7-alpine3.21 AS builder
 
 # Security and build metadata
 LABEL org.opencontainers.image.title="O-RAN Orchestrator"
