@@ -278,7 +278,7 @@ func TestServiceMonitorCreation(t *testing.T) {
 									SourceLabels: []monitoringv1.LabelName{"__name__"},
 									Regex:        "o_ran_(.*)",
 									TargetLabel:  "__name__",
-									Replacement:  "oran_${1}",
+									Replacement:  stringPtr("oran_${1}"),
 								},
 							},
 						},
