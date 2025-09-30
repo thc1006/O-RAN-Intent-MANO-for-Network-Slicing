@@ -127,6 +127,7 @@ kubectl get pods -A | grep oran-mano
 
 ### Key Technologies
 - **[Nephio](https://nephio.org/)**: Kubernetes-native GitOps for telco
+- **[Argo CD](https://argo-cd.readthedocs.io/)**: Declarative GitOps continuous delivery for network slices
 - **[Kube-OVN](https://kubeovn.github.io/)**: Advanced Kubernetes networking
 - **[O-RAN O2](https://oranalliance.org/)**: Standards-compliant management interface
 - **[Prometheus](https://prometheus.io/)**: Metrics collection and alerting
@@ -214,6 +215,112 @@ Our modern CI/CD pipeline demonstrates production-ready practices:
    ```bash
    make verify-deployment
    ```
+
+## ⚙️ Argo CD Integration
+
+The orchestrator now supports **Argo CD** for GitOps-based network slice deployment, providing automated synchronization and health monitoring.
+
+### Architecture
+
+```
+Intent → Orchestrator → Argo CD Application → Kubernetes Resources
+                     ↓
+                  ConfigMap (manifests storage)
+                     ↓
+                  Slice Deployment (Namespace, Deployment, Service, QoS Config)
+```
+
+### Key Features
+
+- **Automated Deployment**: Network slice manifests automatically deployed via Argo CD
+- **Health Monitoring**: Real-time sync and health status tracking
+- **Self-Healing**: Automatic drift detection and correction
+- **ConfigMap-Based**: Manifests stored in Kubernetes ConfigMaps for rapid deployment
+
+### API Usage
+
+#### Deploy Slice via Argo CD
+
+```http
+POST /api/v1/argocd/slices
+Content-Type: application/json
+
+{
+  "slice_id": "embb-video-001",
+  "slice_type": "eMBB",
+  "namespace": "oran-slice-embb",
+  "qos": {
+    "throughput": 1000,
+    "latency": 20,
+    "reliability": 99.9
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "application_name": "embb-video-001",
+  "sync_status": "Synced",
+  "health_status": "Healthy",
+  "created_at": "2025-10-01T00:29:38Z"
+}
+```
+
+#### Get Slice Status
+
+```http
+GET /api/v1/argocd/slices/embb-video-001/status
+```
+
+**Response:**
+```json
+{
+  "slice_id": "embb-video-001",
+  "sync_status": "Synced",
+  "health_status": "Healthy",
+  "resources": {
+    "namespace": "oran-slice-embb",
+    "deployment": "embb-video-001",
+    "service": "embb-video-001-svc",
+    "configmap": "embb-video-001-qos"
+  }
+}
+```
+
+### Testing
+
+Run the Argo CD integration test:
+
+```bash
+cd orchestrator
+go run test/argocd_test_client.go
+```
+
+Expected output:
+```
+✓ Argo CD client created successfully
+✓ Manifests generated successfully
+✓ Manifests serialized (2017 bytes)
+✓ Argo CD Application created: test-e2e-slice
+✓ Sync Status: Synced
+✓ Health Status: Healthy
+```
+
+### Generated Resources
+
+Each network slice deployment creates:
+
+1. **Namespace**: Isolated environment for slice resources
+2. **QoS ConfigMap**: Quality of Service parameters
+3. **Deployment**: Slice controller with resource limits
+4. **Service**: ClusterIP service for metrics exposure
+
+### Prerequisites
+
+- Argo CD installed in `argocd` namespace
+- Kubernetes cluster access
+- RBAC permissions for Application CRDs
 
 ## 🔌 API Documentation
 

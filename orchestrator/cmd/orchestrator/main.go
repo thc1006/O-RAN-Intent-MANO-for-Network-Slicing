@@ -11,12 +11,16 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
+	"sync"
 	"syscall"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/orchestrator/pkg/argocd"
 	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/orchestrator/pkg/placement"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/orchestrator/pkg/slices"
 	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security"
 )
 
@@ -26,6 +30,14 @@ const (
 )
 
 var (
+	// Argo CD client for managing applications
+	argoCDClient *argocd.Client
+	argoCDMutex  sync.RWMutex
+
+	// Deployed slices tracking
+	deployedSlices = make(map[string]*slices.SliceConfiguration)
+	slicesMutex    sync.RWMutex
+
 	// Prometheus metrics for O-RAN orchestrator
 	intentProcessingDuration = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
@@ -630,6 +642,16 @@ func generateMockSites() []*placement.Site {
 func startServer(config Config) {
 	log.Printf("Starting %s %s server on port %s", appName, version, config.ServerPort)
 
+	// Initialize Argo CD client
+	var err error
+	argoCDClient, err = argocd.NewClient("argocd")
+	if err != nil {
+		log.Printf("Warning: Failed to initialize Argo CD client: %v", err)
+		log.Println("Orchestrator will run in mock mode without real deployments")
+	} else {
+		log.Println("Argo CD client initialized successfully")
+	}
+
 	// Create HTTP server mux
 	mux := http.NewServeMux()
 
@@ -777,56 +799,163 @@ func handleIntentCreation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Simulate intent processing
-	sliceID := fmt.Sprintf("slice-%s-%d", intent.SliceType, time.Now().Unix())
+	// Generate unique slice ID
+	sliceID := fmt.Sprintf("slice-%s-%d", strings.ToLower(intent.SliceType), time.Now().Unix())
+	namespace := fmt.Sprintf("oran-slice-%s", strings.ToLower(intent.SliceType))
 
-	// Update metrics
-	sliceDeploymentsTotal.WithLabelValues(intent.SliceType, "success").Inc()
-	placementDecisionsTotal.WithLabelValues("edge", "success").Inc()
+	var status string = "created"
+	var errMsg string
 
-	// Increment active slices
-	activeSlicesGauge.WithLabelValues(intent.SliceType).Inc()
+	// Try real deployment if Argo CD client is available
+	if argoCDClient != nil {
+		// Create slice configuration
+		sliceConfig := slices.SliceConfiguration{
+			SliceID:   sliceID,
+			SliceType: intent.SliceType,
+			Namespace: namespace,
+			QoS: slices.QoSProfile{
+				Throughput:  int(intent.Bandwidth),
+				Latency:     int(intent.Latency),
+				Reliability: 99.9, // Default reliability
+			},
+		}
+
+		// Generate manifests
+		manifests, err := slices.GenerateSliceManifests(sliceConfig)
+		if err != nil {
+			status = "failed"
+			errMsg = fmt.Sprintf("Failed to generate manifests: %v", err)
+			sliceDeploymentsTotal.WithLabelValues(intent.SliceType, "error").Inc()
+		} else {
+			// Serialize to YAML
+			yamlData, err := manifests.ToYAML()
+			if err != nil {
+				status = "failed"
+				errMsg = fmt.Sprintf("Failed to serialize manifests: %v", err)
+				sliceDeploymentsTotal.WithLabelValues(intent.SliceType, "error").Inc()
+			} else {
+				// Create Argo CD Application
+				appConfig := argocd.ApplicationConfig{
+					Name:          sliceID,
+					Namespace:     namespace,
+					SliceType:     intent.SliceType,
+					ManifestsYAML: string(yamlData),
+				}
+
+				ctx := context.Background()
+				_, err = argoCDClient.CreateApplication(ctx, appConfig)
+				if err != nil {
+					status = "failed"
+					errMsg = fmt.Sprintf("Failed to create Argo CD application: %v", err)
+					sliceDeploymentsTotal.WithLabelValues(intent.SliceType, "error").Inc()
+				} else {
+					// Store deployed slice
+					slicesMutex.Lock()
+					deployedSlices[sliceID] = &sliceConfig
+					slicesMutex.Unlock()
+
+					status = "deployed"
+					sliceDeploymentsTotal.WithLabelValues(intent.SliceType, "success").Inc()
+					activeSlicesGauge.WithLabelValues(intent.SliceType).Inc()
+					placementDecisionsTotal.WithLabelValues("edge", "success").Inc()
+
+					log.Printf("Successfully deployed slice %s via Argo CD", sliceID)
+				}
+			}
+		}
+	} else {
+		// Fallback to mock mode
+		status = "created_mock"
+		sliceDeploymentsTotal.WithLabelValues(intent.SliceType, "success").Inc()
+		activeSlicesGauge.WithLabelValues(intent.SliceType).Inc()
+	}
 
 	response := map[string]interface{}{
-		"slice_id": sliceID,
-		"status":   "created",
-		"qos":      intent,
+		"slice_id":  sliceID,
+		"status":    status,
+		"namespace": namespace,
+		"qos":       intent,
 		"timestamp": time.Now().Unix(),
 	}
 
+	if errMsg != "" {
+		response["error"] = errMsg
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
+	if status == "failed" {
+		w.WriteHeader(http.StatusInternalServerError)
+	} else {
+		w.WriteHeader(http.StatusCreated)
+	}
 	json.NewEncoder(w).Encode(response)
 }
 
 // handleIntentList returns list of active intents
 func handleIntentList(w http.ResponseWriter, r *http.Request) {
-	// Mock response with current active slices
-	slices := []map[string]interface{}{
-		{
-			"slice_id":   "slice-embb-001",
-			"slice_type": "embb",
+	var slicesList []map[string]interface{}
+
+	// Get real slices from deployed tracking
+	slicesMutex.RLock()
+	for sliceID, sliceConfig := range deployedSlices {
+		sliceInfo := map[string]interface{}{
+			"slice_id":   sliceID,
+			"slice_type": strings.ToLower(sliceConfig.SliceType),
+			"namespace":  sliceConfig.Namespace,
 			"status":     "active",
 			"qos": map[string]interface{}{
-				"bandwidth": 100.0,
-				"latency":   20.0,
+				"throughput":  sliceConfig.QoS.Throughput,
+				"latency":     sliceConfig.QoS.Latency,
+				"reliability": sliceConfig.QoS.Reliability,
 			},
-		},
-		{
-			"slice_id":   "slice-urllc-001",
-			"slice_type": "urllc",
-			"status":     "active",
-			"qos": map[string]interface{}{
-				"bandwidth": 10.0,
-				"latency":   1.0,
+		}
+
+		// Try to get sync status from Argo CD
+		if argoCDClient != nil {
+			ctx := context.Background()
+			syncStatus, err := argoCDClient.GetSyncStatus(ctx, sliceID)
+			if err == nil {
+				sliceInfo["sync_status"] = syncStatus
+			}
+
+			healthStatus, err := argoCDClient.GetHealthStatus(ctx, sliceID)
+			if err == nil {
+				sliceInfo["health_status"] = healthStatus
+			}
+		}
+
+		slicesList = append(slicesList, sliceInfo)
+	}
+	slicesMutex.RUnlock()
+
+	// Fallback to mock data if no slices deployed
+	if len(slicesList) == 0 {
+		slicesList = []map[string]interface{}{
+			{
+				"slice_id":   "slice-embb-001",
+				"slice_type": "embb",
+				"status":     "mock",
+				"qos": map[string]interface{}{
+					"bandwidth": 100.0,
+					"latency":   20.0,
+				},
 			},
-		},
+			{
+				"slice_id":   "slice-urllc-001",
+				"slice_type": "urllc",
+				"status":     "mock",
+				"qos": map[string]interface{}{
+					"bandwidth": 10.0,
+					"latency":   1.0,
+				},
+			},
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"slices": slices,
-		"total":  len(slices),
+		"slices": slicesList,
+		"total":  len(slicesList),
 	})
 }
 

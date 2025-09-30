@@ -1,0 +1,10 @@
+server:
+  port: "8080"
+  metrics_port: "9090"
+
+placement:
+  algorithm: "latency-aware"
+
+logging:
+  level: "info"
+  format: "json"
