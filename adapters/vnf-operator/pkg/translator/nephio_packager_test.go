@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"testing"
+	"unsafe"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -406,7 +407,8 @@ func TestNephioPackager_ValidatePackage(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			packager := &NephioPackager{}
 
-			err := packager.ValidatePackage(context.Background(), tt.pkg)
+			// Convert mock type - ValidatePackage expects *NephioPackage, not *mocks.NephioPackage
+		err := packager.ValidatePackage(context.Background(), (*NephioPackage)(unsafe.Pointer(tt.pkg)))
 
 			if tt.expectedError {
 				assert.Error(t, err)

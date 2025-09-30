@@ -494,7 +494,7 @@ func TestO2DMSClient_ErrorHandling(t *testing.T) {
 				httpClient: &http.Client{Transport: mockHTTP},
 			}
 
-			_, err := client.GetInventory(context.Background())
+			_, err := client.GetDeploymentStatus(context.Background(), "test-deployment")
 			require.Error(t, err)
 
 			// This method doesn't exist yet - will cause test to fail
