@@ -87,13 +87,14 @@ jobs:
       run: |
         echo "Setting up test environment for ${{ inputs.test-type }} tests..."
 
-        # Download and extract kubebuilder test binaries
-        # Use direct GCS URL to avoid redirect issues
-        curl -sSLo envtest-bins.tar.gz "https://storage.googleapis.com/kubebuilder-tools/kubebuilder-tools-1.31.1-linux-amd64.tar.gz"
-        mkdir -p /tmp/kubebuilder/bin
-        tar -C /tmp/kubebuilder --strip-components=1 -xzf envtest-bins.tar.gz
+        # Install setup-envtest tool
+        go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
 
-        echo "KUBEBUILDER_ASSETS=/tmp/kubebuilder/bin" >> $GITHUB_ENV
+        # Download and setup envtest binaries using official tool
+        ENVTEST_K8S_VERSION=1.31.1 setup-envtest use -p env
+
+        # Export assets path
+        echo "KUBEBUILDER_ASSETS=$(setup-envtest use -i -p path 1.31.1)" >> $GITHUB_ENV
         echo "USE_EXISTING_CLUSTER=false" >> $GITHUB_ENV
 
     - name: Validate component path

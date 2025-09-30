@@ -177,20 +177,15 @@ jobs:
       run: |
         echo "Setting up Kubernetes test environment for ${{ matrix.component.name }}"
 
-        # Download and extract kubebuilder binaries
-        # Use direct GCS URL to avoid redirect issues
-        curl -sSLo envtest-bins.tar.gz "https://storage.googleapis.com/kubebuilder-tools/kubebuilder-tools-${{ env.K8S_VERSION }}-linux-amd64.tar.gz"
-        mkdir -p /tmp/kubebuilder/bin
-        tar -C /tmp/kubebuilder --strip-components=1 -xzf envtest-bins.tar.gz
+        # Install setup-envtest tool
+        go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
 
-        # Set environment variables
-        echo "KUBEBUILDER_ASSETS=/tmp/kubebuilder/bin" >> $GITHUB_ENV
+        # Download and setup envtest binaries using official tool
+        ENVTEST_K8S_VERSION=${{ env.K8S_VERSION }} setup-envtest use -p env
+
+        # Export assets path
+        echo "KUBEBUILDER_ASSETS=$(setup-envtest use -i -p path ${{ env.K8S_VERSION }})" >> $GITHUB_ENV
         echo "USE_EXISTING_CLUSTER=false" >> $GITHUB_ENV
-
-        # Verify installation
-        ls -la /tmp/kubebuilder/bin/
-        /tmp/kubebuilder/bin/etcd --version
-        /tmp/kubebuilder/bin/kube-apiserver --version
 
     - name: Cache dependencies
       uses: actions/cache@v4
