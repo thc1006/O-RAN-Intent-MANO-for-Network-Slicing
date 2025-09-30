@@ -4,7 +4,7 @@
 # Fixed for GitHub Actions CI/CD which builds from root
 
 # Stage 1: Build
-FROM golang:1.24-alpine AS builder
+FROM golang:1.23-alpine AS builder
 
 # Security and build metadata
 LABEL org.opencontainers.image.title="O-RAN Orchestrator"

@@ -1,8 +1,8 @@
 module github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tests
 
-go 1.24.7
+go 1.23
 
-toolchain go1.24.7
+toolchain go1.23.7
 
 require (
 	github.com/onsi/ginkgo/v2 v2.25.3

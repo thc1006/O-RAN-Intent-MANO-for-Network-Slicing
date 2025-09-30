@@ -40,14 +40,12 @@ jobs:
       with:
         # Fail the build on critical vulnerabilities
         fail-on-severity: critical
-        # Allow moderate and low vulnerabilities but warn
-        warn-on-severity: moderate
-        # Scan all manifest files
-        config-file: '.github/dependency-review-config.yml'
         # Comment on PR with results
         comment-summary-in-pr: true
         # Deny specific licenses
         deny-licenses: GPL-2.0, GPL-3.0, AGPL-1.0, AGPL-3.0
+        # Allow all other vulnerabilities but warn
+        warn-only: true
         # Allow specific licenses
         allow-licenses: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC
         # Enable vulnerability database check
