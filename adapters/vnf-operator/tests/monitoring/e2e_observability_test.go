@@ -101,6 +101,11 @@ func (m *MockObservabilityStack) TestHighCardinality(metricCount int) (*Cardinal
 	return args.Get(0).(*CardinalityTestResult), args.Error(1)
 }
 
+func (m *MockObservabilityStack) TriggerAlert(alert Alert) error {
+	args := m.Called(alert)
+	return args.Error(0)
+}
+
 func (m *MockObservabilityStack) ValidateStack() (*StackValidation, error) {
 	args := m.Called()
 	if args.Get(0) == nil {

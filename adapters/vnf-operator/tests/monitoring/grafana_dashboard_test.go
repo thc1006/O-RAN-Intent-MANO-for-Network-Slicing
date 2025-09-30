@@ -17,6 +17,58 @@ type MockGrafanaClient struct {
 	mock.Mock
 }
 
+// Implement GrafanaClientInterface methods
+func (m *MockGrafanaClient) DeployGrafana(ctx context.Context, config *GrafanaConfig) error {
+	args := m.Called(ctx, config)
+	return args.Error(0)
+}
+
+func (m *MockGrafanaClient) CreateDashboard(ctx context.Context, dashboard *Dashboard) (*DashboardResponse, error) {
+	args := m.Called(ctx, dashboard)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*DashboardResponse), args.Error(1)
+}
+
+func (m *MockGrafanaClient) ProvisionDashboard(ctx context.Context, dashboardJSON string, folderID int) error {
+	args := m.Called(ctx, dashboardJSON, folderID)
+	return args.Error(0)
+}
+
+func (m *MockGrafanaClient) ConfigureDataSource(ctx context.Context, dataSource *DataSource) error {
+	args := m.Called(ctx, dataSource)
+	return args.Error(0)
+}
+
+func (m *MockGrafanaClient) ValidateDashboardJSON(dashboardJSON string) error {
+	args := m.Called(dashboardJSON)
+	return args.Error(0)
+}
+
+func (m *MockGrafanaClient) TestDataSourceConnection(ctx context.Context, dataSourceID string) error {
+	args := m.Called(ctx, dataSourceID)
+	return args.Error(0)
+}
+
+func (m *MockGrafanaClient) GetDashboardByUID(ctx context.Context, uid string) (*Dashboard, error) {
+	args := m.Called(ctx, uid)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*Dashboard), args.Error(1)
+}
+
+func (m *MockGrafanaClient) UpdateDashboard(ctx context.Context, dashboard *Dashboard) error {
+	args := m.Called(ctx, dashboard)
+	return args.Error(0)
+}
+
+func (m *MockGrafanaClient) DeleteDashboard(ctx context.Context, uid string) error {
+	args := m.Called(ctx, uid)
+	return args.Error(0)
+}
+
 // GrafanaDeployer handles Grafana deployment and dashboard management
 type GrafanaDeployer struct {
 	client GrafanaClientInterface
