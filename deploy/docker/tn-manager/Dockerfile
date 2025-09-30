@@ -62,7 +62,7 @@ LABEL org.opencontainers.image.title="TN Manager Runtime"
 LABEL security.scan="trivy,grype,snyk"
 LABEL security.user="non-root"
 LABEL security.base.image="scratch"
-LABEL security.go.version="1.22.10"
+LABEL security.go.version="1.24.7"
 
 # Copy CA certificates from builder
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
