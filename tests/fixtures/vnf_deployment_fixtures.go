@@ -123,7 +123,7 @@ func InvalidVNFDeployment() *VNFDeployment {
 	return vnf
 }
 
-func eMBBVNFDeployment() *VNFDeployment {
+func EMBBVNFDeployment() *VNFDeployment {
 	vnf := ValidVNFDeployment()
 	vnf.Name = "embb-vnf"
 	vnf.Spec.SliceType = "eMBB"

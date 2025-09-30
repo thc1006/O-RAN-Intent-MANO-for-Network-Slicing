@@ -45,7 +45,7 @@ func TestNephioPackager_CreateVNFPackage(t *testing.T) {
 	}{
 		{
 			name:    "create_cucp_embb_package",
-			vnfSpec: fixtures.eMBBVNFDeployment(),
+			vnfSpec: fixtures.EMBBVNFDeployment(),
 			mockSetup: func(mockPorch *mocks.MockPorchClient) {
 				mockPorch.CreatePackageFunc = func(ctx context.Context, pkg *mocks.NephioPackage) error {
 					return nil
@@ -429,7 +429,7 @@ func TestNephioPackager_UpdateVNFPackage(t *testing.T) {
 		{
 			name:        "update_existing_package",
 			packageName: "cucp-embb-package",
-			vnfSpec:     fixtures.eMBBVNFDeployment(),
+			vnfSpec:     fixtures.EMBBVNFDeployment(),
 			mockSetup: func(mockPorch *mocks.MockPorchClient) {
 				mockPorch.GetPackageFunc = func(ctx context.Context, name string) (*mocks.NephioPackage, error) {
 					return fixtures.ValidCUCPPackage(), nil
