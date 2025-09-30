@@ -1,0 +1,40 @@
+# Build stage
+FROM golang:1.23-alpine AS builder
+
+WORKDIR /build
+
+# Copy go mod files
+COPY go.mod go.sum ./
+COPY go.work* ./
+
+# Download dependencies
+RUN go mod download
+
+# Copy source code
+COPY nephio-generator/ ./nephio-generator/
+COPY pkg/ ./pkg/
+
+# Build nephio generator
+WORKDIR /build/nephio-generator
+RUN CGO_ENABLED=0 GOOS=linux go build -o /app/nephio-generator ./cmd/main.go
+
+# Runtime stage
+FROM alpine:3.19
+
+RUN apk --no-cache add ca-certificates curl git kustomize
+
+# Install kpt
+RUN curl -Lo /usr/local/bin/kpt https://github.com/kptdev/kpt/releases/download/v1.0.0-beta.49/kpt_linux_amd64 && \
+    chmod +x /usr/local/bin/kpt
+
+WORKDIR /app
+
+# Copy binary
+COPY --from=builder /app/nephio-generator /app/nephio-generator
+
+# Create directories
+RUN mkdir -p /packages /logs
+
+EXPOSE 8082
+
+CMD ["/app/nephio-generator"]

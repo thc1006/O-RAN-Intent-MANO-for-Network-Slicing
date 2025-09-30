@@ -1,0 +1,165 @@
+services:
+  # K3s Kubernetes cluster
+  k3s-server:
+    image: rancher/k3s:v1.28.5-k3s1
+    container_name: o-ran-k3s
+    privileged: true
+    environment:
+      - K3S_TOKEN=o-ran-test-token
+      - K3S_KUBECONFIG_OUTPUT=/output/kubeconfig.yaml
+      - K3S_KUBECONFIG_MODE=666
+    ports:
+      - "6443:6443"  # Kubernetes API
+      - "8080:8080"  # Porch API
+      - "30000-30100:30000-30100"  # NodePort range for services
+    volumes:
+      - k3s-server:/var/lib/rancher/k3s
+      - ./kubeconfig:/output
+      - ./scripts:/scripts
+    command:
+      - server
+      - --disable=traefik
+      - --disable=servicelb
+      - --write-kubeconfig-mode=666
+    healthcheck:
+      test: ["CMD", "k3s", "kubectl", "get", "nodes"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - o-ran-network
+
+  # Wait for K3s to be ready, then install Porch
+  porch-installer:
+    image: bitnami/kubectl:latest
+    container_name: porch-installer
+    depends_on:
+      k3s-server:
+        condition: service_healthy
+    volumes:
+      - ./kubeconfig:/root/.kube
+      - ./scripts:/scripts
+      - ./porch-config:/porch-config
+    environment:
+      - KUBECONFIG=/root/.kube/kubeconfig.yaml
+    command: >
+      sh -c "
+        echo '⏳ Waiting for K3s API server...' &&
+        sleep 10 &&
+        kubectl wait --for=condition=Ready nodes --all --timeout=120s &&
+
+        echo '📦 Installing Porch CRDs...' &&
+        kubectl apply -f /porch-config/porch-crds.yaml &&
+
+        echo '📦 Installing Porch server...' &&
+        kubectl apply -f /porch-config/porch-deployment.yaml &&
+
+        echo '⏳ Waiting for Porch to be ready...' &&
+        kubectl wait --for=condition=Available --timeout=300s deployment/porch-server -n porch-system &&
+
+        echo '✅ Porch installation complete' &&
+        tail -f /dev/null
+      "
+    networks:
+      - o-ran-network
+
+  # O-RAN Intent Orchestrator
+  orchestrator:
+    build:
+      context: ..
+      dockerfile: work_dir/Dockerfile.orchestrator
+    container_name: o-ran-orchestrator
+    depends_on:
+      porch-installer:
+        condition: service_started
+    environment:
+      - PORCH_API_URL=http://k3s-server:8080
+      - NEPHIO_REPO_URL=http://gitea:3000/nephio/packages.git
+      - LOG_LEVEL=debug
+    volumes:
+      - ./kubeconfig:/root/.kube
+      - ./test-intents:/test-intents
+      - ./logs:/logs
+    networks:
+      - o-ran-network
+    command: >
+      sh -c "
+        echo '⏳ Waiting for Porch API...' &&
+        sleep 30 &&
+        echo '🚀 Starting O-RAN Intent Orchestrator...' &&
+        /app/orchestrator --config /app/config.yaml
+      "
+
+  # Nephio Package Generator
+  nephio-generator:
+    build:
+      context: ..
+      dockerfile: work_dir/Dockerfile.nephio
+    container_name: nephio-generator
+    depends_on:
+      - orchestrator
+    environment:
+      - PORCH_API_URL=http://k3s-server:8080
+      - LOG_LEVEL=debug
+    volumes:
+      - ./kubeconfig:/root/.kube
+      - ./packages:/packages
+      - ./logs:/logs
+    networks:
+      - o-ran-network
+
+  # Git server for package storage
+  gitea:
+    image: gitea/gitea:1.21
+    container_name: o-ran-gitea
+    environment:
+      - USER_UID=1000
+      - USER_GID=1000
+      - GITEA__database__DB_TYPE=sqlite3
+      - GITEA__server__HTTP_PORT=3000
+    ports:
+      - "3000:3000"
+      - "2222:22"
+    volumes:
+      - gitea-data:/data
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - o-ran-network
+
+  # Test runner
+  e2e-test:
+    build:
+      context: ..
+      dockerfile: work_dir/Dockerfile.test
+    container_name: e2e-test
+    depends_on:
+      - orchestrator
+      - nephio-generator
+    environment:
+      - KUBECONFIG=/root/.kube/kubeconfig.yaml
+      - ORCHESTRATOR_URL=http://orchestrator:8081
+      - PORCH_API_URL=http://k3s-server:8080
+    volumes:
+      - ./kubeconfig:/root/.kube
+      - ./test-intents:/test-intents
+      - ./test-results:/test-results
+      - ../tests/integration:/tests
+    networks:
+      - o-ran-network
+    command: >
+      sh -c "
+        echo '⏳ Waiting for all services to be ready...' &&
+        sleep 60 &&
+        echo '🧪 Running E2E tests...' &&
+        cd /tests &&
+        go test -v ./e2e/... -timeout 30m | tee /test-results/e2e-results.log
+      "
+
+volumes:
+  k3s-server:
+  gitea-data:
+
+networks:
+  o-ran-network:
+    driver: bridge

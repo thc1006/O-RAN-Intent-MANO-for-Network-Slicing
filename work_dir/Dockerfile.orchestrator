@@ -1,0 +1,38 @@
+# Build stage
+FROM golang:1.23-alpine AS builder
+
+WORKDIR /build
+
+# Copy go mod files
+COPY go.mod go.sum ./
+COPY go.work* ./
+
+# Download dependencies
+RUN go mod download
+
+# Copy source code
+COPY orchestrator/ ./orchestrator/
+COPY pkg/ ./pkg/
+COPY adapters/ ./adapters/
+
+# Build orchestrator
+WORKDIR /build/orchestrator
+RUN CGO_ENABLED=0 GOOS=linux go build -o /app/orchestrator ./cmd/main.go
+
+# Runtime stage
+FROM alpine:3.19
+
+RUN apk --no-cache add ca-certificates curl
+
+WORKDIR /app
+
+# Copy binary and config
+COPY --from=builder /app/orchestrator /app/orchestrator
+COPY orchestrator/config.yaml /app/config.yaml
+
+# Create directories
+RUN mkdir -p /logs /test-intents
+
+EXPOSE 8081
+
+CMD ["/app/orchestrator", "--config", "/app/config.yaml"]

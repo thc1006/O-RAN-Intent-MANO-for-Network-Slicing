@@ -1,0 +1,104 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: porch-system
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: packagerevisions.porch.kpt.dev
+spec:
+  group: porch.kpt.dev
+  names:
+    kind: PackageRevision
+    listKind: PackageRevisionList
+    plural: packagerevisions
+    singular: packagerevision
+    shortNames:
+      - pr
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                packageName:
+                  type: string
+                repositoryName:
+                  type: string
+                lifecycle:
+                  type: string
+                  enum: [Draft, Proposed, Published]
+                tasks:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                      init:
+                        type: object
+                        x-kubernetes-preserve-unknown-fields: true
+                      patch:
+                        type: object
+                        x-kubernetes-preserve-unknown-fields: true
+                resources:
+                  type: object
+                  x-kubernetes-preserve-unknown-fields: true
+            status:
+              type: object
+              x-kubernetes-preserve-unknown-fields: true
+      subresources:
+        status: {}
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: repositories.porch.kpt.dev
+spec:
+  group: porch.kpt.dev
+  names:
+    kind: Repository
+    listKind: RepositoryList
+    plural: repositories
+    singular: repository
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                type:
+                  type: string
+                  enum: [git]
+                git:
+                  type: object
+                  properties:
+                    repo:
+                      type: string
+                    branch:
+                      type: string
+                    directory:
+                      type: string
+                    secretRef:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+            status:
+              type: object
+              x-kubernetes-preserve-unknown-fields: true
+      subresources:
+        status: {}
