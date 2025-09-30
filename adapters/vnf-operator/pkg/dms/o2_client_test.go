@@ -102,7 +102,7 @@ func TestO2DMSClient_GetInventory(t *testing.T) {
 		},
 		{
 			name:          "network_timeout",
-			httpError:     &http.Client{}.Timeout,
+			httpError:     http.Client{}.Timeout,
 			expectedError: true,
 			validateRequest: func(t *testing.T, req *http.Request) {
 				assert.Equal(t, "GET", req.Method)

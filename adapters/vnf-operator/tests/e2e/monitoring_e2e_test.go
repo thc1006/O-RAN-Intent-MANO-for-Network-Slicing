@@ -124,7 +124,7 @@ var _ = Describe("O-RAN Monitoring Stack E2E Tests", func() {
 
 		It("should scrape all configured targets", func() {
 			// Port forward to Prometheus
-			promURL := fmt.Sprintf("http://prometheus.%s.svc.cluster.local:%d", namespace, prometheusPort)
+			_ = fmt.Sprintf("http://prometheus.%s.svc.cluster.local:%d", namespace, prometheusPort)
 
 			Eventually(func() bool {
 				resp, err := makeClusterRequest(ctx, clientset, restConfig,

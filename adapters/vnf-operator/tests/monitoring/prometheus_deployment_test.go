@@ -55,11 +55,11 @@ type ScrapeConfig struct {
 	ScrapeTimeout  string
 	MetricsPath    string
 	Scheme         string
-	TLSConfig      *TLSConfig
+	TLSConfig      *PrometheusTLSConfig
 }
 
-// TLSConfig represents TLS configuration for scraping
-type TLSConfig struct {
+// PrometheusTLSConfig represents TLS configuration for scraping
+type PrometheusTLSConfig struct {
 	InsecureSkipVerify bool
 	CertFile           string
 	KeyFile            string

@@ -25,14 +25,12 @@ func (p *NephioPackager) GenerateConfigMaps(vnfSpec *fixtures.VNFDeployment) ([]
 	return nil, nil
 }
 
+// Note: GenerateCRDs, ValidatePackage, and other methods are defined in nephio_packager.go
+// This test file extends the NephioPackager with test-specific helper methods only
+
 func (p *NephioPackager) GenerateCRDs(vnfSpec *fixtures.VNFDeployment) ([]interface{}, error) {
 	// Not implemented yet - will cause tests to fail
 	return nil, nil
-}
-
-func (p *NephioPackager) ValidatePackage(pkg *mocks.NephioPackage) error {
-	// Not implemented yet - will cause tests to fail
-	return nil
 }
 
 // Table-driven tests for Nephio package generation from VNF specs

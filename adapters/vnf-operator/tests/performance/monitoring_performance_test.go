@@ -8,6 +8,7 @@ import (
 	"io"
 	"math/rand"
 	"net/http"
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -534,5 +535,6 @@ func TestMonitoringPerformance(t *testing.T) {
 
 func TestMain(m *testing.M) {
 	RegisterFailHandler(Fail)
-	RunSpecs(m, "Monitoring Performance Test Suite")
+	RunSpecs(&testing.T{}, "Monitoring Performance Test Suite")
+	os.Exit(m.Run())
 }

@@ -45,7 +45,6 @@
   ],
   "author": "thc1006",
   "license": "Apache-2.0",
-  "devDependencies": {},
   "engines": {
     "node": ">=18.0.0"
   },
@@ -63,5 +62,8 @@
       "golangci-lint": "^1.54.0",
       "trivy": "^0.45.0"
     }
+  },
+  "dependencies": {
+    "claude-flow": "^2.0.0-alpha.128"
   }
 }

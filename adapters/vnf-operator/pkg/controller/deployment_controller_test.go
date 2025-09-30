@@ -116,7 +116,7 @@ func TestVNFDeploymentReconciler_Reconcile(t *testing.T) {
 		},
 		{
 			name:           "embb_slice_deployment",
-			vnfDeployment:  fixtures.eMBBVNFDeployment(),
+			vnfDeployment:  fixtures.EMBBVNFDeployment(),
 			expectedResult: reconcile.Result{RequeueAfter: time.Minute * 5},
 			expectedError:  false,
 			validateCalls: func(t *testing.T, mockK8s *mocks.MockK8sClient, mockDMS *MockDMSClient, mockGitOps *MockGitOpsClient) {
