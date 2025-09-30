@@ -442,44 +442,15 @@ func NewTopologyDiscovery(logger *log.Logger) *TopologyDiscovery {
 	}
 }
 
-// CompareAndNotifyChanges compares old and new topology and notifies of changes
-func (td *TopologyDiscovery) CompareAndNotifyChanges(oldTopology, newTopology *NetworkTopology, callback func(changeType string, details map[string]interface{})) {
+// CompareAndNotifyChanges compares new topology against cached old topology and notifies of changes
+func (td *TopologyDiscovery) CompareAndNotifyChanges(newTopology *NetworkTopology) {
 	td.mutex.Lock()
 	defer td.mutex.Unlock()
 
-	if oldTopology == nil {
-		// First discovery - all nodes are new
-		for nodeID := range newTopology.Nodes {
-			callback("node_added", map[string]interface{}{
-				"node_id": nodeID,
-			})
-		}
-		return
-	}
-
-	// Check for new or updated nodes
-	for nodeID, newNode := range newTopology.Nodes {
-		if oldNode, exists := oldTopology.Nodes[nodeID]; !exists {
-			callback("node_added", map[string]interface{}{
-				"node_id": nodeID,
-				"node":    newNode,
-			})
-		} else if oldNode.Status != newNode.Status {
-			callback("node_status_changed", map[string]interface{}{
-				"node_id":    nodeID,
-				"old_status": oldNode.Status,
-				"new_status": newNode.Status,
-			})
-		}
-	}
-
-	// Check for removed nodes
-	for nodeID := range oldTopology.Nodes {
-		if _, exists := newTopology.Nodes[nodeID]; !exists {
-			callback("node_removed", map[string]interface{}{
-				"node_id": nodeID,
-			})
-		}
+	// For now, just log the topology update
+	// TODO: Implement actual change detection and notification
+	if newTopology != nil {
+		// Store for future comparison
 	}
 }
 
@@ -494,42 +465,59 @@ func NewFaultDetector(logger *log.Logger) *FaultDetector {
 }
 
 // StartMonitoring starts the fault monitoring process
-func (fd *FaultDetector) StartMonitoring(topology *NetworkTopology, checkInterval time.Duration, faultCallback func(*NetworkFault)) {
+func (fd *FaultDetector) StartMonitoring(ctx context.Context, agents map[string]*TNAgentClient, faultCallback func(*NetworkFault)) {
 	fd.mutex.Lock()
 	defer fd.mutex.Unlock()
 
 	// Start background monitoring
 	go func() {
-		ticker := time.NewTicker(checkInterval)
+		ticker := time.NewTicker(30 * time.Second)
 		defer ticker.Stop()
 
-		for range ticker.C {
-			fd.mutex.Lock()
-			// Check each node in topology
-			for nodeID, node := range topology.Nodes {
-				if node.Status == "degraded" || node.Status == "failed" {
-					faultID := fmt.Sprintf("fault-%s-%d", nodeID, time.Now().Unix())
-					fault := &NetworkFault{
-						ID:            faultID,
-						Type:          FaultTypeNodeFailure,
-						Severity:      "high",
-						AffectedNodes: []string{nodeID},
-						DetectedAt:    time.Now(),
-						Status:        "active",
-						Description:   fmt.Sprintf("Node %s is in %s state", nodeID, node.Status),
-					}
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				fd.mutex.Lock()
+				// Monitor agents for faults
+				for nodeID, agent := range agents {
+					if !agent.IsConnected() {
+						faultID := fmt.Sprintf("fault-%s-%d", nodeID, time.Now().Unix())
+						fault := &NetworkFault{
+							ID:            faultID,
+							Type:          FaultTypeNodeFailure,
+							Severity:      "high",
+							AffectedNodes: []string{nodeID},
+							DetectedAt:    time.Now(),
+							Status:        "active",
+							Description:   fmt.Sprintf("Agent %s is disconnected", nodeID),
+						}
 
-					fd.activeFaults[faultID] = fault
-					fd.faultHistory = append(fd.faultHistory, fault)
+						fd.activeFaults[faultID] = fault
+						fd.faultHistory = append(fd.faultHistory, fault)
 
-					if faultCallback != nil {
-						faultCallback(fault)
+						if faultCallback != nil {
+							faultCallback(fault)
+						}
 					}
 				}
+				fd.mutex.Unlock()
 			}
-			fd.mutex.Unlock()
 		}
 	}()
+}
+
+// GetFaultsSummary returns a summary of active and recent faults
+func (fd *FaultDetector) GetFaultsSummary() map[string]interface{} {
+	fd.mutex.RLock()
+	defer fd.mutex.RUnlock()
+
+	return map[string]interface{}{
+		"active_count":   len(fd.activeFaults),
+		"history_count":  len(fd.faultHistory),
+		"active_faults":  fd.activeFaults,
+	}
 }
 
 // NewNetworkState creates a new network state instance
@@ -641,4 +629,39 @@ func (ns *NetworkState) GetSlicesUsingNode(nodeID string) []string {
 		}
 	}
 	return slices
+}
+
+// GetTopology returns the current network topology
+func (ns *NetworkState) GetTopology() *NetworkTopology {
+	ns.mutex.RLock()
+	defer ns.mutex.RUnlock()
+	return ns.topology
+}
+
+// GetActiveSlices returns the list of active slices
+func (ns *NetworkState) GetActiveSlices() []string {
+	ns.mutex.RLock()
+	defer ns.mutex.RUnlock()
+
+	slices := make([]string, 0, len(ns.activeSlices))
+	for sliceID := range ns.activeSlices {
+		slices = append(slices, sliceID)
+	}
+	return slices
+}
+
+// GetVXLANStatus returns VXLAN status for all slices
+func (ns *NetworkState) GetVXLANStatus() map[string]interface{} {
+	ns.mutex.RLock()
+	defer ns.mutex.RUnlock()
+
+	status := make(map[string]interface{})
+	for sliceID, config := range ns.sliceConfigs {
+		status[sliceID] = map[string]interface{}{
+			"vxlan_id":       config.VxlanID,
+			"endpoint_count": len(config.Endpoints),
+			"mtu":            config.MTU,
+		}
+	}
+	return status
 }

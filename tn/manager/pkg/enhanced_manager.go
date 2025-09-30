@@ -380,12 +380,16 @@ func (etm *EnhancedTNManager) recoverVXLANFault(ctx context.Context, fault *Netw
 	}
 
 	// Restart VXLAN configuration
-	sliceConfigs := etm.networkState.GetSliceVXLANConfigs()
+	sliceConfigs := etm.networkState.GetSliceVXLANConfigs(fault.NodeName)
+	configsMap := make(map[string]interface{})
 	for sliceID, config := range sliceConfigs {
-		if err := agent.RestartVXLAN(sliceID, config); err != nil {
-			security.SafeLogf(etm.logger, "Failed to restart VXLAN for slice %s: %v",
-				security.SanitizeForLog(sliceID), err)
-			continue
+		configsMap[sliceID] = config
+	}
+
+	if len(configsMap) > 0 {
+		if err := agent.RestartVXLAN(configsMap); err != nil {
+			security.SafeLogf(etm.logger, "Failed to restart VXLAN: %v", err)
+			return
 		}
 
 		etm.publishEvent(TNEvent{
@@ -409,7 +413,7 @@ func (etm *EnhancedTNManager) recoverQoSFault(ctx context.Context, fault *Networ
 	}
 
 	// Reconfigure QoS policies
-	sliceStrategies := etm.networkState.GetSliceQoSStrategies()
+	sliceStrategies := etm.networkState.GetSliceQoSStrategies(fault.NodeName)
 	for sliceID, strategy := range sliceStrategies {
 		qosConfig := etm.qosManager.GenerateClusterConfig(strategy, fault.NodeName)
 		if err := agent.ConfigureQoS(sliceID, qosConfig); err != nil {
@@ -447,7 +451,7 @@ func (etm *EnhancedTNManager) recoverLatencyFault(ctx context.Context, fault *Ne
 	security.SafeLogf(etm.logger, "Attempting latency fault recovery for %s", security.SanitizeForLog(fault.NodeName))
 
 	// Adjust QoS parameters to compensate for latency
-	sliceStrategies := etm.networkState.GetSliceQoSStrategies()
+	sliceStrategies := etm.networkState.GetSliceQoSStrategies(fault.NodeName)
 	for sliceID, strategy := range sliceStrategies {
 		// Create updated strategy with priority adjustments
 		updatedStrategy := etm.qosManager.AdjustForLatency(strategy, fault.Details)
