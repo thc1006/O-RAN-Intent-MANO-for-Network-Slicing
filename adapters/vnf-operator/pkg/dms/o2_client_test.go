@@ -428,7 +428,8 @@ func TestO2DMSClient_RetryLogic(t *testing.T) {
 				Endpoint:   "http://test-o2dms:8080",
 				Token:      "test-token",
 				httpClient: &http.Client{Transport: mockHTTP},
-				RetryCount: tt.retryCount,
+				maxRetries: tt.retryCount,
+				retryDelay: time.Second,
 			}
 
 			// This method doesn't exist yet - will cause test to fail

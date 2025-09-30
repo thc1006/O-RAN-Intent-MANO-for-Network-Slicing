@@ -77,6 +77,14 @@ func (m *MockObservabilityStack) EvaluateAlerts(rules []AlertRule) ([]Alert, err
 	return args.Get(0).([]Alert), args.Error(1)
 }
 
+func (m *MockObservabilityStack) MeasureQueryPerformance(query string, timeRange TimeRange) (*PerformanceMetrics, error) {
+	args := m.Called(query, timeRange)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*PerformanceMetrics), args.Error(1)
+}
+
 func (m *MockObservabilityStack) ValidateStack() (*StackValidation, error) {
 	args := m.Called()
 	if args.Get(0) == nil {

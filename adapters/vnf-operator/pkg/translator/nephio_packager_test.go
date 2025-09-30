@@ -406,7 +406,7 @@ func TestNephioPackager_ValidatePackage(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			packager := &NephioPackager{}
 
-			err := packager.ValidatePackage(tt.pkg)
+			err := packager.ValidatePackage(context.Background(), tt.pkg)
 
 			if tt.expectedError {
 				assert.Error(t, err)
