@@ -340,7 +340,7 @@ func ValidURLLCPlacementRequest() PlacementRequest {
 func ValidMmTCPlacementRequest() PlacementRequest {
 	req := ValidEMBBPlacementRequest()
 	req.ID = "placement-mmtc-001"
-	req.VNFSpec = mMTCVNFDeployment()
+	req.VNFSpec = MMTCVNFDeployment()
 	req.QoSProfile.Latency.Value = "100"
 	req.QoSProfile.Throughput.Downlink = "10Mbps"
 	req.Constraints.Resources.MinCPU = "1000m"

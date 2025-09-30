@@ -9,7 +9,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -180,6 +179,16 @@ type AlertPropagation struct {
 	Notifications []NotificationResult
 	TotalTime     time.Duration
 	Success       bool
+}
+
+// Notification represents an alert notification
+type Notification struct {
+	AlertName   string
+	Severity    string
+	Message     string
+	Receiver    string
+	Channel     string
+	SentAt      time.Time
 }
 
 // NotificationResult represents notification delivery result

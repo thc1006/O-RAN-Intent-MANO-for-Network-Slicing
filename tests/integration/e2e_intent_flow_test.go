@@ -270,7 +270,7 @@ func (suite *E2EIntentFlowTestSuite) TestMmTCSliceCreationFlow() {
 	require.NotNil(suite.T(), placement)
 
 	// Step 3: Deploy mMTC VNF optimized for device density
-	vnfSpec := fixtures.mMTCVNFDeployment()
+	vnfSpec := fixtures.MMTCVNFDeployment()
 	deploymentResult, err := suite.VNFOrchestrator.DeployVNF(ctx, vnfSpec, placement)
 	require.NoError(suite.T(), err)
 
@@ -357,7 +357,7 @@ func (suite *E2EIntentFlowTestSuite) TestConcurrentSliceRequests() {
 			case fixtures.SliceTypeURLLC:
 				vnfSpec = fixtures.URLLCVNFDeployment()
 			case fixtures.SliceTypeMmTC:
-				vnfSpec = fixtures.mMTCVNFDeployment()
+				vnfSpec = fixtures.MMTCVNFDeployment()
 			}
 
 			result, err := suite.VNFOrchestrator.DeployVNF(ctx, vnfSpec, placement)

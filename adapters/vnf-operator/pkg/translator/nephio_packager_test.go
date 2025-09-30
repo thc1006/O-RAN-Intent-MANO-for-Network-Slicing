@@ -253,7 +253,7 @@ func TestNephioPackager_GenerateConfigMaps(t *testing.T) {
 		},
 		{
 			name:          "generate_mmtc_configmaps",
-			vnfSpec:       fixtures.mMTCVNFDeployment(),
+			vnfSpec:       fixtures.MMTCVNFDeployment(),
 			expectedCount: 3,
 			expectedError: false,
 			validate: func(t *testing.T, configMaps []interface{}) {
