@@ -26,6 +26,8 @@ jobs:
     name: Dependency Review
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    # Only run on pull requests (dependency-review-action requires base/head refs)
+    if: github.event_name == 'pull_request'
 
     steps:
     - name: Checkout repository

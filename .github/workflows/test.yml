@@ -169,7 +169,8 @@ jobs:
     - name: Install system dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y iperf3 etcd bc jq xmlstarlet
+        # etcd package not available in Ubuntu 24.04, will use kubebuilder's etcd
+        sudo apt-get install -y iperf3 bc jq xmlstarlet
 
     - name: Set up Kubernetes test environment
       if: matrix.component.requires_k8s
