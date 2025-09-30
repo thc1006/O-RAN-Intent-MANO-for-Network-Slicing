@@ -81,8 +81,8 @@ jobs:
           queries:
             - uses: security-extended
             - uses: security-and-quality
-        # Override the default database creation method
-        build-mode: manual
+        # Python and JavaScript use 'none', Go requires 'manual'
+        build-mode: ${{ matrix.language == 'go' && 'manual' || 'none' }}
 
     # For Go: Build the code manually to ensure proper analysis
     - name: Build Go code
