@@ -1,0 +1,50 @@
+# Multi-stage Dockerfile for O-RAN Intent MANO Testing
+# Optimized for running comprehensive test suites with coverage
+
+FROM golang:1.24-alpine AS test-base
+
+# Install essential testing tools
+RUN apk add --no-cache \
+    git \
+    gcc \
+    musl-dev \
+    bash \
+    make \
+    curl
+
+WORKDIR /workspace
+
+# Copy go modules first for better caching
+COPY go.mod go.sum* ./
+RUN go mod download || true
+
+# Copy entire source tree
+COPY . .
+
+# Install test dependencies (optional tools, don't fail build if unavailable)
+RUN go install github.com/jstemmer/go-junit-report@latest || true
+
+# Create reports directory
+RUN mkdir -p /workspace/work_dir/reports
+
+# Default command: Run all tests with coverage
+CMD ["go", "test", "-v", "-race", "-coverprofile=/workspace/work_dir/reports/coverage.out", "-covermode=atomic", "./work_dir/tests/..."]
+
+# Stage 2: Test runner with additional tools
+FROM test-base AS test-runner
+
+# Install coverage tools (optional, don't fail build)
+RUN go install github.com/axw/gocov/gocov@latest || true
+
+# Add test execution script
+COPY work_dir/run-tests.sh /usr/local/bin/run-tests.sh
+RUN chmod +x /usr/local/bin/run-tests.sh
+
+ENTRYPOINT ["/usr/local/bin/run-tests.sh"]
+
+# Stage 3: Coverage reporter
+FROM test-base AS coverage-reporter
+
+WORKDIR /workspace/work_dir/reports
+
+CMD ["sh", "-c", "go tool cover -html=/workspace/work_dir/reports/coverage.out -o /workspace/work_dir/reports/coverage.html && echo 'Coverage report generated at work_dir/reports/coverage.html'"]

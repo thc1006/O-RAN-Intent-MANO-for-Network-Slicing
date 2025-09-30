@@ -3,12 +3,12 @@ package o2ims
 import (
 	"context"
 	"fmt"
-	"log"
 	"math"
 	"math/rand"
 	"time"
 
 	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/o2-client/pkg/models"
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/logging"
 )
 
 // Enhanced O2 IMS Client Methods with retry logic and event handling
@@ -62,7 +62,9 @@ func (c *Client) publishEvent(event Event) {
 	select {
 	case c.eventChan <- event:
 	default:
-		log.Printf("Event channel full, dropping event: %s", event.ID)
+		logging.Warn("event channel full, dropping event",
+			"event_id", event.ID,
+			"event_type", event.Type)
 	}
 }
 
@@ -76,7 +78,10 @@ func (c *Client) processEvent(event Event) {
 		go func(h EventHandler) {
 			defer func() {
 				if r := recover(); r != nil {
-					log.Printf("Event handler panic: %v", r)
+					logging.Error("event handler panic",
+						"panic", r,
+						"event_id", event.ID,
+						"event_type", event.Type)
 				}
 			}()
 			h(event)
@@ -163,7 +168,9 @@ func (c *Client) performHealthCheck(ctx context.Context) {
 
 	_, err := c.GetHealthInfo(healthCtx)
 	if err != nil {
-		log.Printf("Health check failed: %v", err)
+		logging.Error("health check failed",
+			"source", "o2ims.client",
+			"error", err)
 		c.publishEvent(Event{
 			ID:        fmt.Sprintf("health_%d", time.Now().UnixNano()),
 			Type:      "health.check.failed",
@@ -173,6 +180,8 @@ func (c *Client) performHealthCheck(ctx context.Context) {
 			Severity:  SeverityError,
 		})
 	} else {
+		logging.Info("health check successful",
+			"source", "o2ims.client")
 		c.publishEvent(Event{
 			ID:        fmt.Sprintf("health_%d", time.Now().UnixNano()),
 			Type:      "health.check.success",
@@ -271,7 +280,10 @@ func (c *Client) retryWithBackoff(ctx context.Context, fn func() error) error {
 				return err
 			}
 
-			log.Printf("Attempt %d failed, retrying: %v", attempt+1, err)
+			logging.Debug("retry attempt",
+				"attempt", attempt+1,
+				"max_retries", c.retryConfig.MaxRetries,
+				"error", err)
 			continue
 		}
 
@@ -321,7 +333,9 @@ func (c *Client) DiscoverResourcesByCapabilities(ctx context.Context, capabiliti
 	for _, pool := range pools.Items {
 		resources, err := c.GetResourcesWithRetry(ctx, pool.ResourcePoolID, models.ResourceFilter{})
 		if err != nil {
-			log.Printf("Failed to get resources from pool %s: %v", pool.ResourcePoolID, err)
+			logging.Warn("failed to get resources from pool",
+				"pool_id", pool.ResourcePoolID,
+				"error", err)
 			continue
 		}
 

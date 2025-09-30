@@ -1,0 +1,147 @@
+[
+  {
+    "httpRequest": {
+      "method": "POST",
+      "path": "/api/v1/vnf/deploy"
+    },
+    "httpResponse": {
+      "statusCode": 201,
+      "headers": {
+        "Content-Type": ["application/json"],
+        "Location": ["/api/v1/vnf/status/deployment-12345"]
+      },
+      "body": {
+        "deployment_id": "deployment-12345",
+        "status": "Pending",
+        "message": "VNF deployment initiated"
+      },
+      "delay": {
+        "timeUnit": "MILLISECONDS",
+        "value": 200
+      }
+    }
+  },
+  {
+    "httpRequest": {
+      "method": "GET",
+      "path": "/api/v1/vnf/status/deployment-12345"
+    },
+    "httpResponseClassCallback": {
+      "callbackClass": "org.mockserver.mock.action.ExpectationResponseCallback"
+    },
+    "times": {
+      "remainingTimes": 0,
+      "unlimited": true
+    },
+    "httpResponse": {
+      "statusCode": 200,
+      "headers": {
+        "Content-Type": ["application/json"]
+      },
+      "body": {
+        "deployment_id": "deployment-12345",
+        "state": "Ready",
+        "all_pods_running": true,
+        "ready_replicas": 3,
+        "total_replicas": 3,
+        "conditions": [
+          {
+            "type": "Available",
+            "status": "True",
+            "reason": "MinimumReplicasAvailable",
+            "message": "Deployment has minimum availability.",
+            "last_transition_time": "2025-09-30T10:02:00Z"
+          },
+          {
+            "type": "Progressing",
+            "status": "True",
+            "reason": "NewReplicaSetAvailable",
+            "message": "ReplicaSet has successfully progressed.",
+            "last_transition_time": "2025-09-30T10:03:00Z"
+          }
+        ],
+        "message": "All VNFs are running and ready",
+        "updated_at": "2025-09-30T10:03:00Z"
+      },
+      "delay": {
+        "timeUnit": "MILLISECONDS",
+        "value": 100
+      }
+    }
+  },
+  {
+    "httpRequest": {
+      "method": "GET",
+      "path": "/api/v1/vnf/status/.*"
+    },
+    "httpResponse": {
+      "statusCode": 200,
+      "headers": {
+        "Content-Type": ["application/json"]
+      },
+      "body": {
+        "deployment_id": "deployment-12345",
+        "state": "Running",
+        "all_pods_running": true,
+        "ready_replicas": 3,
+        "total_replicas": 3,
+        "conditions": [
+          {
+            "type": "Available",
+            "status": "True",
+            "reason": "MinimumReplicasAvailable",
+            "message": "Deployment has minimum availability.",
+            "last_transition_time": "2025-09-30T10:02:00Z"
+          }
+        ],
+        "message": "VNF deployment is operational",
+        "updated_at": "2025-09-30T10:03:00Z"
+      },
+      "delay": {
+        "timeUnit": "MILLISECONDS",
+        "value": 100
+      }
+    }
+  },
+  {
+    "httpRequest": {
+      "method": "DELETE",
+      "path": "/api/v1/vnf/deploy/.*"
+    },
+    "httpResponse": {
+      "statusCode": 202,
+      "headers": {
+        "Content-Type": ["application/json"]
+      },
+      "body": {
+        "message": "VNF deployment deletion initiated",
+        "state": "Terminating"
+      },
+      "delay": {
+        "timeUnit": "MILLISECONDS",
+        "value": 150
+      }
+    }
+  },
+  {
+    "httpRequest": {
+      "method": "PATCH",
+      "path": "/api/v1/vnf/deploy/.*"
+    },
+    "httpResponse": {
+      "statusCode": 200,
+      "headers": {
+        "Content-Type": ["application/json"]
+      },
+      "body": {
+        "deployment_id": "deployment-12345",
+        "message": "VNF deployment updated successfully",
+        "state": "Updating"
+      },
+      "delay": {
+        "timeUnit": "MILLISECONDS",
+        "value": 250
+      }
+    }
+  }
+]

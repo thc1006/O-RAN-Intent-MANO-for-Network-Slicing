@@ -1,0 +1,30 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+LAYOUT_WITH_LEGEND()
+
+title System Context - O-RAN Intent MANO for Network Slicing
+
+Person(user, "Network Operator", "Submits high-level intents for network slice creation and management")
+
+System(nlp, "NLP Module", "Parses natural language intents into structured data")
+System(claude, "Claude Client", "AI-powered intent analysis and validation")
+System(orchestrator, "Orchestrator", "Resource placement and scheduling decisions")
+System(nephio, "Nephio Generator", "Package generation and rendering using kpt")
+System(vnf, "VNF Operator", "CN VNF lifecycle management")
+System(tn, "TN Agent", "Transport network configuration")
+
+System_Ext(k8s, "Kubernetes API", "Cluster management and orchestration")
+System_Ext(o2, "O2 API", "O-RAN management interface")
+
+Rel(user, nlp, "Submits intent", "REST API")
+Rel(nlp, claude, "Processed intent", "JSON")
+Rel(claude, orchestrator, "Placement decision", "gRPC")
+Rel(orchestrator, nephio, "Generate packages", "API call")
+Rel(nephio, vnf, "Deploy VNF", "K8s CR")
+Rel(orchestrator, tn, "Configure transport", "Commands")
+Rel(vnf, k8s, "Manages pods", "K8s API")
+Rel(tn, o2, "O2 interface", "REST/gRPC")
+
+SHOW_LEGEND()
+@enduml

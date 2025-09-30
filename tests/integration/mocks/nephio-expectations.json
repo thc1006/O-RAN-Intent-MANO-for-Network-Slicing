@@ -1,0 +1,198 @@
+[
+  {
+    "httpRequest": {
+      "method": "POST",
+      "path": "/api/v1/nephio/generate"
+    },
+    "httpResponse": {
+      "statusCode": 200,
+      "headers": {
+        "Content-Type": ["application/json"]
+      },
+      "body": [
+        {
+          "name": "upf-package",
+          "version": "v1.0.0",
+          "path": "/testdata/generated-packages/upf-package",
+          "resources": [
+            "deployment.yaml",
+            "service.yaml",
+            "configmap.yaml"
+          ],
+          "dependencies": [
+            "base-package"
+          ],
+          "metadata": {
+            "component": "upf",
+            "vendor": "openairinterface",
+            "slice_type": "eMBB"
+          },
+          "created_at": "2025-09-30T10:01:00Z"
+        },
+        {
+          "name": "amf-package",
+          "version": "v1.0.0",
+          "path": "/testdata/generated-packages/amf-package",
+          "resources": [
+            "deployment.yaml",
+            "service.yaml",
+            "configmap.yaml"
+          ],
+          "dependencies": [
+            "base-package"
+          ],
+          "metadata": {
+            "component": "amf",
+            "vendor": "free5gc",
+            "slice_type": "eMBB"
+          },
+          "created_at": "2025-09-30T10:01:00Z"
+        },
+        {
+          "name": "smf-package",
+          "version": "v1.0.0",
+          "path": "/testdata/generated-packages/smf-package",
+          "resources": [
+            "deployment.yaml",
+            "service.yaml",
+            "configmap.yaml"
+          ],
+          "dependencies": [
+            "base-package"
+          ],
+          "metadata": {
+            "component": "smf",
+            "vendor": "free5gc",
+            "slice_type": "eMBB"
+          },
+          "created_at": "2025-09-30T10:01:00Z"
+        }
+      ],
+      "delay": {
+        "timeUnit": "MILLISECONDS",
+        "value": 500
+      }
+    }
+  },
+  {
+    "httpRequest": {
+      "method": "POST",
+      "path": "/api/v1/nephio/generate",
+      "queryStringParameters": {
+        "mock": ["o2"]
+      }
+    },
+    "httpResponse": {
+      "statusCode": 200,
+      "headers": {
+        "Content-Type": ["application/json"]
+      },
+      "body": [
+        {
+          "name": "o2-inventory-package",
+          "version": "v1.0.0",
+          "path": "/testdata/generated-packages/o2-inventory-package",
+          "resources": [
+            "o2ims-inventory.yaml",
+            "deployment-manager.yaml"
+          ],
+          "dependencies": [],
+          "metadata": {
+            "component": "o2-inventory",
+            "vendor": "o-ran-sc",
+            "integration": "o2ims"
+          },
+          "created_at": "2025-09-30T10:01:00Z"
+        }
+      ],
+      "delay": {
+        "timeUnit": "MILLISECONDS",
+        "value": 300
+      }
+    }
+  },
+  {
+    "httpRequest": {
+      "method": "GET",
+      "path": "/api/v1/nephio/packages"
+    },
+    "httpResponse": {
+      "statusCode": 200,
+      "headers": {
+        "Content-Type": ["application/json"]
+      },
+      "body": {
+        "packages": [
+          {
+            "name": "upf-package",
+            "version": "v1.0.0",
+            "status": "Ready"
+          },
+          {
+            "name": "amf-package",
+            "version": "v1.0.0",
+            "status": "Ready"
+          },
+          {
+            "name": "smf-package",
+            "version": "v1.0.0",
+            "status": "Ready"
+          }
+        ],
+        "total": 3
+      },
+      "delay": {
+        "timeUnit": "MILLISECONDS",
+        "value": 100
+      }
+    }
+  },
+  {
+    "httpRequest": {
+      "method": "GET",
+      "path": "/api/v1/nephio/package/.+"
+    },
+    "httpResponse": {
+      "statusCode": 200,
+      "headers": {
+        "Content-Type": ["application/json"]
+      },
+      "body": {
+        "name": "upf-package",
+        "version": "v1.0.0",
+        "path": "/testdata/generated-packages/upf-package",
+        "resources": [
+          "deployment.yaml",
+          "service.yaml",
+          "configmap.yaml"
+        ],
+        "dependencies": [
+          "base-package"
+        ],
+        "metadata": {
+          "component": "upf",
+          "vendor": "openairinterface",
+          "slice_type": "eMBB"
+        },
+        "created_at": "2025-09-30T10:01:00Z"
+      },
+      "delay": {
+        "timeUnit": "MILLISECONDS",
+        "value": 50
+      }
+    }
+  },
+  {
+    "httpRequest": {
+      "method": "DELETE",
+      "path": "/api/v1/nephio/package/.+"
+    },
+    "httpResponse": {
+      "statusCode": 204,
+      "delay": {
+        "timeUnit": "MILLISECONDS",
+        "value": 100
+      }
+    }
+  }
+]

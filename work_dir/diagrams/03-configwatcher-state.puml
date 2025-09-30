@@ -1,0 +1,83 @@
+@startuml
+!theme plain
+title ConfigWatcher State Machine
+
+[*] --> Initializing : Create ConfigWatcher
+
+state Initializing {
+    [*] --> LoadingConfig
+    LoadingConfig --> ValidatingSetup
+    ValidatingSetup --> SetupInformer
+    SetupInformer --> [*]
+}
+
+Initializing --> Watching : Start(ctx, ch)
+Initializing --> Error : init failed
+
+state Watching {
+    [*] --> Idle
+    Idle --> Listening : informer running
+    Listening --> EventReceived : ConfigMap event
+    EventReceived --> Idle : event queued
+
+    note right of Listening
+        Watching for ConfigMap
+        changes with labels:
+        - app=network-slicing
+        - managed-by=mano
+    end note
+}
+
+Watching --> Processing : ConfigMap event received
+
+state Processing {
+    [*] --> Filtering
+    Filtering --> Validating : labels match
+    Filtering --> [*] : labels don't match
+    Validating --> Sending : validation pass
+    Sending --> [*] : sent to channel
+
+    note right of Filtering
+        Filter by:
+        - Label selectors
+        - Namespace
+        - Event type (Add/Update/Delete)
+    end note
+}
+
+Processing --> Watching : event processed
+Processing --> Error : processing failed
+
+Watching --> Stopped : context cancelled
+Error --> Stopped : shutdown
+Stopped --> [*]
+
+state Watching {
+    Watching : entry / setup informer factory
+    Watching : do / watch ConfigMaps continuously
+    Watching : exit / cleanup informer
+}
+
+state Processing {
+    Processing : entry / filter by labels
+    Processing : do / validate and send to channel
+    Processing : exit / log processing result
+}
+
+state Error {
+    Error : entry / log error details
+    Error : do / attempt recovery if possible
+    Error : exit / cleanup resources
+}
+
+note top of Watching
+    Main operational state
+    Uses K8s informer pattern
+end note
+
+note bottom of Processing
+    Non-blocking channel send
+    with timeout protection
+end note
+
+@enduml

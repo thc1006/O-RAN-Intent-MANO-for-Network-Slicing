@@ -1,0 +1,14 @@
+package main
+
+import (
+	"fmt"
+	"sigs.k8s.io/yaml"
+)
+
+func main() {
+	content := "{ invalid yaml content }"
+	var obj map[string]interface{}
+	err := yaml.Unmarshal([]byte(content), &obj)
+	fmt.Printf("Error: %v\n", err)
+	fmt.Printf("Parsed: %+v\n", obj)
+}

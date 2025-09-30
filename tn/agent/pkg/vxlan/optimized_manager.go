@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/logging"
 	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security"
 )
 
@@ -201,7 +202,9 @@ func (m *OptimizedManager) createTunnelOptimized(vxlanID int32, localIP string, 
 		// Delete existing tunnel if in failed state
 		if err := m.DeleteTunnelOptimized(vxlanID); err != nil {
 			// Log the deletion failure and assess if we should continue
-			fmt.Printf("Warning: failed to delete existing tunnel %d: %v\n", vxlanID, err)
+			logging.Warn("failed to delete existing tunnel",
+				"vxlan_id", vxlanID,
+				"error", err)
 
 			// For certain critical errors, we should not continue
 			if strings.Contains(err.Error(), "permission denied") ||
@@ -215,7 +218,8 @@ func (m *OptimizedManager) createTunnelOptimized(vxlanID int32, localIP string, 
 
 			// For other errors (e.g., "device not found"), it's safe to continue
 			// as the interface might not exist anyway, which is what we want
-			fmt.Printf("Info: continuing with tunnel creation despite deletion failure\n")
+			logging.Info("continuing with tunnel creation despite deletion failure",
+				"vxlan_id", vxlanID)
 		}
 	} else {
 		m.tunnelMutex.Unlock()
@@ -287,7 +291,10 @@ func (m *OptimizedManager) createTunnelIPCommand(vxlanID int32, localIP string, 
 		if err := m.executeOptimizedCommand(cmdArgs); err != nil {
 			// Cleanup on failure
 			if cleanupErr := m.executeOptimizedCommand([]string{"ip", "link", "del", ifaceName}); cleanupErr != nil {
-				fmt.Printf("Warning: failed to cleanup interface %s during error recovery: %v\n", ifaceName, cleanupErr)
+				logging.Warn("failed to cleanup interface during error recovery",
+					"interface", ifaceName,
+					"vxlan_id", vxlanID,
+					"error", cleanupErr)
 				// Continue with original error
 			}
 			return fmt.Errorf("failed to create VXLAN interface: %w", err)
@@ -323,10 +330,11 @@ func (m *OptimizedManager) createTunnelIPCommand(vxlanID int32, localIP string, 
 
 		// Log all FDB errors if any occurred
 		if len(fdbErrors) > 0 {
-			fmt.Printf("Warning: %d FDB entries failed during tunnel creation:\n", len(fdbErrors))
-			for i, err := range fdbErrors {
-				fmt.Printf("  FDB error %d: %v\n", i+1, err)
-			}
+			logging.Warn("FDB entries failed during tunnel creation",
+				"vxlan_id", vxlanID,
+				"interface", ifaceName,
+				"failed_count", len(fdbErrors),
+				"remote_ips", remoteIPs)
 			// FDB entries are not critical for basic functionality, so we continue
 		}
 	} else if len(remoteIPs) > 0 {
@@ -334,7 +342,11 @@ func (m *OptimizedManager) createTunnelIPCommand(vxlanID int32, localIP string, 
 		if err := m.executeOptimizedCommand([]string{
 			"bridge", "fdb", "append", "00:00:00:00:00:00", "dst", remoteIPs[0], "dev", ifaceName,
 		}); err != nil {
-			fmt.Printf("Warning: failed to add FDB entry for %s: %v\n", remoteIPs[0], err)
+			logging.Warn("failed to add FDB entry",
+				"interface", ifaceName,
+				"remote_ip", remoteIPs[0],
+				"vxlan_id", vxlanID,
+				"error", err)
 			// Continue - FDB entries are not critical for basic functionality
 		}
 	}
@@ -498,7 +510,10 @@ func (m *OptimizedManager) updateTunnelStats(vxlanID int32) {
 
 	// Validate interface name before file access
 	if err := security.ValidateNetworkInterface(ifaceName); err != nil {
-		fmt.Printf("Warning: invalid interface name for stats update: %v\n", err)
+		logging.Warn("invalid interface name for stats update",
+			"interface", ifaceName,
+			"vxlan_id", vxlanID,
+			"error", err)
 		return
 	}
 
@@ -514,13 +529,19 @@ func (m *OptimizedManager) updateTunnelStats(vxlanID int32) {
 	// Use secure path joining instead of string formatting
 	statsPath, err := security.SecureJoinPath("/sys/class/net", ifaceName, "statistics", "tx_bytes")
 	if err != nil {
-		fmt.Printf("Warning: failed to construct secure stats path for %s: %v\n", security.SanitizeForLog(ifaceName), err)
+		logging.Warn("failed to construct secure stats path",
+			"interface", security.SanitizeForLog(ifaceName),
+			"vxlan_id", vxlanID,
+			"error", err)
 		return
 	}
 
 	// Validate the constructed path
 	if err := validator.ValidateFilePath(statsPath); err != nil {
-		fmt.Printf("Warning: invalid statistics file path for %s: %v\n", security.SanitizeForLog(ifaceName), err)
+		logging.Warn("invalid statistics file path",
+			"interface", security.SanitizeForLog(ifaceName),
+			"vxlan_id", vxlanID,
+			"error", err)
 		return
 	}
 

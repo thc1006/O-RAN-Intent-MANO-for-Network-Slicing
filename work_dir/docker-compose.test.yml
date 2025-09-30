@@ -1,0 +1,131 @@
+version: '3.9'
+
+services:
+  # Base test environment
+  test-all:
+    build:
+      context: ..
+      dockerfile: work_dir/Dockerfile.test
+      target: test-base
+    volumes:
+      - ../work_dir:/workspace/work_dir
+      - test-cache:/go/pkg/mod
+    environment:
+      - GO111MODULE=on
+      - CGO_ENABLED=1
+    command: go test -v -race -coverprofile=/workspace/work_dir/reports/coverage-all.out ./work_dir/tests/...
+    networks:
+      - test-network
+
+  # Individual test services for parallel execution
+  test-nephio:
+    build:
+      context: ..
+      dockerfile: work_dir/Dockerfile.test
+      target: test-base
+    volumes:
+      - ../work_dir:/workspace/work_dir
+      - test-cache:/go/pkg/mod
+    environment:
+      - GO111MODULE=on
+    command: go test -v -run TestNephioRenderer ./work_dir/tests/
+    networks:
+      - test-network
+
+  test-o2client:
+    build:
+      context: ..
+      dockerfile: work_dir/Dockerfile.test
+      target: test-base
+    volumes:
+      - ../work_dir:/workspace/work_dir
+      - test-cache:/go/pkg/mod
+    environment:
+      - GO111MODULE=on
+    command: go test -v -run TestO2Client ./work_dir/tests/
+    networks:
+      - test-network
+
+  test-configwatcher:
+    build:
+      context: ..
+      dockerfile: work_dir/Dockerfile.test
+      target: test-base
+    volumes:
+      - ../work_dir:/workspace/work_dir
+      - test-cache:/go/pkg/mod
+    environment:
+      - GO111MODULE=on
+    command: go test -v -run TestConfigWatcher ./work_dir/tests/
+    networks:
+      - test-network
+
+  test-parsefloat:
+    build:
+      context: ..
+      dockerfile: work_dir/Dockerfile.test
+      target: test-base
+    volumes:
+      - ../work_dir:/workspace/work_dir
+      - test-cache:/go/pkg/mod
+    environment:
+      - GO111MODULE=on
+    command: go test -v -run TestParseFloat64 ./work_dir/tests/
+    networks:
+      - test-network
+
+  test-vxlan:
+    build:
+      context: ..
+      dockerfile: work_dir/Dockerfile.test
+      target: test-base
+    volumes:
+      - ../work_dir:/workspace/work_dir
+      - test-cache:/go/pkg/mod
+    environment:
+      - GO111MODULE=on
+    command: go test -v -run TestVXLAN ./work_dir/tests/
+    networks:
+      - test-network
+
+  # Test runner with comprehensive execution
+  test-runner:
+    build:
+      context: ..
+      dockerfile: work_dir/Dockerfile.test
+      target: test-runner
+    volumes:
+      - ../work_dir:/workspace/work_dir
+      - test-cache:/go/pkg/mod
+    environment:
+      - GO111MODULE=on
+      - CGO_ENABLED=1
+    depends_on:
+      - test-nephio
+      - test-o2client
+      - test-configwatcher
+      - test-parsefloat
+      - test-vxlan
+    networks:
+      - test-network
+
+  # Coverage report generator
+  coverage-report:
+    build:
+      context: ..
+      dockerfile: work_dir/Dockerfile.test
+      target: coverage-reporter
+    volumes:
+      - ../work_dir:/workspace/work_dir
+    depends_on:
+      - test-all
+    networks:
+      - test-network
+
+volumes:
+  test-cache:
+    driver: local
+
+networks:
+  test-network:
+    driver: bridge

@@ -1,0 +1,98 @@
+@startuml
+!theme plain
+skinparam sequenceMessageAlign center
+title O2 Client Interaction - Authentication and Resource Access
+
+participant "Client" as Client
+participant "Auth Handler" as Auth
+participant "HTTP Client" as HTTP
+participant "O2 API" as API
+
+== Authentication Phase ==
+Client -> Auth: Authenticate()
+activate Auth
+Auth -> API: POST /auth/token\n{client_id, client_secret}
+activate API
+API -> API: validate credentials
+API --> Auth: 200 OK\n{access_token, expires_in}
+deactivate API
+Auth -> Auth: store token
+Auth --> Client: authenticated
+deactivate Auth
+
+== Resource Request Phase ==
+Client -> HTTP: GetResource(path)
+activate HTTP
+HTTP -> HTTP: add auth header\nAuthorization: Bearer <token>
+HTTP -> HTTP: set timeout (30s)
+HTTP -> API: GET /api/v1/resource
+activate API
+
+alt Success Response
+    API -> API: validate token
+    API -> API: process request
+    API --> HTTP: 200 OK\nContent-Type: application/json\n{resource_data}
+    deactivate API
+    HTTP -> HTTP: parse JSON response
+    HTTP -> HTTP: validate schema
+    HTTP --> Client: Resource object
+
+else Timeout
+    API --> HTTP: timeout (no response)
+    HTTP -> HTTP: log timeout
+    HTTP -> HTTP: retry with exponential backoff
+    note right
+        Retry strategy:
+        - Max retries: 3
+        - Initial backoff: 1s
+        - Backoff multiplier: 2x
+    end note
+    HTTP -> API: GET /api/v1/resource (retry)
+    activate API
+    alt Retry Success
+        API --> HTTP: 200 OK + data
+        deactivate API
+        HTTP --> Client: Resource object
+    else Max Retries Exceeded
+        HTTP --> Client: error: timeout after retries
+    end
+
+else Authentication Error
+    API --> HTTP: 401 Unauthorized
+    deactivate API
+    HTTP -> Auth: RefreshToken()
+    activate Auth
+    Auth -> API: POST /auth/refresh
+    activate API
+    API --> Auth: new access_token
+    deactivate API
+    Auth --> HTTP: token refreshed
+    deactivate Auth
+    HTTP -> API: GET /api/v1/resource (with new token)
+    activate API
+    API --> HTTP: 200 OK + data
+    deactivate API
+    HTTP --> Client: Resource object
+
+else Client Error (4xx)
+    API --> HTTP: 400/404 Bad Request/Not Found
+    deactivate API
+    HTTP -> HTTP: log error details
+    HTTP --> Client: error: client error
+
+else Server Error (5xx)
+    API --> HTTP: 500/503 Internal Server Error
+    deactivate API
+    HTTP -> HTTP: log server error
+    HTTP -> HTTP: retry with backoff
+    HTTP --> Client: error: server error
+end
+
+deactivate HTTP
+
+note over Client, API
+    Connection pooling and keep-alive
+    enabled for performance
+end note
+
+@enduml

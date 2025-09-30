@@ -1,0 +1,113 @@
+@startuml
+!theme plain
+skinparam sequenceMessageAlign center
+title End-to-End Integration Flow - Network Slice Provisioning
+
+actor "Network Operator" as Op
+participant "NLP Module" as NLP
+participant "Claude Client" as Claude
+participant "Orchestrator" as Orch
+participant "Nephio Generator" as Nephio
+participant "VNF Operator" as VNF
+participant "TN Agent" as TN
+database "Kubernetes API" as K8s
+
+== Intent Submission Phase ==
+Op -> NLP: "Create video slice for 100Mbps,\n10ms latency, 99.9% reliability"
+activate NLP
+NLP -> NLP: tokenize and parse
+NLP -> NLP: extract QoS parameters
+NLP --> Claude: Parsed intent JSON\n{type: "video", bandwidth: 100,\nlatency: 10, reliability: 99.9}
+deactivate NLP
+
+== AI Analysis Phase ==
+activate Claude
+Claude -> Claude: validate intent
+Claude -> Claude: analyze requirements
+Claude -> Claude: recommend topology
+Claude --> Orch: Placement request\n{cn_resources, tn_requirements}
+deactivate Claude
+
+== Orchestration Phase ==
+activate Orch
+Orch -> Orch: Calculate resources\n(CPU, memory, network)
+Orch -> Orch: Select target cluster
+Orch -> Orch: Optimize placement
+
+par Core Network Provisioning
+    Orch -> Nephio: Generate CN package\n{upf, smf, amf configs}
+    activate Nephio
+    Nephio -> Nephio: Load templates
+    Nephio -> Nephio: Apply kpt functions
+    Nephio -> Nephio: Render with kustomize
+    Nephio -> K8s: Apply package\n(kubectl apply)
+    activate K8s
+    K8s -> K8s: Create namespace
+    K8s -> K8s: Apply ConfigMaps
+    K8s -> VNF: Deploy UPF pod
+    activate VNF
+    VNF -> K8s: Create Deployment
+    K8s -> K8s: Schedule pod
+    K8s --> VNF: Pod created
+    VNF -> VNF: Initialize UPF
+    VNF -> K8s: Update status: Running
+    deactivate VNF
+    K8s --> Nephio: Resources applied
+    deactivate K8s
+    Nephio --> Orch: CN deployment complete
+    deactivate Nephio
+
+else Transport Network Configuration
+    Orch -> TN: Configure transport\n{vxlan_vni, endpoints, QoS}
+    activate TN
+    TN -> TN: Validate configuration
+    TN -> TN: Create VXLAN tunnel\n(VNI: 1000)
+    note right
+        Optimized batch processing:
+        - 10 operations/batch
+        - 100ms batch window
+    end note
+    TN -> TN: Configure QoS policies
+    TN -> TN: Setup traffic shaping
+    TN -> K8s: Update TN status
+    activate K8s
+    K8s --> TN: Status updated
+    deactivate K8s
+    TN --> Orch: TN configuration complete
+    deactivate TN
+end
+
+Orch -> Orch: Verify slice connectivity
+Orch -> K8s: Query slice status
+activate K8s
+K8s --> Orch: All components healthy
+deactivate K8s
+Orch --> Op: Slice active and ready\n{slice_id, endpoints, monitoring_url}
+deactivate Orch
+
+== Monitoring Phase ==
+Op -> K8s: Monitor slice health
+activate K8s
+K8s --> Op: Metrics and status
+deactivate K8s
+
+note over Op, K8s
+    **End-to-End Provisioning Time:**
+    - Intent parsing: ~500ms
+    - AI analysis: ~1-2s
+    - Resource orchestration: ~2-3s
+    - CN deployment: ~30-60s
+    - TN configuration: ~5-10s
+    **Total: ~40-75 seconds**
+end note
+
+note over VNF, TN
+    **Deployed Components:**
+    - UPF (User Plane Function)
+    - SMF (Session Management)
+    - AMF (Access Management)
+    - VXLAN tunnels
+    - QoS policies
+end note
+
+@enduml

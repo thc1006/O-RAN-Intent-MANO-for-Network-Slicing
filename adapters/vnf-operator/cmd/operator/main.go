@@ -79,7 +79,7 @@ func main() {
 
 	var gitOpsClient gitops.Client
 	if porchRepo != "" {
-		gitOpsClient = gitops.NewPorchClient(porchRepo, "default")
+		gitOpsClient = gitops.NewPorchClient(mgr.GetClient(), porchRepo, "default")
 	} else {
 		setupLog.Info("Using mock GitOps client")
 		gitOpsClient = gitops.NewMockGitOpsClient()

@@ -1,0 +1,75 @@
+# Prometheus Configuration for E2E Testing
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    environment: 'e2e-test'
+    cluster: 'test-cluster'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+# Rule files
+rule_files: []
+
+# Scrape configurations
+scrape_configs:
+  # Mock Orchestrator
+  - job_name: 'mock-orchestrator'
+    static_configs:
+      - targets: ['mock-orchestrator:1080']
+        labels:
+          service: 'orchestrator'
+          component: 'mock'
+
+  # Mock VNF Operator
+  - job_name: 'mock-vnf-operator'
+    static_configs:
+      - targets: ['mock-vnf-operator:1080']
+        labels:
+          service: 'vnf-operator'
+          component: 'mock'
+
+  # Mock Nephio Renderer
+  - job_name: 'mock-nephio-renderer'
+    static_configs:
+      - targets: ['mock-nephio-renderer:1080']
+        labels:
+          service: 'nephio-renderer'
+          component: 'mock'
+
+  # Mock TN Agent
+  - job_name: 'mock-tn-agent'
+    static_configs:
+      - targets: ['mock-tn-agent:1080']
+        labels:
+          service: 'tn-agent'
+          component: 'mock'
+
+  # PostgreSQL Exporter (if added)
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres-test:5432']
+        labels:
+          service: 'database'
+          component: 'postgres'
+
+  # Redis Exporter (if added)
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis-test:6379']
+        labels:
+          service: 'cache'
+          component: 'redis'
+
+  # E2E Test Runner Metrics
+  - job_name: 'e2e-tests'
+    static_configs:
+      - targets: ['e2e-test:8080']
+        labels:
+          service: 'test-runner'
+          component: 'e2e'

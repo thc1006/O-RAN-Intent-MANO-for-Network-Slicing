@@ -1,0 +1,65 @@
+@startuml
+!theme plain
+skinparam sequenceMessageAlign center
+title Nephio Package Renderer - Sequence Flow
+
+participant "Caller" as Caller
+participant "PackageRenderer" as PackageRenderer
+participant "Filesystem" as Filesystem
+participant "KptfileParser" as KptfileParser
+participant "FunctionPipeline" as FunctionPipeline
+participant "KustomizeBuilder" as KustomizeBuilder
+participant "Validator" as Validator
+
+Caller -> PackageRenderer: RenderPackage(pkgPath)
+activate PackageRenderer
+
+PackageRenderer -> Filesystem: validatePackageStructure(pkgPath)
+activate Filesystem
+Filesystem --> PackageRenderer: valid/error
+deactivate Filesystem
+
+alt Structure Invalid
+    PackageRenderer --> Caller: error
+else Structure Valid
+    PackageRenderer -> KptfileParser: readKptfile(pkgPath)
+    activate KptfileParser
+    KptfileParser -> KptfileParser: parse YAML
+    KptfileParser --> PackageRenderer: Kptfile object
+    deactivate KptfileParser
+
+    PackageRenderer -> FunctionPipeline: executeFunctionPipeline(functions)
+    activate FunctionPipeline
+    loop for each function in pipeline
+        FunctionPipeline -> FunctionPipeline: executeFunction()
+        note right: Apply set-namespace,\nset-labels, etc.
+    end
+    FunctionPipeline --> PackageRenderer: success
+    deactivate FunctionPipeline
+
+    PackageRenderer -> KustomizeBuilder: runKustomizeBuild(pkgPath)
+    activate KustomizeBuilder
+    KustomizeBuilder -> KustomizeBuilder: execute kustomize build
+    KustomizeBuilder --> PackageRenderer: rendered resources
+    deactivate KustomizeBuilder
+
+    PackageRenderer -> PackageRenderer: readRenderedResources()
+    note right: Parse YAML documents
+
+    PackageRenderer -> Validator: validateResources(resources)
+    activate Validator
+    Validator -> Validator: check K8s schema
+    Validator -> Validator: validate constraints
+    Validator --> PackageRenderer: validation result
+    deactivate Validator
+
+    alt Validation Failed
+        PackageRenderer --> Caller: error
+    else Validation Success
+        PackageRenderer --> Caller: RenderedPackage
+    end
+end
+
+deactivate PackageRenderer
+
+@enduml

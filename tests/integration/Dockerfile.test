@@ -1,0 +1,80 @@
+# Multi-stage Dockerfile for E2E Integration Testing
+
+# Stage 1: Build stage
+FROM golang:1.21-alpine AS builder
+
+# Install build dependencies
+RUN apk add --no-cache \
+    git \
+    make \
+    gcc \
+    musl-dev \
+    curl
+
+# Set working directory
+WORKDIR /build
+
+# Copy go mod files
+COPY go.mod go.sum ./
+
+# Download dependencies
+RUN go mod download && go mod verify
+
+# Copy source code
+COPY . .
+
+# Build test binary with coverage support
+RUN go test -c -covermode=atomic -coverpkg=./... \
+    -o /build/e2e.test \
+    ./tests/integration/e2e/...
+
+# Build helper tools
+RUN go build -o /build/test-helpers ./tests/integration/helpers/...
+
+# Stage 2: Test runtime stage
+FROM alpine:3.19
+
+# Install runtime dependencies
+RUN apk add --no-cache \
+    ca-certificates \
+    curl \
+    bash \
+    jq \
+    postgresql-client \
+    redis
+
+# Create non-root user for running tests
+RUN addgroup -g 1000 testuser && \
+    adduser -D -u 1000 -G testuser testuser
+
+# Set working directory
+WORKDIR /app
+
+# Copy test binaries from builder
+COPY --from=builder /build/e2e.test /app/
+COPY --from=builder /build/test-helpers /app/
+
+# Copy test data and scripts
+COPY tests/integration/testdata /testdata
+COPY tests/integration/scripts /scripts
+
+# Create output directory
+RUN mkdir -p /output && chown -R testuser:testuser /output
+
+# Set permissions
+RUN chmod +x /app/e2e.test /app/test-helpers /scripts/*.sh
+
+# Switch to non-root user
+USER testuser
+
+# Set environment variables
+ENV GO_TEST_TIMEOUT=10m \
+    TEST_PARALLEL=4 \
+    LOG_LEVEL=info
+
+# Default command runs all E2E tests
+CMD ["/app/e2e.test", "-test.v", "-test.timeout=10m"]
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1

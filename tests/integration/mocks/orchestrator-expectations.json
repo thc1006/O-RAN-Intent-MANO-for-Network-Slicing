@@ -1,0 +1,213 @@
+[
+  {
+    "httpRequest": {
+      "method": "POST",
+      "path": "/api/v1/nlp/parse"
+    },
+    "httpResponse": {
+      "statusCode": 200,
+      "headers": {
+        "Content-Type": ["application/json"]
+      },
+      "body": {
+        "intent_id": "intent-12345",
+        "service_type": "video",
+        "throughput": "100 Mbps",
+        "latency": "20ms",
+        "reliability": "99.9%",
+        "parameters": {
+          "slice_type": "eMBB",
+          "priority": "high"
+        },
+        "timestamp": "2025-09-30T10:00:00Z"
+      },
+      "delay": {
+        "timeUnit": "MILLISECONDS",
+        "value": 100
+      }
+    }
+  },
+  {
+    "httpRequest": {
+      "method": "POST",
+      "path": "/api/v1/claude/analyze"
+    },
+    "httpResponse": {
+      "statusCode": 200,
+      "headers": {
+        "Content-Type": ["application/json"]
+      },
+      "body": {
+        "analysis_id": "analysis-67890",
+        "requirements": {
+          "throughput": "100 Mbps",
+          "latency": "20ms",
+          "reliability": "99.9%",
+          "bandwidth": "100 Mbps"
+        },
+        "recommended_vnfs": [
+          "upf",
+          "amf",
+          "smf"
+        ],
+        "confidence_score": 0.95,
+        "recommendations": [
+          "Use edge placement for low latency",
+          "Enable QoS policies for video traffic",
+          "Configure DNN for slice isolation"
+        ],
+        "risk_assessment": [
+          "Resource contention with existing slices",
+          "Network congestion during peak hours"
+        ],
+        "estimated_cost": 125.50,
+        "estimated_latency": 18.5,
+        "timestamp": "2025-09-30T10:00:01Z"
+      },
+      "delay": {
+        "timeUnit": "MILLISECONDS",
+        "value": 500
+      }
+    }
+  },
+  {
+    "httpRequest": {
+      "method": "POST",
+      "path": "/api/v1/orchestrator/placement"
+    },
+    "httpResponse": {
+      "statusCode": 200,
+      "headers": {
+        "Content-Type": ["application/json"]
+      },
+      "body": {
+        "placement_id": "placement-11111",
+        "cnf_placements": [
+          {
+            "cnf_id": "upf-001",
+            "cnf_name": "user-plane-function",
+            "node_id": "node-1",
+            "node_name": "edge-node-1",
+            "cpu_allocated": 4.0,
+            "memory_allocated": 8192.0,
+            "affinity": {
+              "zone": "edge-zone-1"
+            }
+          },
+          {
+            "cnf_id": "amf-001",
+            "cnf_name": "access-mobility-function",
+            "node_id": "node-2",
+            "node_name": "core-node-1",
+            "cpu_allocated": 2.0,
+            "memory_allocated": 4096.0,
+            "affinity": {
+              "zone": "core-zone-1"
+            }
+          },
+          {
+            "cnf_id": "smf-001",
+            "cnf_name": "session-management-function",
+            "node_id": "node-2",
+            "node_name": "core-node-1",
+            "cpu_allocated": 2.0,
+            "memory_allocated": 4096.0,
+            "affinity": {
+              "zone": "core-zone-1"
+            }
+          }
+        ],
+        "transport_links": [
+          {
+            "link_id": "link-001",
+            "source_node": "node-1",
+            "dest_node": "node-2",
+            "bandwidth": 1000.0,
+            "latency": 5.0,
+            "vxlan_config": {
+              "vni": "1001",
+              "local_ip": "10.0.1.1",
+              "remote_ip": "10.0.2.1",
+              "mtu": 1500,
+              "udp_port": 4789
+            }
+          }
+        ],
+        "total_cpu": 8.0,
+        "total_memory": 16384.0,
+        "total_bandwidth": 1000.0,
+        "score": 0.92,
+        "timestamp": "2025-09-30T10:00:02Z"
+      },
+      "delay": {
+        "timeUnit": "MILLISECONDS",
+        "value": 300
+      }
+    }
+  },
+  {
+    "httpRequest": {
+      "method": "GET",
+      "path": "/api/v1/slice/status/.*"
+    },
+    "httpResponse": {
+      "statusCode": 200,
+      "headers": {
+        "Content-Type": ["application/json"]
+      },
+      "body": {
+        "slice_id": "deployment-12345",
+        "state": "Active",
+        "health_check": true,
+        "throughput": 120.5,
+        "latency": 15.8,
+        "packet_loss": 0.001,
+        "jitter": 2.5,
+        "active_vnfs": [
+          {
+            "vnf_id": "upf-001",
+            "vnf_name": "user-plane-function",
+            "status": "Running",
+            "cpu_usage": 45.2,
+            "memory_usage": 3890.0,
+            "last_check": "2025-09-30T10:05:00Z"
+          },
+          {
+            "vnf_id": "amf-001",
+            "vnf_name": "access-mobility-function",
+            "status": "Running",
+            "cpu_usage": 32.1,
+            "memory_usage": 2048.0,
+            "last_check": "2025-09-30T10:05:00Z"
+          },
+          {
+            "vnf_id": "smf-001",
+            "vnf_name": "session-management-function",
+            "status": "Running",
+            "cpu_usage": 38.5,
+            "memory_usage": 2560.0,
+            "last_check": "2025-09-30T10:05:00Z"
+          }
+        ],
+        "transport_links": ["link-001"],
+        "metrics": {
+          "avg_throughput": 118.3,
+          "max_throughput": 125.0,
+          "min_throughput": 110.5,
+          "avg_latency": 16.2,
+          "max_latency": 19.8,
+          "min_latency": 14.5,
+          "total_data_transfer": 5368709120,
+          "uptime": 3600,
+          "success_rate": 99.95
+        },
+        "created_at": "2025-09-30T09:00:00Z",
+        "updated_at": "2025-09-30T10:05:00Z"
+      },
+      "delay": {
+        "timeUnit": "MILLISECONDS",
+        "value": 50
+      }
+    }
+  }
+]

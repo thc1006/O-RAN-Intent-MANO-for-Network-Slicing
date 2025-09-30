@@ -4,6 +4,22 @@
 .claude-flow/
 claude_code-gemini-mcp/
 memory/
+.claude/agents/*
+.claude\agents\*
+.claude.backup-2025-09-29T23-59-08-726Z/agents/*
+.claude.backup-2025-09-29T23-59-08-726Z/sessions/*
+.claude.backup-2025-09-29T23-59-08-726Z/memory/*
+.claude.backup-2025-09-29T23-59-08-726Z/coordination/*
+.claude.backup-2025-09-29T23-59-08-726Z/orchestration/*
+.claude.backup-2025-09-29T23-59-08-726Z/claude-flow.config.json
+.claude.backup-2025-09-29T23-59-08-726Z/.mcp.json
+.claude.backup-2025-09-29T23-59-08-726Z/.claude/settings.local.json
+.claude.backup-2025-09-29T23-59-08-726Z/.claude-flow/
+.claude.backup-2025-09-29T23-59-08-726Z/memory/claude-flow-data.json
+.claude.backup-2025-09-29T23-59-08-726Z
+.claude.backup-2025-09-29T23-59-08-726Z/memory/sessions/*
+.claude.backup-2025-09-29T23-59-08-726Z/memory/agents/*
+CLAUDE.md
 
 # Go binary files - DO NOT COMMIT
 *.exe
@@ -90,30 +106,6 @@ lint/tmp/
 lint-results*.xml
 .gradle/buildOutputCleanup/buildOutputCleanup.lock
 
-# Claude Flow generated files
-.claude/settings.local.json
-.mcp.json
-claude-flow.config.json
-.swarm/
-.hive-mind/
-memory/claude-flow-data.json
-memory/sessions/*
-!memory/sessions/README.md
-memory/agents/*
-!memory/agents/README.md
-coordination/memory_bank/*
-coordination/subtasks/*
-coordination/orchestration/*
-*.db
-*.db-journal
-*.db-wal
-*.sqlite
-*.sqlite-journal
-*.sqlite-wal
-claude-flow
-claude-flow.bat
-claude-flow.ps1
-hive-mind-prompt-*.txt
 
 # Large files (>100MB)
 *.bin
@@ -182,3 +174,36 @@ coverage/
 *.prof
 *.pprof
 *.trace
+
+# Claude Flow generated files
+.claude/settings.local.json
+.mcp.json
+claude-flow.config.json
+.swarm/
+.hive-mind/
+.claude-flow/
+memory/
+coordination/
+memory/claude-flow-data.json
+memory/sessions/*
+!memory/sessions/README.md
+memory/agents/*
+!memory/agents/README.md
+coordination/memory_bank/*
+coordination/subtasks/*
+coordination/orchestration/*
+*.db
+*.db-journal
+*.db-wal
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+claude-flow
+# Removed Windows wrapper files per user request
+hive-mind-prompt-*.txt
+claude-flow.ps1
+.gitignore
+claude-flow.bat
+claude-flow.cmd
+CLAUDE.md
+CLAUDE.md

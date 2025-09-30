@@ -1,0 +1,225 @@
+version: '3.9'
+
+# Docker Compose configuration for E2E Integration Testing
+# This setup provides a complete test environment with all required services
+
+services:
+  # Main E2E test runner
+  e2e-test:
+    build:
+      context: ../..
+      dockerfile: tests/integration/Dockerfile.test
+    container_name: e2e-test-runner
+    environment:
+      # Test configuration
+      - TEST_MODE=e2e
+      - GO_TEST_TIMEOUT=10m
+      - TEST_PARALLEL=4
+
+      # Service URLs
+      - ORCHESTRATOR_URL=http://mock-orchestrator:8080
+      - VNF_OPERATOR_URL=http://mock-vnf-operator:8081
+      - NEPHIO_RENDERER_URL=http://mock-nephio-renderer:8082
+      - TN_AGENT_URL=http://mock-tn-agent:8083
+
+      # Kubernetes configuration
+      - KUBECONFIG=/config/kubeconfig
+      - K8S_NAMESPACE=test-slice
+
+      # Test data paths
+      - TEST_DATA_DIR=/testdata
+      - TEST_OUTPUT_DIR=/output
+
+      # Logging
+      - LOG_LEVEL=debug
+      - LOG_FORMAT=json
+    volumes:
+      - ./testdata:/testdata:ro
+      - ./output:/output
+      - ~/.kube/config:/config/kubeconfig:ro
+    command: >
+      go test -v -timeout=10m -tags=integration
+      ./tests/integration/e2e/...
+    depends_on:
+      - mock-orchestrator
+      - mock-vnf-operator
+      - mock-nephio-renderer
+      - mock-tn-agent
+      - postgres-test
+      - redis-test
+    networks:
+      - e2e-test-network
+
+  # Mock Orchestrator Service
+  mock-orchestrator:
+    image: mockserver/mockserver:5.15.0
+    container_name: mock-orchestrator
+    environment:
+      - MOCKSERVER_PROPERTY_FILE=/config/mockserver.properties
+      - MOCKSERVER_INITIALIZATION_JSON_PATH=/config/orchestrator-expectations.json
+      - MOCKSERVER_LOG_LEVEL=INFO
+    ports:
+      - "8080:1080"
+    volumes:
+      - ./mocks/orchestrator-expectations.json:/config/orchestrator-expectations.json:ro
+      - ./mocks/mockserver.properties:/config/mockserver.properties:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:1080/mockserver/status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - e2e-test-network
+
+  # Mock VNF Operator Service
+  mock-vnf-operator:
+    image: mockserver/mockserver:5.15.0
+    container_name: mock-vnf-operator
+    environment:
+      - MOCKSERVER_PROPERTY_FILE=/config/mockserver.properties
+      - MOCKSERVER_INITIALIZATION_JSON_PATH=/config/vnf-operator-expectations.json
+      - MOCKSERVER_LOG_LEVEL=INFO
+    ports:
+      - "8081:1080"
+    volumes:
+      - ./mocks/vnf-operator-expectations.json:/config/vnf-operator-expectations.json:ro
+      - ./mocks/mockserver.properties:/config/mockserver.properties:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:1080/mockserver/status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - e2e-test-network
+
+  # Mock Nephio Renderer Service
+  mock-nephio-renderer:
+    image: mockserver/mockserver:5.15.0
+    container_name: mock-nephio-renderer
+    environment:
+      - MOCKSERVER_PROPERTY_FILE=/config/mockserver.properties
+      - MOCKSERVER_INITIALIZATION_JSON_PATH=/config/nephio-expectations.json
+      - MOCKSERVER_LOG_LEVEL=INFO
+    ports:
+      - "8082:1080"
+    volumes:
+      - ./mocks/nephio-expectations.json:/config/nephio-expectations.json:ro
+      - ./mocks/mockserver.properties:/config/mockserver.properties:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:1080/mockserver/status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - e2e-test-network
+
+  # Mock Transport Network Agent
+  mock-tn-agent:
+    image: mockserver/mockserver:5.15.0
+    container_name: mock-tn-agent
+    environment:
+      - MOCKSERVER_PROPERTY_FILE=/config/mockserver.properties
+      - MOCKSERVER_INITIALIZATION_JSON_PATH=/config/tn-agent-expectations.json
+      - MOCKSERVER_LOG_LEVEL=INFO
+    ports:
+      - "8083:1080"
+    volumes:
+      - ./mocks/tn-agent-expectations.json:/config/tn-agent-expectations.json:ro
+      - ./mocks/mockserver.properties:/config/mockserver.properties:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:1080/mockserver/status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - e2e-test-network
+
+  # PostgreSQL for test data persistence
+  postgres-test:
+    image: postgres:15-alpine
+    container_name: postgres-test
+    environment:
+      - POSTGRES_DB=oran_test
+      - POSTGRES_USER=testuser
+      - POSTGRES_PASSWORD=testpass
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-test-data:/var/lib/postgresql/data
+      - ./testdata/sql:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U testuser -d oran_test"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - e2e-test-network
+
+  # Redis for caching and session management
+  redis-test:
+    image: redis:7-alpine
+    container_name: redis-test
+    command: redis-server --appendonly yes --requirepass testredis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-test-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - e2e-test-network
+
+  # Jaeger for distributed tracing (optional)
+  jaeger:
+    image: jaegertracing/all-in-one:1.51
+    container_name: jaeger-tracing
+    environment:
+      - COLLECTOR_ZIPKIN_HOST_PORT=:9411
+      - COLLECTOR_OTLP_ENABLED=true
+    ports:
+      - "5775:5775/udp"  # accept zipkin.thrift over compact thrift protocol
+      - "6831:6831/udp"  # accept jaeger.thrift over compact thrift protocol
+      - "6832:6832/udp"  # accept jaeger.thrift over binary thrift protocol
+      - "5778:5778"      # serve configs
+      - "16686:16686"    # serve frontend
+      - "14268:14268"    # accept jaeger.thrift directly from clients
+      - "14250:14250"    # accept model.proto
+      - "9411:9411"      # Zipkin compatible endpoint
+    networks:
+      - e2e-test-network
+
+  # Prometheus for metrics collection (optional)
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: prometheus-metrics
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./mocks/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    networks:
+      - e2e-test-network
+
+networks:
+  e2e-test-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+
+volumes:
+  postgres-test-data:
+    driver: local
+  redis-test-data:
+    driver: local
+  prometheus-data:
+    driver: local
