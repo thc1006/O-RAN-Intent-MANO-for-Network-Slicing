@@ -5,8 +5,8 @@
 ARG GO_VERSION=1.24.7
 ARG DEBIAN_VERSION=12.9
 
-# Using Alpine 3.20 (stable) to fix CVE-2025-46394 and CVE-2024-58251
-FROM golang:${GO_VERSION}-alpine3.20 AS go-builder
+# Using Alpine 3.21 (stable) to fix CVE-2025-46394 and CVE-2024-58251
+FROM golang:${GO_VERSION}-alpine3.21 AS go-builder
 
 # Security labels and metadata
 LABEL maintainer="O-RAN MANO Team"
