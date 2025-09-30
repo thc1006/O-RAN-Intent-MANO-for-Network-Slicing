@@ -20,7 +20,7 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}
-  GO_VERSION: '1.22.10'
+  GO_VERSION: '1.24.7'
   COSIGN_EXPERIMENTAL: 1
 
 permissions:
@@ -116,7 +116,7 @@ jobs:
 
           cat > "$dockerfile_path" << 'EOF'
         # Multi-stage build for optimized image size
-        FROM golang:1.22.10-alpine AS builder
+        FROM golang:1.24.7-alpine AS builder
 
         # Install system dependencies
         RUN apk add --no-cache git ca-certificates tzdata

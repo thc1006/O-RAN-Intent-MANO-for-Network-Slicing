@@ -3,9 +3,9 @@
 
 # Build arguments for customization
 ARG GO_VERSION=1.24.7
-ARG ALPINE_VERSION=3.19
+ARG ALPINE_VERSION=3.20
 
-FROM golang:${GO_VERSION}-alpine AS builder
+FROM golang:${GO_VERSION}-alpine${ALPINE_VERSION} AS builder
 
 WORKDIR /build
 

@@ -608,7 +608,7 @@
                 sliceCard.className = 'slice-card';
 
                 const timestamp = new Date().toLocaleTimeString();
-                const sliceTypeClass = intentResponse.sliceType.toLowerCase().replace('embb', 'embb');
+                const sliceTypeClass = intentResponse.sliceType.toLowerCase();
 
                 sliceCard.innerHTML = `
                     <h3>🎯 ${intentResponse.sliceType} Slice</h3>
@@ -669,8 +669,13 @@
                 const messageDiv = document.createElement('div');
                 messageDiv.className = `message ${type}`;
 
-                // Convert markdown-like formatting to HTML
-                const formattedContent = content
+                // Convert markdown-like formatting safely using textContent for initial sanitization
+                const tempDiv = document.createElement('div');
+                tempDiv.textContent = content;
+                const sanitizedContent = tempDiv.innerHTML;
+
+                // Now apply formatting to sanitized content
+                const formattedContent = sanitizedContent
                     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
                     .replace(/\n/g, '<br>');
 

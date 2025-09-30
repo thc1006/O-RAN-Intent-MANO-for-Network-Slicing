@@ -2,9 +2,10 @@ package o2ims
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/binary"
 	"fmt"
 	"math"
-	"math/rand"
 	"time"
 
 	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/o2-client/pkg/models"
@@ -294,12 +295,22 @@ func (c *Client) retryWithBackoff(ctx context.Context, fn func() error) error {
 	return fmt.Errorf("max retries exceeded: %w", lastErr)
 }
 
+// secureRandFloat64 generates a cryptographically secure random float64 between 0 and 1
+func secureRandFloat64() float64 {
+	var b [8]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		return 0.5 // Fallback to deterministic value
+	}
+	// Convert bytes to uint64, then normalize to [0,1)
+	return float64(binary.BigEndian.Uint64(b[:])) / float64(^uint64(0))
+}
+
 // calculateBackoffDelay calculates delay with exponential backoff and jitter
 func (c *Client) calculateBackoffDelay(attempt int) time.Duration {
 	delay := float64(c.retryConfig.InitialDelay) * math.Pow(c.retryConfig.BackoffFactor, float64(attempt-1))
 
 	// Add jitter (±25%)
-	jitter := delay * 0.25 * (2*rand.Float64() - 1)
+	jitter := delay * 0.25 * (2*secureRandFloat64() - 1)
 	delay += jitter
 
 	maxDelay := float64(c.retryConfig.MaxDelay)

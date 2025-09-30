@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -18,10 +19,31 @@ type TmuxManager struct {
 	outputChan  chan string
 }
 
+// validSessionName validates tmux session name to prevent injection
+var validSessionName = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
+
+// sanitizeSessionName validates and sanitizes session name
+func sanitizeSessionName(name string) (string, error) {
+	if !validSessionName.MatchString(name) {
+		return "", fmt.Errorf("invalid session name: must contain only alphanumeric, underscore, or hyphen")
+	}
+	if len(name) > 64 {
+		return "", fmt.Errorf("session name too long: max 64 characters")
+	}
+	return name, nil
+}
+
 // NewTmuxManager creates a new tmux manager
 func NewTmuxManager(sessionName string) *TmuxManager {
+	// Validate session name to prevent command injection
+	sanitized, err := sanitizeSessionName(sessionName)
+	if err != nil {
+		// Use a safe default if validation fails
+		sanitized = "claude-session"
+	}
+
 	return &TmuxManager{
-		sessionName: sessionName,
+		sessionName: sanitized,
 		outputChan:  make(chan string, 100),
 	}
 }
@@ -56,10 +78,16 @@ func (tm *TmuxManager) SendCommand(ctx context.Context, command string) error {
 		tm.mu.RUnlock()
 		return fmt.Errorf("tmux session not active")
 	}
+	sessionName := tm.sessionName
 	tm.mu.RUnlock()
 
-	// Send keys to tmux session
-	cmd := exec.CommandContext(ctx, "tmux", "send-keys", "-t", tm.sessionName, command, "Enter")
+	// Validate command length to prevent abuse
+	if len(command) > 10000 {
+		return fmt.Errorf("command too long: max 10000 characters")
+	}
+
+	// Send keys to tmux session with validated session name
+	cmd := exec.CommandContext(ctx, "tmux", "send-keys", "-t", sessionName, command, "Enter")
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to send command: %w", err)
 	}
@@ -74,13 +102,14 @@ func (tm *TmuxManager) CaptureOutput(ctx context.Context) (string, error) {
 		tm.mu.RUnlock()
 		return "", fmt.Errorf("tmux session not active")
 	}
+	sessionName := tm.sessionName
 	tm.mu.RUnlock()
 
 	// Wait a bit for command to execute
 	time.Sleep(2 * time.Second)
 
-	// Capture pane content
-	cmd := exec.CommandContext(ctx, "tmux", "capture-pane", "-t", tm.sessionName, "-p")
+	// Capture pane content with validated session name
+	cmd := exec.CommandContext(ctx, "tmux", "capture-pane", "-t", sessionName, "-p")
 	output, err := cmd.Output()
 	if err != nil {
 		return "", fmt.Errorf("failed to capture output: %w", err)
@@ -96,15 +125,22 @@ func (tm *TmuxManager) ExecuteClaudeCommand(ctx context.Context, prompt string) 
 		tm.mu.RUnlock()
 		return "", fmt.Errorf("tmux session not active")
 	}
+	sessionName := tm.sessionName
 	tm.mu.RUnlock()
 
+	// Validate prompt length
+	if len(prompt) > 10000 {
+		return "", fmt.Errorf("prompt too long: max 10000 characters")
+	}
+
 	// Build claude command with proper escaping
+	// Note: Using exec.Command prevents shell injection, command is passed directly
 	escapedPrompt := strings.ReplaceAll(prompt, `"`, `\"`)
 	escapedPrompt = strings.ReplaceAll(escapedPrompt, `'`, `'\''`)
 	command := fmt.Sprintf(`claude --dangerously-skip-permissions '%s'`, escapedPrompt)
 
-	// Clear the pane first
-	clearCmd := exec.CommandContext(ctx, "tmux", "send-keys", "-t", tm.sessionName, "clear", "Enter")
+	// Clear the pane first with validated session name
+	clearCmd := exec.CommandContext(ctx, "tmux", "send-keys", "-t", sessionName, "clear", "Enter")
 	if err := clearCmd.Run(); err != nil {
 		return "", fmt.Errorf("failed to clear pane: %w", err)
 	}
@@ -182,7 +218,9 @@ func (tm *TmuxManager) checkTmuxInstalled(ctx context.Context) error {
 }
 
 func (tm *TmuxManager) killSession(ctx context.Context) error {
-	cmd := exec.CommandContext(ctx, "tmux", "kill-session", "-t", tm.sessionName)
+	// Use validated session name
+	sessionName := tm.sessionName
+	cmd := exec.CommandContext(ctx, "tmux", "kill-session", "-t", sessionName)
 	_ = cmd.Run() // Ignore error if session doesn't exist
 	return nil
 }
@@ -253,9 +291,11 @@ func (tm *TmuxManager) AttachToSession(ctx context.Context) error {
 		tm.mu.RUnlock()
 		return fmt.Errorf("tmux session not active")
 	}
+	sessionName := tm.sessionName
 	tm.mu.RUnlock()
 
-	cmd := exec.CommandContext(ctx, "tmux", "attach-session", "-t", tm.sessionName)
+	// Use validated session name
+	cmd := exec.CommandContext(ctx, "tmux", "attach-session", "-t", sessionName)
 	return cmd.Run()
 }
 

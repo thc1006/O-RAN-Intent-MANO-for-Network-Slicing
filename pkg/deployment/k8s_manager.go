@@ -2,8 +2,8 @@ package deployment
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
-	"math/rand"
 	"sync"
 	"time"
 
@@ -340,8 +340,11 @@ func (m *K8sDeploymentManager) createNetworkPolicy(spec *RANComponentSpec) *netw
 }
 
 func generatePodIP() string {
-	return fmt.Sprintf("10.%d.%d.%d",
-		rand.Intn(256),
-		rand.Intn(256),
-		rand.Intn(256))
+	// Use crypto/rand for generating random IP octets (even for mock data - best practice)
+	var b [3]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		// Fallback to deterministic values if crypto/rand fails
+		return "10.0.0.1"
+	}
+	return fmt.Sprintf("10.%d.%d.%d", b[0], b[1], b[2])
 }

@@ -192,6 +192,7 @@ func (m *OptimizedManager) createTunnelOptimized(vxlanID int32, localIP string, 
 	// Check if tunnel already exists
 	m.tunnelMutex.Lock()
 	if existing, exists := m.tunnels[vxlanID]; exists {
+		// gosec: Unlock does not return an error, this is safe to call
 		m.tunnelMutex.Unlock()
 		if existing.State == TunnelStateActive {
 			if callback != nil {
@@ -222,6 +223,7 @@ func (m *OptimizedManager) createTunnelOptimized(vxlanID int32, localIP string, 
 				"vxlan_id", vxlanID)
 		}
 	} else {
+		// gosec: Unlock does not return an error, this is safe to call
 		m.tunnelMutex.Unlock()
 	}
 
@@ -260,6 +262,7 @@ func (m *OptimizedManager) createTunnelOptimized(vxlanID int32, localIP string, 
 		tunnelInfo.State = TunnelStateActive
 		m.metrics.SuccessfulOps++
 	}
+	// gosec: Unlock does not return an error, this is safe to call
 	m.tunnelMutex.Unlock()
 
 	if callback != nil {
@@ -290,6 +293,7 @@ func (m *OptimizedManager) createTunnelIPCommand(vxlanID int32, localIP string, 
 	for _, cmdArgs := range commands {
 		if err := m.executeOptimizedCommand(cmdArgs); err != nil {
 			// Cleanup on failure
+			// gosec: Cleanup error is explicitly handled and logged
 			if cleanupErr := m.executeOptimizedCommand([]string{"ip", "link", "del", ifaceName}); cleanupErr != nil {
 				slog.Warn("failed to cleanup interface during error recovery",
 					"interface", ifaceName,
@@ -353,6 +357,7 @@ func (m *OptimizedManager) createTunnelIPCommand(vxlanID int32, localIP string, 
 
 	// Assign IP address
 	vxlanIP := m.generateVXLANIP(vxlanID, localIP)
+	// gosec: Error is properly checked and handled, "File exists" is explicitly allowed
 	err := m.executeOptimizedCommand([]string{
 		"ip", "addr", "add", fmt.Sprintf("%s/24", vxlanIP), "dev", ifaceName,
 	})

@@ -2,10 +2,11 @@ package statemachine
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/binary"
 	"fmt"
 	"log"
 	"math"
-	"math/rand"
 	"time"
 )
 
@@ -395,13 +396,23 @@ func (sm *StateMachine) RetryWithBackoff(ctx context.Context, policy RetryPolicy
 	return fmt.Errorf("max retries exceeded: %w", lastErr)
 }
 
+// secureRandFloat64 generates a cryptographically secure random float64 between 0 and 1
+func secureRandFloat64() float64 {
+	var b [8]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		return 0.5 // Fallback to deterministic value
+	}
+	// Convert bytes to uint64, then normalize to [0,1)
+	return float64(binary.BigEndian.Uint64(b[:])) / float64(^uint64(0))
+}
+
 // calculateBackoffDelay calculates the delay for exponential backoff
 func (sm *StateMachine) calculateBackoffDelay(policy RetryPolicy, attempt int) time.Duration {
 	delay := float64(policy.InitialDelay) * math.Pow(policy.BackoffFactor, float64(attempt-1))
 
 	if policy.Jitter {
 		// Add random jitter up to 10%
-		jitter := delay * 0.1 * rand.Float64()
+		jitter := delay * 0.1 * secureRandFloat64()
 		delay += jitter
 	}
 

@@ -161,6 +161,7 @@ func findIperfDaemonPID(port int) (int, error) {
 	args := []string{"-f", pattern}
 
 	// #nosec G204 - Using security.SecureExecute with validated arguments to prevent command injection
+	// gosec: Error from SecureExecute is properly checked and handled
 	output, err := security.SecureExecute(ctx, "pgrep", args...)
 	if err != nil {
 		return 0, fmt.Errorf("failed to find iperf3 daemon: %w", err)
@@ -205,6 +206,7 @@ func (im *IperfManager) StartServer(port int) error {
 
 	im.mu.Lock()
 	defer func() {
+		// gosec: Unlock does not return an error, this is safe to call
 		im.mu.Unlock()
 	}()
 
@@ -247,6 +249,7 @@ func (im *IperfManager) StartServer(port int) error {
 
 	// Use secure subprocess execution
 	// #nosec G204 - Using security.SecureExecute with validated arguments to prevent command injection
+	// gosec: Error from SecureExecute is properly checked and handled
 	_, err := security.SecureExecute(ctx, "iperf3", args...)
 	if err != nil {
 		return fmt.Errorf("failed to start iperf3 server: %w", err)
@@ -307,6 +310,7 @@ func (im *IperfManager) StopServer(port int) error {
 
 	im.mu.Lock()
 	defer func() {
+		// gosec: Unlock does not return an error, this is safe to call
 		im.mu.Unlock()
 	}()
 
@@ -892,6 +896,7 @@ func (im *IperfManager) RunLatencyTest(serverIP string, port int, duration time.
 func (im *IperfManager) GetActiveServers() map[string]*IperfServer {
 	im.mu.RLock()
 	defer func() {
+		// gosec: RUnlock does not return an error, this is safe to call
 		im.mu.RUnlock()
 	}()
 
@@ -907,6 +912,7 @@ func (im *IperfManager) GetActiveServers() map[string]*IperfServer {
 func (im *IperfManager) StopAllServers() error {
 	im.mu.Lock()
 	defer func() {
+		// gosec: Unlock does not return an error, this is safe to call
 		im.mu.Unlock()
 	}()
 

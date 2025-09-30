@@ -336,12 +336,12 @@ class OptimizationValidator:
 
             processor = IntentProcessor()
             test_intents = [
-                "High bandwidth video streaming tolerating up to 20ms latency "
-                "with 4.57 Mbps",
-                "Gaming service requiring less than 6.3ms latency and "
-                "0.93 Mbps throughput",
-                "IoT monitoring with 2.77 Mbps bandwidth and 15.7ms latency "
-                "tolerance",
+                ("High bandwidth video streaming tolerating up to 20ms latency "
+                 "with 4.57 Mbps"),
+                ("Gaming service requiring less than 6.3ms latency and "
+                 "0.93 Mbps throughput"),
+                ("IoT monitoring with 2.77 Mbps bandwidth and 15.7ms latency "
+                 "tolerance"),
             ]
 
             start_time = time.time()
@@ -361,12 +361,12 @@ class OptimizationValidator:
 
             processor = get_cached_processor()
             test_intents = [
-                "High bandwidth video streaming tolerating up to 20ms latency "
-                "with 4.57 Mbps",
-                "Gaming service requiring less than 6.3ms latency and "
-                "0.93 Mbps throughput",
-                "IoT monitoring with 2.77 Mbps bandwidth and 15.7ms latency "
-                "tolerance",
+                ("High bandwidth video streaming tolerating up to 20ms latency "
+                 "with 4.57 Mbps"),
+                ("Gaming service requiring less than 6.3ms latency and "
+                 "0.93 Mbps throughput"),
+                ("IoT monitoring with 2.77 Mbps bandwidth and 15.7ms latency "
+                 "tolerance"),
             ]
 
             start_time = time.time()
@@ -571,10 +571,10 @@ class OptimizationValidator:
                 "",
                 "📋 Thesis-specific recommendations:",
                 "- Monitor SMF initialization bottleneck (target: <60s)",
-                "- Validate throughput targets: eMBB=4.57Mbps, URLLC=0.93Mbps, "
-                "mIoT=2.77Mbps",
-                "- Ensure latency targets: eMBB=16.1ms, URLLC=6.3ms, "
-                "mIoT=15.7ms",
+                ("- Validate throughput targets: eMBB=4.57Mbps, URLLC=0.93Mbps, "
+                 "mIoT=2.77Mbps"),
+                ("- Ensure latency targets: eMBB=16.1ms, URLLC=6.3ms, "
+                 "mIoT=15.7ms"),
                 "- Maintain E2E deployment times under thesis maximums",
             ]
         )

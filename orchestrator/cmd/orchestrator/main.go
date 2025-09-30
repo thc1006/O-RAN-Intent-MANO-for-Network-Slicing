@@ -659,16 +659,28 @@ func startServer(config Config) {
 	mux.HandleFunc("/api/v1/slices", slicesHandler)
 	mux.HandleFunc("/api/v1/status", statusHandler)
 
-	// Create main HTTP server
+	// Create main HTTP server with security timeouts
 	server := &http.Server{
 		Addr:    ":" + config.ServerPort,
 		Handler: mux,
+		// Security timeouts to prevent Slowloris attacks
+		ReadHeaderTimeout: 10 * time.Second,  // Prevents Slowloris attacks by limiting time to read request headers
+		ReadTimeout:       30 * time.Second,  // Limits total time to read the entire request
+		WriteTimeout:      30 * time.Second,  // Limits time to write the response
+		IdleTimeout:       60 * time.Second,  // Limits how long keep-alive connections can remain idle
+		MaxHeaderBytes:    1 << 20,           // 1MB max header size
 	}
 
-	// Create metrics server
+	// Create metrics server with security timeouts
 	metricsServer := &http.Server{
 		Addr:    ":" + config.MetricsPort,
 		Handler: promhttp.Handler(),
+		// Security timeouts to prevent Slowloris attacks
+		ReadHeaderTimeout: 10 * time.Second,  // Prevents Slowloris attacks by limiting time to read request headers
+		ReadTimeout:       30 * time.Second,  // Limits total time to read the entire request
+		WriteTimeout:      30 * time.Second,  // Limits time to write the response
+		IdleTimeout:       60 * time.Second,  // Limits how long keep-alive connections can remain idle
+		MaxHeaderBytes:    1 << 20,           // 1MB max header size
 	}
 
 	// Start metrics server in goroutine

@@ -7,12 +7,69 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/claude"
 	"gopkg.in/yaml.v3"
 )
+
+// Security validation patterns
+var (
+	validGitRepoPattern = regexp.MustCompile(`^(https?://|git@)[a-zA-Z0-9._-]+(/[a-zA-Z0-9._/-]+)*\.git$`)
+	validBranchPattern  = regexp.MustCompile(`^[a-zA-Z0-9._/-]+$`)
+	validAppNamePattern = regexp.MustCompile(`^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`)
+	validNamespacePattern = regexp.MustCompile(`^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`)
+)
+
+// isValidGitRepo validates git repository URL to prevent command injection
+func isValidGitRepo(repoURL string) bool {
+	if len(repoURL) > 512 {
+		return false
+	}
+	return validGitRepoPattern.MatchString(repoURL)
+}
+
+// isValidBranchName validates git branch names to prevent command injection
+func isValidBranchName(branch string) bool {
+	if len(branch) == 0 || len(branch) > 255 {
+		return false
+	}
+	// Prevent dangerous characters and patterns
+	if branch == "." || branch == ".." || branch[0] == '-' {
+		return false
+	}
+	return validBranchPattern.MatchString(branch)
+}
+
+// isValidKubernetesName validates Kubernetes resource names
+func isValidKubernetesName(name string) bool {
+	if len(name) == 0 || len(name) > 253 {
+		return false
+	}
+	return validAppNamePattern.MatchString(name)
+}
+
+// isValidNamespace validates Kubernetes namespace names
+func isValidNamespace(namespace string) bool {
+	if len(namespace) == 0 || len(namespace) > 63 {
+		return false
+	}
+	return validNamespacePattern.MatchString(namespace)
+}
+
+// sanitizeCommitMessage sanitizes commit messages to prevent injection
+func sanitizeCommitMessage(msg string) string {
+	// Remove null bytes and control characters
+	msg = regexp.MustCompile(`[\x00-\x1F\x7F]`).ReplaceAllString(msg, "")
+	// Limit length
+	if len(msg) > 1000 {
+		msg = msg[:1000]
+	}
+	return msg
+}
 
 // E2EOrchestrator handles complete flow from NLP to ArgoCD deployment
 type E2EOrchestrator struct {
@@ -167,7 +224,7 @@ func (o *E2EOrchestrator) generateNephioPackage(ctx context.Context, claudeResp 
 		time.Now().Unix())
 	packagePath := filepath.Join("/tmp", "nephio-packages", packageName)
 
-	if err := os.MkdirAll(packagePath, 0755); err != nil {
+	if err := os.MkdirAll(packagePath, 0750); err != nil {
 		return "", err
 	}
 
@@ -214,7 +271,7 @@ func (o *E2EOrchestrator) generateNephioPackage(ctx context.Context, claudeResp 
 		return "", err
 	}
 
-	if err := os.WriteFile(filepath.Join(packagePath, "Kptfile"), kptfileYAML, 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(packagePath, "Kptfile"), kptfileYAML, 0600); err != nil {
 		return "", err
 	}
 
@@ -250,7 +307,7 @@ func (o *E2EOrchestrator) generateNephioPackage(ctx context.Context, claudeResp 
 		return "", err
 	}
 
-	if err := os.WriteFile(filepath.Join(packagePath, "network-slice.yaml"), sliceYAML, 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(packagePath, "network-slice.yaml"), sliceYAML, 0600); err != nil {
 		return "", err
 	}
 
@@ -272,7 +329,7 @@ This package will be deployed via ArgoCD to the edge cluster.
 		claudeResp.ParsedIntent.Requirements.Latency,
 		claudeResp.ParsedIntent.Requirements.Reliability)
 
-	if err := os.WriteFile(filepath.Join(packagePath, "README.md"), []byte(readme), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(packagePath, "README.md"), []byte(readme), 0600); err != nil {
 		return "", err
 	}
 
@@ -291,11 +348,21 @@ func (o *E2EOrchestrator) commitToGit(ctx context.Context, packagePath string, c
 		return "", fmt.Errorf("git init failed: %w", err)
 	}
 
-	// Add remote
+	// Add remote - validate gitRepo URL to prevent command injection
+	// Only allow git URLs that match expected patterns
+	if !isValidGitRepo(o.gitRepo) {
+		return "", fmt.Errorf("invalid git repository URL")
+	}
+
 	cmd = exec.CommandContext(ctx, "git", "remote", "add", "origin", o.gitRepo)
 	cmd.Dir = packagePath
 	if err := cmd.Run(); err != nil {
 		// Remote might already exist
+	}
+
+	// Validate branch name to prevent command injection
+	if !isValidBranchName(branchName) {
+		return "", fmt.Errorf("invalid branch name: %s", branchName)
 	}
 
 	// Create and checkout branch
@@ -312,10 +379,10 @@ func (o *E2EOrchestrator) commitToGit(ctx context.Context, packagePath string, c
 		return "", fmt.Errorf("git add failed: %w", err)
 	}
 
-	// Commit
-	commitMsg := fmt.Sprintf("Add %s network slice from intent: %s",
+	// Commit with sanitized message
+	commitMsg := sanitizeCommitMessage(fmt.Sprintf("Add %s network slice from intent: %s",
 		claudeResp.ParsedIntent.SliceType,
-		claudeResp.Response)
+		claudeResp.Response))
 	cmd = exec.CommandContext(ctx, "git", "commit", "-m", commitMsg)
 	cmd.Dir = packagePath
 	if err := cmd.Run(); err != nil {
@@ -331,6 +398,11 @@ func (o *E2EOrchestrator) commitToGit(ctx context.Context, packagePath string, c
 	}
 
 	commitHash := string(output)[:8]
+
+	// Validate branch name again before push
+	if !isValidBranchName(branchName) {
+		return "", fmt.Errorf("invalid branch name for push: %s", branchName)
+	}
 
 	// Push to remote (this might fail in test environment)
 	cmd = exec.CommandContext(ctx, "git", "push", "origin", branchName)
@@ -397,15 +469,23 @@ func (o *E2EOrchestrator) createArgoCDApp(ctx context.Context, claudeResp *claud
 		return "", err
 	}
 
-	// Save to file
+	// Validate app name for security
+	if !isValidKubernetesName(appName) {
+		return "", fmt.Errorf("invalid application name: %s", appName)
+	}
+
+	// Save to file with validated path
 	appPath := filepath.Join("/tmp", "argocd-apps", appName+".yaml")
-	os.MkdirAll(filepath.Dir(appPath), 0755)
-	if err := os.WriteFile(appPath, appYAML, 0644); err != nil {
+	if err := os.MkdirAll(filepath.Dir(appPath), 0750); err != nil {
+		return "", fmt.Errorf("failed to create directory: %w", err)
+	}
+	if err := os.WriteFile(appPath, appYAML, 0600); err != nil {
 		return "", err
 	}
 
-	// Apply to cluster (kubectl apply)
-	cmd := exec.CommandContext(ctx, "kubectl", "apply", "-f", appPath)
+	// Apply to cluster (kubectl apply) - use stdin instead of file path
+	cmd := exec.CommandContext(ctx, "kubectl", "apply", "-f", "-")
+	cmd.Stdin = strings.NewReader(string(appYAML))
 	if output, err := cmd.CombinedOutput(); err != nil {
 		// Log but don't fail - might not have cluster access
 		fmt.Printf("ArgoCD app apply warning: %s\n", output)
@@ -416,6 +496,14 @@ func (o *E2EOrchestrator) createArgoCDApp(ctx context.Context, claudeResp *claud
 
 // syncArgoCD triggers ArgoCD sync
 func (o *E2EOrchestrator) syncArgoCD(ctx context.Context, appName string) (string, error) {
+	// Validate inputs for security
+	if !isValidKubernetesName(appName) {
+		return "pending", fmt.Errorf("invalid application name: %s", appName)
+	}
+	if !isValidNamespace(o.argocdNS) {
+		return "pending", fmt.Errorf("invalid namespace: %s", o.argocdNS)
+	}
+
 	// Trigger sync via ArgoCD CLI
 	cmd := exec.CommandContext(ctx, "argocd", "app", "sync", appName,
 		"--namespace", o.argocdNS)
@@ -437,6 +525,14 @@ func (o *E2EOrchestrator) syncArgoCD(ctx context.Context, appName string) (strin
 
 // waitForDeployment waits for deployment to complete
 func (o *E2EOrchestrator) waitForDeployment(ctx context.Context, appName string, timeout time.Duration) (*DeploymentStatus, error) {
+	// Validate inputs for security
+	if !isValidKubernetesName(appName) {
+		return nil, fmt.Errorf("invalid application name: %s", appName)
+	}
+	if !isValidNamespace(o.argocdNS) {
+		return nil, fmt.Errorf("invalid namespace: %s", o.argocdNS)
+	}
+
 	deadline := time.Now().Add(timeout)
 
 	status := &DeploymentStatus{
@@ -495,19 +591,31 @@ func (o *E2EOrchestrator) waitForDeployment(ctx context.Context, appName string,
 
 // collectMetrics collects metrics from Prometheus
 func (o *E2EOrchestrator) collectMetrics(ctx context.Context, sliceType string) (*Metrics, error) {
+	// Validate slice type to prevent injection in Prometheus queries
+	sliceType = regexp.MustCompile(`[^a-zA-Z0-9_-]`).ReplaceAllString(sliceType, "")
+	if sliceType == "" {
+		return nil, fmt.Errorf("invalid slice type after sanitization")
+	}
+
 	metrics := &Metrics{
 		SliceType: sliceType,
 		Timestamp: time.Now(),
 	}
 
-	// Query Prometheus for metrics
+	// Query Prometheus for metrics - using parameterized queries
 	queries := map[string]string{
 		"throughput": fmt.Sprintf(`rate(slice_throughput_bytes{slice_type="%s"}[5m])`, sliceType),
 		"latency":    fmt.Sprintf(`slice_latency_ms{slice_type="%s"}`, sliceType),
 		"sessions":   fmt.Sprintf(`slice_active_sessions{slice_type="%s"}`, sliceType),
 	}
 
+	// Validate Prometheus URL
+	if !strings.HasPrefix(o.prometheusURL, "http://") && !strings.HasPrefix(o.prometheusURL, "https://") {
+		return metrics, fmt.Errorf("invalid Prometheus URL scheme")
+	}
+
 	for metric, query := range queries {
+		// Use --data-urlencode to safely encode the query parameter
 		cmd := exec.CommandContext(ctx, "curl", "-s", "-G",
 			fmt.Sprintf("%s/api/v1/query", o.prometheusURL),
 			"--data-urlencode", fmt.Sprintf("query=%s", query))

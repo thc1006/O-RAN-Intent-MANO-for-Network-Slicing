@@ -91,18 +91,30 @@ func NewServer(addr string) *Server {
 	}
 }
 
-// Start starts the WebSocket server
+// Start starts the WebSocket server with proper timeout configuration
 func (s *Server) Start() error {
 	// Start broadcast handler
 	go s.handleBroadcast()
 
-	// Setup HTTP routes
-	http.HandleFunc("/ws", s.handleWebSocket)
-	http.HandleFunc("/health", s.handleHealth)
-	http.HandleFunc("/", s.serveHome)
+	// Setup HTTP routes with a new ServeMux
+	mux := http.NewServeMux()
+	mux.HandleFunc("/ws", s.handleWebSocket)
+	mux.HandleFunc("/health", s.handleHealth)
+	mux.HandleFunc("/", s.serveHome)
+
+	// Create HTTP server with security timeouts to prevent resource exhaustion
+	server := &http.Server{
+		Addr:              s.addr,
+		Handler:           mux,
+		ReadTimeout:       15 * time.Second,  // Maximum duration for reading the entire request
+		ReadHeaderTimeout: 10 * time.Second,  // Maximum duration for reading request headers
+		WriteTimeout:      15 * time.Second,  // Maximum duration for writing the response
+		IdleTimeout:       120 * time.Second, // Maximum idle time between requests
+		MaxHeaderBytes:    1 << 20,           // 1 MB max header size
+	}
 
 	log.Printf("🚀 WebSocket server starting on %s", s.addr)
-	return http.ListenAndServe(s.addr, nil)
+	return server.ListenAndServe()
 }
 
 // HandleWebSocket handles WebSocket connections (exported for testing)

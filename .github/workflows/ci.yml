@@ -78,9 +78,21 @@ jobs:
 
     - name: Run go vet
       run: |
-        find . -name "*.go" -path "*/vendor" -prune -o -name "*.go" -print0 | \
-        xargs -0 -I {} dirname {} | sort -u | \
-        xargs -I {} sh -c 'cd {} && go vet ./...'
+        echo "Running go vet on workspace modules..."
+
+        # Option 1: Vet all workspace modules from root (fastest)
+        # This works because go.work defines the workspace
+        go vet ./...
+
+        # Option 2: If workspace vetting fails, vet each module individually
+        # Uncomment below if you need per-module error reporting
+        # echo "Vetting individual workspace modules..."
+        # for module_dir in $(awk '/^[[:space:]]*\./ {gsub(/^[[:space:]]*/, ""); gsub(/\/$/, ""); print}' go.work); do
+        #   if [ -d "$module_dir" ] && [ -f "$module_dir/go.mod" ]; then
+        #     echo "→ Vetting: $module_dir"
+        #     (cd "$module_dir" && go vet ./...) || exit 1
+        #   fi
+        # done
 
     # Temporarily disable staticcheck while fixing issues
     # - name: Run staticcheck

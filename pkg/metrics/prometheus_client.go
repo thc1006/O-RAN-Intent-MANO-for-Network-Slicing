@@ -2,10 +2,11 @@ package metrics
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/binary"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
-	"math/rand"
 	"strings"
 	"sync"
 	"time"
@@ -23,6 +24,28 @@ type PrometheusClient struct {
 	mu        sync.RWMutex
 	rules     map[string]*AlertRule
 	streamers map[string]chan *StreamedMetric
+}
+
+// secureRandFloat64 generates a cryptographically secure random float64 between 0 and 1
+func secureRandFloat64() float64 {
+	var b [8]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		return 0.5 // Fallback to deterministic value
+	}
+	// Convert bytes to uint64, then normalize to [0,1)
+	return float64(binary.BigEndian.Uint64(b[:])) / float64(^uint64(0))
+}
+
+// secureRandInt generates a cryptographically secure random int less than n
+func secureRandInt(n int) int {
+	if n <= 0 {
+		return 0
+	}
+	var b [8]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		return 0 // Fallback
+	}
+	return int(binary.BigEndian.Uint64(b[:]) % uint64(n))
 }
 
 // NewPrometheusClient creates a new Prometheus client
@@ -89,7 +112,7 @@ func (c *PrometheusClient) QueryMetrics(ctx context.Context, query *MetricQuery)
 
 	for i := 0; i < numPoints; i++ {
 		value := MetricValue{
-			Value:     rand.Float64() * 100,
+			Value:     secureRandFloat64() * 100,
 			Timestamp: baseTime.Add(time.Duration(i) * 5 * time.Minute),
 		}
 		result.Values = append(result.Values, value)
@@ -126,11 +149,11 @@ func (c *PrometheusClient) QueryMetrics(ctx context.Context, query *MetricQuery)
 // Get5GCoreMetrics retrieves 5G Core metrics
 func (c *PrometheusClient) Get5GCoreMetrics(ctx context.Context) (*CoreMetrics, error) {
 	metrics := &CoreMetrics{
-		RegisteredUEs:  int(rand.Float64() * 1000),
-		ActiveSessions: int(rand.Float64() * 500),
-		AMFLoad:        rand.Float64() * 100,
-		SMFLoad:        rand.Float64() * 100,
-		UPFThroughput:  rand.Float64() * 10000,
+		RegisteredUEs:  int(secureRandFloat64() * 1000),
+		ActiveSessions: int(secureRandFloat64() * 500),
+		AMFLoad:        secureRandFloat64() * 100,
+		SMFLoad:        secureRandFloat64() * 100,
+		UPFThroughput:  secureRandFloat64() * 10000,
 	}
 
 	// In production, aggregate from multiple queries
@@ -150,7 +173,7 @@ func (c *PrometheusClient) AggregateMetrics(ctx context.Context, query *Aggregat
 
 	// Generate mock aggregated data
 	for _, site := range query.Sites {
-		value := rand.Float64() * 1000
+		value := secureRandFloat64() * 1000
 		aggregated.GroupValues[site] = value
 		aggregated.TotalValue += value
 	}
@@ -189,7 +212,7 @@ func (c *PrometheusClient) GetActiveAlerts(ctx context.Context) ([]Alert, error)
 	// Generate mock alerts based on rules
 	c.mu.RLock()
 	for name := range c.rules {
-		if rand.Float64() > 0.7 { // 30% chance of alert being active
+		if secureRandFloat64() > 0.7 { // 30% chance of alert being active
 			alerts = append(alerts, Alert{
 				Name:  name,
 				State: "firing",
@@ -220,7 +243,7 @@ func (c *PrometheusClient) QueryHistorical(ctx context.Context, query *Historica
 	for i := 0; i < numPoints; i++ {
 		point := DataPoint{
 			Timestamp: query.Start.Add(time.Duration(i) * query.Step),
-			Value:     rand.Float64() * 100 + float64(i)*0.5, // Trending upward
+			Value:     secureRandFloat64() * 100 + float64(i)*0.5, // Trending upward
 		}
 		data.DataPoints = append(data.DataPoints, point)
 	}
@@ -236,8 +259,8 @@ func (c *PrometheusClient) QueryHistorical(ctx context.Context, query *Historica
 // CalculateSLACompliance calculates SLA compliance
 func (c *PrometheusClient) CalculateSLACompliance(ctx context.Context, sla *SLAConfig) (*SLACompliance, error) {
 	compliance := &SLACompliance{
-		LatencyCompliance:    95.5 + rand.Float64()*4.5, // 95.5-100%
-		AvailabilityMeasured: 99.5 + rand.Float64()*0.5, // 99.5-100%
+		LatencyCompliance:    95.5 + secureRandFloat64()*4.5, // 95.5-100%
+		AvailabilityMeasured: 99.5 + secureRandFloat64()*0.5, // 99.5-100%
 	}
 
 	// In production, calculate from historical data
@@ -292,7 +315,7 @@ func (c *PrometheusClient) StreamMetrics(ctx context.Context, config *StreamConf
 				for _, metric := range config.Metrics {
 					streamed := &StreamedMetric{
 						Name:      metric,
-						Value:     rand.Float64() * 100,
+						Value:     secureRandFloat64() * 100,
 						Timestamp: time.Now(),
 					}
 					select {
@@ -373,7 +396,7 @@ func (c *PrometheusClient) generateCSV(config *ExportConfig) string {
 			writer.Write([]string{
 				timestamp.Format(time.RFC3339),
 				metric,
-				fmt.Sprintf("%.2f", rand.Float64()*100),
+				fmt.Sprintf("%.2f", secureRandFloat64()*100),
 			})
 		}
 	}
@@ -396,7 +419,7 @@ func (c *PrometheusClient) generateJSON(config *ExportConfig) string {
 			entries = append(entries, ExportEntry{
 				Timestamp: timestamp.Format(time.RFC3339),
 				Metric:    metric,
-				Value:     rand.Float64() * 100,
+				Value:     secureRandFloat64() * 100,
 			})
 		}
 	}

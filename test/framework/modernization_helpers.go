@@ -193,11 +193,16 @@ func NewFileSystemTestHelper(tc *TestContext) *FileSystemTestHelper {
 
 // CreateTestFile creates a test file with specified content
 func (fs *FileSystemTestHelper) CreateTestFile(relativePath string, content string) string {
+	// Validate relativePath to prevent path traversal
+	if strings.Contains(relativePath, "..") {
+		panic(fmt.Sprintf("Path traversal detected in relative path: %s", relativePath))
+	}
+
 	fullPath := fmt.Sprintf("%s/%s", fs.TestRoot, relativePath)
 
 	// Create directory if it doesn't exist
 	dir := fmt.Sprintf("%s/%s", fs.TestRoot, strings.Split(relativePath, "/")[0])
-	os.MkdirAll(dir, 0755)
+	os.MkdirAll(dir, 0750)
 
 	file, err := os.Create(fullPath)
 	if err != nil {
@@ -221,6 +226,12 @@ func (fs *FileSystemTestHelper) AssertFileExists(t *testing.T, relativePath stri
 
 // AssertFileContent asserts the content of a file
 func (fs *FileSystemTestHelper) AssertFileContent(t *testing.T, relativePath string, expectedContent string) {
+	// Validate relativePath to prevent path traversal
+	if strings.Contains(relativePath, "..") {
+		t.Fatalf("Path traversal detected in relative path: %s", relativePath)
+		return
+	}
+
 	fullPath := fmt.Sprintf("%s/%s", fs.TestRoot, relativePath)
 	content, err := os.ReadFile(fullPath)
 	require.NoError(t, err, "Failed to read file: %s", fullPath)

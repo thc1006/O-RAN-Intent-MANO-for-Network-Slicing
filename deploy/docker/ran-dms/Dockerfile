@@ -1,6 +1,7 @@
 # RAN DMS Multi-stage Dockerfile (2025 Best Practices)
 # Stage 1: Build
-FROM golang:1.24.7-alpine AS builder
+# Using Alpine 3.20 (stable) to fix CVE-2025-46394 and CVE-2024-58251
+FROM golang:1.24.7-alpine3.20 AS builder
 
 # Security and metadata labels
 LABEL maintainer="O-RAN MANO Team"

@@ -232,8 +232,15 @@ func RunBenchmarkWithConfig(b *testing.B, config BenchmarkConfig, benchFunc func
 		b.Logf("Warning: Benchmark ran for only %v, consider increasing work", elapsed)
 	}
 
-	if config.MemoryLimit > 0 && int64(memUsed) > config.MemoryLimit {
-		b.Errorf("Memory usage %d bytes exceeds limit %d bytes", memUsed, config.MemoryLimit)
+	// Safe integer overflow check: ensure memUsed fits in int64 before comparison
+	if config.MemoryLimit > 0 {
+		// Check if memUsed would overflow int64
+		const maxInt64 = int64(^uint64(0) >> 1)
+		if memUsed > uint64(maxInt64) {
+			b.Errorf("Memory usage %d bytes exceeds int64 maximum and limit %d bytes", memUsed, config.MemoryLimit)
+		} else if int64(memUsed) > config.MemoryLimit {
+			b.Errorf("Memory usage %d bytes exceeds limit %d bytes", memUsed, config.MemoryLimit)
+		}
 	}
 }
 

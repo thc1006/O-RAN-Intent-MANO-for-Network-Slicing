@@ -354,7 +354,18 @@ func (r *PackageRenderer) validatePackageStructure(packagePath string) error {
 
 // readKptfile reads and parses the Kptfile from the package
 func (r *PackageRenderer) readKptfile(packagePath string) (*Kptfile, error) {
-	kptfilePath := filepath.Join(packagePath, "Kptfile")
+	// Validate and sanitize packagePath to prevent path traversal
+	cleanPath, err := filepath.Abs(packagePath)
+	if err != nil {
+		return nil, fmt.Errorf("invalid package path: %w", err)
+	}
+
+	// Ensure path doesn't contain traversal attempts
+	if strings.Contains(filepath.ToSlash(cleanPath), "..") {
+		return nil, fmt.Errorf("path traversal detected in package path")
+	}
+
+	kptfilePath := filepath.Join(cleanPath, "Kptfile")
 
 	data, err := os.ReadFile(kptfilePath)
 	if err != nil {
@@ -442,12 +453,23 @@ func (r *PackageRenderer) executeFunctionPipeline(ctx context.Context, packagePa
 func (r *PackageRenderer) readRenderedResources(packagePath string) ([]RenderedResource, error) {
 	var resources []RenderedResource
 
+	// Validate and sanitize packagePath to prevent path traversal
+	cleanPath, err := filepath.Abs(packagePath)
+	if err != nil {
+		return nil, fmt.Errorf("invalid package path: %w", err)
+	}
+
+	// Ensure path doesn't contain traversal attempts
+	if strings.Contains(filepath.ToSlash(cleanPath), "..") {
+		return nil, fmt.Errorf("path traversal detected in package path")
+	}
+
 	// Read all YAML files in resources directory
-	resourcesDir := filepath.Join(packagePath, "resources")
+	resourcesDir := filepath.Join(cleanPath, "resources")
 
 	// If resources directory doesn't exist, try reading from package root
 	if _, err := os.Stat(resourcesDir); os.IsNotExist(err) {
-		resourcesDir = packagePath
+		resourcesDir = cleanPath
 	}
 
 	entries, err := os.ReadDir(resourcesDir)
@@ -467,6 +489,11 @@ func (r *PackageRenderer) readRenderedResources(packagePath string) ([]RenderedR
 
 		// Skip Kptfile
 		if entry.Name() == "Kptfile" {
+			continue
+		}
+
+		// Validate entry name to prevent path traversal
+		if strings.Contains(entry.Name(), "..") || strings.Contains(entry.Name(), "/") || strings.Contains(entry.Name(), "\\") {
 			continue
 		}
 

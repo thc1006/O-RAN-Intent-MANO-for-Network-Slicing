@@ -425,7 +425,7 @@ class IntentParser:
                     keywords.append(keyword)
 
         # Determine intent type based on slice type and keywords
-        intent_type = "unknown"
+        # Using if-elif-else chain without initial assignment to avoid CodeQL warning
         if "emergency" in intent_lower or "critical" in intent_lower:
             intent_type = "emergency"
         elif "video" in intent_lower or "streaming" in intent_lower:

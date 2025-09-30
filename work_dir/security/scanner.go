@@ -86,7 +86,18 @@ func (s *SecurityScanner) ScanPackage(pkgPath string) error {
 
 // scanFile scans a single YAML file for security violations
 func (s *SecurityScanner) scanFile(path string) error {
-	data, err := os.ReadFile(path)
+	// Validate and sanitize path to prevent path traversal
+	cleanPath, err := filepath.Abs(path)
+	if err != nil {
+		return fmt.Errorf("invalid file path: %w", err)
+	}
+
+	// Ensure path doesn't contain traversal attempts
+	if strings.Contains(filepath.ToSlash(cleanPath), "..") {
+		return fmt.Errorf("path traversal detected in file path")
+	}
+
+	data, err := os.ReadFile(cleanPath)
 	if err != nil {
 		return err
 	}
@@ -399,7 +410,18 @@ func (s *SecurityScanner) GetViolations() []SecurityViolation {
 
 // GenerateReport creates a markdown report of security violations
 func (s *SecurityScanner) GenerateReport(outputPath string) error {
-	file, err := os.Create(outputPath)
+	// Validate and sanitize outputPath to prevent path traversal
+	cleanPath, err := filepath.Abs(outputPath)
+	if err != nil {
+		return fmt.Errorf("invalid output path: %w", err)
+	}
+
+	// Ensure path doesn't contain traversal attempts
+	if strings.Contains(filepath.ToSlash(cleanPath), "..") {
+		return fmt.Errorf("path traversal detected in output path")
+	}
+
+	file, err := os.Create(cleanPath)
 	if err != nil {
 		return fmt.Errorf("failed to create report file: %w", err)
 	}

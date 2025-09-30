@@ -3,10 +3,11 @@
 
 # Build arguments for customization
 ARG GO_VERSION=1.24.7
-ARG ALPINE_VERSION=3.19
+ARG ALPINE_VERSION=3.20
 
 # Stage 1: Build with Go 1.24.7-alpine
-FROM golang:${GO_VERSION}-alpine AS builder
+# Using Alpine 3.20 (stable) to fix CVE-2025-46394 and CVE-2024-58251
+FROM golang:${GO_VERSION}-alpine${ALPINE_VERSION} AS builder
 
 # Set Go environment variables with multi-arch support
 ARG TARGETARCH

@@ -1,6 +1,7 @@
 # TN Agent Multi-stage Dockerfile (2025 Best Practices)
 # Stage 1: Build
-FROM golang:1.24.7-alpine AS builder
+# Using Alpine 3.20 (stable) to fix CVE-2025-46394 and CVE-2024-58251
+FROM golang:1.24.7-alpine3.20 AS builder
 
 # Security and metadata labels
 LABEL maintainer="O-RAN MANO Team"
@@ -82,6 +83,12 @@ USER nobody:nobody
 
 # Expose application ports
 EXPOSE 8080 9090 5201
+
+# HEALTHCHECK to monitor container health
+# Checks HTTP health endpoint every 30s with 3s timeout
+# Allows 3 retries before marking unhealthy (90s startup time)
+HEALTHCHECK --interval=30s --timeout=3s --start-period=90s --retries=3 \
+    CMD ["/usr/local/bin/tn-agent", "--health-check"] || exit 1
 
 # Note: TN Agent requires NET_ADMIN,NET_RAW capabilities via K8s security context:
 # securityContext:
