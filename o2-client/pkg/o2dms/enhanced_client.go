@@ -3,13 +3,13 @@ package o2dms
 import (
 	"context"
 	"fmt"
+	"log"
 	"math"
 	"math/rand"
 	"sync"
 	"time"
 
 	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/o2-client/pkg/models"
-	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/logging"
 )
 
 // Enhanced O2 DMS Client with retry logic, event notifications, and advanced features
@@ -189,7 +189,7 @@ func (c *EnhancedClient) DeleteNFDeploymentWithRetry(ctx context.Context, deploy
 
 // DeployNetworkSlice deploys a complete network slice with multiple NFs
 func (c *EnhancedClient) DeployNetworkSlice(ctx context.Context, deploymentManagerID string, sliceSpec *NetworkSliceSpec) (*NetworkSliceDeployment, error) {
-	logging.Info("deploying network slice",
+	log.Println("deploying network slice",
 		"slice_id", sliceSpec.SliceID,
 		"deployment_manager_id", deploymentManagerID,
 		"nf_count", len(sliceSpec.NetworkFunctions))
@@ -270,7 +270,7 @@ func (c *EnhancedClient) WaitForDeploymentReadyWithRetry(ctx context.Context, de
 		var err error
 		lastDeployment, err = c.GetNFDeploymentWithRetry(ctx, deploymentManagerID, deploymentID)
 		if err != nil {
-			logging.Debug("failed to get deployment status",
+			log.Println("failed to get deployment status",
 				"deployment_id", deploymentID,
 				"deployment_manager_id", deploymentManagerID,
 				"error", err)
@@ -368,7 +368,7 @@ func (c *EnhancedClient) publishEvent(event Event) {
 	select {
 	case c.eventChan <- event:
 	default:
-		logging.Warn("event channel full, dropping event",
+		log.Println("event channel full, dropping event",
 			"event_id", event.ID,
 			"event_type", event.Type)
 	}
@@ -384,7 +384,7 @@ func (c *EnhancedClient) processEvent(event Event) {
 		go func(h EventHandler) {
 			defer func() {
 				if r := recover(); r != nil {
-					logging.Error("event handler panic",
+					log.Println("event handler panic",
 						"panic", r,
 						"event_id", event.ID,
 						"event_type", event.Type)
@@ -517,7 +517,7 @@ func (c *EnhancedClient) retryWithBackoff(ctx context.Context, fn func() error) 
 				return err
 			}
 
-			logging.Debug("retry attempt",
+			log.Println("retry attempt",
 				"attempt", attempt+1,
 				"max_retries", c.retryConfig.MaxRetries,
 				"error", err)

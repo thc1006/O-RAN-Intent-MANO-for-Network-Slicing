@@ -232,7 +232,7 @@ type CapacitySummary struct {
 func ValidEMBBPlacementRequest() PlacementRequest {
 	return PlacementRequest{
 		ID:      "placement-embb-001",
-		VNFSpec: eMBBVNFDeployment(),
+		VNFSpec: EMBBVNFDeployment(),
 		QoSProfile: QoSProfile{
 			Latency: LatencyRequirement{
 				Value: "20",

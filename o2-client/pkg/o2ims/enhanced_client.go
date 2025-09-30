@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/o2-client/pkg/models"
-	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/logging"
+	"log"
 )
 
 // Enhanced O2 IMS Client Methods with retry logic and event handling
@@ -62,7 +62,7 @@ func (c *Client) publishEvent(event Event) {
 	select {
 	case c.eventChan <- event:
 	default:
-		logging.Warn("event channel full, dropping event",
+		log.Println("event channel full, dropping event",
 			"event_id", event.ID,
 			"event_type", event.Type)
 	}
@@ -78,7 +78,7 @@ func (c *Client) processEvent(event Event) {
 		go func(h EventHandler) {
 			defer func() {
 				if r := recover(); r != nil {
-					logging.Error("event handler panic",
+					log.Println("event handler panic",
 						"panic", r,
 						"event_id", event.ID,
 						"event_type", event.Type)
@@ -168,7 +168,7 @@ func (c *Client) performHealthCheck(ctx context.Context) {
 
 	_, err := c.GetHealthInfo(healthCtx)
 	if err != nil {
-		logging.Error("health check failed",
+		log.Println("health check failed",
 			"source", "o2ims.client",
 			"error", err)
 		c.publishEvent(Event{
@@ -180,7 +180,7 @@ func (c *Client) performHealthCheck(ctx context.Context) {
 			Severity:  SeverityError,
 		})
 	} else {
-		logging.Info("health check successful",
+		log.Println("health check successful",
 			"source", "o2ims.client")
 		c.publishEvent(Event{
 			ID:        fmt.Sprintf("health_%d", time.Now().UnixNano()),
@@ -280,7 +280,7 @@ func (c *Client) retryWithBackoff(ctx context.Context, fn func() error) error {
 				return err
 			}
 
-			logging.Debug("retry attempt",
+			log.Println("retry attempt",
 				"attempt", attempt+1,
 				"max_retries", c.retryConfig.MaxRetries,
 				"error", err)
@@ -333,7 +333,7 @@ func (c *Client) DiscoverResourcesByCapabilities(ctx context.Context, capabiliti
 	for _, pool := range pools.Items {
 		resources, err := c.GetResourcesWithRetry(ctx, pool.ResourcePoolID, models.ResourceFilter{})
 		if err != nil {
-			logging.Warn("failed to get resources from pool",
+			log.Println("failed to get resources from pool",
 				"pool_id", pool.ResourcePoolID,
 				"error", err)
 			continue

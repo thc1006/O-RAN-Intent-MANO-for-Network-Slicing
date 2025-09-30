@@ -65,7 +65,7 @@ func setupTestIperfManager() *IperfManager {
 	manager := &IperfManager{
 		logger:  logger,
 		servers: make(map[string]*IperfServer),
-		mutex:   &sync.RWMutex{}, // Add mutex for thread safety
+		mu:      sync.RWMutex{}, // Add mutex for thread safety
 	}
 
 	return manager

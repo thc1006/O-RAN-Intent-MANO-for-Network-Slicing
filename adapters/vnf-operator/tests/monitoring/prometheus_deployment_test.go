@@ -157,8 +157,8 @@ func TestPrometheusOperatorInstallation(t *testing.T) {
 	}
 }
 
-// TestServiceMonitorCreation tests ServiceMonitor creation for O-RAN components
-func TestServiceMonitorCreation(t *testing.T) {
+// TestPrometheusServiceMonitorCreation tests ServiceMonitor creation for O-RAN components with Prometheus
+func TestPrometheusServiceMonitorCreation(t *testing.T) {
 	testCases := []struct {
 		name           string
 		component      string

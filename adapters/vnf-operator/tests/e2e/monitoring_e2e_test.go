@@ -544,7 +544,7 @@ func (suite *MonitoringE2ETestSuite) verifyMetricsFlow(t *testing.T) {
 
 // Helper function to make requests within the cluster
 func makeClusterRequest(ctx context.Context, clientset *kubernetes.Clientset, restConfig *rest.Config,
-	namespace, serviceName, path string) (*http.Response, error) {
+	namespace, serviceName, path string) ([]byte, error) {
 
 	// Create a proxy request to the service
 	proxyReq := clientset.CoreV1().Services(namespace).ProxyGet("http", serviceName, "", path, nil)
