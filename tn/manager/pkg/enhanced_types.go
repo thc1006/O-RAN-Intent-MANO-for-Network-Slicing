@@ -630,7 +630,7 @@ func (ns *NetworkState) GetSliceVXLANConfigs(nodeID string) map[string]*DynamicV
 	for sliceID, config := range ns.sliceConfigs {
 		// Check if this slice uses the specified node
 		for _, endpoint := range config.Endpoints {
-			if endpoint.NodeID == nodeID {
+			if endpoint.NodeName == nodeID {
 				configs[sliceID] = config
 				break
 			}
@@ -649,7 +649,7 @@ func (ns *NetworkState) GetSliceQoSStrategies(nodeID string) map[string]*QoSStra
 		// Check if this slice uses the specified node
 		if config, exists := ns.sliceConfigs[sliceID]; exists {
 			for _, endpoint := range config.Endpoints {
-				if endpoint.NodeID == nodeID {
+				if endpoint.NodeName == nodeID {
 					strategies[sliceID] = strategy
 					break
 				}
@@ -667,7 +667,7 @@ func (ns *NetworkState) GetSlicesUsingNode(nodeID string) []string {
 	slices := make([]string, 0)
 	for sliceID, config := range ns.sliceConfigs {
 		for _, endpoint := range config.Endpoints {
-			if endpoint.NodeID == nodeID {
+			if endpoint.NodeName == nodeID {
 				slices = append(slices, sliceID)
 				break
 			}

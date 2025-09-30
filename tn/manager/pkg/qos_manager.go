@@ -178,9 +178,9 @@ func (qm *QoSManager) AdjustForLatency(strategy *QoSStrategy, faultDetails map[s
 	// Reduce buffer sizes to minimize queuing delay
 	for i := range adjusted.SchedulingPolicy.Queues {
 		queue := &adjusted.SchedulingPolicy.Queues[i]
-		if currentBurst, ok := queue.BurstSize.(string); ok {
+		if queue.BurstSize != "" {
 			// Reduce burst size by 50%
-			queue.BurstSize = qm.reduceBurstSize(currentBurst, 0.5)
+			queue.BurstSize = qm.reduceBurstSize(queue.BurstSize, 0.5)
 		}
 	}
 
