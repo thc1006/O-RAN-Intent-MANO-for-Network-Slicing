@@ -222,7 +222,7 @@ jobs:
 
     - name: Run unit tests with coverage
       working-directory: ${{ matrix.component.path }}
-      timeout-minutes: ${{ fromJson(matrix.component.timeout) }}
+      timeout-minutes: ${{ matrix.component.timeout }}
       run: |
         echo "Running unit tests for ${{ matrix.component.name }}"
 

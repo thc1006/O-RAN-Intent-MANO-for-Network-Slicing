@@ -7,7 +7,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -140,7 +139,7 @@ func TestVNFDeploymentReconciler_Reconcile(t *testing.T) {
 		},
 		{
 			name:           "mmtc_slice_deployment",
-			vnfDeployment:  fixtures.mMTCVNFDeployment(),
+			vnfDeployment:  fixtures.MMTCVNFDeployment(),
 			expectedResult: reconcile.Result{RequeueAfter: time.Minute * 5},
 			expectedError:  false,
 			validateCalls: func(t *testing.T, mockK8s *mocks.MockK8sClient, mockDMS *MockDMSClient, mockGitOps *MockGitOpsClient) {

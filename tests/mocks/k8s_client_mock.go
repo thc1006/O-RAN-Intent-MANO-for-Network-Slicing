@@ -105,6 +105,38 @@ func (m *MockK8sClient) RESTMapper() meta.RESTMapper {
 	return nil
 }
 
+func (m *MockK8sClient) SubResource(subResource string) client.SubResourceClient {
+	return &MockSubResourceClient{}
+}
+
+// GroupVersionKindFor returns GVK for the given object
+func (m *MockK8sClient) GroupVersionKindFor(obj runtime.Object) (schema.GroupVersionKind, error) {
+	return schema.GroupVersionKind{}, nil
+}
+
+// IsObjectNamespaced returns true if the object is namespaced
+func (m *MockK8sClient) IsObjectNamespaced(obj runtime.Object) (bool, error) {
+	return true, nil
+}
+
+type MockSubResourceClient struct{}
+
+func (m *MockSubResourceClient) Get(ctx context.Context, obj client.Object, subResource client.Object, opts ...client.SubResourceGetOption) error {
+	return nil
+}
+
+func (m *MockSubResourceClient) Create(ctx context.Context, obj client.Object, subResource client.Object, opts ...client.SubResourceCreateOption) error {
+	return nil
+}
+
+func (m *MockSubResourceClient) Update(ctx context.Context, obj client.Object, opts ...client.SubResourceUpdateOption) error {
+	return nil
+}
+
+func (m *MockSubResourceClient) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.SubResourcePatchOption) error {
+	return nil
+}
+
 type MockStatusWriter struct{}
 
 func (m *MockStatusWriter) Create(ctx context.Context, obj client.Object, subResource client.Object, opts ...client.SubResourceCreateOption) error {

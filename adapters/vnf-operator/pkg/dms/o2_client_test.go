@@ -118,11 +118,11 @@ func TestO2DMSClient_GetInventory(t *testing.T) {
 
 			// Create client with mock
 			client := &O2DMSClient{
-				BaseURL:    "http://test-o2dms:8080",
-				AuthToken:  "test-token",
-				HTTPClient: mockHTTP,
-				Timeout:    time.Second * 30,
-				RetryCount: 3,
+				Endpoint:   "http://test-o2dms:8080",
+				Token:      "test-token",
+				httpClient: mockHTTP,
+				maxRetries: 3,
+				retryDelay: time.Second,
 			}
 
 			// Execute test
