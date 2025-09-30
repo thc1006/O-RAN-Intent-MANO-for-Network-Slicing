@@ -92,7 +92,7 @@ func TestServiceMonitorCreation(t *testing.T) {
 							Interval: "30s",
 							ScrapeTimeout: "10s",
 							HonorLabels: false,
-							Relabelings: []*monitoringv1.RelabelConfig{
+							RelabelConfigs: []*monitoringv1.RelabelConfig{
 								{
 									SourceLabels: []monitoringv1.LabelName{"__meta_kubernetes_service_name"},
 									TargetLabel:  "service",
