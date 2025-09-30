@@ -628,7 +628,7 @@ func TestMonitoringE2E(t *testing.T) {
 	suite.Run(t, new(MonitoringE2ETestSuite))
 }
 
-func TestMain(m *testing.M) {
+func TestMonitoringE2ESuite(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(m, "Monitoring E2E Test Suite")
+	RunSpecs(t, "Monitoring E2E Test Suite")
 }

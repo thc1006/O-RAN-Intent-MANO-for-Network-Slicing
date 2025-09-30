@@ -89,6 +89,10 @@ func (m *MockK8sClient) Patch(ctx context.Context, obj client.Object, patch clie
 	return nil
 }
 
+func (m *MockK8sClient) Apply(ctx context.Context, obj client.Object, opts ...client.PatchOption) error {
+	return nil
+}
+
 func (m *MockK8sClient) DeleteAllOf(ctx context.Context, obj client.Object, opts ...client.DeleteAllOfOption) error {
 	return nil
 }

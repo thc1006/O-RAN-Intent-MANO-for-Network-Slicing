@@ -147,7 +147,7 @@ func URLLCVNFDeployment() *VNFDeployment {
 	return vnf
 }
 
-func mMTCVNFDeployment() *VNFDeployment {
+func MMTCVNFDeployment() *VNFDeployment {
 	vnf := ValidVNFDeployment()
 	vnf.Name = "mmtc-vnf"
 	vnf.Spec.SliceType = "mMTC"

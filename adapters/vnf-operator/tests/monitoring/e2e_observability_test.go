@@ -18,6 +18,84 @@ type MockObservabilityStack struct {
 	mock.Mock
 }
 
+func (m *MockObservabilityStack) GenerateMetrics(component string, metrics []Metric) error {
+	args := m.Called(component, metrics)
+	return args.Error(0)
+}
+
+func (m *MockObservabilityStack) ExposeMetricsEndpoint(component string, port int) error {
+	args := m.Called(component, port)
+	return args.Error(0)
+}
+
+func (m *MockObservabilityStack) ScrapeMetrics(component string) (*ScrapeResult, error) {
+	args := m.Called(component)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*ScrapeResult), args.Error(1)
+}
+
+func (m *MockObservabilityStack) QueryMetrics(query string, timeRange TimeRange) (*QueryResult, error) {
+	args := m.Called(query, timeRange)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*QueryResult), args.Error(1)
+}
+
+func (m *MockObservabilityStack) RenderDashboard(dashboardUID string, timeRange TimeRange) (*DashboardRender, error) {
+	args := m.Called(dashboardUID, timeRange)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*DashboardRender), args.Error(1)
+}
+
+func (m *MockObservabilityStack) CreateAlert(alert *AlertRule) error {
+	args := m.Called(alert)
+	return args.Error(0)
+}
+
+func (m *MockObservabilityStack) VerifyAlertFiring(alertName string) (bool, error) {
+	args := m.Called(alertName)
+	return args.Bool(0), args.Error(1)
+}
+
+func (m *MockObservabilityStack) HandleAlert(alert *Alert) (*Notification, error) {
+	args := m.Called(alert)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*Notification), args.Error(1)
+}
+
+func (m *MockObservabilityStack) ValidateStack() (*StackValidation, error) {
+	args := m.Called()
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*StackValidation), args.Error(1)
+}
+
+func (m *MockObservabilityStack) DeployFullStack(config *StackConfig) error {
+	args := m.Called(config)
+	return args.Error(0)
+}
+
+func (m *MockObservabilityStack) TestEndToEndFlow(scenario *E2EScenario) (*E2EResult, error) {
+	args := m.Called(scenario)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*E2EResult), args.Error(1)
+}
+
+func (m *MockObservabilityStack) CleanupStack() error {
+	args := m.Called()
+	return args.Error(0)
+}
+
 // E2EObservabilityTestSuite defines the test suite for end-to-end observability
 type E2EObservabilityTestSuite struct {
 	suite.Suite

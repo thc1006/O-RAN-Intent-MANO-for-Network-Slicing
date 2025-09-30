@@ -211,9 +211,9 @@ func TestO2DMSClient_GetResources(t *testing.T) {
 			}
 
 			client := &O2DMSClient{
-				BaseURL:    "http://test-o2dms:8080",
-				AuthToken:  "test-token",
-				HTTPClient: mockHTTP,
+				Endpoint:   "http://test-o2dms:8080",
+				Token:      "test-token",
+				httpClient: mockHTTP,
 			}
 
 			result, err := client.GetResources(context.Background(), tt.filter)
@@ -273,9 +273,9 @@ func TestO2DMSClient_GetConfiguration(t *testing.T) {
 			}
 
 			client := &O2DMSClient{
-				BaseURL:    "http://test-o2dms:8080",
-				AuthToken:  "test-token",
-				HTTPClient: mockHTTP,
+				Endpoint:   "http://test-o2dms:8080",
+				Token:      "test-token",
+				httpClient: mockHTTP,
 			}
 
 			result, err := client.GetConfiguration(context.Background(), tt.resourceID)
@@ -348,9 +348,9 @@ func TestO2DMSClient_UpdateConfiguration(t *testing.T) {
 			}
 
 			client := &O2DMSClient{
-				BaseURL:    "http://test-o2dms:8080",
-				AuthToken:  "test-token",
-				HTTPClient: mockHTTP,
+				Endpoint:   "http://test-o2dms:8080",
+				Token:      "test-token",
+				httpClient: mockHTTP,
 			}
 
 			err := client.UpdateConfiguration(context.Background(), tt.resourceID, tt.config)
@@ -425,9 +425,9 @@ func TestO2DMSClient_RetryLogic(t *testing.T) {
 			}
 
 			client := &O2DMSClient{
-				BaseURL:    "http://test-o2dms:8080",
-				AuthToken:  "test-token",
-				HTTPClient: mockHTTP,
+				Endpoint:   "http://test-o2dms:8080",
+				Token:      "test-token",
+				httpClient: mockHTTP,
 				RetryCount: tt.retryCount,
 			}
 
@@ -488,9 +488,9 @@ func TestO2DMSClient_ErrorHandling(t *testing.T) {
 			}
 
 			client := &O2DMSClient{
-				BaseURL:    "http://test-o2dms:8080",
-				AuthToken:  "test-token",
-				HTTPClient: mockHTTP,
+				Endpoint:   "http://test-o2dms:8080",
+				Token:      "test-token",
+				httpClient: mockHTTP,
 			}
 
 			_, err := client.GetInventory(context.Background())
@@ -549,9 +549,9 @@ func TestO2DMSClient_Subscribe(t *testing.T) {
 			}
 
 			client := &O2DMSClient{
-				BaseURL:    "http://test-o2dms:8080",
-				AuthToken:  "test-token",
-				HTTPClient: mockHTTP,
+				Endpoint:   "http://test-o2dms:8080",
+				Token:      "test-token",
+				httpClient: mockHTTP,
 			}
 
 			result, err := client.Subscribe(context.Background(), tt.request)
