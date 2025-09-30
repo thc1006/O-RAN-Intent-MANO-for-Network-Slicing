@@ -319,10 +319,31 @@ jobs:
       run: |
         # Use K8s version consistent with KUBECTL_VERSION
         K8S_VERSION=1.28.0
-        # Download kube-apiserver/etcd/kubectl binaries and get env vars
-        eval "$(setup-envtest use -p env ${K8S_VERSION})"
+        echo "Installing envtest binaries for K8s ${K8S_VERSION}..."
+
+        # Download and setup envtest binaries
+        ENVTEST_ASSETS_DIR=$(setup-envtest use ${K8S_VERSION} -p path)
+        echo "Envtest assets directory: ${ENVTEST_ASSETS_DIR}"
+
+        # Verify the directory exists and contains the required binaries
+        if [ ! -d "${ENVTEST_ASSETS_DIR}" ]; then
+          echo "ERROR: Envtest assets directory not found!"
+          exit 1
+        fi
+
+        # Check for required binaries
+        if [ ! -f "${ENVTEST_ASSETS_DIR}/etcd" ] || [ ! -f "${ENVTEST_ASSETS_DIR}/kube-apiserver" ]; then
+          echo "ERROR: Required binaries (etcd, kube-apiserver) not found!"
+          ls -la "${ENVTEST_ASSETS_DIR}"
+          exit 1
+        fi
+
+        echo "Found envtest binaries:"
+        ls -la "${ENVTEST_ASSETS_DIR}"
+
         # Make available to next steps
-        echo "KUBEBUILDER_ASSETS=${ENVTEST_KUBEBUILDER_ASSETS}" >> $GITHUB_ENV
+        echo "KUBEBUILDER_ASSETS=${ENVTEST_ASSETS_DIR}" >> $GITHUB_ENV
+        echo "Successfully set KUBEBUILDER_ASSETS=${ENVTEST_ASSETS_DIR}"
 
     - name: Run unit/integration tests
       working-directory: ${{ env.COMPONENT_PATH }}
