@@ -1,8 +1,8 @@
 module github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/orchestrator
 
-go 1.23
+go 1.24.0
 
-toolchain go1.23.7
+toolchain go1.24.7
 
 require (
 	github.com/prometheus/client_golang v1.23.2
@@ -20,7 +20,6 @@ require (
 	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/common v0.66.1 // indirect
 	github.com/prometheus/procfs v0.17.0 // indirect
-	github.com/rogpeppe/go-internal v1.13.1 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
 	golang.org/x/sys v0.36.0 // indirect
 	google.golang.org/protobuf v1.36.9 // indirect

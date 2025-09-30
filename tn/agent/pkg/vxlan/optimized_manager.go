@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/logging"
+	"log/slog"
 	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/pkg/security"
 )
 
@@ -202,7 +202,7 @@ func (m *OptimizedManager) createTunnelOptimized(vxlanID int32, localIP string, 
 		// Delete existing tunnel if in failed state
 		if err := m.DeleteTunnelOptimized(vxlanID); err != nil {
 			// Log the deletion failure and assess if we should continue
-			logging.Warn("failed to delete existing tunnel",
+			slog.Warn("failed to delete existing tunnel",
 				"vxlan_id", vxlanID,
 				"error", err)
 
@@ -218,7 +218,7 @@ func (m *OptimizedManager) createTunnelOptimized(vxlanID int32, localIP string, 
 
 			// For other errors (e.g., "device not found"), it's safe to continue
 			// as the interface might not exist anyway, which is what we want
-			logging.Info("continuing with tunnel creation despite deletion failure",
+			slog.Info("continuing with tunnel creation despite deletion failure",
 				"vxlan_id", vxlanID)
 		}
 	} else {
@@ -291,7 +291,7 @@ func (m *OptimizedManager) createTunnelIPCommand(vxlanID int32, localIP string, 
 		if err := m.executeOptimizedCommand(cmdArgs); err != nil {
 			// Cleanup on failure
 			if cleanupErr := m.executeOptimizedCommand([]string{"ip", "link", "del", ifaceName}); cleanupErr != nil {
-				logging.Warn("failed to cleanup interface during error recovery",
+				slog.Warn("failed to cleanup interface during error recovery",
 					"interface", ifaceName,
 					"vxlan_id", vxlanID,
 					"error", cleanupErr)
@@ -330,7 +330,7 @@ func (m *OptimizedManager) createTunnelIPCommand(vxlanID int32, localIP string, 
 
 		// Log all FDB errors if any occurred
 		if len(fdbErrors) > 0 {
-			logging.Warn("FDB entries failed during tunnel creation",
+			slog.Warn("FDB entries failed during tunnel creation",
 				"vxlan_id", vxlanID,
 				"interface", ifaceName,
 				"failed_count", len(fdbErrors),
@@ -342,7 +342,7 @@ func (m *OptimizedManager) createTunnelIPCommand(vxlanID int32, localIP string, 
 		if err := m.executeOptimizedCommand([]string{
 			"bridge", "fdb", "append", "00:00:00:00:00:00", "dst", remoteIPs[0], "dev", ifaceName,
 		}); err != nil {
-			logging.Warn("failed to add FDB entry",
+			slog.Warn("failed to add FDB entry",
 				"interface", ifaceName,
 				"remote_ip", remoteIPs[0],
 				"vxlan_id", vxlanID,
@@ -510,7 +510,7 @@ func (m *OptimizedManager) updateTunnelStats(vxlanID int32) {
 
 	// Validate interface name before file access
 	if err := security.ValidateNetworkInterface(ifaceName); err != nil {
-		logging.Warn("invalid interface name for stats update",
+		slog.Warn("invalid interface name for stats update",
 			"interface", ifaceName,
 			"vxlan_id", vxlanID,
 			"error", err)
@@ -529,7 +529,7 @@ func (m *OptimizedManager) updateTunnelStats(vxlanID int32) {
 	// Use secure path joining instead of string formatting
 	statsPath, err := security.SecureJoinPath("/sys/class/net", ifaceName, "statistics", "tx_bytes")
 	if err != nil {
-		logging.Warn("failed to construct secure stats path",
+		slog.Warn("failed to construct secure stats path",
 			"interface", security.SanitizeForLog(ifaceName),
 			"vxlan_id", vxlanID,
 			"error", err)
@@ -538,7 +538,7 @@ func (m *OptimizedManager) updateTunnelStats(vxlanID int32) {
 
 	// Validate the constructed path
 	if err := validator.ValidateFilePath(statsPath); err != nil {
-		logging.Warn("invalid statistics file path",
+		slog.Warn("invalid statistics file path",
 			"interface", security.SanitizeForLog(ifaceName),
 			"vxlan_id", vxlanID,
 			"error", err)
