@@ -1,0 +1,92 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: oran-orchestrator
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: orchestrator-config
+  namespace: oran-orchestrator
+data:
+  NLP_SERVICE_URL: "http://nlp-service.oran-nlp.svc.cluster.local:8082"
+  ARGOCD_NAMESPACE: "argocd"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orchestrator
+  namespace: oran-orchestrator
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: orchestrator
+  template:
+    metadata:
+      labels:
+        app: orchestrator
+    spec:
+      serviceAccountName: orchestrator
+      containers:
+      - name: orchestrator
+        image: oran-orchestrator:latest
+        ports:
+        - containerPort: 8080
+          name: http
+        - containerPort: 9090
+          name: metrics
+        env:
+        - name: NLP_SERVICE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: orchestrator-config
+              key: NLP_SERVICE_URL
+        args: ["--server"]
+        resources:
+          requests:
+            cpu: 500m
+            memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: orchestrator
+  namespace: oran-orchestrator
+spec:
+  ports:
+  - port: 8080
+    targetPort: http
+  selector:
+    app: orchestrator
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: orchestrator
+  namespace: oran-orchestrator
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: orchestrator
+rules:
+- apiGroups: ["argoproj.io"]
+  resources: ["applications"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: [""]
+  resources: ["configmaps", "namespaces"]
+  verbs: ["get", "list", "watch", "create", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: orchestrator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: orchestrator
+subjects:
+- kind: ServiceAccount
+  name: orchestrator
+  namespace: oran-orchestrator

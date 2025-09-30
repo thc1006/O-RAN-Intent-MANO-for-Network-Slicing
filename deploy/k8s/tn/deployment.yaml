@@ -1,0 +1,91 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tn-manager
+  namespace: oran-tn
+  labels:
+    app: tn-manager
+    component: transport-network
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tn-manager
+  template:
+    metadata:
+      labels:
+        app: tn-manager
+    spec:
+      containers:
+      - name: tn-manager
+        image: alpine:latest
+        command: ["/bin/sh", "-c", "tail -f /dev/null"]
+        ports:
+        - containerPort: 8090
+          name: grpc
+        env:
+        - name: LOG_LEVEL
+          value: "info"
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 300m
+            memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tn-manager
+  namespace: oran-tn
+  labels:
+    app: tn-manager
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8090
+    targetPort: 8090
+    protocol: TCP
+    name: grpc
+  selector:
+    app: tn-manager
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: tn-agent
+  namespace: oran-tn
+  labels:
+    app: tn-agent
+    component: transport-network
+spec:
+  selector:
+    matchLabels:
+      app: tn-agent
+  template:
+    metadata:
+      labels:
+        app: tn-agent
+    spec:
+      hostNetwork: true
+      containers:
+      - name: tn-agent
+        image: alpine:latest
+        command: ["/bin/sh", "-c", "tail -f /dev/null"]
+        securityContext:
+          privileged: true
+        env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: TN_MANAGER_ENDPOINT
+          value: "tn-manager.oran-tn.svc.cluster.local:8090"
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 200m
+            memory: 128Mi

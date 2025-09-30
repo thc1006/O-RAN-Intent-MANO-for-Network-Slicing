@@ -216,9 +216,74 @@ Our modern CI/CD pipeline demonstrates production-ready practices:
    make verify-deployment
    ```
 
+## 🎤 Natural Language Intent Processing (NEW!)
+
+The orchestrator now supports **natural language input** for network slice deployment, enabling conversational slice management through advanced NLP.
+
+### End-to-End Flow
+
+```
+"Deploy high-bandwidth video streaming for 100 users"
+    ↓ Natural Language
+NLP Service (FastAPI) - Parse intent → Extract QoS parameters
+    ↓ HTTP API
+Orchestrator (Go) - Map to slice configuration
+    ↓ Argo CD API
+Argo CD - GitOps deployment
+    ↓ Kubernetes API
+Network Slice Resources (Namespace, Deployment, Service, ConfigMap)
+```
+
+### Quick Start
+
+```bash
+# 1. Start NLP Service
+cd nlp && python nlp_service.py
+
+# 2. Start Orchestrator
+cd orchestrator && ./bin/orchestrator.exe --server
+
+# 3. Send Natural Language Intent
+curl -X POST http://localhost:8080/api/v1/intents/natural \
+  -H "Content-Type: application/json" \
+  -d '{
+    "intent": "Deploy high-bandwidth video streaming for 100 users"
+  }'
+```
+
+### Supported Intent Types
+
+| Intent Pattern | Slice Type | Example |
+|----------------|------------|---------|
+| **Video/Streaming** | eMBB | "Deploy 4K video streaming slice" |
+| **Low Latency/Autonomous** | URLLC | "Deploy ultra-low latency for autonomous vehicles" |
+| **IoT/Sensors** | mMTC | "Deploy IoT sensor network for smart city" |
+
+### API Response
+
+```json
+{
+  "success": true,
+  "slice_id": "slice-embb-1759250943",
+  "intent": {
+    "raw_text": "Deploy high-bandwidth video streaming for 100 users",
+    "parsed_as": "eMBB"
+  },
+  "qos_profile": {
+    "throughput_mbps": 50.0,
+    "latency_ms": 10.0,
+    "reliability": 99.9
+  },
+  "deployment": {
+    "namespace": "oran-slice-embb",
+    "status": "success"
+  }
+}
+```
+
 ## ⚙️ Argo CD Integration
 
-The orchestrator now supports **Argo CD** for GitOps-based network slice deployment, providing automated synchronization and health monitoring.
+The orchestrator supports **Argo CD** for GitOps-based network slice deployment, providing automated synchronization and health monitoring.
 
 ### Architecture
 

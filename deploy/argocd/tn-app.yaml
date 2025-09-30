@@ -1,0 +1,30 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: oran-transport-network
+  namespace: argocd
+  labels:
+    component: transport-network
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing.git
+    targetRevision: main
+    path: deploy/k8s/tn
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: oran-tn
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+    - CreateNamespace=true
+    - PruneLast=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

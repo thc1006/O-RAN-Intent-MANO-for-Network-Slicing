@@ -1,0 +1,94 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nlp-processor
+  namespace: oran-nlp
+  labels:
+    app: nlp-processor
+    component: intent-processing
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nlp-processor
+  template:
+    metadata:
+      labels:
+        app: nlp-processor
+    spec:
+      containers:
+      - name: nlp-processor
+        image: python:3.13-slim
+        command:
+        - python
+        - -m
+        - http.server
+        - "8080"
+        ports:
+        - containerPort: 8080
+          name: http
+        env:
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        - name: LOG_LEVEL
+          value: "INFO"
+        resources:
+          requests:
+            cpu: 200m
+            memory: 256Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+        volumeMounts:
+        - name: nlp-code
+          mountPath: /app
+        workingDir: /app
+      volumes:
+      - name: nlp-code
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nlp-processor
+  namespace: oran-nlp
+  labels:
+    app: nlp-processor
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+    name: http
+  selector:
+    app: nlp-processor
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nlp-config
+  namespace: oran-nlp
+data:
+  qos_schema.json: |
+    {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "required": ["bandwidth", "latency"],
+      "properties": {
+        "bandwidth": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 10000
+        },
+        "latency": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "slice_type": {
+          "type": "string",
+          "enum": ["embb", "urllc", "mmtc"]
+        }
+      }
+    }
