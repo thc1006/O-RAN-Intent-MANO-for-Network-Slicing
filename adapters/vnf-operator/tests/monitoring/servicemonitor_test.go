@@ -15,6 +15,11 @@ import (
 	v1 "k8s.io/api/core/v1"
 )
 
+// Helper function to create bool pointer
+func boolPtr(b bool) *bool {
+	return &b
+}
+
 // MockServiceMonitorClient mocks the ServiceMonitor client interface
 type MockServiceMonitorClient struct {
 	mock.Mock
@@ -142,7 +147,7 @@ func TestServiceMonitorCreation(t *testing.T) {
 							ScrapeTimeout: "5s",
 							TLSConfig: &monitoringv1.TLSConfig{
 								SafeTLSConfig: monitoringv1.SafeTLSConfig{
-									InsecureSkipVerify: false,
+									InsecureSkipVerify: boolPtr(false),
 									ServerName:         "vnf-operator.o-ran-mano.svc.cluster.local",
 								},
 								CertFile: "/etc/ssl/certs/client.crt",
@@ -411,7 +416,7 @@ func TestTLSConfiguration(t *testing.T) {
 			name: "valid TLS configuration with certificates",
 			tlsConfig: &monitoringv1.TLSConfig{
 				SafeTLSConfig: monitoringv1.SafeTLSConfig{
-					InsecureSkipVerify: false,
+					InsecureSkipVerify: boolPtr(false),
 					ServerName:         "orchestrator.o-ran-mano.svc.cluster.local",
 				},
 				CertFile: "/etc/ssl/certs/client.crt",
@@ -440,7 +445,7 @@ func TestTLSConfiguration(t *testing.T) {
 			name: "TLS with secret references",
 			tlsConfig: &monitoringv1.TLSConfig{
 				SafeTLSConfig: monitoringv1.SafeTLSConfig{
-					InsecureSkipVerify: false,
+					InsecureSkipVerify: boolPtr(false),
 					ServerName:         "dms.o-ran-mano.svc.cluster.local",
 					Cert: monitoringv1.SecretOrConfigMap{
 						Secret: &v1.SecretKeySelector{
@@ -475,7 +480,7 @@ func TestTLSConfiguration(t *testing.T) {
 			name: "invalid TLS - missing certificate",
 			tlsConfig: &monitoringv1.TLSConfig{
 				SafeTLSConfig: monitoringv1.SafeTLSConfig{
-					InsecureSkipVerify: false,
+					InsecureSkipVerify: boolPtr(false),
 					ServerName:         "secure-service.o-ran-mano.svc.cluster.local",
 				},
 				// Missing certificate configuration
@@ -490,7 +495,7 @@ func TestTLSConfiguration(t *testing.T) {
 			name: "invalid TLS - mismatched server name",
 			tlsConfig: &monitoringv1.TLSConfig{
 				SafeTLSConfig: monitoringv1.SafeTLSConfig{
-					InsecureSkipVerify: false,
+					InsecureSkipVerify: boolPtr(false),
 					ServerName:         "wrong-hostname", // Doesn't match actual service
 				},
 				CertFile: "/etc/ssl/certs/client.crt",
@@ -585,7 +590,7 @@ func TestAuthentication(t *testing.T) {
 				BearerToken: "service-account-token",
 				TLSConfig: &monitoringv1.TLSConfig{
 					SafeTLSConfig: monitoringv1.SafeTLSConfig{
-						InsecureSkipVerify: false,
+						InsecureSkipVerify: boolPtr(false),
 						ServerName:         "secure-metrics.o-ran-mano.svc.cluster.local",
 					},
 					CAFile: "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt",
