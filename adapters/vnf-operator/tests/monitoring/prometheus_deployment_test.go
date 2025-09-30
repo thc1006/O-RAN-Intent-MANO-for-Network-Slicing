@@ -338,7 +338,7 @@ func TestScrapeConfigurationValidation(t *testing.T) {
 				ScrapeTimeout:  "5s",
 				MetricsPath:    "/metrics",
 				Scheme:         "https",
-				TLSConfig: &TLSConfig{
+				TLSConfig: &PrometheusTLSConfig{
 					InsecureSkipVerify: false,
 					CertFile:           "/etc/ssl/certs/client.crt",
 					KeyFile:            "/etc/ssl/private/client.key",
