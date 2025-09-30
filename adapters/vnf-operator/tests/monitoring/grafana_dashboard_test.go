@@ -2,14 +2,11 @@ package monitoring
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
 )
 
 // MockGrafanaClient mocks the Grafana client interface
@@ -113,7 +110,6 @@ type Dashboard struct {
 	Timezone    string                 `json:"timezone"`
 	Panels      []Panel                `json:"panels"`
 	Templating  *Templating            `json:"templating"`
-	Time        *TimeRange             `json:"time"`
 	Refresh     string                 `json:"refresh"`
 	Annotations *Annotations           `json:"annotations"`
 	Metadata    map[string]interface{} `json:"metadata"`

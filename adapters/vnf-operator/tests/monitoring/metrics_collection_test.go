@@ -3,13 +3,11 @@ package monitoring
 import (
 	"errors"
 	"fmt"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
 )
 
 // MockMetricsCollector mocks the metrics collection interface
