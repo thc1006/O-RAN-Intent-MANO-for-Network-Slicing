@@ -36,8 +36,8 @@ func main() {
 }
 
 func generateSampleReport(scanPath, reportPath string) error {
-	// Ensure report directory exists
-	os.MkdirAll(filepath.Dir(reportPath), 0755)
+	// Ensure report directory exists with secure permissions (0750 or less)
+	os.MkdirAll(filepath.Dir(reportPath), 0750)
 
 	content := fmt.Sprintf(`# Security Scan Report
 

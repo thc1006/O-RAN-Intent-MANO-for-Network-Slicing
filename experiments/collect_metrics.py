@@ -562,9 +562,9 @@ class MetricsCollector:
         ):
             ocloud_memory += f"<li>{node}: {mem} MB</li>"
 
-        # Fill template
+        # Fill template with all required named arguments
         html_filled = html_content.format(
-            timestamp=self.metrics["timestamp"],
+            timestamp=self.metrics.get("timestamp", "N/A"),
             validation_class="pass" if validation.get("passed") else "fail",
             validation_status="PASSED"
             if validation.get("passed")
@@ -573,14 +573,14 @@ class MetricsCollector:
             validation_details=", ".join(validation.get("failures", []))
             or "All checks passed",
             timing_rows=timing_rows,
-            smf_delay=self.metrics["bottlenecks"].get("smf_init_delay", 0),
+            smf_delay=self.metrics.get("bottlenecks", {}).get("smf_init_delay", 0),
             smf_timeline=smf_timeline or "<p>No bottleneck detected</p>",
-            smo_cpu_peak=self.metrics["resources"]["smo"].get("cpu_peak", 0),
-            smo_cpu_avg=self.metrics["resources"]["smo"].get("cpu_avg", 0),
-            smo_mem_peak=self.metrics["resources"]["smo"].get(
+            smo_cpu_peak=self.metrics.get("resources", {}).get("smo", {}).get("cpu_peak", 0),
+            smo_cpu_avg=self.metrics.get("resources", {}).get("smo", {}).get("cpu_avg", 0),
+            smo_mem_peak=self.metrics.get("resources", {}).get("smo", {}).get(
                 "memory_peak", 0
             ),
-            smo_mem_avg=self.metrics["resources"]["smo"].get("memory_avg", 0),
+            smo_mem_avg=self.metrics.get("resources", {}).get("smo", {}).get("memory_avg", 0),
             ocloud_memory=ocloud_memory or "<li>No data</li>",
         )
 

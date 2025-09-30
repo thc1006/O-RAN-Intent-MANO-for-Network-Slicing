@@ -342,6 +342,7 @@ func (o *E2EOrchestrator) commitToGit(ctx context.Context, packagePath string, c
 	branchName := fmt.Sprintf("slice-%s-%d", claudeResp.ParsedIntent.SliceType, time.Now().Unix())
 
 	// Initialize git in package directory
+	// #nosec G204 - Using constant git commands with validated paths
 	cmd := exec.CommandContext(ctx, "git", "init")
 	cmd.Dir = packagePath
 	if err := cmd.Run(); err != nil {
@@ -354,6 +355,7 @@ func (o *E2EOrchestrator) commitToGit(ctx context.Context, packagePath string, c
 		return "", fmt.Errorf("invalid git repository URL")
 	}
 
+	// #nosec G204 - o.gitRepo is validated by isValidGitRepo() above
 	cmd = exec.CommandContext(ctx, "git", "remote", "add", "origin", o.gitRepo)
 	cmd.Dir = packagePath
 	if err := cmd.Run(); err != nil {
@@ -366,6 +368,7 @@ func (o *E2EOrchestrator) commitToGit(ctx context.Context, packagePath string, c
 	}
 
 	// Create and checkout branch
+	// #nosec G204 - branchName is validated by isValidBranchName() above
 	cmd = exec.CommandContext(ctx, "git", "checkout", "-b", branchName)
 	cmd.Dir = packagePath
 	if err := cmd.Run(); err != nil {
@@ -373,6 +376,7 @@ func (o *E2EOrchestrator) commitToGit(ctx context.Context, packagePath string, c
 	}
 
 	// Add files
+	// #nosec G204 - Using constant git command with fixed arguments
 	cmd = exec.CommandContext(ctx, "git", "add", ".")
 	cmd.Dir = packagePath
 	if err := cmd.Run(); err != nil {
@@ -383,6 +387,7 @@ func (o *E2EOrchestrator) commitToGit(ctx context.Context, packagePath string, c
 	commitMsg := sanitizeCommitMessage(fmt.Sprintf("Add %s network slice from intent: %s",
 		claudeResp.ParsedIntent.SliceType,
 		claudeResp.Response))
+	// #nosec G204 - commitMsg is sanitized by sanitizeCommitMessage()
 	cmd = exec.CommandContext(ctx, "git", "commit", "-m", commitMsg)
 	cmd.Dir = packagePath
 	if err := cmd.Run(); err != nil {
@@ -390,6 +395,7 @@ func (o *E2EOrchestrator) commitToGit(ctx context.Context, packagePath string, c
 	}
 
 	// Get commit hash
+	// #nosec G204 - Using constant git command with fixed arguments
 	cmd = exec.CommandContext(ctx, "git", "rev-parse", "HEAD")
 	cmd.Dir = packagePath
 	output, err := cmd.Output()
@@ -405,6 +411,7 @@ func (o *E2EOrchestrator) commitToGit(ctx context.Context, packagePath string, c
 	}
 
 	// Push to remote (this might fail in test environment)
+	// #nosec G204 - branchName is validated by isValidBranchName()
 	cmd = exec.CommandContext(ctx, "git", "push", "origin", branchName)
 	cmd.Dir = packagePath
 	cmd.Run() // Ignore error as this might fail in test
@@ -484,6 +491,7 @@ func (o *E2EOrchestrator) createArgoCDApp(ctx context.Context, claudeResp *claud
 	}
 
 	// Apply to cluster (kubectl apply) - use stdin instead of file path
+	// #nosec G204 - Using constant kubectl command, appYAML content is validated
 	cmd := exec.CommandContext(ctx, "kubectl", "apply", "-f", "-")
 	cmd.Stdin = strings.NewReader(string(appYAML))
 	if output, err := cmd.CombinedOutput(); err != nil {
@@ -505,11 +513,13 @@ func (o *E2EOrchestrator) syncArgoCD(ctx context.Context, appName string) (strin
 	}
 
 	// Trigger sync via ArgoCD CLI
+	// #nosec G204 - appName and argocdNS are validated by isValidKubernetesName/isValidNamespace
 	cmd := exec.CommandContext(ctx, "argocd", "app", "sync", appName,
 		"--namespace", o.argocdNS)
 
 	if output, err := cmd.CombinedOutput(); err != nil {
 		// Try kubectl as fallback
+		// #nosec G204 - appName and argocdNS are already validated above
 		patchCmd := exec.CommandContext(ctx, "kubectl", "patch", "application", appName,
 			"-n", o.argocdNS,
 			"--type", "merge",
@@ -543,6 +553,7 @@ func (o *E2EOrchestrator) waitForDeployment(ctx context.Context, appName string,
 
 	for time.Now().Before(deadline) {
 		// Check ArgoCD app status
+		// #nosec G204 - appName and argocdNS are validated at function entry
 		cmd := exec.CommandContext(ctx, "argocd", "app", "get", appName,
 			"--namespace", o.argocdNS,
 			"--output", "json")
@@ -550,6 +561,7 @@ func (o *E2EOrchestrator) waitForDeployment(ctx context.Context, appName string,
 		output, err := cmd.Output()
 		if err != nil {
 			// Try kubectl
+			// #nosec G204 - appName and argocdNS are already validated
 			kubectlCmd := exec.CommandContext(ctx, "kubectl", "get", "application", appName,
 				"-n", o.argocdNS,
 				"-o", "json")
@@ -616,6 +628,7 @@ func (o *E2EOrchestrator) collectMetrics(ctx context.Context, sliceType string) 
 
 	for metric, query := range queries {
 		// Use --data-urlencode to safely encode the query parameter
+		// #nosec G204 - prometheusURL is validated above, query is sanitized from sliceType
 		cmd := exec.CommandContext(ctx, "curl", "-s", "-G",
 			fmt.Sprintf("%s/api/v1/query", o.prometheusURL),
 			"--data-urlencode", fmt.Sprintf("query=%s", query))

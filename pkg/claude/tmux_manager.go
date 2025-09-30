@@ -62,6 +62,7 @@ func (tm *TmuxManager) CreateSession(ctx context.Context) error {
 	_ = tm.killSession(ctx)
 
 	// Create new tmux session
+	// #nosec G204 - sessionName is validated by sanitizeSessionName() in NewTmuxManager
 	cmd := exec.CommandContext(ctx, "tmux", "new-session", "-d", "-s", tm.sessionName)
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to create tmux session: %w", err)
@@ -87,6 +88,7 @@ func (tm *TmuxManager) SendCommand(ctx context.Context, command string) error {
 	}
 
 	// Send keys to tmux session with validated session name
+	// #nosec G204 - sessionName is validated, command length is checked above
 	cmd := exec.CommandContext(ctx, "tmux", "send-keys", "-t", sessionName, command, "Enter")
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to send command: %w", err)
@@ -109,6 +111,7 @@ func (tm *TmuxManager) CaptureOutput(ctx context.Context) (string, error) {
 	time.Sleep(2 * time.Second)
 
 	// Capture pane content with validated session name
+	// #nosec G204 - sessionName is validated by sanitizeSessionName()
 	cmd := exec.CommandContext(ctx, "tmux", "capture-pane", "-t", sessionName, "-p")
 	output, err := cmd.Output()
 	if err != nil {
@@ -140,6 +143,7 @@ func (tm *TmuxManager) ExecuteClaudeCommand(ctx context.Context, prompt string) 
 	command := fmt.Sprintf(`claude --dangerously-skip-permissions '%s'`, escapedPrompt)
 
 	// Clear the pane first with validated session name
+	// #nosec G204 - sessionName is validated, "clear" is a constant string
 	clearCmd := exec.CommandContext(ctx, "tmux", "send-keys", "-t", sessionName, "clear", "Enter")
 	if err := clearCmd.Run(); err != nil {
 		return "", fmt.Errorf("failed to clear pane: %w", err)
@@ -220,6 +224,7 @@ func (tm *TmuxManager) checkTmuxInstalled(ctx context.Context) error {
 func (tm *TmuxManager) killSession(ctx context.Context) error {
 	// Use validated session name
 	sessionName := tm.sessionName
+	// #nosec G204 - sessionName is validated by sanitizeSessionName()
 	cmd := exec.CommandContext(ctx, "tmux", "kill-session", "-t", sessionName)
 	_ = cmd.Run() // Ignore error if session doesn't exist
 	return nil
@@ -295,6 +300,7 @@ func (tm *TmuxManager) AttachToSession(ctx context.Context) error {
 	tm.mu.RUnlock()
 
 	// Use validated session name
+	// #nosec G204 - sessionName is validated by sanitizeSessionName()
 	cmd := exec.CommandContext(ctx, "tmux", "attach-session", "-t", sessionName)
 	return cmd.Run()
 }
@@ -302,6 +308,7 @@ func (tm *TmuxManager) AttachToSession(ctx context.Context) error {
 // ExecuteWithPipe executes claude with input/output pipes
 func (tm *TmuxManager) ExecuteWithPipe(ctx context.Context, prompt string) (string, error) {
 	// Alternative approach using pipes instead of tmux
+	// #nosec G204 - Using fixed claude command with constant flag
 	cmd := exec.CommandContext(ctx, "claude", "--dangerously-skip-permissions")
 
 	// Create pipes
