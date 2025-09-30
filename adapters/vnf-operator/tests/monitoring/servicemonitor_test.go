@@ -141,7 +141,7 @@ func TestServiceMonitorCreation(t *testing.T) {
 							Interval: "15s",
 							ScrapeTimeout: "5s",
 							TLSConfig: &monitoringv1.TLSConfig{
-								SafeT LSConfig: monitoringv1.SafeTLSConfig{
+								SafeTLSConfig: monitoringv1.SafeTLSConfig{
 									InsecureSkipVerify: false,
 									ServerName:         "vnf-operator.o-ran-mano.svc.cluster.local",
 								},

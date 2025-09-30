@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"testing"
 	"time"
 
@@ -609,5 +610,6 @@ func TestMonitoringChaos(t *testing.T) {
 
 func TestMain(m *testing.M) {
 	RegisterFailHandler(Fail)
-	RunSpecs(m, "Monitoring Chaos Test Suite")
+	RunSpecs(&testing.T{}, "Monitoring Chaos Test Suite")
+	os.Exit(m.Run())
 }

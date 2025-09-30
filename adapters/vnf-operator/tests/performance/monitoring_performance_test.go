@@ -1,9 +1,11 @@
 package performance
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"math/rand"
 	"net/http"
 	"sync"
@@ -465,7 +467,7 @@ func executePrometheusQuery(ctx context.Context, clientset *kubernetes.Clientset
 	path := fmt.Sprintf("api/v1/query?query=%s", query)
 	proxyReq := clientset.CoreV1().Services(namespace).ProxyGet("http", "prometheus", "", path, nil)
 	resp, _ := proxyReq.DoRaw(ctx)
-	return &http.Response{Body: resp}
+	return &http.Response{Body: io.NopCloser(bytes.NewReader(resp))}
 }
 
 func getPrometheusMemoryUsage(ctx context.Context, clientset *kubernetes.Clientset, restConfig *rest.Config, namespace string) float64 {

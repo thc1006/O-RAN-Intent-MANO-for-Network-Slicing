@@ -12,51 +12,8 @@ import (
 	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tests/mocks"
 )
 
-// PorchClient interface for Nephio package operations
-type PorchClient interface {
-	CreatePackage(ctx context.Context, pkg *mocks.NephioPackage) error
-	UpdatePackage(ctx context.Context, name string, pkg *mocks.NephioPackage) error
-	DeletePackage(ctx context.Context, name string) error
-	GetPackage(ctx context.Context, name string) (*mocks.NephioPackage, error)
-	ListPackages(ctx context.Context) ([]*mocks.NephioPackage, error)
-	ApprovePackage(ctx context.Context, name string) error
-	ProposePackage(ctx context.Context, name string) error
-}
-
-// NephioPackager - the packager we're testing (not implemented yet)
-type NephioPackager struct {
-	PorchClient PorchClient
-	Repository  string
-	Namespace   string
-}
-
-// PackagerConfig for Nephio packager configuration
-type PackagerConfig struct {
-	Repository string
-	Namespace  string
-}
-
-// NewNephioPackager creates a new Nephio packager (not implemented yet)
-func NewNephioPackager(client PorchClient, config PackagerConfig) *NephioPackager {
-	// Intentionally not implemented to cause test failure (RED phase)
-	return nil
-}
-
-// Interface methods that need to be implemented
-func (p *NephioPackager) CreateVNFPackage(ctx context.Context, vnfSpec *fixtures.VNFDeployment) (*mocks.NephioPackage, error) {
-	// Not implemented yet - will cause tests to fail
-	return nil, nil
-}
-
-func (p *NephioPackager) UpdateVNFPackage(ctx context.Context, packageName string, vnfSpec *fixtures.VNFDeployment) error {
-	// Not implemented yet - will cause tests to fail
-	return nil
-}
-
-func (p *NephioPackager) DeleteVNFPackage(ctx context.Context, packageName string) error {
-	// Not implemented yet - will cause tests to fail
-	return nil
-}
+// Note: NephioPackager, PackagerConfig, PorchClient and related methods are defined in nephio_packager.go
+// This test file uses the types from the main package
 
 func (p *NephioPackager) GenerateKptfile(vnfSpec *fixtures.VNFDeployment) (*mocks.Kptfile, error) {
 	// Not implemented yet - will cause tests to fail

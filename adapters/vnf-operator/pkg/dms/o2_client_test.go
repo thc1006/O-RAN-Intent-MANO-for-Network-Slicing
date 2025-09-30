@@ -14,39 +14,8 @@ import (
 	"github.com/thc1006/O-RAN-Intent-MANO-for-Network-Slicing/tests/mocks"
 )
 
-// HTTPClient interface for dependency injection
-type HTTPClient interface {
-	Do(req *http.Request) (*http.Response, error)
-}
-
-// O2DMSClient - the client we're testing (not implemented yet)
-type O2DMSClient struct {
-	BaseURL    string
-	AuthToken  string
-	HTTPClient HTTPClient
-	Timeout    time.Duration
-	RetryCount int
-}
-
-// ClientConfig for O2 DMS client configuration
-type ClientConfig struct {
-	BaseURL    string
-	AuthToken  string
-	Timeout    time.Duration
-	RetryCount int
-}
-
-// NewO2DMSClient creates a new O2 DMS client (not implemented yet)
-func NewO2DMSClient(config ClientConfig) *O2DMSClient {
-	// Intentionally not implemented to cause test failure (RED phase)
-	return nil
-}
-
-// Interface methods that need to be implemented
-func (c *O2DMSClient) GetInventory(ctx context.Context) (*fixtures.O2DMSInventoryResponse, error) {
-	// Not implemented yet - will cause tests to fail
-	return nil, nil
-}
+// Note: O2DMSClient, ClientConfig, and related methods are defined in client.go
+// This test file uses the types from the main package
 
 func (c *O2DMSClient) GetResources(ctx context.Context, filter string) (*fixtures.O2DMSResourceResponse, error) {
 	// Not implemented yet - will cause tests to fail

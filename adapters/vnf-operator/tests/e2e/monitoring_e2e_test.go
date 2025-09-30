@@ -106,7 +106,7 @@ var _ = Describe("O-RAN Monitoring Stack E2E Tests", func() {
 			for _, serviceName := range services {
 				service, err := clientset.CoreV1().Services(namespace).Get(ctx, serviceName, metav1.GetOptions{})
 				Expect(err).NotTo(HaveOccurred())
-				Expect(service.Spec.Ports).To(HaveLen(BeNumerically(">=", 1)))
+				Expect(len(service.Spec.Ports)).To(BeNumerically(">=", 1))
 				Expect(service.Spec.Selector).ToNot(BeEmpty())
 			}
 		})
