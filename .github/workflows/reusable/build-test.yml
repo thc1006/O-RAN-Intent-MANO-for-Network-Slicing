@@ -90,7 +90,7 @@ jobs:
         # Download and extract kubebuilder test binaries
         curl -sSLo envtest-bins.tar.gz "https://go.kubebuilder.io/test-tools/1.31.1/linux/amd64"
         mkdir -p /tmp/kubebuilder/bin
-        tar -C /tmp/kubebuilder --strip-components=1 -zvxf envtest-bins.tar.gz
+        tar -C /tmp/kubebuilder --strip-components=1 -xvf envtest-bins.tar.gz
 
         echo "KUBEBUILDER_ASSETS=/tmp/kubebuilder/bin" >> $GITHUB_ENV
         echo "USE_EXISTING_CLUSTER=false" >> $GITHUB_ENV
