@@ -93,6 +93,14 @@ func (m *MockObservabilityStack) PropagateAlert(alert Alert) (*AlertPropagation,
 	return args.Get(0).(*AlertPropagation), args.Error(1)
 }
 
+func (m *MockObservabilityStack) TestHighCardinality(metricCount int) (*CardinalityTestResult, error) {
+	args := m.Called(metricCount)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*CardinalityTestResult), args.Error(1)
+}
+
 func (m *MockObservabilityStack) ValidateStack() (*StackValidation, error) {
 	args := m.Called()
 	if args.Get(0) == nil {

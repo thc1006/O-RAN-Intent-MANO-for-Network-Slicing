@@ -476,7 +476,7 @@ func TestNephioPackager_UpdateVNFPackage(t *testing.T) {
 			}
 
 			packager := &NephioPackager{
-				PorchClient: mockPorch,
+				logger: slog.Default(), workingDir: "/tmp/nephio-packages", registry: "test-registry", // PorchClient removed
 			}
 
 			err := packager.UpdateVNFPackage(context.Background(), tt.packageName, tt.vnfSpec)
@@ -540,7 +540,7 @@ func TestNephioPackager_DeleteVNFPackage(t *testing.T) {
 			}
 
 			packager := &NephioPackager{
-				PorchClient: mockPorch,
+				logger: slog.Default(), workingDir: "/tmp/nephio-packages", registry: "test-registry", // PorchClient removed
 			}
 
 			err := packager.DeleteVNFPackage(context.Background(), tt.packageName)

@@ -3,7 +3,6 @@ package dms
 import (
 	"context"
 	"net/http"
-	"strings"
 	"testing"
 	"time"
 
